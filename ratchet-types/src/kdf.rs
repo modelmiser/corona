@@ -29,9 +29,14 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 }
 
 /// Expand `key` under domain `tag` into 32 bytes: four 8-byte blocks, block `j` =
-/// `fnv1a(tag ‖ j ‖ key)`. The domain tag keeps the three derivations
-/// ([`init`]/[`next_chain`]/[`message_key`]) disjoint, so the message key can never
-/// equal the next chain key (which would leak the entire future of the chain).
+/// `fnv1a(tag ‖ j ‖ key)`. Each FNV-1a step is a bijection on the 64-bit state (XOR,
+/// then multiply by the odd `FNV_PRIME` — both invertible mod 2⁶⁴), so two buffers that
+/// differ only in the leading `tag` byte and then share an identical suffix stay distinct
+/// through every remaining step. The message key (tag `0x02`) and the next chain key (tag
+/// `0x01`) are therefore **guaranteed** distinct for the same input — not merely likely —
+/// which is what keeps one message key from leaking the entire future of the chain. (The
+/// distinctness is a property of the bijective mixing, *not* of FNV being collision-
+/// resistant, which it is not — see the module banner.)
 fn expand(tag: u8, key: &[u8; 32]) -> [u8; 32] {
     let mut out = [0u8; 32];
     for (j, chunk) in out.chunks_mut(8).enumerate() {

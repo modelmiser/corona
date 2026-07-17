@@ -31,7 +31,13 @@
 //! is E0382 (no double-use); the absence of `Clone` is hygiene. Here the **no-`Clone`**
 //! is itself load-bearing: cloning the chain key *is* keeping the past readable. So this
 //! leaf leans on both faces of linearity — you may not use the old value again (E0382),
-//! and you could never have duplicated it in the first place (no `Clone`).
+//! and you could never have duplicated it in the first place (no `Clone`). Both rest on
+//! the **E0451 seal**: the `secret` field is private, so it cannot simply be *read out*.
+//! Were it public, safe code could stash a copy (`[u8; 32]` is `Copy`) before advancing
+//! and re-derive the past keys with no move and no clone at all — so three mechanisms,
+//! not two, foreclose retention. E0382 and the no-`Clone` face are the *novel* pair that
+//! makes forward secrecy fall out of ownership; the seal is what makes them govern
+//! *every* path to the secret rather than just the two obvious ones.
 //!
 //! ## Two orthogonal forward-secrecy protections (the leaf-5 shape, again)
 //!
@@ -94,7 +100,7 @@
 //! - **Forward secrecy only — not post-compromise security.** This ratchet protects the
 //!   *past* against a *future* compromise. The dual — protecting the *future* against a
 //!   *past* compromise ("self-healing", post-compromise security) — a symmetric chain
-//!   cannot give: once `CKᵢ` leaks, every `CKⱼ₊ᵢ` follows. Recovery requires injecting
+//!   cannot give: once `CKᵢ` leaks, every `CKᵢ₊ⱼ` (`j ≥ 0`) follows. Recovery requires injecting
 //!   **fresh entropy** (the Diffie–Hellman step of the *double* ratchet, Signal's
 //!   design). That is not a compile primitive — it is fresh runtime knowledge, echoing
 //!   `ecash-types`' redeem-time-freshness boundary. Out of scope; it names the horizon.
@@ -105,9 +111,12 @@
 //!
 //! ## Primitives used
 //!
-//! **E0382** (linear [`ChainKey`]: `advance` consumes, and there is no `Clone` — both
-//! faces carry the forward-secrecy guarantee) and **E0451** (sealed [`ChainKey`] and
-//! [`MessageKey`]). The brand and E0080 are honestly unused. The new datum this leaf
+//! **E0382** (linear [`ChainKey`]: `advance` consumes it, and there is no `Clone` to
+//! pre-duplicate it — the *novel* pair that makes forward secrecy fall out of ownership)
+//! over **E0451** (sealed [`ChainKey`] and [`MessageKey`]) — here doing double duty: not
+//! only "no forged witness" but "the raw secret cannot be read out and stashed", without
+//! which the linear discipline would guard a value whose contents had already escaped.
+//! The brand and E0080 are honestly unused. The new datum this leaf
 //! adds is not a primitive but a *boundary within* one: E0382 reaches the program's
 //! access to a secret, not the secret's bytes in memory.
 //!
