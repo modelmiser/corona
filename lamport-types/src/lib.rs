@@ -16,9 +16,11 @@
 //! [`SigningKey::sign`] takes `self` **by value** — it *consumes* the key. There is
 //! no `Clone`/`Copy` on [`SigningKey`], so after you sign, the key is gone, and a
 //! second `sign` call does not compile (E0382, *use of moved value*). The compiler
-//! enforces "sign at most once" with the same move-checking that stops a
-//! use-after-move anywhere else. No new primitive: the danger of key reuse maps
-//! exactly onto Rust's ownership discipline.
+//! enforces "sign at most once" — on the key *value* — with the same move-checking
+//! that stops a use-after-move anywhere else. (The *seed* that mints the key is a
+//! separate capability the type does not track; a retained, deterministic seed
+//! re-mints keys and reopens the door — see the Honest limits.) No new primitive: the
+//! danger of key reuse maps exactly onto Rust's ownership discipline.
 //!
 //! This sharpens a distinction the garden has drawn but not, until now, demonstrated
 //! in a signature: **evidence-of-a-fact** (a `Clone`-able sealed witness — E0451)
@@ -62,9 +64,23 @@
 //!   belongs to the right signer (the same trust-anchor caveat as every other leaf).
 //! - **At most once, not exactly once.** See above — dropping an unused key is safe
 //!   and allowed; only double-signing is forbidden.
+//! - **One-time per key *value*, not per key *material*.** E0382 consumes the
+//!   `SigningKey` *value* — that is what "at most once" tracks. It does **not** reach
+//!   the inputs that can *re-mint* a key: [`generate`](SigningKey::generate) is
+//!   deterministic and takes the seed by value, so a holder of the seed (or of the
+//!   raw preimage bytes) can produce a *fresh* `SigningKey` that signs again under the
+//!   same [`VerifyingKey`] — and harvesting both preimage sides that way is exactly the
+//!   classic Lamport multi-signature forgery the one-time rule exists to prevent. The
+//!   linear guarantee is therefore **conditional on the seed being discarded after
+//!   keygen** (a real CSPRNG-generated key has no reproducible seed). This is the
+//!   general rule that *a capability is only as strong as the most permissive way to
+//!   obtain what it gates* — here the most permissive path, `generate(seed)`, is
+//!   unconstrained, and the type system does not track it.
 //! - **One key, one signature.** For *many* signatures you chain keys — a Merkle tree
-//!   of one-time public keys is exactly XMSS, i.e. `merkle-types` (leaf 4) composed
-//!   over this leaf. Out of scope for the seed, but the natural next rung.
+//!   authenticating one-time *public* keys is the **Merkle Signature Scheme** (MSS),
+//!   i.e. `merkle-types` (leaf 4) composed over this leaf. (XMSS is MSS's standardized
+//!   refinement, using WOTS+ leaves and bitmasked tree hashing rather than plain
+//!   Lamport.) Out of scope for the seed, but the natural next rung.
 //!
 //! ```
 //! use lamport_types::{SigningKey, hash};

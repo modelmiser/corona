@@ -154,8 +154,14 @@ It sharpens a distinction the garden had drawn but never shown in a signature:
 vs *consumable-capability* (linear, E0382 — the signing key). Honest nuance: Rust moves
 are **affine** (at-most-once), not full **linear** (exactly-once) — which is *precisely*
 OTS's need (double-sign is the catastrophe; dropping an unused key is safe). Like leaf 4
-it imports nothing from `corona-core`, and (`merkle-types` ∘ `lamport-types` = XMSS) it
-composes with the Merkle leaf.
+it imports nothing from `corona-core`, and it composes with the Merkle leaf —
+`merkle-types` ∘ `lamport-types` is the Merkle Signature Scheme (MSS; XMSS is its
+standardized WOTS+-based refinement).
+
+One honest limit worth stating up front: because `generate` is deterministic, E0382
+makes the key one-time *per value*, not per key *material* — a retained seed re-mints
+keys that sign again under the same verifying key, so the guarantee is conditional on
+discarding the seed after keygen (a real CSPRNG key has none).
 
 > ⚠ **TOY.** Unforgeability rests on the commitment being one-way; the FNV-1a backend
 > is trivially invertible, so a real adversary forges. The type discipline (use-once)

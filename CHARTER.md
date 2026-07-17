@@ -21,7 +21,8 @@ primitives first isolated in `warp-types`/`quorum-types`:
 
 - **E0451 — sealed unforgeability.** A private field / no public constructor, so
   a value can only arrive through a checked path.
-- **E0382 — move-linearity.** A capability consumed exactly once.
+- **E0382 — move-linearity.** A capability consumed *at most once* (Rust moves are
+  affine, not linear — see `lamport-types`, which turns on this distinction).
 - **E0308 — brand unification.** Distinct phantom brands that must match.
 - **E0080 — const-eval wall.** A monotone-arithmetic invariant enforced at
   compile time.
@@ -139,8 +140,9 @@ recognition, not new scope.
   and authentication, on both polynomial and hash substrates, and centrally exercises
   three of the four primitives (E0451, the E0308-class brand, E0382). Natural further
   moves: an **E0080**-centered leaf (a monotone/const-eval-walled invariant — the one
-  primitive not yet a leaf's core); **XMSS** = `merkle-types` composed over
-  `lamport-types` (a Merkle tree of one-time keys → many signatures); threshold
+  primitive not yet a leaf's core); the **Merkle Signature Scheme** (MSS) =
+  `merkle-types` composed over `lamport-types` (a Merkle tree authenticating one-time
+  public keys → many signatures; XMSS is its WOTS+-based refinement); threshold
   signatures; a fountain/LT code; an accumulator.)*
 
 *(Done: the branded `VerifiedShare` (leaf 2, invariant generative lifetime,
