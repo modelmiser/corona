@@ -5,11 +5,13 @@
 //! to the compile-primitive vocabulary?* for leaves 1–6, *do leaves compose?*
 //! for leaves 7–8 — though some yeses carried a disclosed runtime residue
 //! (leaf 1's share-counting stayed a runtime check). This leaf's residue is
-//! different in kind: argued *definitional*, not contingent — and contingency
-//! is not a guess, it was demonstrated in-garden: leaf 6 later moved leaf 1's
-//! exact residue behind E0080, while no such move exists for this leaf's cut,
-//! by the argument below. That is what "the first no" means here. It asks
-//! the question of double-spend prevention —
+//! different in kind: argued *definitional*, not contingent — and that a
+//! runtime residue *can* be contingent was demonstrated in-garden, leaf 6
+//! moving leaf 1's threshold-parameter validity (`k ≤ n`) to a compile-time
+//! wall (E0080). This leaf's cut resists that move by the argument below: no
+//! compile-time fact can supply redeem-time freshness (unlike a parameter
+//! bound, which is fixed before any value exists). That is what "the first
+//! no" means here. It asks the question of double-spend prevention —
 //! the defining invariant of *digital* bearer value — and the answer is a **split**:
 //! the invariant reduces exactly as far as the type checker's reach extends,
 //! and — for *bearer* value, definitionally (see layer 2's scoping) — no
@@ -710,7 +712,14 @@ mod tests {
         let wires: Vec<WireCoin> = (0..8).map(|_| mint.issue().into_wire()).collect();
         let receipts: Vec<Receipt> = wires
             .iter()
-            .map(|w| mint.redeem(*w).expect("first spend"))
+            .map(|w| {
+                let r = mint.redeem(*w).expect("first spend");
+                // Pins the accessor itself, not just the field: a constant
+                // Receipt::serial() body survives every other test (they all
+                // observe serial-1 receipts or compare via PartialEq).
+                assert_eq!(r.serial(), w.serial);
+                r
+            })
             .collect();
         // Pins the third leg of Receipt equality: same mint, DIFFERENT
         // serials compare unequal (a mint_id-only eq would pass the other

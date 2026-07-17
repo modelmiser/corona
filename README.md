@@ -287,8 +287,11 @@ The garden's first **negative-space leaf**. Every prior leaf answered its
 thesis question *yes* (some with a disclosed runtime residue — leaf 1's
 share-counting stayed a runtime check); this one locates a point where the
 vocabulary stops *definitionally* — argued from the bearer definition —
-not contingently. (Contingency is the demonstrated alternative: leaf 6 moved
-leaf 1's runtime residue behind E0080; no such move exists for this cut.) The invariant is double-spend prevention, the defining
+not contingently. (That a runtime residue *can* be contingent was shown
+in-garden — leaf 6 moved leaf 1's threshold-parameter validity `k ≤ n` to a
+compile-time wall; leaf 1's share-*counting* is runtime by nature and stays.
+This cut resists any such move: no compile-time fact supplies redeem-time
+freshness.) The invariant is double-spend prevention, the defining
 property of digital bearer value, and the answer is a **split** across three layers,
 each executable:
 
