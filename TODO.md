@@ -258,7 +258,30 @@ work (complete tasks, add children, keep siblings).
       11 unit + 5 doctests (E0382/E0599 pinned); workspace 117 + 27, all gates
       green. CHARTER row + promotion note, README leaf-9 section, lineage +
       candidates refreshed.
-- [ ] Cold-review the leaf-9 surface to convergence (separate step, on request)
+- [x] Cold-review the leaf-9 surface to convergence — **19 rounds** (MOD
+      7→3→4→6→2→1→1→2→3→2→1→3→2→1→1[+1 CRIT]→1→0→0), converged rounds 18 & 19
+      (two consecutive clean across correctness/claims/adversarial). **All 9
+      leaves now cold-reviewed.** Round 1 was the only round with real design
+      findings (unissued/future-serial redeem accepted `Ok` — closed with an
+      issued-range check; Receipt derived-Debug leaked invertible `mint_id` —
+      hand-redacted); everything after was documentation precision + mutation-
+      grade test pinning. The lone CRITICAL (round 16, "leaf 6 moved leaf 1's
+      exact residue") and the round-17 MODERATE (Wadler mis-cited as multiparty)
+      were **self-inflicted by round 15's over-eager prose** and corrected —
+      the LESSON: aggressive doc rewrites late in convergence introduce risk
+      faster than they remove it. Adversarial lens ran clean (0 undisclosed
+      channels; full toy-hash break reproduced end-to-end, confirming the
+      banner exactly) for the last 11 rounds. Final: 16 unit + 7 doctests;
+      workspace 122 + 29; every guarantee mutation-pinned. Convergence commit
+      `1489a72`.
+
+## Garden state (2026-07-17)
+
+- **All 9 leaves cold-reviewed.** corona-core + 9 leaves; vocabulary complete
+  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9).
+  No open thesis direction. Next is the user's call: wind-down synthesis (the
+  natural close) or the CHARTER's remaining breadth (FROST, ratchet,
+  accumulator, fountain/LT, XMSS).
 
 ## Parking lot (garden, not scheduled)
 
