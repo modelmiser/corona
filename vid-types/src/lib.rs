@@ -11,12 +11,14 @@
 //! > disclosures) transfer as a discipline a new composition is *born* with?*
 //!
 //! The domain is again historically canonical: committing Reed–Solomon fragments
-//! under a Merkle root is **verifiable information dispersal** — the data
-//! structure at the heart of Cachin & Tessaro's AVID (2005), which added exactly
-//! this verifiability to Rabin's original information dispersal (IDA, 1989).
-//! Rabin's dispersal has leaf 3's disclosed weakness — fragments are trusted —
-//! and the fix is leaf 4's tree. (Only the *data structure* is in scope here; the
-//! asynchronous dispersal *protocol* — echo/ready quorums — is not.)
+//! under a Merkle root is **verifiable information dispersal**. Rabin's original
+//! information dispersal (IDA, 1989) has leaf 3's disclosed weakness — fragments
+//! are trusted; hash-fingerprint verifiability was added by Krawczyk (1993), and
+//! the **Merkle-root form built here is the AVID-H refinement** in Cachin &
+//! Tessaro's AVID paper (2005, crediting Alon et al. for the tree idea) — CT05's
+//! own headline contribution being the *asynchronous dispersal protocol*
+//! (echo/ready quorums), which is out of scope here. Only the data structure —
+//! including AVID-H's **retrieval consistency check** (see below) — is built.
 //!
 //! ## The finding: composition repeats, and this time nothing was missing
 //!
@@ -52,18 +54,42 @@
 //!    fragment is *rejected at the door*, not silently interpolated.
 //! 2. **"`k` is caller-asserted."** Here `k` lives **in the anchor**
 //!    ([`DispersalAnchor`] records `(root_hash, k, n)`), and `retrieve` reads it
-//!    from `self` — there is no `k` parameter to get wrong, exactly as
-//!    `vss-types` pinned `k` by the commitment length. (Pinned *to the anchor*,
-//!    not to the truth — see the honest limits.)
+//!    from `self` — there is no `k` parameter to get wrong, as `vss-types`
+//!    pinned `k` by the commitment length. The mechanism parity is honest but
+//!    not exact: in vss the verification *equation* consumes `k` itself, while
+//!    here per-fragment verification never reads `k` — it is `retrieve`'s
+//!    consistency check (below) that consumes the whole geometry. (Pinned *to
+//!    the anchor*, not to the truth — see the honest limits.)
 //!
 //! This also **dominates leaf 3's own rung-3 hardening under an honest anchor**:
 //! `decode_correcting` *corrects* up to `t = ⌊(m−k)/2⌋` corruptions algebraically
 //! (needing `k + 2t` fragments and offering only bounded, non-adversarial
 //! integrity), while VID *rejects* corrupt fragments individually at verification
-//! (cryptographic per-fragment authentication, needing only `k` good fragments —
-//! adversarial-grade exactly as strong as the hash). The comparison is the
-//! availability-axis rerun of leaf 3's own "algebraic redundancy vs external
-//! commitment" distinction, resolved in the commitment's favor.
+//! (hash-based per-fragment authentication, needing only `k` good fragments —
+//! adversarial-grade exactly as strong as the hash, which in this toy is weak on
+//! purpose). The comparison is the availability-axis rerun of leaf 3's own
+//! "algebraic redundancy vs external commitment" distinction, resolved in the
+//! commitment's favor.
+//!
+//! ## Retrieval consistency — the AVID-H check
+//!
+//! Per-fragment verification proves each fragment is *committed*; it cannot
+//! prove the committed fragments are *consistent* — a malicious disperser can
+//! commit `n` fragments lying on **no single degree-`(k-1)` polynomial**, and
+//! every one of them still verifies (Merkle membership carries no algebra).
+//! Left there, `retrieve` would be **subset-dependent**: two disjoint
+//! `k`-subsets reconstructing *different* bytes under one anchor. So
+//! [`retrieve`](DispersalAnchor::retrieve) finishes with AVID-H's retrieval
+//! check: it **re-encodes the decoded bytes and re-derives the root**, and
+//! mints [`AvailableData`] only if the result is exactly the anchor's root.
+//! Consequence: **`AvailableData` is a function of the anchor alone** (up to
+//! hash collision) — every successful retrieval under one anchor yields the
+//! same bytes, and an inconsistent dispersal is caught as
+//! [`RetrieveError::InconsistentEncoding`] no matter which subset is presented.
+//! (This is also where the vss parallel becomes exact-in-spirit: Feldman's
+//! *verification equation* consumes the committed polynomial per share, so
+//! inconsistency is impossible fragment-by-fragment; VID's membership check
+//! cannot do that, so consistency is restored wholesale at retrieval instead.)
 //!
 //! ## Primitives used (and not)
 //!
@@ -103,16 +129,32 @@
 //!   FNV-1a hash. A real adversary forges Merkle membership at will; the *type*
 //!   discipline is the subject. Graduation swaps the backends behind the same
 //!   seams.
-//! - **The anchor is caller-trusted, and it is ONE anchor with three fields.**
-//!   [`DispersalAnchor::adopt`] trusts `(root_hash, k, n)` as a unit. The lie
-//!   taxonomy established at leaf 7 inherits: `n` is the Merkle `size`, so an
-//!   over- or understated `n` degrades *position semantics only* (membership of
-//!   bytes stays sound up to the toy hash — a lie adds no acceptance channel of
-//!   its own); and a mis-stated `k` makes `retrieve` interpolate the wrong
-//!   polynomial degree — **deterministically wrong bytes from genuine
-//!   fragments** (regression-tested). "Pinned by the anchor" means pinned to the
-//!   *anchor*, not to the truth of the encoding; adopt all three values from one
-//!   trusted source.
+//! - **The anchor is caller-trusted, and it is ONE anchor with three fields —
+//!   but its lie taxonomy is *narrower* than leaf 7's, by construction.**
+//!   [`DispersalAnchor::adopt`] trusts `(root_hash, k, n)` as a unit. Unlike the
+//!   raw merkle layer, an over- or understated `n` here **cannot re-position a
+//!   verified fragment at all** — the embedded-index binding forecloses leaf 7's
+//!   phantom and misattribution channels along with the duplicate-bytes orbit
+//!   (regression-tested; the foreclosure section reaches further than it
+//!   modestly claims). What an `n`-lie *does* do is **spuriously reject genuine
+//!   fragments** — possibly all of them (availability loss) — and any subset it
+//!   still accepts is then caught by the retrieval consistency check
+//!   (re-encoding under the lying `n` cannot reproduce the committed root). A
+//!   `k`-lie is likewise largely caught as
+//!   [`InconsistentEncoding`](RetrieveError::InconsistentEncoding); the
+//!   anchor-determined residue: an **overstated** `k' > k` retrieves the data
+//!   *extended* with the leading parity bytes (the true polynomial also fits
+//!   degree `k' - 1`), and an **understated** `k' < k` succeeds only when the
+//!   committed encoding happens to have degree `< k'` (e.g. GF-collinear data),
+//!   retrieving an anchor-determined *truncation* — both regression-tested.
+//!   "Pinned by the anchor" means pinned to the *anchor*, not to the truth of
+//!   the dispersal; adopt all three values from one trusted source.
+//! - **A [`VerifiedFragment`] is membership evidence, not retrievability.**
+//!   Consistency is checked *wholesale at retrieval*, not per fragment — so
+//!   witnesses can exist for an anchor whose dispersal was inconsistent (or
+//!   whose geometry was mis-adopted) and whose `retrieve` will therefore never
+//!   succeed. Holding `k` witnesses guarantees a *decode attempt*, not a
+//!   consistent result; only [`AvailableData`] certifies that.
 //! - **Witness provenance is value-level, not a brand** — leaf 7's documented
 //!   trade, inherited: witnesses record the full anchor and
 //!   [`retrieve`](DispersalAnchor::retrieve) *checks* it (rejecting foreign
@@ -234,10 +276,14 @@ impl VerifiedFragment {
 }
 
 /// A **sealed witness** (E0451) that the dispersed data was reconstructed from
-/// `k` fragments **each of which verified against the minting anchor** — minted
-/// only by [`DispersalAnchor::retrieve`], where leaf 3's sole minter
-/// (`erasure_types::decode`) fires on the verified symbols and `k` is read from
-/// the anchor. The composed, funnel-shaped conjunction witness.
+/// `k` fragments **each of which verified against the minting anchor**, *and*
+/// that the reconstruction re-encodes to exactly the anchor's root (the AVID-H
+/// consistency check) — minted only by [`DispersalAnchor::retrieve`], where
+/// leaf 3's sole minter (`erasure_types::decode`) fires on the verified symbols
+/// and `k` is read from the anchor. The composed, funnel-shaped conjunction
+/// witness — and, thanks to the consistency check, **a function of the minting
+/// anchor alone** (up to hash collision): every successful retrieval under one
+/// anchor carries the same bytes, whatever subset produced it.
 ///
 /// Non-redacting (dispersed data is not secret — leaf 3's posture, inherited),
 /// and it records the full minting anchor
@@ -272,6 +318,12 @@ pub enum RetrieveError {
     /// The underlying erasure decode refused (below threshold, or duplicate
     /// fragment indices among the witnesses).
     Decode(DecodeError),
+    /// The decoded bytes, re-encoded under this anchor's `(k, n)`, do not
+    /// reproduce the anchor's root — the committed dispersal is not a single
+    /// consistent degree-`(k-1)` encoding (a malicious disperser), or the
+    /// adopted geometry lies about the committed one. The AVID-H retrieval
+    /// check; see the crate docs.
+    InconsistentEncoding,
 }
 
 /// A fragment's **canonical committed bytes**: `[index, value]`. The evaluation
@@ -373,7 +425,8 @@ impl DispersalAnchor {
         merkle_types::adopt_scoped(self.root_hash, self.n as usize, |root| {
             let leaf = root.verify(&bytes, &package.proof)?;
             // The committed bytes name their own slot; bind it to the
-            // authenticated position. (leaf.index() < n <= 255, so +1 fits u8.)
+            // authenticated position. (Compared in usize; the stored index is
+            // the package's own u8, and leaf.index() + 1 <= n <= 255.)
             if package.fragment.index as usize != leaf.index() + 1 {
                 return None;
             }
@@ -392,12 +445,23 @@ impl DispersalAnchor {
     /// sealed [`AvailableData`] conjunction witness. `k` is read from the
     /// anchor — there is no threshold parameter to mis-assert.
     ///
-    /// Every witness must be [`minted_by`](VerifiedFragment::minted_by) *this*
-    /// anchor (value-level provenance, checked here — the consumer that makes
-    /// the recorded anchor bite); then leaf 3's sole minter
-    /// (`erasure_types::decode`) runs on the verified symbols. Errors:
-    /// [`RetrieveError::ForeignWitness`] for a witness from another anchor,
-    /// [`RetrieveError::Decode`] for below-threshold or duplicate indices.
+    /// Three checks, in order:
+    ///
+    /// 1. every witness must be [`minted_by`](VerifiedFragment::minted_by)
+    ///    *this* anchor (value-level provenance — the consumer that makes the
+    ///    recorded anchor bite), else
+    ///    [`ForeignWitness`](RetrieveError::ForeignWitness);
+    /// 2. leaf 3's sole minter (`erasure_types::decode`) runs on the verified
+    ///    symbols with the anchor's own `k`, else
+    ///    [`Decode`](RetrieveError::Decode);
+    /// 3. the **AVID-H retrieval consistency check**: the decoded bytes are
+    ///    re-encoded under the anchor's `(k, n)` and the Merkle root
+    ///    re-derived — it must equal the anchor's root, else
+    ///    [`InconsistentEncoding`](RetrieveError::InconsistentEncoding). This
+    ///    is what makes a successful retrieval a **function of the anchor
+    ///    alone** (up to hash collision): no choice of witness subset, and no
+    ///    inconsistent or mis-described dispersal, can mint two different
+    ///    [`AvailableData`] values under one anchor (see the crate docs).
     pub fn retrieve(&self, verified: &[VerifiedFragment]) -> Result<AvailableData, RetrieveError> {
         for (position, w) in verified.iter().enumerate() {
             if !w.minted_by(self) {
@@ -415,6 +479,18 @@ impl DispersalAnchor {
         // 1 <= k <= n <= 255 — the anchor subsumes the check (cf. leaf 6).
         let t = Threshold::new(self.k, self.n).expect("anchor geometry is valid");
         let recovered = erasure_types::decode(&fragments, t).map_err(RetrieveError::Decode)?;
+        // AVID-H retrieval check. Both expects are unreachable: decode returns
+        // exactly k bytes, and the anchor's geometry was validated at its mint
+        // (so encode's WrongDataLen / TooManyFragments cannot fire, and the
+        // re-encoded fragment list has n >= 1 entries).
+        let reencoded =
+            erasure_types::encode(recovered.bytes(), t).expect("k bytes, valid geometry");
+        let leaves: Vec<[u8; 2]> = reencoded.iter().map(|f| leaf_bytes(*f)).collect();
+        let rehash =
+            merkle_types::commit_scoped(&leaves, |root, _tree| root.hash()).expect("n >= 1 leaves");
+        if rehash != self.root_hash {
+            return Err(RetrieveError::InconsistentEncoding);
+        }
         Ok(AvailableData {
             bytes: recovered.bytes().to_vec(),
             anchor: *self,
@@ -546,32 +622,158 @@ mod tests {
     }
 
     #[test]
-    fn wrong_k_adopted_anchor_decodes_wrong_bytes() {
-        // The disclosed limit: k is pinned to the ANCHOR, not to the truth.
-        // An anchor adopted with the wrong k accepts the same genuine
-        // fragments (the Merkle side is untouched) and deterministically
-        // reconstructs the wrong data of the wrong length.
+    fn understated_k_lie_is_caught_by_the_consistency_check() {
+        // k is pinned to the ANCHOR, not to the truth — but the AVID-H check
+        // catches the lie: decode under k' = 2 interpolates the wrong degree,
+        // and re-encoding cannot reproduce the committed root.
         // NOT [0x11, 0x22, 0x33]: that triple is COLLINEAR in GF(256) (it is
         // exactly p(x) = 0x11·x, degree 1 — 0x11·2 = 0x22, 0x11·3 = 0x33 under
-        // carry-less multiplication), so a k' = 2 lie would be genuinely
-        // invisible for it. 0x44 breaks the line.
+        // carry-less multiplication), so the committed encoding also has degree
+        // < k' and the lie would be invisible (see the collinear edge test
+        // below). 0x44 breaks the line.
         let data = [0x11, 0x22, 0x44];
         let (packages, anchor) = disperse(&data, t(3, 5)).unwrap();
         let lying = DispersalAnchor::adopt(anchor.root_hash(), 2, 5).unwrap();
-        // Use the two PARITY fragments: under the true k = 3 they lie on the
-        // degree-2 data polynomial; a degree-1 interpolation through them (the
-        // lie) does not pass through the data evaluations. (The two SYSTEMATIC
-        // fragments would mask the lie — they literally are data bytes, so any
-        // k' returns them verbatim: the systematic prefix is the one region a
-        // k-lie cannot corrupt.)
         let verified: Vec<VerifiedFragment> = packages[3..5]
             .iter()
             .map(|p| lying.verify(p).expect("merkle side is genuine"))
             .collect();
-        let wrong = lying.retrieve(&verified).unwrap();
-        assert_eq!(wrong.bytes().len(), 2, "k' bytes, not k");
-        assert_ne!(wrong.bytes(), &data[..2], "wrong-degree interpolation");
-        assert!(wrong.minted_by(&lying) && !wrong.minted_by(&anchor));
+        assert_eq!(
+            lying.retrieve(&verified).unwrap_err(),
+            RetrieveError::InconsistentEncoding
+        );
+    }
+
+    #[test]
+    fn overstated_k_lie_retrieves_the_anchor_determined_extension() {
+        // The anchor-determined residue of an overstated k' > k: the true
+        // degree-(k-1) polynomial also fits degree k'-1, so the re-encoding
+        // reproduces the committed root and retrieve succeeds — returning the
+        // data EXTENDED with the leading parity byte(s). Anchor-determined,
+        // disclosed; provenance still separates it from the honest anchor.
+        let data = [0x11, 0x22, 0x44];
+        let (packages, anchor) = disperse(&data, t(3, 5)).unwrap();
+        let lying = DispersalAnchor::adopt(anchor.root_hash(), 4, 5).unwrap();
+        let verified: Vec<VerifiedFragment> = packages[..4]
+            .iter()
+            .map(|p| lying.verify(p).expect("merkle side is genuine"))
+            .collect();
+        let extended = lying.retrieve(&verified).unwrap();
+        assert_eq!(&extended.bytes()[..3], &data, "the data itself");
+        assert_eq!(
+            extended.bytes()[3],
+            packages[3].fragment.value,
+            "plus the first parity byte"
+        );
+        assert!(extended.minted_by(&lying) && !extended.minted_by(&anchor));
+    }
+
+    #[test]
+    fn collinear_data_makes_an_understated_k_lie_anchor_determined() {
+        // The other residue edge: if the committed encoding happens to have
+        // degree < k' (here [0x11, 0x22, 0x33] = 0x11·x, GF(256)-collinear),
+        // an understated k' = 2 re-encodes to the SAME polynomial and the
+        // consistency check passes — retrieving an anchor-determined
+        // TRUNCATION of the data. Still a function of the anchor, still
+        // provenance-separated from the honest one.
+        let data = [0x11, 0x22, 0x33];
+        let (packages, anchor) = disperse(&data, t(3, 5)).unwrap();
+        let lying = DispersalAnchor::adopt(anchor.root_hash(), 2, 5).unwrap();
+        let verified: Vec<VerifiedFragment> = packages[3..5]
+            .iter()
+            .map(|p| lying.verify(p).expect("merkle side is genuine"))
+            .collect();
+        let truncated = lying.retrieve(&verified).unwrap();
+        assert_eq!(truncated.bytes(), &data[..2]);
+        assert!(!truncated.minted_by(&anchor));
+    }
+
+    #[test]
+    fn inconsistent_dispersal_is_caught_at_retrieve_from_every_subset() {
+        // A malicious disperser commits fragments lying on NO single
+        // degree-(k-1) polynomial: every fragment verifies (membership carries
+        // no algebra — per-fragment verification cannot see inconsistency),
+        // but the AVID-H retrieval check refuses BOTH disjoint subsets, where
+        // the pre-check design would have minted two DIFFERENT AvailableData
+        // values under one anchor. ([1,10],[2,20],[3,30] are collinear —
+        // 10 = 0x0a, so 0x0a·x — and [4,7] breaks the line: 0x0a·4 = 40.)
+        let bad_leaves = [[1u8, 10u8], [2, 20], [3, 30], [4, 7]];
+        let root_hash =
+            merkle_types::commit_scoped(&bad_leaves, |root, _tree| root.hash()).unwrap();
+        let proofs: Vec<Proof> = merkle_types::commit_scoped(&bad_leaves, |root, tree| {
+            (0..root.size()).map(|i| tree.proof(i).unwrap()).collect()
+        })
+        .unwrap();
+        let anchor = DispersalAnchor::adopt(root_hash, 2, 4).unwrap();
+        let witnesses: Vec<VerifiedFragment> = bad_leaves
+            .iter()
+            .zip(&proofs)
+            .map(|(leaf, proof)| {
+                anchor
+                    .verify(&FragmentPackage {
+                        fragment: Fragment {
+                            index: leaf[0],
+                            value: leaf[1],
+                        },
+                        proof: proof.clone(),
+                    })
+                    .expect("each fragment verifies individually")
+            })
+            .collect();
+        for pair in [[0usize, 1], [2, 3]] {
+            let subset = [witnesses[pair[0]].clone(), witnesses[pair[1]].clone()];
+            assert_eq!(
+                anchor.retrieve(&subset).unwrap_err(),
+                RetrieveError::InconsistentEncoding,
+                "subset {pair:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn n_lie_spuriously_rejects_and_never_repositions() {
+        // The n-lie taxonomy, narrower here than at the raw merkle layer: an
+        // overstated n cannot re-position anything (the embedded index pins
+        // the slot) — it spuriously REJECTS. n' = 9 rejects every genuine
+        // package outright; n' = 6 accepts the shape-coinciding prefix at
+        // TRUE positions only, and the consistency check then catches the
+        // geometry lie at retrieve.
+        let data = [0x11, 0x22, 0x44];
+        let (packages, anchor) = disperse(&data, t(3, 5)).unwrap();
+
+        let n9 = DispersalAnchor::adopt(anchor.root_hash(), 3, 9).unwrap();
+        assert!(
+            packages.iter().all(|p| n9.verify(p).is_none()),
+            "total spurious rejection"
+        );
+
+        let n6 = DispersalAnchor::adopt(anchor.root_hash(), 3, 6).unwrap();
+        let verified: Vec<VerifiedFragment> = packages[..3]
+            .iter()
+            .map(|p| n6.verify(p).expect("shape-coinciding prefix"))
+            .collect();
+        for (w, p) in verified.iter().zip(&packages[..3]) {
+            assert_eq!(w.index(), p.fragment.index, "true positions only");
+        }
+        assert_eq!(
+            n6.retrieve(&verified).unwrap_err(),
+            RetrieveError::InconsistentEncoding
+        );
+    }
+
+    #[test]
+    fn full_gf256_width_roundtrips() {
+        // The n = 255 boundary: every distinct non-zero GF(256) evaluation
+        // point in one dispersal, verified and retrieved end-to-end (the
+        // consistency check re-encodes all 255 fragments).
+        let data = [0xab, 0xcd];
+        let (packages, anchor) = disperse(&data, t(2, 255)).unwrap();
+        assert_eq!(anchor.n(), 255);
+        let last = anchor.verify(&packages[254]).expect("index 255 verifies");
+        assert_eq!(last.index(), 255);
+        let first = anchor.verify(&packages[0]).expect("index 1 verifies");
+        let available = anchor.retrieve(&[first, last]).unwrap();
+        assert_eq!(available.bytes(), &data);
     }
 
     #[test]
