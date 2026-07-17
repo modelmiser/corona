@@ -37,9 +37,14 @@ work (complete tasks, add children, keep siblings).
       `recover` no longer compiles. NOTE: realized as a lifetime brand (zero-dep,
       forbid-unsafe), so the diagnostic is a *lifetime error*, not literally E0308;
       literal E0308 would need the `generativity` crate's unsafe guards.
-- [ ] Cold-review the branded leaf-2 surface to convergence (as before) — NOT yet done
-- [ ] (optional) offer a `generativity`-backed variant for a literal `error[E0308]`
-      diagnostic + a non-nested (guard-based) API, if the ergonomics/dep are wanted
+- [x] Cold-review the branded leaf-2 surface to convergence — 3 rounds (MOD 3→0→0),
+      two consecutive clean rounds. Branding proven sound (4 rejected exploit crates).
+      Fixes: sealed `interpolate_at_zero` value-bypass + type-vs-value disclosure;
+      corrected the generativity/E0308 counterfactual; `f_inv` hard-assert; MSRV pin.
+- [x] ~~offer a `generativity`-backed literal-E0308 variant~~ — WITHDRAWN: the
+      generativity crate also brands with lifetimes → also a lifetime error, NOT literal
+      E0308. Literal E0308 needs nominal type brands (not mintable fresh per value in
+      safe Rust). The lifetime diagnostic is inherent; no cleaner path exists.
 
 ## Parking lot (garden, not scheduled)
 

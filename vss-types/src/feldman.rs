@@ -61,7 +61,7 @@ pub fn f_pow(mut base: u32, mut exp: u32) -> u32 {
 
 /// Multiplicative inverse in `Z_q` via Fermat (`a^{q-2}`). `a` must be non-zero.
 pub fn f_inv(a: u32) -> u32 {
-    debug_assert!(!a.is_multiple_of(Q), "0 has no inverse in Z_q");
+    assert!(!a.is_multiple_of(Q), "0 has no inverse in Z_q");
     f_pow(a, Q - 2)
 }
 
@@ -91,17 +91,22 @@ pub fn g_pow(mut base: u32, mut exp: u32) -> u32 {
 /// Lagrange interpolation of `f(0)` from `(x, y)` points in `Z_q`. The caller
 /// guarantees the `x` are distinct and non-zero (so every `x_i − x_j` is
 /// invertible).
-pub fn interpolate_at_zero(points: &[(u32, u32)]) -> u32 {
+///
+/// `pub(crate)`: reconstruction is reachable only through the gated
+/// [`Commitment::recover`](crate::Commitment::recover), not as a public one-liner
+/// that would sidestep the brand and threshold checks. (Note that secret sharing
+/// gives no *value* confidentiality regardless — anyone holding `k` shares can
+/// reimplement this; see the crate TOY banner.)
+pub(crate) fn interpolate_at_zero(points: &[(u32, u32)]) -> u32 {
     // f(0) = Σ_i y_i · Π_{j≠i} (0 − x_j)/(x_i − x_j)   (all ops in Z_q)
     let mut secret = 0u32;
-    for (i, &(_xi, yi)) in points.iter().enumerate() {
+    for (i, &(xi, yi)) in points.iter().enumerate() {
         let mut num = 1u32;
         let mut den = 1u32;
         for (j, &(xj, _yj)) in points.iter().enumerate() {
             if i == j {
                 continue;
             }
-            let xi = points[i].0;
             num = f_mul(num, f_sub(0, xj)); // (0 − x_j) = −x_j  (prime field: real negation)
             den = f_mul(den, f_sub(xi, xj)); // (x_i − x_j)
         }

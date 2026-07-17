@@ -11,12 +11,17 @@
 //!   via an invariant *generative lifetime*): every [`Commitment`] and
 //!   [`VerifiedShare`] carries a brand, so a share verified against one commitment
 //!   **cannot** be passed to another's `recover` — a compile error, not a runtime
-//!   hope. Because the brand is a *lifetime* (the only zero-dependency,
-//!   `forbid(unsafe_code)` way to get generativity), the compiler reports a
+//!   hope. Because the brand is a *lifetime* (the canonical zero-dependency,
+//!   `forbid(unsafe_code)` way to get value-generativity), the compiler reports a
 //!   violation as a **lifetime error** (`lifetime may not live long enough` /
 //!   borrowed-data-escapes), *not* literally `error[E0308]`: the mechanism is
-//!   brand-unification, the diagnostic is a lifetime mismatch. (Literal E0308
-//!   would need the `generativity` crate's `unsafe`-backed guards.)
+//!   brand-unification, the diagnostic is a lifetime mismatch. A literal
+//!   `error[E0308]: mismatched types` would need distinct nominal *type* brands
+//!   instead of a lifetime — and minting a *fresh type per runtime value* isn't
+//!   possible in safe stable Rust (the `generativity` crate, despite its name,
+//!   also brands with lifetimes, so it too yields a lifetime error — just with
+//!   nicer, non-nested ergonomics). The lifetime diagnostic is inherent to
+//!   value-generative branding, not a limitation of this implementation.
 //!
 //! ## What each primitive buys
 //!
@@ -41,11 +46,12 @@
 //! - [`Commitment::recover`] accepts only `VerifiedShare<'brand>` of the *same*
 //!   brand.
 //! - Because `'brand` is invariant and generative, two `deal_scoped` scopes get
-//!   brands that never unify, and a branded value cannot escape its scope (the
+//!   brands that never unify, and a *branded* value cannot escape its scope (the
 //!   value the closure returns may not mention `'brand`). So leaf 1-style "verify
 //!   against A, hand the result to B.recover" is *unrepresentable* — see the
-//!   `compile_fail` example on [`Commitment::recover`]. Only the unbranded
-//!   [`Secret`] escapes.
+//!   `compile_fail` example on [`Commitment::recover`]. **Unbranded** values
+//!   (a [`Secret`], a byte, a bool) escape freely; only branded ones
+//!   ([`Commitment`], [`VerifiedShare`]) cannot.
 //!
 //! This is the `GhostCell`/`generativity` trick, done here with a plain safe
 //! closure (`#![forbid(unsafe_code)]`) so the mechanism is visible in the
@@ -129,7 +135,8 @@ pub struct Commitment<'brand> {
 ///
 /// ```compile_fail
 /// use vss_types::VerifiedShare;
-/// let forged = VerifiedShare { x: 1, y: 2 }; // error[E0451]: fields are private
+/// // Fields (and the brand) are private — a struct literal does not compile.
+/// let forged = VerifiedShare { x: 1, y: 2 };
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VerifiedShare<'brand> {
@@ -142,15 +149,25 @@ pub struct VerifiedShare<'brand> {
 /// Because the shares were brand-bound to that commitment and `k` was fixed by it,
 /// this is exactly the dealt secret — the authenticity leaf 1 could not certify.
 /// (Confidentiality is a separate matter the toy does not provide; see the TOY
-/// banner.) `Secret` is **unbranded** — it is the one value allowed to escape the
-/// scope.
+/// banner.) `Secret` is **unbranded**, so it may escape the scope — as may any
+/// other unbranded value; only branded values ([`Commitment`], [`VerifiedShare`])
+/// may not.
 ///
 /// # Unforgeability (E0451)
 ///
-/// Private field, no public constructor: a `Secret` can only arrive from
-/// [`Commitment::recover`]. The only path that hands you the byte is
+/// Private field, no public constructor: **the `Secret` *type*** can only arrive
+/// from [`Commitment::recover`], after the brand and threshold checks. This is a
+/// *typestate* guarantee, not a confidentiality one: the secret *value* is
+/// recoverable by anyone holding `k` shares (that is what secret sharing *is*),
+/// the [`feldman`] arithmetic is reimplementable, and in *this toy* the
+/// [`Commitment`] alone leaks `g^{secret}` under trivially-breakable dlog (so even
+/// a zero-share commitment-holder recovers it — see the TOY banner). A `Secret`
+/// witnesses "you went through the checked path," nothing about who else could
+/// compute `f(0)`.
+/// The only path that hands *you* the byte from a `Secret` is
 /// [`expose`](Secret::expose); the redacting [`Debug`] keeps `{:?}` from leaking
-/// it.
+/// it (the derived `Eq` is at most a redundant equality oracle, no stronger than
+/// the public `expose`).
 #[derive(PartialEq, Eq)]
 pub struct Secret {
     byte: u8,
@@ -323,9 +340,14 @@ impl<'brand> Commitment<'brand> {
     /// from this commitment). Every input is a `VerifiedShare<'brand>` of *this*
     /// commitment's brand, so — unlike leaf 1 — the cross-commitment provenance
     /// gap is closed **at compile time**: a share verified against a *different*
-    /// commitment has a different brand and does not type-check here. Mixing brands
-    /// does not compile — the invariant generative brands do not unify (reported as
-    /// a *lifetime* error, brand-unification realized via lifetimes rather than a
+    /// commitment has a different brand and does not type-check here.
+    ///
+    /// (Because each `deal_scoped` scope holds exactly one `Commitment`, *flat*
+    /// usage already can't hold two commitments' shares at once; the brand is what
+    /// closes the case where scopes *nest* or a `VerifiedShare` is stashed across
+    /// scopes — so it is load-bearing, not decorative.) Mixing brands does not
+    /// compile — the invariant generative brands do not unify (reported as a
+    /// *lifetime* error, brand-unification realized via lifetimes rather than a
     /// literal `error[E0308]`):
     ///
     /// ```compile_fail

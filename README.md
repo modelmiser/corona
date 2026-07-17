@@ -57,9 +57,11 @@ every `Commitment` and `VerifiedShare` carries an *invariant, generative lifetim
 brand* (via `deal_scoped`'s `for<'brand>` closure), so a share verified against one
 commitment **cannot** be passed to another's `recover` — it does not compile. This
 is the E0308-class **brand-unification** primitive; realized via a lifetime (the
-only zero-dep, `forbid(unsafe_code)` way to get generativity), the compiler reports
-a violation as a *lifetime* error rather than literally `error[E0308]`. So leaf 2
-uses **two** garden primitives (E0451 + brand) and introduces no new one.
+canonical zero-dep, `forbid(unsafe_code)` way to get value-generativity), the
+compiler reports a violation as a *lifetime* error rather than literally
+`error[E0308]` (a literal E0308 would need nominal *type* brands, which can't be
+minted fresh per runtime value in safe Rust). So leaf 2 uses **two** garden
+primitives (E0451 + brand) and introduces no new one.
 
 > ⚠ **TOY.** `vss-types` uses breakable parameters (`q=257, p=1543, g=64`) — the
 > "verification" secures nothing; it only makes the equation checkable. Feldman

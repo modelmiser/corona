@@ -2,6 +2,8 @@
 name = "vss-types"
 version = "0.1.0"
 edition = "2021"
+# u32::is_multiple_of (used in feldman.rs, and what clippy prefers) landed in 1.87.
+rust-version = "1.87"
 description = "Corona leaf 2 — Feldman verifiable secret sharing as typestate. TOY: a type-discipline demonstration, not production crypto."
 license = "MIT"
 
