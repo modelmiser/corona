@@ -158,10 +158,14 @@ work (complete tasks, add children, keep siblings).
 - [x] **VOCABULARY COMPLETE** — all four primitives now each have a leaf: E0451 (all
       six), E0308-brand (vss/merkle), E0382 (lamport), E0080 (static-config). Thesis
       milestone; the garden is a finished thought (could wind down here).
-- [ ] Cold-review the leaf-6 surface to convergence. Focus: does the const-eval wall
-      actually fire (E0080) on every bad config and NOT on valid ones; can construction
-      bypass the wall (Default/literal/Clone/transmute-free)?; is `to_threshold`'s
-      infallibility genuinely guaranteed by the wall; overflow in `R+W`.
+- [x] Cold-review the leaf-6 surface to convergence — 2 consecutive clean rounds
+      (both 0 findings), ZERO changes: the leaf was correct as committed (`405d32c`).
+      Wall proven unbypassable by adversarial compilation (Default→E0277, literal→E0451,
+      Clone→E0381; survives generic/trait propagation — fires at the caller's
+      monomorphization through `fn make<const K,const N>`, chains, const-exprs; overflow
+      caught as E0080). `to_threshold` infallibility formally proven (wall bounds ⊃
+      `Threshold::new`'s rejections; `.expect()` unreachable). Vocabulary-complete claim
+      audited per-leaf and confirmed. Milestone: **all 6 leaves now cold-reviewed.**
 
 ## Parking lot (garden, not scheduled)
 
