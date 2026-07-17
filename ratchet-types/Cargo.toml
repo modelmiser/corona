@@ -1,0 +1,13 @@
+[package]
+name = "ratchet-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 10 — a symmetric KDF-chain ratchet: forward secrecy as move-linearity (E0382), and the line between logical and memory-level secrecy. TOY, not production crypto."
+license = "MIT"
+
+# Deliberately depends on nothing — not even `corona-core`. Like `merkle-types`,
+# `lamport-types`, and `ecash-types`, this leaf shares the garden's *vocabulary* (here
+# E0382 move-linearity and the E0451 seal), not any of the core's shared *modules*: a
+# hash ratchet is single-chain (no k-of-n `Threshold`) and not field arithmetic (no
+# `gf256`).
+[dependencies]

@@ -23,7 +23,8 @@ corona/
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
-└── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
+├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
+└── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -335,10 +336,37 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 > meet-in-the-middle, the secret) and forges freely. No blinding (Chaum's
 > actual contribution), no denominations, no transfer, no persistence.
 
+## Leaf 10: `ratchet-types`
+
+A symmetric **KDF-chain ratchet** — the forward-secrecy core of the Signal double
+ratchet, and the first leaf to encode **forward secrecy**. Leaves 5 and 9 used
+**E0382 move-linearity** against *reuse* (double-sign, double-spend); this leaf points
+the same primitive at a different catastrophe, *retention*. `ChainKey` is a linear
+capability — not `Clone`/`Copy`, E0451-sealed — and `advance(self) -> (MessageKey,
+ChainKey)` consumes it. After a step, no live binding can reach the old chain key, so
+no code path re-derives the message key it would have produced: **forward secrecy, at
+the level of program access, reduces to E0382.** Here the *absence of `Clone`* is
+load-bearing, not hygiene — cloning the chain key *is* keeping the past readable.
+
+Two orthogonal protections, the leaf-5 shape again: the **type** stops *retention*
+(E0382); a **one-way KDF** stops *inversion* (recovering `CKᵢ` from `CKᵢ₊₁` — the toy
+FNV backend fails this deliberately). And a boundary *within* the primitive — the one
+genuinely new datum for the garden's map: E0382 gives **logical** forward secrecy (the
+old key is unreachable) but **not memory-level** (its bytes are not scrubbed — a move
+relocates a value, it does not zero its old home). Memory-level secrecy needs
+`zeroize`-on-`Drop`, which the move system does not express.
+
+> ⚠ **TOY.** FNV mixing, not a one-way KDF — no *cryptographic* forward secrecy. The
+> type discipline (the retention protection) is the subject. Forward secrecy only, not
+> post-compromise security (self-healing needs fresh entropy — the DH step of the
+> *double* ratchet, echoing leaf 9's redeem-time-freshness boundary); and it is
+> conditional on discarding the deterministic root seed (leaf 5's caveat, in the FS
+> setting).
+
 ## Build
 
 ```sh
-cargo test --workspace          # 122 unit tests + 29 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, const-eval-wall)
+cargo test --workspace          # 132 unit tests + 33 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, ratchet-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

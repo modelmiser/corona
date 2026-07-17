@@ -34,6 +34,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "ratchet-types"
+version = "0.1.0"
+
+[[package]]
 name = "static-config-types"
 version = "0.1.0"
 dependencies = [

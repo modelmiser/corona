@@ -275,13 +275,46 @@ work (complete tasks, add children, keep siblings).
       workspace 122 + 29; every guarantee mutation-pinned. Convergence commit
       `1489a72`.
 
+## Now (leaf 10 — ratchet-types)
+
+- [x] Seed ratchet-types: the first **forward-secrecy leaf** — a symmetric
+      KDF-chain ratchet. Does forward secrecy reduce to the vocabulary? → **yes,
+      at the access layer, via E0382.** `ChainKey` is linear (not `Clone`/`Copy`,
+      E0451-sealed); `advance(self) → (MessageKey, ChainKey)` consumes it, so
+      after a step no live binding reaches the old key → no path re-derives its
+      message key (verified `error[E0382]`; clone/literal → E0599/E0451, all three
+      codes compiler-checked). Third E0382 leaf, a DIFFERENT catastrophe:
+      leaves 5/9 stop **reuse** (double-sign/spend), this stops **retention** —
+      and the **no-`Clone`** is load-bearing here, not hygiene (cloning the chain
+      key *is* keeping the past readable). Two orthogonal protections (∥ leaf 5):
+      the **type** stops *retention* (E0382), a **one-way KDF** stops *inversion*
+      (toy FNV fails it deliberately). NEW DATUM — a boundary *within* a primitive:
+      E0382 gives *logical* forward secrecy (old key unreachable) but **not
+      memory-level** (moved-from bytes unscrubbed — memory-level FS needs
+      `zeroize`-on-`Drop`, outside the move system). Honest limits: FS only, not
+      post-compromise security (self-healing needs fresh entropy = the DH step of
+      the *double* ratchet — echoes leaf 9's redeem-time freshness); conditional
+      on discarding the deterministic root seed (leaf 5's caveat in the FS
+      setting). Standalone (imports nothing ∥ merkle/lamport/ecash). 10 unit + 4
+      doctests; workspace **132 unit + 33 doctests**, all gates green
+      (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-10 trigger): nothing to promote
+      (hash-based, single-chain; toy FNV KDF is a graduation-swap placeholder, not
+      permanent shared math — the leaf-9 finding restated). Contribution is
+      *primitive-coverage depth*: E0382 widened from "at most once" to
+      *irreversibility*, and the first intra-primitive boundary drawn. See CHARTER.
+- [ ] Cold-review the leaf-10 surface to convergence (the separate `ready` step —
+      NOT yet run). Two consecutive clean rounds across correctness/claims/
+      adversarial. Watch, per the leaf-9 lesson: keep late doc edits minimal.
+
 ## Garden state (2026-07-17)
 
-- **All 9 leaves cold-reviewed.** corona-core + 9 leaves; vocabulary complete
-  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9).
-  No open thesis direction. Next is the user's call: wind-down synthesis (the
-  natural close) or the CHARTER's remaining breadth (FROST, ratchet,
-  accumulator, fountain/LT, XMSS).
+- **All 9 leaves cold-reviewed; leaf 10 (`ratchet-types`) SEEDED, not yet
+  cold-reviewed.** corona-core + 10 leaves; vocabulary complete (leaf 6),
+  composition demonstrated (7) + repeated (8), outer edge drawn (9), E0382 read
+  to its widest — irreversibility/forward secrecy, with the first intra-primitive
+  boundary (10). Next: cold-review leaf 10 (`ready`), or more breadth (FROST,
+  accumulator, fountain/LT, XMSS), or wind-down synthesis.
 
 ## Parking lot (garden, not scheduled)
 
