@@ -44,6 +44,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "vid-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
+ "erasure-types",
+ "merkle-types",
+]
+
+[[package]]
 name = "vss-types"
 version = "0.1.0"
 dependencies = [

@@ -21,7 +21,8 @@ corona/
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
 ├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
-└── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
+├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
+└── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -236,10 +237,39 @@ regression-tested).
 > retained seed re-mints the whole keychain — the linearity binds the chain *value*).
 > MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked hashing). Fixed capacity `n`.
 
+## Leaf 8: `vid-types`
+
+The **second composition leaf** — its question is *repeatability*. Leaf 7 showed
+leaves compose once; one instance can't tell a pattern from a coincidence.
+`vid-types` is **verifiable information dispersal** (the data structure of Cachin
+& Tessaro's AVID, 2005; Rabin's IDA, 1989, plus exactly the verifiability it
+lacked): `erasure-types` ∘ `merkle-types`, Reed–Solomon fragments committed under
+a Merkle root. It closes **both** of leaf 3's disclosed limits at once — the same
+double closure vss performed for leaf 1: fragments are verified at the door
+(`DispersalAnchor::verify` mints a sealed `VerifiedFragment` per fragment), and
+`k` is pinned **in the anchor** (`retrieve` reads it from `self`; there is no `k`
+parameter to mis-assert).
+
+The repeatability findings: **`adopt_scoped` is reused verbatim** (its second
+consumer — evidence it was real API, not MSS-shaped); **zero new rungs were
+needed** (`Fragment` is already public-fielded, so the composition canonicalizes
+`[index, value]` itself — composition pressure found nothing missing this time);
+and **leaf 7's obligations transferred at seed time** (full-anchor witness
+provenance with `minted_by()`, the verifier-side `adopt` doorway, and the
+anchor-lie disclosures are all born-in, not review-discovered). One new design
+finding: the committed bytes **embed the fragment's own index**, and `verify`
+binds it to the Merkle-authenticated position — which *forecloses* the
+degenerate-anchor orbit ambiguity leaf 7 could only disclose.
+
+> ⚠ **TOY.** Inherits leaf 3's table-lookup GF(256) and leaf 4's FNV hash. The
+> anchor `(root_hash, k, n)` is caller-trusted as a unit (a mis-adopted `k`
+> deterministically decodes wrong bytes — regression-tested). Data-structure
+> only: the AVID dispersal *protocol* (echo/ready quorums) is out of scope.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 88 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
+cargo test --workspace          # 101 unit tests + 22 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

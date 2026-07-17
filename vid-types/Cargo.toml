@@ -1,0 +1,18 @@
+[package]
+name = "vid-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 8 — verifiable information dispersal (VID) as a COMPOSITION of erasure-types and merkle-types. TOY: a type-discipline demonstration, not production storage."
+license = "MIT"
+
+# The garden's SECOND composition leaf: erasure-types ∘ merkle-types, built
+# strictly on public surfaces. Its question is repeatability — is composition a
+# pattern or a one-off? — so it deliberately reuses leaf 7's machinery
+# (merkle::adopt_scoped gets its second consumer) and inherits leaf 7's
+# obligations (full-anchor witness provenance, a verifier-side adopt doorway,
+# the anchor-lie disclosures) at seed time. Also the first composition leaf to
+# import corona-core: its subject is k-of-n dispersal, so Threshold applies.
+[dependencies]
+erasure-types = { path = "../erasure-types" }
+merkle-types = { path = "../merkle-types" }
+corona-core = { path = "../corona-core" }

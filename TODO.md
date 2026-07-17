@@ -199,6 +199,30 @@ work (complete tasks, add children, keep siblings).
       rejected with the exact documented error codes (E0382/E0451/E0616/E0599/
       E0277/E0521). 88 unit + 20 doctests. **All 7 leaves now cold-reviewed.**
 
+## Now (leaf 8 — vid-types)
+
+- [x] Seed vid-types: the **second composition leaf** — verifiable information
+      dispersal (Rabin IDA 1989 + Cachin–Tessaro AVID 2005's verifiability) =
+      `erasure-types` ∘ `merkle-types`. Question: is composition REPEATABLE, and
+      were leaf 7's rungs real API? Both yes: `adopt_scoped` reused verbatim
+      (second consumer); ZERO new rungs needed (`Fragment` already public-fielded
+      → composition canonicalizes `[index,value]` itself). Closes BOTH leaf-3
+      limits at once (∥ vss/leaf-1): fragments verified at the door (sealed
+      `VerifiedFragment` per fragment, funnel n-fold→1-fold conjunction into
+      `AvailableData`), k PINNED in the anchor `(root_hash,k,n)` (no k param;
+      wrong-k adoption → deterministically wrong bytes, regression-tested —
+      pinned to the anchor, not the truth). Leaf-7 obligations INHERITED AT SEED
+      TIME (full-anchor `minted_by`, verifier-side `adopt`, lie taxonomy
+      born-in). Design finding: embedded index bound to authenticated position
+      COLLAPSES the degenerate-anchor orbit (regression-tested). First
+      composition leaf importing corona-core (Threshold; anchor geometry →
+      infallible Threshold rebuild ∥ leaf 6). Test-authoring trap caught by own
+      suite: [0x11,0x22,0x33] is GF(256)-COLLINEAR (p = 0x11·x) → k-lie
+      invisible for it; use non-collinear data. vid 13 unit + 2 doctests;
+      workspace 101 unit + 22 doctests, all gates green.
+- [ ] Cold-review the leaf-8 surface to convergence — scope: vid-types (both
+      component leaves' touched surfaces unchanged this time — no new rungs).
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)
