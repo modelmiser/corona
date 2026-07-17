@@ -473,6 +473,13 @@ impl Mint {
     /// This method is the runtime residue of the leaf's negative claim: it is
     /// what remains of "a coin spends once" after the compiler's reach ends at
     /// [`Coin::into_wire`].
+    ///
+    /// Two toy-scope side channels, both mooted by a real PRF (which denies an
+    /// outsider any valid tag to probe with): a valid-tag holder learns the
+    /// issued boundary *remotely* — `Forged` iff `serial ≥ next_serial` — so
+    /// `next_serial` is not only the local [`Mint`]-`Debug` counter; and the
+    /// checks are not constant-time (tag mismatch returns after one
+    /// comparison), a MAC-validity timing distinction under a real PRF.
     pub fn redeem(&mut self, wire: WireCoin) -> Result<Receipt, RedeemError> {
         if wire.tag != hash::coin_tag(self.secret, wire.serial) {
             return Err(RedeemError::Forged);
