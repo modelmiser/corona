@@ -303,18 +303,37 @@ work (complete tasks, add children, keep siblings).
       permanent shared math — the leaf-9 finding restated). Contribution is
       *primitive-coverage depth*: E0382 widened from "at most once" to
       *irreversibility*, and the first intra-primitive boundary drawn. See CHARTER.
-- [ ] Cold-review the leaf-10 surface to convergence (the separate `ready` step —
-      NOT yet run). Two consecutive clean rounds across correctness/claims/
-      adversarial. Watch, per the leaf-9 lesson: keep late doc edits minimal.
+- [x] Cold-review the leaf-10 surface to convergence — CONVERGED at round 4 (2
+      consecutive clean rounds; commits 78f2706→4bbdd04→341dd3b). Arc: R1 (1 MOD +
+      2 LOW), R2 (1 MOD + 1 LOW-MOD + 2 LOW), R3 (0 CRIT/0 MOD, 4 LOW — first
+      clean), R4 (0 CRIT/0 MOD, 2 LOW non-defects — converged). **The code carried
+      ZERO findings in all four rounds** — correctness + adversarial CLEAN
+      throughout (~76 exploit crates rejected with exact codes; three compile-fail
+      codes reconfirmed every round; toy-KDF banner confirmed accurately hedged,
+      no cheap inversion for the 256-bit→4×64-bit construction). Every finding was
+      documentation precision, and **every MODERATE was a cross-leaf comparison**:
+      R1 — FS rests on THREE mechanisms not two (E0382 + no-`Clone` + E0451
+      read-out prevention; `secret:[u8;32]` is `Copy` and `kdf` fns are `pub`, so a
+      public field would defeat FS with no move/clone — the "most-permissive-path"
+      theme); R2 — "no-`Clone` is hygiene in leaves 5/9" was mechanically FALSE
+      (no-`Clone` is load-bearing in every affine leaf; the novelty is the
+      catastrophe, retention-not-reuse), plus "toy FNV fails inversion" → "gives no
+      one-wayness guarantee". R3 LOWs: ecash double-spend scoped to layer-1 (leaf
+      9's spent set is a separate runtime layer); "irreversibility" → "no-going-
+      back" (avoid colliding with KDF one-wayness); build-line labels
+      disambiguated. R4's 2 LOWs were non-defects → NOT actioned (convergence met;
+      chasing them = the leaf-9 over-edit anti-pattern). Leaf-9 lesson reconfirmed:
+      cross-leaf comparisons are the highest-risk sentences. **All 10 leaves now
+      cold-reviewed.** ratchet 10 unit + 4 doctests; workspace 132 + 33.
 
 ## Garden state (2026-07-17)
 
-- **All 9 leaves cold-reviewed; leaf 10 (`ratchet-types`) SEEDED, not yet
-  cold-reviewed.** corona-core + 10 leaves; vocabulary complete (leaf 6),
-  composition demonstrated (7) + repeated (8), outer edge drawn (9), E0382 read
-  to its widest — irreversibility/forward secrecy, with the first intra-primitive
-  boundary (10). Next: cold-review leaf 10 (`ready`), or more breadth (FROST,
-  accumulator, fountain/LT, XMSS), or wind-down synthesis.
+- **All 10 leaves cold-reviewed.** corona-core + 10 leaves; vocabulary complete
+  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9),
+  E0382 read to its widest — no-going-back/forward secrecy, with the first
+  intra-primitive boundary (10). No open thesis direction. Next is the user's
+  call: wind-down synthesis (the natural close), or the CHARTER's remaining
+  breadth (FROST, accumulator-with-witness-staleness, fountain/LT, XMSS).
 
 ## Parking lot (garden, not scheduled)
 
