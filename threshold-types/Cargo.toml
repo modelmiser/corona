@@ -1,0 +1,9 @@
+[package]
+name = "threshold-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 1 — Shamir k-of-n secret sharing as typestate. TOY: a type-discipline demonstration, not production crypto."
+license = "MIT"
+
+[dependencies]
+corona-core = { path = "../corona-core" }

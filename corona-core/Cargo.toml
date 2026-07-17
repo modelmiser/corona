@@ -1,0 +1,8 @@
+[package]
+name = "corona-core"
+version = "0.1.0"
+edition = "2021"
+description = "Thin shared vocabulary for the Corona garden: the k-of-n Threshold primitive."
+license = "MIT"
+
+[dependencies]

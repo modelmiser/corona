@@ -1,0 +1,13 @@
+# Build artifacts
+/target
+**/target
+
+# Working memory (ecosystem convention — gitignore both the file and the dir form)
+DEVLOG.md
+DEVLOG/
+INSIGHTS.md
+INSIGHTS/
+
+# Editor / OS cruft
+*.swp
+.DS_Store
