@@ -66,8 +66,9 @@
 //! trusted/tamper-resistant hardware, i.e. moving the spent state into a box
 //! the spender cannot copy: relocating the stateful check, not eliminating
 //! it. The one exit from this taxonomy abandons bit-strings altogether —
-//! quantum money (Wiesner's conjugate coding; Aaronson–Christiano's
-//! public-key variant) makes the *token itself* uncopyable by physics,
+//! quantum money (Wiesner's conjugate coding — uncopyable by physics
+//! alone; Aaronson–Christiano's public-key variant — physics plus a
+//! computational assumption) makes the *token itself* uncopyable,
 //! escaping the argument by breaking its "a serialized coin is bytes"
 //! premise rather than its logic.)
 //!
@@ -93,13 +94,15 @@
 //!   — it is decided only at [`Mint::redeem`], by the tag. It also does
 //!   **not** witness that its serial is unspent
 //!   at the mint — a coin's wire form cannot coexist with it (creating the
-//!   wire form consumed the coin), but with the toy's invertible hash an
-//!   observer can mint wire forms wholesale, so only the honest-path claim
-//!   stands.
+//!   wire form consumed the coin), but the toy's invertible hash lets an
+//!   observer mint wire forms wholesale, and even under a real PRF a
+//!   same-seed replica's coin is byte-identical (layer 3) — so only the
+//!   honest-path, single-mint-value claim stands.
 //! - A [`WireCoin`] witnesses **nothing**. It is the doorway type: all-public,
 //!   `Copy`, freely constructible — because that is what bytes on a wire are.
-//!   Its authenticity is decided only at [`Mint::redeem`]'s tag and
-//!   issued-range checks.
+//!   Whether it *passes the checks* is decided only at [`Mint::redeem`]'s
+//!   tag and issued-range gates ("check-passing", not "authentic" — under
+//!   the toy hash a valid-tag forgery passes too; see the banner).
 //! - A [`Receipt`] witnesses that **a mint holding this secret accepted this
 //!   serial — one that mint value had itself issued — while it was absent
 //!   from that mint value's spent set, which now contains it**. E0451-sealed;
@@ -239,8 +242,9 @@ impl fmt::Debug for Coin {
 /// A coin on the wire: the **doorway type**. All fields public, `Copy`,
 /// freely constructible — deliberately, because a serialized coin is bytes
 /// outside every type-checked program, and bytes copy. `WireCoin` witnesses
-/// nothing; authenticity is decided at [`Mint::redeem`]'s tag and
-/// issued-range checks, and spent-ness at its spent set.
+/// nothing; check-passing is decided at [`Mint::redeem`]'s tag and
+/// issued-range gates ("check-passing", not "authenticity" — the toy hash
+/// admits valid-tag forgeries), and spent-ness at its spent set.
 ///
 /// Constructing one from thin air compiles (that is the point — contrast the
 /// sealed [`Coin`]):
@@ -248,7 +252,7 @@ impl fmt::Debug for Coin {
 /// ```
 /// use ecash_types::WireCoin;
 /// let claimed = WireCoin { serial: 42, tag: 0xDEAD_BEEF }; // compiles fine...
-/// let copied = claimed; // ...and copies fine. Only the mint can tell.
+/// let copied = claimed; // ...and copies fine. Only the mint's checks can tell.
 /// # let _ = copied;
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -322,11 +326,17 @@ impl Receipt {
     /// deployment-identity; only coordination (out of scope, `quorum-types`'
     /// territory) can fuse replicas into one spender-visible mint.
     ///
+    /// Identity is compared as a 64-bit *hash* of the secret, so in the toy
+    /// a colliding second secret would satisfy this check (and receipt
+    /// equality) for the wrong mint — birthday bound ~2³²; a real deployment
+    /// derives identity with a full-width PRF.
+    ///
     /// Flip side: because [`Mint::new`] is public, a receipt holder can use
     /// this check as a seed-guess confirmation oracle
     /// (`receipt.minted_by(&Mint::new(guess))`). Infeasible over a real
-    /// 2⁶⁴+ key space, and moot in the toy — one observed coin already
-    /// yields the forging state (see the banner).
+    /// (≥ 2¹²⁸) key space — a 64-bit space is exhaustible and would not do —
+    /// and moot in the toy, where one observed coin already yields the
+    /// forging state (see the banner).
     pub fn minted_by(&self, mint: &Mint) -> bool {
         self.mint_id == hash::mint_id(mint.secret)
     }
@@ -420,7 +430,8 @@ impl Mint {
     /// Redeem a wire coin: **the online check**. Verifies authenticity first
     /// — the tag must MAC the serial under this mint's secret **and** the
     /// serial must be one this mint value has issued (so a check-failing
-    /// presentation learns nothing and burns nothing; a *valid*-tag forgery,
+    /// presentation learns nothing about the spent set and burns nothing;
+    /// a *valid*-tag forgery,
     /// which the toy hash admits, is not refused here — see the crate
     /// banner) — then admits the serial iff this mint
     /// value has not admitted it before. First presentation wins; every later
@@ -673,9 +684,9 @@ mod tests {
 
     /// The exhaustion disclaimer is enforced, not assumed: at the u64
     /// boundary `issue` panics (before handing out a coin) rather than
-    /// wrapping — a wrap would issue serial 0 for the first time (an
-    /// unredeemable coin, since `redeem` rejects 0) and then duplicate
-    /// serials 1, 2, ….
+    /// wrapping. A wrapping mutant would hand out serial `u64::MAX`, then
+    /// serial 0 (unredeemable — `redeem` rejects 0), and then duplicates of
+    /// 1, 2, … whose redemption collides with the surviving spent set.
     #[test]
     #[should_panic(expected = "u64 serial space")]
     fn issue_panics_rather_than_wraps_at_serial_exhaustion() {
@@ -690,6 +701,9 @@ mod tests {
     /// All three secret-adjacent types redact: the coin's Debug is checked
     /// against ITS OWN tag (in both decimal — Debug's radix — and hex), the
     /// receipt's against its own mint identity, the mint's against its seed.
+    /// (Seed 0x3A is chosen so its decimal "58" and hex "3a" cannot collide
+    /// with the asserted counter output `next_serial: 2` / `spent: 1`; a
+    /// colliding seed would fail loud, not pass vacuously.)
     #[test]
     fn debug_redacts_the_bearer_credential_and_the_mint_secret() {
         let mut mint = Mint::new(0x3A);
