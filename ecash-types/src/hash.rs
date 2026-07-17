@@ -67,16 +67,17 @@ mod tests {
         assert_eq!(FNV_PRIME & 1, 1);
     }
 
-    /// Pins the domain separation the two derivations document: the same
-    /// secret must not produce confusable outputs across roles. (The buffer
-    /// lengths already differ, but the tags are the *stated* mechanism.)
+    /// Known-answer pins for the two derivations themselves — domain byte,
+    /// buffer layout, and hash all fixed at once. A mutant that changes
+    /// either domain tag, reshapes a buffer, or bypasses the hash entirely
+    /// (`mint_id = secret` — which would silently falsify the Receipt
+    /// Debug-redaction rationale) fails here. (An inequality-only
+    /// separation test cannot pin `coin_tag`'s `0x01`: the differing buffer
+    /// lengths force inequality regardless of the tags.)
     #[test]
-    fn coin_tag_and_mint_id_domains_are_separated() {
-        let secret = 0x5EED;
-        assert_ne!(coin_tag(secret, 0x5EED), mint_id(secret));
-        let mut collapsed = [0u8; 9];
-        collapsed[0] = 0x01; // mint_id computed under coin_tag's domain tag
-        collapsed[1..9].copy_from_slice(&secret.to_be_bytes());
-        assert_ne!(fnv1a(&collapsed), mint_id(secret));
+    fn coin_tag_and_mint_id_known_answers_pin_the_derivations() {
+        assert_eq!(coin_tag(0x5EED, 1), 0x47d7_e9f1_9395_b9ee);
+        assert_eq!(mint_id(0x5EED), 0x0ba8_2bf5_4cc3_ad9c);
+        assert_ne!(mint_id(0x5EED), 0x5EED, "identity is hashed, never raw");
     }
 }

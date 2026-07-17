@@ -307,7 +307,7 @@ each executable:
    which the toy hash admits, behaves as authentic; first presentation wins).
    No fifth compile primitive is missing: what this
    layer needs is *fresh knowledge at redeem time*, which no compile-time fact
-   can supply.
+   — fixed before the adversary acts — can supply.
 3. **Replicating the mint re-opens the hole**: two `Mint` values from one seed
    share identity but not state — issuing independently, they mint
    byte-identical coins, and one coin's bytes redeem at both

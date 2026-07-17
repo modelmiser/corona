@@ -328,7 +328,9 @@ impl Receipt {
         self.serial
     }
 
-    /// Whether this receipt was minted by a mint with `mint`'s secret.
+    /// Whether this receipt was minted by a mint with `mint`'s secret (up
+    /// to 64-bit `mint_id` collision: distinct secrets colliding under the
+    /// toy hash would answer `true` for a mint that does *not* hold it).
     /// **Identity here is the secret**: two [`Mint`] values built from the
     /// same seed are indistinguishable to this check *and yet have independent
     /// spent sets* — precisely the layer-3 gap. Value-identity is not
@@ -340,8 +342,11 @@ impl Receipt {
     /// figures do not apply: an exposed `mint_id` would yield the secret
     /// itself in the banner's ~2³² meet-in-the-middle. No path exposes one
     /// (the field is private, `Debug`-redacted, and `PartialEq` leaks only
-    /// equality), so the operative identity attack is the seed-guess oracle
-    /// below. A real deployment derives identity with a full-width PRF.
+    /// equality), so the operative identity attack *through the `Receipt`
+    /// API* is the seed-guess oracle below — though the cheapest identity
+    /// attack overall bypasses receipts entirely: one observed wire coin
+    /// yields the secret at the banner's ~2³², and identity follows. A real
+    /// deployment derives identity with a full-width PRF.
     ///
     /// Flip side: because [`Mint::new`] is public, a receipt holder can use
     /// this check as a seed-guess confirmation oracle
