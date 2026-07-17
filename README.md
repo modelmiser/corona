@@ -348,8 +348,11 @@ no code path re-derives the message key it would have produced: **forward secrec
 the level of program access, reduces to E0382.** Cloning the chain key *is* keeping
 the past readable, so the *absence of `Clone`* carries the guarantee as directly as
 the consuming move — load-bearing exactly as in every affine leaf (a cloned signing
-key double-signs, a cloned coin double-spends), the twist being that here the
-duplicate's danger is *retention*, not the reuse of leaves 5 and 9.
+key double-signs, a cloned coin breaks its in-graph single-spend guarantee), the twist
+being that here the duplicate's danger is *retention*, not the reuse of leaves 5 and 9.
+Both rest on the **E0451 seal**: the `secret` field is private, so it cannot be copied
+out and re-derived either — three mechanisms, not two, foreclose retention (see the
+crate docs).
 
 Two orthogonal protections, the leaf-5 shape again: the **type** stops *retention*
 (E0382); a **one-way KDF** stops *inversion* (recovering `CKᵢ` from `CKᵢ₊₁` — the toy
@@ -370,7 +373,7 @@ relocates a value, it does not zero its old home). Memory-level secrecy needs
 ## Build
 
 ```sh
-cargo test --workspace          # 132 unit tests + 33 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, ratchet-reuse, const-eval-wall)
+cargo test --workspace          # 132 unit tests + 33 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

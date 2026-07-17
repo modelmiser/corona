@@ -176,7 +176,7 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   (the leaf-9 finding, restated a second time; the pattern is settled). What it
   adds is *primitive-coverage depth*: a **third E0382 leaf** that **widens the
   primitive's meaning** — E0382 is not only "at most once" (reuse; leaves 5, 9)
-  but **irreversibility** (retention → forward secrecy) — and it draws the
+  but **no-going-back** (the old state cannot be kept → forward secrecy) — and it draws the
   garden's first *intra-primitive* boundary: E0382 reaches a secret's *program
   access* (logical forward secrecy), not its *bytes in memory* (memory-level,
   which needs `zeroize`-on-`Drop`). The map gains a boundary point that lies
@@ -195,7 +195,7 @@ E0080 leaf that completes the vocabulary) → `mss-types` (the first composition
 `ecash-types` (the negative-space leaf — the first "no", locating the vocabulary's
 first boundary point at the wire and handing off to `quorum-types` where coordination
 begins) → `ratchet-types` (forward secrecy as move-linearity — E0382's third and
-widest reading: not "at most once" (reuse) but *irreversibility* (retention), and the
+widest reading: not "at most once" (reuse) but *no-going-back* (retention), and the
 first boundary drawn *inside* a primitive — logical vs memory-level secrecy). Corona
 names the family these already form; it is recognition, not new scope.
 
@@ -204,7 +204,7 @@ names the family these already form; it is recognition, not new scope.
 - *(None scheduled. The **vocabulary is complete** (leaf 6), **composition is
   demonstrated** (leaf 7 — MSS) and **repeated** (leaf 8 — VID), the
   **first boundary point is drawn** (leaf 9 — the e-cash negative-space leaf,
-  the first "no"), and **E0382 is read to its widest — irreversibility/forward
+  the first "no"), and **E0382 is read to its widest — no-going-back/forward
   secrecy — with the first intra-primitive boundary** (leaf 10 — the ratchet).
   The garden could wind down as a finished thought. Remaining candidates are pure
   breadth: threshold signatures with linear nonces (FROST-style — three

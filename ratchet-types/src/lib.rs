@@ -30,8 +30,10 @@
 //! Note what *kind* of catastrophe the linearity guards against here. An affine value is
 //! neither `Clone`/`Copy` nor reusable, and **both** halves are load-bearing in *every*
 //! affine leaf — leaves 5 and 9 included, where a cloned signing key double-signs (leaking
-//! both preimage sides → forgery) and a cloned coin double-spends just as surely as reuse
-//! does. What differs in leaf 10 is the catastrophe a surviving duplicate would enable:
+//! both preimage sides → forgery) and a cloned coin defeats its *in-graph* single-spend
+//! guarantee just as reuse would (leaf 9's runtime spent set is a separate layer that would
+//! still catch the second redeem — the affine discipline is the type-level half). What
+//! differs in leaf 10 is the catastrophe a surviving duplicate would enable:
 //! not *reuse* (using the value a second time) but *retention* (keeping the old value at
 //! all). So here the no-`Clone` face maps straight onto the security statement — *a copy
 //! you keep is the past staying readable* — and forward secrecy turns out to be linearity
