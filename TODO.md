@@ -120,6 +120,24 @@ work (complete tasks, add children, keep siblings).
   sealed-constructor doctest so merkle's E0451 claim is self-testing like vss's. The
   cross-brand `compile_fail` already exists; this would cover the seal too.
 
+## Now (leaf 5 — lamport-types)
+
+- [x] Seed lamport-types: Lamport one-time signatures as typestate. The first leaf
+      whose central primitive is **E0382 (move-linearity)**, not the E0451 seal — a
+      `SigningKey` is a linear/affine capability, `sign(self)` consumes it, so
+      double-signing does not compile (verified: `error[E0382]: use of moved value`).
+      Keeps an E0451 seal (`VerifiedMessage` from `verify`) + redacting `Debug` on the
+      secret key. Honest nuance documented: Rust moves are affine (at-most-once), which
+      is exactly OTS's need. Imports nothing from corona-core (∥ merkle). 9 unit + 2
+      doctests (happy path + one-time-key `compile_fail`); workspace 61 unit + 13
+      doctests, all gates green.
+- [x] `corona-core` promotion check (leaf-5 trigger): nothing to promote (hash-based,
+      single-signer). Contribution is *primitive coverage* — E0382 now centrally used;
+      only E0080 remains unexercised as a leaf's core. See CHARTER.
+- [ ] Cold-review the leaf-5 surface to convergence. Focus: the E0382 linearity claim
+      (can a double-sign be smuggled past the move — Clone/re-borrow/`&self` variant?);
+      the affine-not-linear framing; the reuse-vs-forgery separation; toy-hash honesty.
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)

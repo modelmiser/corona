@@ -18,7 +18,8 @@ corona/
 ├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
-└── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
+├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
+└── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -137,10 +138,34 @@ the mismatch is a lifetime error, not a literal `error[E0308]`.
 > collisions and thus membership. The *type discipline* is the subject, not the
 > hash; graduation swaps in SHA-256 behind the same `leaf_hash`/`node_hash` seam.
 
+## Leaf 5: `lamport-types`
+
+Lamport one-time signatures — the first leaf whose central primitive is **not** the
+E0451 seal. Leaves 1–4 all encode *evidence of a fact* (a `Clone`-able sealed witness).
+A one-time signing key is different in kind: signing a *second* message with it leaks
+enough preimages to forge, so the key must be spent **at most once**. That is the
+garden's **E0382 move-linearity** primitive: `SigningKey::sign` takes `self` **by
+value** (and the key is not `Clone`/`Copy`), so a second `sign` is a **compile error** —
+`error[E0382]: use of moved value`. The one-time-use invariant reduces to E0382, no new
+primitive.
+
+It sharpens a distinction the garden had drawn but never shown in a signature:
+*evidence-of-a-fact* (Clone, E0451 — the sealed `VerifiedMessage` `verify` still mints)
+vs *consumable-capability* (linear, E0382 — the signing key). Honest nuance: Rust moves
+are **affine** (at-most-once), not full **linear** (exactly-once) — which is *precisely*
+OTS's need (double-sign is the catastrophe; dropping an unused key is safe). Like leaf 4
+it imports nothing from `corona-core`, and (`merkle-types` ∘ `lamport-types` = XMSS) it
+composes with the Merkle leaf.
+
+> ⚠ **TOY.** Unforgeability rests on the commitment being one-way; the FNV-1a backend
+> is trivially invertible, so a real adversary forges. The type discipline (use-once)
+> is the subject, not the hash. It stops key *reuse* (E0382), not *forgery* (the hash's
+> job) — two orthogonal protections; this leaf supplies the first.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 52 unit tests + 11 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 61 unit tests + 13 doctests (incl. sealed-ctor, cross-brand + one-time-key compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
