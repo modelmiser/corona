@@ -225,9 +225,12 @@ have) and `lamport_types::VerifyingKey::to_bytes` (a canonical key identity for 
 tree to commit to). Both are ordinary public API inside the existing vocabulary:
 **composition pressure surfaces missing *API*, not missing *vocabulary*.** And the
 pressure propagates: cold review caught leaf 7 re-creating both component gaps one
-level up — an unbranded witness, a verifier-unconstructible public key — closed by
-full-anchor witness provenance (`minted_by()`) and `MssPublicKey::adopt`. A
-composition inherits its components' *obligations*, not just their guarantees.
+level up — a provenance-less witness, a verifier-unconstructible public key —
+closed by full-anchor witness provenance (`minted_by()`) and `MssPublicKey::adopt`.
+A composition inherits its components' *obligations*, not just their guarantees —
+including merkle's orbit symmetry, which an adopted degenerate anchor (duplicate
+committed key bytes) carries straight into `key_index` (disclosed and
+regression-tested).
 
 > ⚠ **TOY.** Inherits both leaves' toy FNV hashes and lamport's seed caveat (a
 > retained seed re-mints the whole keychain — the linearity binds the chain *value*).
@@ -236,7 +239,7 @@ composition inherits its components' *obligations*, not just their guarantees.
 ## Build
 
 ```sh
-cargo test --workspace          # 86 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
+cargo test --workspace          # 87 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

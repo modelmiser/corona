@@ -175,12 +175,16 @@ type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
 /// sides `index` dictates. So `index` is **authenticated**, not a free annotation:
 /// relabeling it to a different position changes the computed root and is rejected.
 ///
-/// The authentication holds **up to the commitment's own structural symmetry**, a
-/// genuine feature rather than a forgery. A Merkle root cannot distinguish two
-/// subtrees that hash identically: whenever a node's two children hash equally,
-/// swapping that node's two subtrees leaves the root unchanged. The interchangeable
-/// positions are exactly the **orbit** of a position under the group these swaps
-/// generate — nothing outside it. The minimal generator is a *sibling* leaf pair
+/// Under a root whose `size` is the tree's **true leaf count** — guaranteed for
+/// [`commit_scoped`] roots, caller-trusted for [`adopt_scoped`] ones (an
+/// internally-inconsistent adopted pair can additionally admit phantom positions;
+/// see the "one anchor" caveat there) — the authentication holds **up to the
+/// commitment's own structural symmetry**, a genuine feature rather than a
+/// forgery. A Merkle root cannot distinguish two subtrees that hash identically:
+/// whenever a node's two children hash equally, swapping that node's two subtrees
+/// leaves the root unchanged. The interchangeable positions are exactly the
+/// **orbit** of a position under the group these swaps generate — nothing outside
+/// it. The minimal generator is a *sibling* leaf pair
 /// (`2j`, `2j+1`, the two children of one `node_hash`) with identical data;
 /// compositions reach further — in `["a","b","a","b"]` the two equal halves make
 /// leaves `0` and `2` interchangeable, and in `["a","a","a","a"]` the closure sweeps
@@ -193,10 +197,11 @@ type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
     /// The leaf's index in the original ordering. Authenticated by [`Root::verify`]
-    /// — it drives the fold, so it cannot be relabeled without breaking the proof,
-    /// except across one structural-symmetry orbit (positions swapped by equal-hashing
-    /// sibling subtrees and their compositions — always the same bytes; see the type
-    /// doc).
+    /// — it drives the fold, so under a true-sized root it cannot be relabeled
+    /// without breaking the proof, except across one structural-symmetry orbit
+    /// (positions swapped by equal-hashing sibling subtrees and their compositions
+    /// — always the same bytes; see the type doc, including its true-leaf-count
+    /// qualifier for adopted roots).
     pub index: usize,
     /// Sibling hashes, bottom (leaf level) to top. A *promoted* (odd-node) level
     /// contributes no entry, so this can be shorter than the tree's height.
@@ -232,15 +237,19 @@ impl<'brand> Root<'brand> {
     /// (wrong data, wrong/tampered path, an index outside the committed set, or a
     /// sibling count that does not match the shape `index` implies).
     ///
-    /// `index` is **authenticated**: the tree shape (which levels promote, and
-    /// which side each sibling is on) is reconstructed here from `index` and this
-    /// root's `size`, so the siblings are folded exactly as `index` dictates.
-    /// Relabeling the index to a different position changes the computed root and
-    /// is rejected — the only exceptions are positions related by a genuine
-    /// structural symmetry (subtrees that hash identically, e.g. a sibling leaf pair
-    /// with identical data), which are truly interchangeable because they commit the
-    /// same bytes (see [`Proof`]). With all-distinct leaves the position `index()`
-    /// reports is a checked fact, not a copied annotation.
+    /// `index` is **authenticated relative to this root's `(hash, size)` anchor**:
+    /// the tree shape (which levels promote, and which side each sibling is on) is
+    /// reconstructed here from `index` and this root's `size`, so the siblings are
+    /// folded exactly as `index` dictates. When `size` is the tree's true leaf
+    /// count (guaranteed for [`commit_scoped`] roots; caller-trusted for adopted
+    /// ones — an overstated adopted `size` can admit phantom positions, see
+    /// [`adopt_scoped`]), relabeling the index to a different position changes the
+    /// computed root and is rejected — the only exceptions are positions related
+    /// by a genuine structural symmetry (subtrees that hash identically, e.g. a
+    /// sibling leaf pair with identical data), which are truly interchangeable
+    /// because they commit the same bytes (see [`Proof`]). With all-distinct
+    /// leaves and a true size the position `index()` reports is a checked fact,
+    /// not a copied annotation.
     ///
     /// This is the **sole minter** of [`VerifiedLeaf`]: the witness cannot be
     /// constructed any other way (E0451 — the fields are private and there is no

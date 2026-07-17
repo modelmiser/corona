@@ -43,7 +43,8 @@
 //! - **The brand, penning the intermediate.** Verification adopts the trusted root
 //!   inside `merkle_types::adopt_scoped`, so the intermediate `VerifiedLeaf<'brand>`
 //!   is born penned in that scope and *cannot leak out of it*: the one fact
-//!   extracted from it — the authenticated leaf index — escapes unbranded into
+//!   extracted from it — the anchor-relative authenticated leaf index — escapes
+//!   unbranded into
 //!   [`VerifiedMssMessage`], joined there with the digest (from leaf 5's
 //!   `VerifiedMessage`) and the verifying key's own anchor. The brand does
 //!   exactly what it does at home: the *intermediate* witness stays bound, at
@@ -108,9 +109,9 @@
 //!   records the minting key's **full anchor** — root hash *and* capacity — so
 //!   provenance is *checkable at runtime* via
 //!   [`minted_by`](VerifiedMssMessage::minted_by) (both halves matter:
-//!   `key_index` is authenticated only relative to the minting capacity, and a
-//!   hash-only check cannot tell an honest key from a same-hash, lying-capacity
-//!   adoption). But presenting a witness where another public key's evidence is
+//!   `key_index` is authenticated only relative to the minting key's anchor, and
+//!   a hash-only check cannot tell an honest key from a same-hash,
+//!   lying-capacity adoption). But presenting a witness where another public key's evidence is
 //!   expected still *type-checks*; only the check catches it. A compile-time
 //!   brand here would have to scope the public key itself, and an MSS public key
 //!   exists to be distributed (`Copy`, wire-crossing) — a scoped-signature
@@ -118,16 +119,28 @@
 //!   disclosed: compile-time provenance for the *intermediate* (the brand pens
 //!   `VerifiedLeaf`), value-level provenance for the *export*.
 //! - **An adopted public key is caller-trusted — and a capacity lie degrades
-//!   *position*, never *membership*.** [`MssPublicKey::adopt`] mints a key from
-//!   a bare `(root_hash, capacity)` received out of band — the verifier-side
-//!   doorway, with exactly `adopt_scoped`'s trust model (no new *kind* of trust;
-//!   the pair's internal consistency joins what the source is trusted for). The
-//!   pair is **one anchor**: capacity bounds the admissible `key_index` range
-//!   *and* fixes the tree shape, so an **overstated** capacity can accept
-//!   genuine committed material at a phantom `key_index` outside the true tree
-//!   (regression-tested) — while under *any* capacity lie, nothing uncommitted
+//!   *position*, never *admits non-members*.** [`MssPublicKey::adopt`] mints a
+//!   key from a bare `(root_hash, capacity)` received out of band — the
+//!   verifier-side doorway, with exactly `adopt_scoped`'s trust model (no new
+//!   *kind* of trust; the pair's internal consistency joins what the source is
+//!   trusted for). The pair is **one anchor**: capacity bounds the admissible
+//!   `key_index` range *and* fixes the tree shape, so an **overstated** capacity
+//!   can accept genuine committed material at a phantom `key_index` outside the
+//!   true tree, and any lie can also spuriously *reject* genuine signatures
+//!   (regression-tested) — while under *every* capacity lie, nothing uncommitted
 //!   ever verifies. Never mix a hash from one source with a capacity from
 //!   another.
+//! - **An adopted anchor can be degenerate — the orbit symmetry is inherited.**
+//!   Adoption trusts the anchor's *content*, too: a root whose tree commits
+//!   **duplicate** key bytes makes those positions interchangeable — one genuine
+//!   signature verifies at *each* of them, all witnesses honestly
+//!   `minted_by` the same anchor (that check pins *which anchor* an index is
+//!   relative to, **not** a unique position within a degenerate one). This is
+//!   `merkle-types`' documented structural-symmetry **orbit**, arriving here
+//!   through the `adopt` doorway (regression-tested). [`generate`] never mints
+//!   such an anchor — its per-key seeds are distinct by construction, so its
+//!   leaves are distinct up to toy-hash collision — but an *adopted* anchor
+//!   carries no such pedigree.
 //! - **MSS, not XMSS.** The standardized descendant (XMSS, RFC 8391) uses WOTS+
 //!   one-time keys and bitmasked tree hashing, not plain Lamport + plain trees.
 //!   This leaf composes the two crates the garden actually has.
@@ -272,6 +285,11 @@ impl VerifiedMssMessage {
     /// Meaningless across keys (every chain has an index 0), and meaningful
     /// under a mis-adopted capacity only relative to the *adopted* shape — use
     /// [`minted_by`](Self::minted_by) to pin which anchor this index is about.
+    /// What `minted_by` cannot pin is a unique position *within* a degenerate
+    /// anchor: if the (caller-trusted) tree commits duplicate key bytes, the
+    /// duplicated positions are genuinely interchangeable (merkle's orbit
+    /// symmetry, inherited — see the honest limits). [`generate`]'s own anchors
+    /// have distinct leaves by construction.
     pub fn key_index(&self) -> usize {
         self.key_index
     }
@@ -653,6 +671,10 @@ mod tests {
             .verify(b"m", &phantom)
             .expect("genuine bytes at a phantom index under the inflated anchor");
         assert_eq!(v.key_index(), 2, "an index outside the true tree");
+        // The flip side of the lie: the UN-relabeled genuine signature is
+        // spuriously rejected under the inflated anchor (its true-index shape
+        // now expects a second sibling).
+        assert!(inflated.verify(b"m", &sig).is_none());
         // Full-anchor provenance tells the two keys apart; the hash half alone
         // cannot (same root hash on both).
         assert!(v.minted_by(&inflated));
@@ -667,5 +689,36 @@ mod tests {
             proof: phantom.proof.clone(),
         };
         assert!(inflated.verify(b"m", &forged).is_none());
+    }
+
+    #[test]
+    fn adopted_degenerate_anchor_inherits_the_orbit_symmetry() {
+        // Adoption trusts the anchor's CONTENT too: a caller-built tree that
+        // commits the same key bytes twice makes positions 0 and 1 genuinely
+        // interchangeable (merkle's structural-symmetry orbit, inherited through
+        // the adopt doorway). One genuine one-time signature verifies at BOTH
+        // key indices, and both witnesses honestly claim the same anchor —
+        // minted_by pins WHICH anchor an index is relative to, not a unique
+        // position within a degenerate one. generate() never mints such an
+        // anchor (distinct per-key seeds → distinct leaves, toy hash aside).
+        let (sk, vk) = SigningKey::generate(0xDD);
+        let leaf = vk.to_bytes();
+        let (root_hash, p0, p1) =
+            merkle_types::commit_scoped(&[leaf.clone(), leaf.clone()], |root, tree| {
+                (root.hash(), tree.proof(0).unwrap(), tree.proof(1).unwrap())
+            })
+            .unwrap();
+        let pk = MssPublicKey::adopt(root_hash, 2).unwrap();
+        let ots = sk.sign(b"m");
+        let sig0 = MssSignature {
+            ots: ots.clone(),
+            vk: vk.clone(),
+            proof: p0,
+        };
+        let sig1 = MssSignature { ots, vk, proof: p1 };
+        let v0 = pk.verify(b"m", &sig0).expect("orbit position 0");
+        let v1 = pk.verify(b"m", &sig1).expect("orbit position 1");
+        assert_eq!((v0.key_index(), v1.key_index()), (0, 1));
+        assert!(v0.minted_by(&pk) && v1.minted_by(&pk));
     }
 }
