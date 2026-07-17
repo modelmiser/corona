@@ -124,12 +124,16 @@
 //!   verifier-side doorway, with exactly `adopt_scoped`'s trust model (no new
 //!   *kind* of trust; the pair's internal consistency joins what the source is
 //!   trusted for). The pair is **one anchor**: capacity bounds the admissible
-//!   `key_index` range *and* fixes the tree shape, so an **overstated** capacity
-//!   can accept genuine committed material at a phantom `key_index` outside the
-//!   true tree, and any lie can also spuriously *reject* genuine signatures
-//!   (regression-tested) — while under *every* capacity lie, nothing uncommitted
-//!   ever verifies. Never mix a hash from one source with a capacity from
-//!   another.
+//!   `key_index` range *and* fixes the tree shape, and a lie has an acceptance
+//!   channel in **both directions** — an **overstated** capacity can accept
+//!   genuine committed material at a phantom `key_index` outside the true tree,
+//!   and an **understated** one at an in-range `key_index` that genuinely
+//!   belongs to a *different* committed key (misattribution to a real slot,
+//!   self-consistently `minted_by` the lying anchor) — and any lie can also
+//!   spuriously *reject* genuine signatures (all regression-tested). Under
+//!   *every* capacity lie, nothing uncommitted ever verifies: `key_index` is
+//!   authenticated relative to the *adopted* shape, in both directions. Never
+//!   mix a hash from one source with a capacity from another.
 //! - **An adopted anchor can be degenerate — the orbit symmetry is inherited.**
 //!   Adoption trusts the anchor's *content*, too: a root whose tree commits
 //!   **duplicate** key bytes makes those positions interchangeable — one genuine
@@ -394,8 +398,11 @@ impl MssKeychain {
 }
 
 impl MssPublicKey {
-    /// The total number of one-time keys committed under this public key — the
+    /// The number of one-time keys committed under this public key — the
     /// maximum number of signatures it can ever verify as distinct key indices.
+    /// For a [`generate`]d key this is the true committed count; for an
+    /// [`adopt`](Self::adopt)ed key it is the **caller-asserted** half of the
+    /// anchor, not necessarily the true count (see [`adopt`](Self::adopt)).
     pub fn capacity(&self) -> usize {
         self.size
     }
@@ -422,14 +429,16 @@ impl MssPublicKey {
     ///
     /// The pair is **one anchor**, and `capacity` does two jobs: it bounds the
     /// admissible `key_index` range and fixes the tree shape (promotions).
-    /// Neither is independently authenticated, and the failure mode of a lie is
-    /// not just spurious rejection: an **overstated** capacity can accept
+    /// Neither is independently authenticated, and a lie has an acceptance
+    /// channel in **both directions**: an **overstated** capacity can accept
     /// genuine committed material at a **phantom `key_index`** that does not
-    /// exist in the true tree (see the regression test and
-    /// `merkle_types::adopt_scoped`'s "one anchor" doc). Membership stays sound
-    /// under any capacity lie — nothing uncommitted ever verifies — but
-    /// `key_index` is authenticated only *relative to the adopted anchor*, which
-    /// is why [`VerifiedMssMessage`] records the full anchor and
+    /// exist in the true tree, and an **understated** one at an in-range
+    /// `key_index` genuinely belonging to a *different* committed key (see the
+    /// two regression tests and `merkle_types::adopt_scoped`'s "one anchor"
+    /// doc). Membership stays sound under any capacity lie — nothing
+    /// uncommitted ever verifies — but `key_index` is authenticated only
+    /// *relative to the adopted anchor*, which is why [`VerifiedMssMessage`]
+    /// records the full anchor and
     /// [`minted_by`](VerifiedMssMessage::minted_by) compares both halves. Adopt
     /// both values from one trusted source.
     pub fn adopt(root_hash: u64, capacity: usize) -> Option<MssPublicKey> {
@@ -689,6 +698,44 @@ mod tests {
             proof: phantom.proof.clone(),
         };
         assert!(inflated.verify(b"m", &forged).is_none());
+    }
+
+    #[test]
+    fn understated_adopted_capacity_misattributes_to_a_real_slot() {
+        // The OTHER direction of the capacity lie: real n = 5; key 4's genuine
+        // promoted 1-sibling proof, relabeled to index 1, verifies under an
+        // adopted capacity of 2 — the cap-2 shape pairs index 1 once with the
+        // same genuine sibling (the 0..=3 subtree hash) to the true root. The
+        // accepted key_index is IN RANGE and genuinely belongs to a DIFFERENT
+        // committed key, and the witness is self-consistently minted_by the
+        // lying anchor. Membership stays sound; position semantics are relative
+        // to the adopted shape in both directions.
+        let (mut chain, pk) = generate(3, 5).map(|(c, p)| (Some(c), p)).unwrap();
+        let mut last = None;
+        for _ in 0..5 {
+            let (s, rest) = chain.take().unwrap().sign_next(b"m");
+            last = Some(s);
+            chain = rest;
+        }
+        let sig4 = last.unwrap();
+        assert_eq!(sig4.proof.index, 4);
+        let mut relabeled = sig4.clone();
+        relabeled.proof.index = 1;
+        assert!(
+            pk.verify(b"m", &relabeled).is_none(),
+            "honest anchor rejects"
+        );
+
+        let understated = MssPublicKey::adopt(pk.root_hash(), 2).unwrap();
+        let v = understated
+            .verify(b"m", &relabeled)
+            .expect("in-range misattribution under the understated anchor");
+        assert_eq!(v.key_index(), 1, "a real, different key's slot");
+        assert!(v.minted_by(&understated), "self-consistent with the lie");
+        assert!(
+            !v.minted_by(&pk),
+            "full anchor still separates it from truth"
+        );
     }
 
     #[test]

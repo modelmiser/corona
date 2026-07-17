@@ -239,7 +239,7 @@ regression-tested).
 ## Build
 
 ```sh
-cargo test --workspace          # 87 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
+cargo test --workspace          # 88 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

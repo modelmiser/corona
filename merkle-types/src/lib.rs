@@ -457,16 +457,21 @@ pub fn commit_scoped<R>(
 /// it does **two** jobs in verification: it bounds the admissible index range
 /// (`index < size`) and it fixes which levels *promote*. Neither is independently
 /// authenticated, so a mis-stated size is caught only where the implied path
-/// shape disagrees — and the failure mode is not just spurious *rejection*: an
-/// **overstated** size can *accept genuine committed bytes at a phantom
-/// position* — a relabeled index that exists only under the lie, whose extra
-/// promoted levels fold the same genuine siblings to the same root (e.g. a
-/// 5-leaf tree's tail proof, relabeled to index 8, verifies under an adopted
-/// size of 9 — see the regression test). Under any size lie, membership of
-/// *bytes* stays sound (nothing uncommitted ever verifies); what degrades is
-/// **position semantics** — `index()` is authenticated relative to the *adopted*
-/// shape, not the true tree. Adopt `(hash, size)` from one trusted source as a
-/// unit, never mix a hash from one place with a size from another.
+/// shape disagrees — and the failure mode is not just spurious *rejection*.
+/// Both directions have an **acceptance channel**: an **overstated** size can
+/// accept genuine committed bytes at a *phantom position* — a relabeled index
+/// that exists only under the lie, whose extra promoted levels fold the same
+/// genuine siblings to the same root (e.g. a 5-leaf tree's tail proof,
+/// relabeled to index 8, verifies under an adopted size of 9 — see the
+/// regression test) — and an **understated** size can accept them at an
+/// *in-range position that genuinely belongs to a different committed element*
+/// (the same tail proof, relabeled to index 1, verifies under an adopted size
+/// of 2: misattribution to a real slot, not a phantom one). Under any size lie,
+/// membership of *bytes* stays sound (nothing uncommitted ever verifies); what
+/// degrades is **position semantics** — `index()` is authenticated relative to
+/// the *adopted* shape, not the true tree, in both directions. Adopt
+/// `(hash, size)` from one trusted source as a unit, never mix a hash from one
+/// place with a size from another.
 ///
 /// ```
 /// use merkle_types::{adopt_scoped, commit_scoped};
