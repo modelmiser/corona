@@ -5,8 +5,11 @@
 //! to the compile-primitive vocabulary?* for leaves 1–6, *do leaves compose?*
 //! for leaves 7–8 — though some yeses carried a disclosed runtime residue
 //! (leaf 1's share-counting stayed a runtime check). This leaf's residue is
-//! different in kind: argued *definitional*, not contingent, which is what
-//! makes it the first "no". It asks the question of double-spend prevention —
+//! different in kind: argued *definitional*, not contingent — and contingency
+//! is not a guess, it was demonstrated in-garden: leaf 6 later moved leaf 1's
+//! exact residue behind E0080, while no such move exists for this leaf's cut,
+//! by the argument below. That is what "the first no" means here. It asks
+//! the question of double-spend prevention —
 //! the defining invariant of *digital* bearer value — and the answer is a **split**:
 //! the invariant reduces exactly as far as the type checker's reach extends,
 //! and — for *bearer* value, definitionally (see layer 2's scoping) — no
@@ -28,12 +31,15 @@
 //!    arbitrary and unverified, so at least one program touching the bytes
 //!    sits outside any discipline. (In a *closed* system whose every endpoint
 //!    is itself a type-checked program sharing the protocol — the territory
-//!    of distributed/multiparty **session types** — linearity genuinely does
-//!    extend across wires; but that *constrains the holder and the channel*
-//!    (session-typed linearity assumes a non-duplicating transport — a
-//!    tapped-and-replayed wire re-forks it). Constraining the holder is the
-//!    same move trusted hardware makes below; bearer value is precisely the
-//!    refusal of both constraints.) [`WireCoin`] states the premise honestly by being
+//!    of distributed/multiparty **session types** (Honda et al.; Wadler's
+//!    *Propositions as Sessions*) — linearity genuinely does extend across
+//!    wires; but that *constrains the holder and the channel*: endpoint
+//!    protocol conformance is what session typing itself checks, while
+//!    duplication-resistance of the wire is a separate transport assumption
+//!    — a tapped-and-replayed channel re-forks linearity regardless of
+//!    endpoint discipline. Constraining the holder is the same move trusted
+//!    hardware makes below; bearer value is precisely the refusal of both
+//!    constraints.) [`WireCoin`] states the premise honestly by being
 //!    all-public and `Copy`: after [`into_wire`](Coin::into_wire), a "double
 //!    spend" **type-checks**. What prevents it is the mint's **spent set** —
 //!    a runtime, stateful, *online* check ([`Mint::redeem`]), first
@@ -89,7 +95,8 @@
 //! ## What the types do and do not witness
 //!
 //! - A [`Coin`] witnesses that **a mint's sole minter constructed this value
-//!   and this value has not yet been consumed**. E0451-sealed (private fields;
+//!   and it has not been consumed *in this ownership graph***. E0451-sealed
+//!   (private fields;
 //!   only [`Mint::issue`] constructs one) and affine (no `Clone`/`Copy`;
 //!   consuming methods take `self`). *Which* mint is not recorded in the type
 //!   — it is decided only at [`Mint::redeem`], by the tag. It also does
@@ -543,14 +550,15 @@ mod tests {
     /// MAC branch by `forged_tag_is_rejected` on issued serials.
     #[test]
     fn unissued_serial_with_guessed_tag_is_rejected() {
-        let mut mint = Mint::new(0xD4);
+        let seed = 0xD4;
+        let mut mint = Mint::new(seed);
         let forged = WireCoin {
             serial: 999,
             tag: 999,
         };
         // Guard the documented input shape: the guess must actually be a
         // WRONG tag (a hash-constant change could silently make it valid).
-        assert_ne!(forged.tag, hash::coin_tag(0xD4, 999));
+        assert_ne!(forged.tag, hash::coin_tag(seed, 999));
         assert_eq!(mint.redeem(forged), Err(RedeemError::Forged));
     }
 

@@ -287,7 +287,8 @@ The garden's first **negative-space leaf**. Every prior leaf answered its
 thesis question *yes* (some with a disclosed runtime residue — leaf 1's
 share-counting stayed a runtime check); this one locates a point where the
 vocabulary stops *definitionally* — argued from the bearer definition —
-not contingently. The invariant is double-spend prevention, the defining
+not contingently. (Contingency is the demonstrated alternative: leaf 6 moved
+leaf 1's runtime residue behind E0080; no such move exists for this cut.) The invariant is double-spend prevention, the defining
 property of digital bearer value, and the answer is a **split** across three layers,
 each executable:
 
