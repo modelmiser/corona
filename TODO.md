@@ -184,8 +184,20 @@ work (complete tasks, add children, keep siblings).
       vocabulary." 11 unit + 2 doctests (mss) + 3/1 new tests on the rungs;
       workspace 81 unit + 20 doctests, all gates green (clippy/fmt/rustdoc -D
       warnings).
-- [ ] Cold-review the leaf-7 surface to convergence — scope: mss-types PLUS the two
-      rungs on converged leaves (merkle `adopt_scoped`, lamport `to_bytes`).
+- [x] Cold-review the leaf-7 surface to convergence — CONVERGED at round 6 (2
+      consecutive clean rounds; arc MOD 4→2→2→1→0→0; commits a627858→0955a37).
+      Every real finding was one theme: **a composition inherits its components'
+      obligations** — leaf 7 re-created both component gaps one level up
+      (provenance-less witness → full-anchor `minted_by`; verifier-unconstructible
+      key → `MssPublicKey::adopt`), then the adopt doorway's caller-trusted anchor
+      needed its consequences fully enumerated (overstated capacity → phantom
+      out-of-tree key_index; understated → in-range misattribution to a real slot;
+      degenerate duplicate-leaf anchor → inherited orbit symmetry — all disclosed +
+      regression-tested; membership sound under every lie, position semantics
+      anchor-relative). Soundness held throughout: ~90 adversarial probes across 6
+      rounds, zero uncommitted material ever verified, all seals/brands/linearity
+      rejected with the exact documented error codes (E0382/E0451/E0616/E0599/
+      E0277/E0521). 88 unit + 20 doctests. **All 7 leaves now cold-reviewed.**
 
 ## Parking lot (garden, not scheduled)
 
