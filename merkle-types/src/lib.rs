@@ -466,7 +466,7 @@ pub fn commit_scoped<R>(
 /// Adoption scopes are brand-generative even for identical root data — this does
 /// **not** compile:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0521
 /// use merkle_types::adopt_scoped;
 ///
 /// adopt_scoped(42, 2, |root_a| {

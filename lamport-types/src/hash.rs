@@ -44,6 +44,12 @@ pub fn commit(preimage: u64) -> u64 {
 /// Deterministic toy PRG that derives the secret preimage for `(index, side)` from a
 /// seed (domain tag `0x00`). A real key uses a CSPRNG; deterministic derivation here
 /// keeps keygen reproducible for tests.
+///
+/// Keygen ([`SigningKey::generate`](crate::SigningKey::generate)) uses only sides
+/// `{0, 1}` (the two bit values); that is a documented contract, so callers layering
+/// their own derivations on this PRG may use other side bytes for an input domain
+/// disjoint from keygen's (e.g. `mss-types` derives per-key chain seeds under side
+/// `0xFF`). Disjoint *inputs* — output distinctness is only as strong as the toy hash.
 pub fn prg(seed: u64, index: usize, side: u8) -> u64 {
     let mut buf = [0u8; 18];
     buf[0] = 0x00;
