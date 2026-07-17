@@ -50,9 +50,16 @@ is pinned, not caller-asserted, and every input is authenticated. The rung's
 question — *does verifiability need a new compile primitive?* — answers **no**: the
 **same E0451**, but leaf 2 *adds* a per-share sealed witness (`VerifiedShare`, no
 analogue in leaf 1) attesting a *cryptographic fact* (share ∈ committed polynomial)
-where leaf 1's witness only counted. The one gap left (a `VerifiedShare` is not yet
-bound to a *specific* commitment instance) is the pointer to an E0308-branded
-hardening.
+where leaf 1's witness only counted.
+
+Leaf 2 also **closes** the provenance gap with the garden's second primitive:
+every `Commitment` and `VerifiedShare` carries an *invariant, generative lifetime
+brand* (via `deal_scoped`'s `for<'brand>` closure), so a share verified against one
+commitment **cannot** be passed to another's `recover` — it does not compile. This
+is the E0308-class **brand-unification** primitive; realized via a lifetime (the
+only zero-dep, `forbid(unsafe_code)` way to get generativity), the compiler reports
+a violation as a *lifetime* error rather than literally `error[E0308]`. So leaf 2
+uses **two** garden primitives (E0451 + brand) and introduces no new one.
 
 > ⚠ **TOY.** `vss-types` uses breakable parameters (`q=257, p=1543, g=64`) — the
 > "verification" secures nothing; it only makes the equation checkable. Feldman
@@ -62,7 +69,7 @@ hardening.
 ## Build
 
 ```sh
-cargo test --workspace          # 26 unit tests + 5 doctests (incl. two sealed-constructor compile-fails)
+cargo test --workspace          # 26 unit tests + 6 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

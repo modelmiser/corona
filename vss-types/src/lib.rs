@@ -1,90 +1,102 @@
-//! # vss-types — Feldman *verifiable* secret sharing as typestate
+//! # vss-types — Feldman *verifiable* secret sharing as typestate, generatively branded
 //!
-//! Corona **leaf 2**. It closes, at the type level, the two limits
-//! [`threshold-types`](../threshold_types/index.html) (leaf 1) documented but
-//! could not enforce:
+//! Corona **leaf 2**. It closes every *structural* limit leaf 1
+//! (`threshold-types`) documented, using two of the garden's four compile
+//! primitives — and **no new one**:
 //!
-//! - **shares were unauthenticated** — leaf 1's `combine` wrapped *any* `k`
-//!   points; and
-//! - **`k` was caller-chosen**, not bound to the dealing threshold.
+//! - **E0451** (sealed unforgeability): a [`VerifiedShare`] can only be minted by
+//!   [`Commitment::verify`] (the Feldman check), and a [`Secret`] only by
+//!   [`Commitment::recover`].
+//! - **Brand unification** (the garden's *E0308-class* primitive, realized here
+//!   via an invariant *generative lifetime*): every [`Commitment`] and
+//!   [`VerifiedShare`] carries a brand, so a share verified against one commitment
+//!   **cannot** be passed to another's `recover` — a compile error, not a runtime
+//!   hope. Because the brand is a *lifetime* (the only zero-dependency,
+//!   `forbid(unsafe_code)` way to get generativity), the compiler reports a
+//!   violation as a **lifetime error** (`lifetime may not live long enough` /
+//!   borrowed-data-escapes), *not* literally `error[E0308]`: the mechanism is
+//!   brand-unification, the diagnostic is a lifetime mismatch. (Literal E0308
+//!   would need the `generativity` crate's `unsafe`-backed guards.)
 //!
-//! Feldman VSS closes both. The dealer publishes a [`Commitment`] — one group
-//! element `Cⱼ = g^{aⱼ}` per polynomial coefficient — and anyone can check a
-//! share against it via the homomorphic identity `g^{f(x)} = Π Cⱼ^{xʲ}`, *without
-//! needing any other share*. A [`VerifiedShare`] is the E0451-sealed witness of
-//! that check, and [`Commitment::recover`] reads `k` **from the commitment's own
-//! length**, so the threshold is pinned, not asserted.
+//! ## What each primitive buys
 //!
-//! ## The rung's finding: the *witnessing* of verifiability reduces too
+//! Leaf 1 found the *counting* half of Shamir reduces to E0451. Leaf 2 adds
+//! *verification* (each share checked against a public commitment) and *provenance*
+//! (which commitment it belongs to). **Verification's witness** is again E0451 —
+//! the checked path that mints a [`VerifiedShare`] now runs the Feldman equation
+//! `g^{f(x)} = Π Cⱼ^{xʲ}` instead of a count. **Provenance** is the *brand* — the
+//! garden's E0308-class brand-unification primitive. Neither needs a new compile
+//! primitive; the garden's four cover cryptographic threshold sharing end to end.
 //!
-//! Leaf 1 found the *unforgeable wrapping* of a reconstructed secret reduces to
-//! **E0451** (a sealed constructor), while the *counting* stays a runtime check.
-//! Leaf 2 asks whether *verifiability* needs a **new** compile primitive. It does
-//! not: a [`VerifiedShare`] is protected by the **same E0451** — the verification
-//! itself is a runtime computation, but the *checked path* that mints the witness
-//! performs *cryptographic verification* (the Feldman equation) where leaf 1's
-//! checked path only counted. Leaf 1's sealed witness (its `Secret`)
-//! attested "≥ k shares were **presented**"; leaf 2 adds a *per-share* sealed
-//! witness ([`VerifiedShare`], no analogue in leaf 1) attesting "this share
-//! **lies on the committed polynomial**" — a stronger fact, still under the same
-//! E0451. The garden's witness taxonomy gains a *cryptographically-verified*
-//! witness alongside leaf 1's counting one.
+//! ## The brand, concretely
+//!
+//! A plain borrow lifetime would *not* close the gap: with two commitments alive,
+//! a caller can reborrow both for one scope, and the borrows unify. The brand must
+//! be an **invariant, generative** lifetime the caller cannot unify across two
+//! introductions. [`deal_scoped`] introduces a fresh `'brand` via a `for<'brand>`
+//! closure and hands your code a `Commitment<'brand>` plus its raw [`Share`]s.
+//! Everything branded lives inside that scope:
+//!
+//! - [`Commitment::verify`] stamps its own `'brand` onto each [`VerifiedShare`].
+//! - [`Commitment::recover`] accepts only `VerifiedShare<'brand>` of the *same*
+//!   brand.
+//! - Because `'brand` is invariant and generative, two `deal_scoped` scopes get
+//!   brands that never unify, and a branded value cannot escape its scope (the
+//!   value the closure returns may not mention `'brand`). So leaf 1-style "verify
+//!   against A, hand the result to B.recover" is *unrepresentable* — see the
+//!   `compile_fail` example on [`Commitment::recover`]. Only the unbranded
+//!   [`Secret`] escapes.
+//!
+//! This is the `GhostCell`/`generativity` trick, done here with a plain safe
+//! closure (`#![forbid(unsafe_code)]`) so the mechanism is visible in the
+//! signature.
 //!
 //! ## ⚠ TOY — not production crypto
 //!
 //! The [`feldman`] backend uses tiny, breakable parameters (`q=257, p=1543,
-//! g=64`); discrete log is trivial here, so the "verification" secures nothing —
-//! it exists to make the typestate demonstrable. There is no hiding (Feldman
-//! commitments *leak* `g^{secret}`; a real deployment wanting secrecy of the
-//! commitment uses Pedersen), no zeroization, and [`deal_with_coeffs`] makes
-//! *you* supply the coefficients. **Do not protect real secrets with this.**
-//!
-//! ## What the types now witness (and the one gap left)
-//!
-//! A [`VerifiedShare`] witnesses "this `(x, y)` satisfies the Feldman check
-//! against **some** [`Commitment`]." A [`Secret`] from [`Commitment::recover`]
-//! witnesses "reconstructed from ≥ k shares that each passed that check, with `k`
-//! fixed by the commitment." **Remaining honest gap:** a `VerifiedShare` is not
-//! bound to a *specific* `Commitment` instance. [`Commitment::recover`] uses only
-//! its own *length* (for `k`), never its coefficient values — so a full set
-//! verified against commitment A, handed to `B.recover` (same `k`), reconstructs
-//! **A's** secret, not B's (interleaving two commitments' sets gives an unrelated
-//! value). `recover` cannot detect either. Binding a `VerifiedShare` to its
-//! issuing `Commitment` is **E0308 brand/generativity** — a natural rung-2
-//! hardening, and (like leaf 1's pointer to VSS) a line this rung draws to the
-//! next.
+//! g=64`); discrete log is trivial, so the check secures nothing — it only makes
+//! the typestate demonstrable. Feldman commitments *leak* `g^{secret}` (no hiding;
+//! a real deployment wanting secrecy uses Pedersen), there is no zeroization, and
+//! [`deal_scoped`] makes *you* supply the coefficients. The scoped API also
+//! collapses deal → distribute → verify → recover into one generative scope — a
+//! toy simplification, not how distributed VSS deploys. **Do not protect real
+//! secrets with this.**
 //!
 //! ## Intended use
 //!
 //! ```
-//! use vss_types::deal_with_coeffs;
+//! use vss_types::deal_scoped;
 //! use corona_core::Threshold;
 //!
 //! let t = Threshold::new(3, 5).unwrap();
-//! // Deal secret 0x42 with polynomial f(X) = 0x42 + 11·X + 200·X² over Z_257.
-//! let (commitment, shares) = deal_with_coeffs(0x42, t, &[11, 200]).unwrap();
-//!
-//! // Each share verifies against the published commitment …
-//! let v: Vec<_> = shares.iter().map(|s| commitment.verify(*s).unwrap()).collect();
-//! // … and any k = 3 of them recover the secret. k is read from the commitment.
-//! assert_eq!(commitment.recover(&v[..3]).unwrap().expose(), 0x42);
-//!
-//! // A tampered share fails verification — it is not on the committed polynomial.
-//! let mut bad = shares[0];
-//! bad.y ^= 1;
-//! assert!(commitment.verify(bad).is_err());
+//! // Deal, verify, and recover all happen inside one generative brand scope.
+//! let secret = deal_scoped(0x42, t, &[11, 200], |commitment, shares| {
+//!     let v: Vec<_> = shares.iter().map(|s| commitment.verify(*s).unwrap()).collect();
+//!     // Any k = 3 verified shares of THIS commitment recover the secret.
+//!     commitment.recover(&v[..3]).unwrap().expose()
+//! })
+//! .unwrap();
+//! assert_eq!(secret, 0x42);
 //! ```
 
 #![forbid(unsafe_code)]
+
+use core::marker::PhantomData;
 
 use corona_core::Threshold;
 
 pub mod feldman;
 
+/// An **invariant, generative** lifetime brand. Invariant (via the `fn(&'brand())
+/// -> &'brand()` pointer) so `'brand` cannot be subtyped to merge two brands;
+/// generative because it is only ever introduced by [`deal_scoped`]'s `for<'brand>`
+/// closure.
+type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
+
 /// One share of a split secret: the point `(x, y = f(x))` on the secret
 /// polynomial over `Z_q`. `x ∈ 1..=n`; `x = 0` is reserved because `f(0)` is the
-/// secret. Both fields are public — a raw `Share` carries no guarantee until it
-/// is verified against a [`Commitment`].
+/// secret. A raw `Share` is unbranded public data and carries no guarantee until
+/// it is verified against a [`Commitment`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Share {
     /// Evaluation point (share index), `1..=n`.
@@ -93,43 +105,45 @@ pub struct Share {
     pub y: u16,
 }
 
-/// A dealer's public commitment to the sharing polynomial: `Cⱼ = g^{aⱼ}` for
-/// each coefficient `a₀ … a_{k-1}`. Its **length is `k`**, so the reconstruction
-/// threshold is a public, verifiable property of the commitment — not a
-/// caller-supplied parameter.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Commitment {
+/// A dealer's public commitment to the sharing polynomial: `Cⱼ = g^{aⱼ}` for each
+/// coefficient `a₀ … a_{k-1}`. Its **length is `k`**, so the reconstruction
+/// threshold is a public, verifiable property. It carries a generative `'brand`
+/// tying every share it verifies to *this* commitment.
+pub struct Commitment<'brand> {
     coeffs: Vec<u16>,
+    _brand: Brand<'brand>,
 }
 
-/// A [`Share`] that has passed the Feldman check against a [`Commitment`].
+/// A [`Share`] that has passed the Feldman check against a [`Commitment`] of the
+/// same `'brand`.
 ///
-/// # Unforgeability (E0451)
+/// # Unforgeability (E0451) and provenance (brand)
 ///
 /// `VerifiedShare` has private fields and no public constructor: it can *only* be
 /// produced by [`Commitment::verify`], so holding one is proof the share lay on
 /// the polynomial of *the commitment it was verified against*. It says nothing
 /// about any *other* commitment — the same point may well lie on another's
-/// polynomial too (see the crate-level gap note). Building one directly does not
-/// compile:
+/// polynomial too. But its `'brand` binds it to that specific commitment scope, so
+/// only a matching [`Commitment::recover`] will accept it (see that method's
+/// `compile_fail` example). Building one directly does not compile:
 ///
 /// ```compile_fail
 /// use vss_types::VerifiedShare;
 /// let forged = VerifiedShare { x: 1, y: 2 }; // error[E0451]: fields are private
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct VerifiedShare {
+pub struct VerifiedShare<'brand> {
     x: u16,
     y: u16,
+    _brand: Brand<'brand>,
 }
 
-/// A reconstructed value: `f(0)` recovered from verified shares. **Provided the
-/// shares were verified against *this* commitment** (see the crate-level gap
-/// note — `recover` cannot itself confirm that provenance), this is exactly the
-/// dealt secret — the authenticity leaf 1 could not certify. (Confidentiality is
-/// a separate matter the toy does not provide; see the TOY banner.) Without that
-/// pairing discipline it is the secret of *whatever*
-/// commitment the shares were verified against.
+/// A reconstructed value: `f(0)` recovered from verified shares of one commitment.
+/// Because the shares were brand-bound to that commitment and `k` was fixed by it,
+/// this is exactly the dealt secret — the authenticity leaf 1 could not certify.
+/// (Confidentiality is a separate matter the toy does not provide; see the TOY
+/// banner.) `Secret` is **unbranded** — it is the one value allowed to escape the
+/// scope.
 ///
 /// # Unforgeability (E0451)
 ///
@@ -191,16 +205,25 @@ pub enum RecoverError {
     DuplicateShare { x: u16 },
 }
 
-/// Deal `secret` into `t.n()` shares on a degree-`(k-1)` polynomial over `Z_q`
-/// with the caller-supplied non-constant coefficients, and publish the Feldman
-/// [`Commitment`]. `coeffs` must have length `k - 1`; each value (and the secret)
-/// must be `< q`. **Production draws `coeffs` from a CSPRNG** — taking them as an
-/// argument keeps this toy honest about entropy and makes tests deterministic.
-pub fn deal_with_coeffs(
+/// Deal `secret` into `t.n()` shares on a degree-`(k-1)` polynomial over `Z_q`,
+/// publish the Feldman commitment, and run `body` inside a fresh generative brand
+/// scope holding the `Commitment<'brand>` and its raw [`Share`]s.
+///
+/// `coeffs` must have length `k - 1`; each value (and the secret) must be `< q`.
+/// **Production draws `coeffs` from a CSPRNG** — taking them as an argument keeps
+/// this toy honest about entropy and makes tests deterministic.
+///
+/// The `for<'brand>` bound is what makes the brand *generative*: `body` must work
+/// for every `'brand`, so it cannot smuggle a `VerifiedShare<'brand>` out (the
+/// return type `R` may not mention `'brand`), and two separate `deal_scoped` calls
+/// receive brands that never unify. Only an unbranded value (e.g. [`Secret`] or a
+/// byte) can be returned.
+pub fn deal_scoped<R>(
     secret: u8,
     t: Threshold,
     coeffs: &[u16],
-) -> Result<(Commitment, Vec<Share>), DealError> {
+    body: impl for<'brand> FnOnce(Commitment<'brand>, Vec<Share>) -> R,
+) -> Result<R, DealError> {
     let k = t.k() as usize;
     if coeffs.len() != k - 1 {
         return Err(DealError::WrongCoeffCount {
@@ -223,12 +246,10 @@ pub fn deal_with_coeffs(
     let n = t.n() as u32;
 
     // Commitments Cⱼ = g^{aⱼ} mod p.
-    let commitment = Commitment {
-        coeffs: a
-            .iter()
-            .map(|&aj| feldman::g_pow(feldman::G, aj) as u16)
-            .collect(),
-    };
+    let commit_coeffs: Vec<u16> = a
+        .iter()
+        .map(|&aj| feldman::g_pow(feldman::G, aj) as u16)
+        .collect();
 
     // Shares (x, f(x)) for x = 1..=n, f(x) = Σ aⱼ·xʲ mod q.
     let mut shares = Vec::with_capacity(n as usize);
@@ -244,10 +265,17 @@ pub fn deal_with_coeffs(
             y: y as u16,
         });
     }
-    Ok((commitment, shares))
+
+    Ok(body(
+        Commitment {
+            coeffs: commit_coeffs,
+            _brand: PhantomData,
+        },
+        shares,
+    ))
 }
 
-impl Commitment {
+impl<'brand> Commitment<'brand> {
     /// The reconstruction threshold `k`, read from the commitment's own length.
     pub fn threshold(&self) -> usize {
         self.coeffs.len()
@@ -255,8 +283,11 @@ impl Commitment {
 
     /// Check `share` against this commitment via the Feldman equation
     /// `g^{y} = Π Cⱼ^{xʲ}` (mod p). On success returns an E0451-sealed
-    /// [`VerifiedShare`] — proof the share lies on the committed polynomial.
-    pub fn verify(&self, share: Share) -> Result<VerifiedShare, VerifyError> {
+    /// [`VerifiedShare`] stamped with *this* commitment's `'brand`.
+    ///
+    /// Non-canonical shares (`x = 0`, or `x ≥ q`, or `y ≥ q`) are rejected before
+    /// the check, so every verified share has `x ∈ 1..q, y ∈ 0..q`.
+    pub fn verify(&self, share: Share) -> Result<VerifiedShare<'brand>, VerifyError> {
         if share.x == 0 {
             return Err(VerifyError::ReservedShareIndex);
         }
@@ -281,6 +312,7 @@ impl Commitment {
             Ok(VerifiedShare {
                 x: share.x,
                 y: share.y,
+                _brand: PhantomData,
             })
         } else {
             Err(VerifyError::NotOnPolynomial)
@@ -288,19 +320,28 @@ impl Commitment {
     }
 
     /// Reconstruct the secret from verified shares, refusing fewer than `k` (read
-    /// from this commitment). Because `k` is pinned here and every input passed
-    /// [`verify`](Commitment::verify), the caller-chosen-`k` and unauthenticated-
-    /// share limits of leaf 1 are both closed.
+    /// from this commitment). Every input is a `VerifiedShare<'brand>` of *this*
+    /// commitment's brand, so — unlike leaf 1 — the cross-commitment provenance
+    /// gap is closed **at compile time**: a share verified against a *different*
+    /// commitment has a different brand and does not type-check here. Mixing brands
+    /// does not compile — the invariant generative brands do not unify (reported as
+    /// a *lifetime* error, brand-unification realized via lifetimes rather than a
+    /// literal `error[E0308]`):
     ///
-    /// **Uses only `self`'s length** (for `k`), never its coefficient values — so
-    /// it faithfully interpolates whatever verified points you pass. A full set
-    /// verified against a *different* commitment A (with `A.k == self.k`) recovers
-    /// **A's** secret, not this one's; interleaving sets from two commitments
-    /// yields an unrelated value. `recover` cannot detect either — binding a
-    /// `VerifiedShare` to its issuer (E0308) is a fix (see the crate-level gap
-    /// note). Pairing verified shares with their commitment is the caller's
-    /// responsibility until then.
-    pub fn recover(&self, shares: &[VerifiedShare]) -> Result<Secret, RecoverError> {
+    /// ```compile_fail
+    /// use vss_types::deal_scoped;
+    /// use corona_core::Threshold;
+    /// let t = Threshold::new(2, 3).unwrap();
+    /// deal_scoped(1, t, &[5], |ca, sa| {
+    ///     let va = ca.verify(sa[0]).unwrap(); // VerifiedShare<'a>
+    ///     deal_scoped(2, t, &[9], |cb, _sb| {
+    ///         let _ = cb.recover(&[va, va]); // cb wants VerifiedShare<'b> ≠ 'a
+    ///     })
+    ///     .unwrap();
+    /// })
+    /// .unwrap();
+    /// ```
+    pub fn recover(&self, shares: &[VerifiedShare<'brand>]) -> Result<Secret, RecoverError> {
         let k = self.threshold();
         if shares.len() < k {
             return Err(RecoverError::BelowThreshold {
@@ -332,48 +373,55 @@ mod tests {
 
     #[test]
     fn deal_verify_recover_roundtrip() {
-        let th = t(3, 5);
-        let (c, shares) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
-        let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
-        // Every 3-subset of verified shares recovers the secret.
-        for i in 0..v.len() {
-            for j in (i + 1)..v.len() {
-                for l in (j + 1)..v.len() {
-                    assert_eq!(c.recover(&[v[i], v[j], v[l]]).unwrap().expose(), 0x42);
+        let recovered = deal_scoped(0x42, t(3, 5), &[11, 200], |c, shares| {
+            let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
+            // Every 3-subset of verified shares recovers the secret.
+            let mut all_ok = true;
+            for i in 0..v.len() {
+                for j in (i + 1)..v.len() {
+                    for l in (j + 1)..v.len() {
+                        all_ok &= c.recover(&[v[i], v[j], v[l]]).unwrap().expose() == 0x42;
+                    }
                 }
             }
-        }
+            all_ok
+        })
+        .unwrap();
+        assert!(recovered);
     }
 
     #[test]
     fn every_secret_byte_roundtrips() {
-        let th = t(2, 4);
         for s in 0u8..=255 {
-            let (c, shares) = deal_with_coeffs(s, th, &[(s as u16 * 3 + 1) % 257]).unwrap();
-            let v: Vec<_> = shares.iter().map(|sh| c.verify(*sh).unwrap()).collect();
-            assert_eq!(c.recover(&v[..2]).unwrap().expose(), s);
+            let out = deal_scoped(s, t(2, 4), &[(s as u16 * 3 + 1) % 257], |c, shares| {
+                let v: Vec<_> = shares.iter().map(|sh| c.verify(*sh).unwrap()).collect();
+                c.recover(&v[..2]).unwrap().expose()
+            })
+            .unwrap();
+            assert_eq!(out, s);
         }
     }
 
     #[test]
     fn tampered_share_fails_verification() {
-        let th = t(3, 5);
-        let (c, shares) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
-        let mut bad = shares[0];
-        bad.y = (bad.y + 1) % 257; // move off the polynomial
-        assert_eq!(c.verify(bad), Err(VerifyError::NotOnPolynomial));
+        let err = deal_scoped(0x42, t(3, 5), &[11, 200], |c, shares| {
+            let mut bad = shares[0];
+            bad.y = (bad.y + 1) % 257; // move off the polynomial
+            c.verify(bad).unwrap_err()
+        })
+        .unwrap();
+        assert_eq!(err, VerifyError::NotOnPolynomial);
     }
 
     #[test]
     fn forged_index_share_fails_verification() {
         // An attacker who doesn't know the polynomial cannot fabricate a valid
         // share for a chosen index: a random y almost never satisfies the check.
-        let th = t(3, 5);
-        let (c, _) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
-        assert_eq!(
-            c.verify(Share { x: 42, y: 99 }),
-            Err(VerifyError::NotOnPolynomial)
-        );
+        let err = deal_scoped(0x42, t(3, 5), &[11, 200], |c, _shares| {
+            c.verify(Share { x: 42, y: 99 }).unwrap_err()
+        })
+        .unwrap();
+        assert_eq!(err, VerifyError::NotOnPolynomial);
     }
 
     #[test]
@@ -381,76 +429,73 @@ mod tests {
         // Regression: an x ≥ q that aliases a real point mod q (x = q+1 ≡ 1) must
         // NOT verify — otherwise it slips recover's raw-u16 distinctness check and
         // hits f_inv(0). And x = q ≡ 0 must not bypass the reserved-index guard.
-        let th = t(3, 5);
-        let (c, shares) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
         let q = feldman::Q as u16; // 257
-        assert_eq!(
-            c.verify(Share {
-                x: q + 1,
-                y: shares[0].y,
-            }),
-            Err(VerifyError::NonCanonical {
-                x: q + 1,
-                y: shares[0].y,
-            })
-        );
-        assert_eq!(
-            c.verify(Share { x: q, y: 5 }),
-            Err(VerifyError::NonCanonical { x: q, y: 5 })
-        );
-        assert_eq!(
-            c.verify(Share { x: 1, y: q + 3 }),
-            Err(VerifyError::NonCanonical { x: 1, y: q + 3 })
-        );
+        deal_scoped(0x42, t(3, 5), &[11, 200], |c, shares| {
+            assert_eq!(
+                c.verify(Share {
+                    x: q + 1,
+                    y: shares[0].y,
+                }),
+                Err(VerifyError::NonCanonical {
+                    x: q + 1,
+                    y: shares[0].y,
+                })
+            );
+            assert_eq!(
+                c.verify(Share { x: q, y: 5 }),
+                Err(VerifyError::NonCanonical { x: q, y: 5 })
+            );
+            assert_eq!(
+                c.verify(Share { x: 1, y: q + 3 }),
+                Err(VerifyError::NonCanonical { x: 1, y: q + 3 })
+            );
+        })
+        .unwrap();
     }
 
     #[test]
     fn threshold_is_pinned_by_the_commitment() {
-        // Leaf 1's caller-chosen-k limit is closed: recover reads k from the
-        // commitment (here 3), so fewer than 3 verified shares is refused — the
-        // caller cannot ask for a smaller threshold.
-        let th = t(3, 5);
-        let (c, shares) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
-        let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
-        assert_eq!(c.threshold(), 3);
-        assert_eq!(
-            c.recover(&v[..2]),
-            Err(RecoverError::BelowThreshold { have: 2, need: 3 })
-        );
+        // recover reads k from the commitment (here 3), so fewer than 3 verified
+        // shares is refused — the caller cannot ask for a smaller threshold.
+        let err = deal_scoped(0x42, t(3, 5), &[11, 200], |c, shares| {
+            assert_eq!(c.threshold(), 3);
+            let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
+            c.recover(&v[..2]).unwrap_err()
+        })
+        .unwrap();
+        assert_eq!(err, RecoverError::BelowThreshold { have: 2, need: 3 });
     }
 
     #[test]
     fn debug_redacts_the_secret_byte() {
-        let th = t(2, 3);
-        let (c, shares) = deal_with_coeffs(0xa5, th, &[7]).unwrap();
-        let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
-        let secret = c.recover(&v[..2]).unwrap();
-        let shown = format!("{secret:?}");
+        let shown = deal_scoped(0xa5, t(2, 3), &[7], |c, shares| {
+            let v: Vec<_> = shares.iter().map(|s| c.verify(*s).unwrap()).collect();
+            format!("{:?}", c.recover(&v[..2]).unwrap())
+        })
+        .unwrap();
         assert_eq!(shown, "Secret(<redacted>)");
         assert!(!shown.contains("165") && !shown.contains("a5"));
     }
 
     #[test]
     fn reserved_and_duplicate_indices_are_refused() {
-        let th = t(2, 3);
-        let (c, shares) = deal_with_coeffs(0x11, th, &[9]).unwrap();
-        assert_eq!(
-            c.verify(Share { x: 0, y: 5 }),
-            Err(VerifyError::ReservedShareIndex)
-        );
-        let v0 = c.verify(shares[0]).unwrap();
-        assert_eq!(
-            c.recover(&[v0, v0]),
-            Err(RecoverError::DuplicateShare { x: v0.x })
-        );
+        deal_scoped(0x11, t(2, 3), &[9], |c, shares| {
+            assert_eq!(
+                c.verify(Share { x: 0, y: 5 }),
+                Err(VerifyError::ReservedShareIndex)
+            );
+            let v0 = c.verify(shares[0]).unwrap();
+            assert_eq!(
+                c.recover(&[v0, v0]),
+                Err(RecoverError::DuplicateShare { x: v0.x })
+            );
+        })
+        .unwrap();
     }
 
     #[test]
     fn wrong_coefficient_count_is_refused() {
-        let th = t(3, 5);
-        assert_eq!(
-            deal_with_coeffs(0x42, th, &[11]),
-            Err(DealError::WrongCoeffCount { have: 1, need: 2 })
-        );
+        let r = deal_scoped(0x42, t(3, 5), &[11], |_c, _s| ());
+        assert_eq!(r, Err(DealError::WrongCoeffCount { have: 1, need: 2 }));
     }
 }

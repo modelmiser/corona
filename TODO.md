@@ -32,8 +32,14 @@ work (complete tasks, add children, keep siblings).
       consecutive clean rounds. Round 1 caught a REAL bug (non-canonical share
       index aliasing → f_inv(0)); fixed with a `verify` canonicalization guard +
       regression test. Rest were gap-characterization precision.
-- [ ] E0308-branded `VerifiedShare` (bind to issuing `Commitment`) — closes the one
-      documented gap; a rung-2 hardening
+- [x] Brand `VerifiedShare` (bind to issuing `Commitment`) — DONE via an invariant
+      *generative lifetime* (`deal_scoped`'s `for<'brand>` closure). Cross-commitment
+      `recover` no longer compiles. NOTE: realized as a lifetime brand (zero-dep,
+      forbid-unsafe), so the diagnostic is a *lifetime error*, not literally E0308;
+      literal E0308 would need the `generativity` crate's unsafe guards.
+- [ ] Cold-review the branded leaf-2 surface to convergence (as before) — NOT yet done
+- [ ] (optional) offer a `generativity`-backed variant for a literal `error[E0308]`
+      diagnostic + a non-nested (guard-based) API, if the ergonomics/dep are wanted
 
 ## Parking lot (garden, not scheduled)
 

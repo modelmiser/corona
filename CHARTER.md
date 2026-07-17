@@ -88,7 +88,7 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 |---|---|---|---|
 | `corona-core` | infra | shared vocabulary | — (grows only when a primitive is proven shared) |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
-| `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451, but leaf 2 adds a per-share sealed witness (`VerifiedShare`, no analogue in leaf 1) attesting a cryptographic fact (share ∈ committed polynomial) where leaf 1's witness only counted.** Closes leaf 1's two limits (threshold pinned by commitment length; shares authenticated) |
+| `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451 (`VerifiedShare` attests a cryptographic fact, not a count) plus the E0308-class *brand* (an invariant generative lifetime binding each share to its commitment).** Uses **two** garden primitives, no new one. Closes leaf 1's two limits *and* the provenance gap (cross-commitment `recover` does not compile) |
 
 ### `corona-core` promotion check (at leaf 2)
 
@@ -110,9 +110,10 @@ Corona names the family these already form; it is recognition, not new scope.
 
 - `erasure-types` — Reed–Solomon k-of-n. Same reconstruction skeleton as Shamir,
   opposite property (*availability*, not confidentiality). A paired axis.
-- A **branded** `VerifiedShare` — bind it to its issuing `Commitment` via E0308
-  generativity, closing the one gap `vss-types` documents (a verified share is not
-  yet tied to a *specific* commitment instance). A rung-2 hardening, not a new leaf.
+
+*(Done: the branded `VerifiedShare` — `vss-types` now binds each share to its
+issuing `Commitment` with an invariant generative lifetime, closing the provenance
+gap. See its module docs.)*
 
 ## Records
 
