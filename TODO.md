@@ -87,7 +87,14 @@ work (complete tasks, add children, keep siblings).
 - [x] `corona-core` promotion check (leaf-4 trigger): **nothing to promote** — and
       that's the finding (uses neither `Threshold` nor `gf256`). Core stays thin.
       See CHARTER.
-- [ ] Cold-review the leaf-4 surface to convergence (2 consecutive clean rounds).
+- [x] Cold-review the leaf-4 surface to convergence — 6 rounds, practical
+      convergence (round 6 clean at zero severity on both lenses; code frozen and
+      clean from the round-1 fix onward). Round-1 MODERATE (real): `proof.index`
+      unauthenticated → dropped the redundant `on_left` side flag, `verify` now
+      derives shape from `(index, size)` and binds `index` into the fold. Rounds 2-5
+      sharpened the index-symmetry claim to the exact group-orbit characterization
+      (confirmed accepted-set == orbit across 13.7M acceptances). merkle 10→12 unit;
+      workspace 50→52. Commit `b4f451b`.
 - [ ] Rung 2: brand `VerifiedLeaf` to its issuing `Root` via an invariant generative
       lifetime (a `commit_scoped`-style `for<'brand>` closure), so a cross-root
       mismatch does not compile — mirroring vss-types' rung 2. The identical gap and
