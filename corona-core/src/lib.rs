@@ -5,14 +5,22 @@
 //! unforgeability, move-linearity, brand-unification, const-eval walls). This
 //! crate holds only what is **genuinely shared across leaves** — nothing more.
 //!
-//! Today that is exactly one thing: [`Threshold`], the validated *k-of-n* gate
-//! that every reconstruction leaf (Shamir secret-sharing, Reed–Solomon erasure
-//! coding, threshold signatures) needs. Field-specific limits (e.g. "GF(256)
-//! admits at most 255 shares") live in the *leaf*, not here — the core stays
-//! field-agnostic on purpose. The core grows only when a *second* leaf proves a
-//! primitive is shared; we do not speculatively abstract from one example.
+//! Two things live here today, and each earned its place by the same rule — a
+//! primitive graduates to the core only once a *second* leaf proves it shared; we
+//! do not speculatively abstract from one example:
+//!
+//! - [`Threshold`] — the validated *k-of-n* gate every reconstruction leaf needs.
+//!   Field-agnostic (leaf-specific limits like "GF(256) admits at most 255 shares"
+//!   stay in the leaf).
+//! - [`gf256`] — the GF(256) finite field shared by the *polynomial-code* leaves
+//!   (`threshold-types` Shamir, `erasure-types` Reed–Solomon). It graduated when
+//!   the third leaf repeated it; leaf 2 (`vss-types`) uses a different prime field,
+//!   so `gf256` is shared-but-not-universal — which is exactly why it is a module,
+//!   not baked into `Threshold`.
 
 #![forbid(unsafe_code)]
+
+pub mod gf256;
 
 /// A validated *k-of-n* threshold: reconstruction requires at least `k` of the
 /// `n` distributed shares. Construction is checked, so an out-of-range threshold

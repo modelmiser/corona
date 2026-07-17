@@ -61,8 +61,9 @@ work (complete tasks, add children, keep siblings).
       not coefficients"; "axis invisible to the types" → invisible to the seal, visible
       in the API by convention; seal = typestate token not availability proof). Sealed
       gf256 arithmetic pub(crate).
-- [ ] Promote `gf256` → `corona-core`, refactor `threshold-types` + `erasure-types` to
-      use it (the flagged leaf-3 DRY debt)
+- [x] Promote `gf256` → `corona-core` — DONE. Both leaves import `corona_core::gf256`;
+      local copies deleted; canonical version = `pub` + hard `assert!`. The first
+      primitive to graduate out of a leaf (thin-core rule fired at the 2nd sharing).
 - [ ] Error-correcting Reed–Solomon (detect/correct *corrupted* fragments) — closes the
       "fragments unverified" limit; the availability-axis analogue of VSS. A rung-3 hardening
 

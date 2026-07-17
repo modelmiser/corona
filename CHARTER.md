@@ -86,7 +86,7 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 
 | Crate | Track | Domain | Thesis question |
 |---|---|---|---|
-| `corona-core` | infra | shared vocabulary | — (grows only when a primitive is proven shared) |
+| `corona-core` | infra | shared primitives | — holds `Threshold` (k-of-n gate) + `gf256` (the GF(256) field, promoted at leaf 3). Grows only when a primitive is proven shared |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
 | `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451 (`VerifiedShare` attests a cryptographic fact, not a count) plus the E0308-class *brand* (an invariant generative lifetime binding each share to its commitment).** Uses **two** garden primitives, no new one. Closes leaf 1's two limits *and* the provenance gap (cross-commitment `recover` does not compile) |
 | `erasure-types` | research (toy) | Reed–Solomon k-of-n erasure coding | a paired axis to leaf 1 — *availability*, not confidentiality → **the unforgeability mechanism is identical (E0451-sealed `RecoveredData` + runtime k-of-n check); the confid-vs-avail axis is invisible to the compiler-enforced seal, reflected only in the API by convention.** RS = the same polynomial-evaluation machinery with data in the *evaluations* vs secret+randomness in the *coefficients*; deliberate contrast: `RecoveredData` does *not* redact (data public). Seal = typestate token (from `decode`), not an availability proof (fragments forgeable) |
@@ -98,13 +98,13 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   leaf 1's but *semantically* distinct (leaf 1's is `f(0)` of presented points,
   leaf 2's is authenticated), and cold review showed per-type doc precision carries
   weight — so it stays **per-leaf**. Only [`Threshold`] is promoted (already core).
-- **Leaf 3:** **GF(256) field arithmetic is now genuinely shared** (leaf 1 + leaf 3
-  use the identical `gf256` module; leaf 2 uses a different prime field). This *is*
-  a real promotion candidate — the exact "3rd leaf repeats the shape" case leaf 2
-  deferred to. **Flagged, not yet done:** promoting means refactoring the converged
-  `threshold-types`, so the leaf-3 seed keeps a flagged local copy and queues the
-  promotion (`gf256` → `corona-core`) as a deliberate follow-up. This is the one
-  place DRY now beats thin-core-purity — pending the refactor.
+- **Leaf 3:** **GF(256) field arithmetic was genuinely shared** (leaf 1 + leaf 3
+  used an identical `gf256` module; leaf 2 uses a different prime field). This was
+  the "3rd leaf repeats the shape" case leaf 2 deferred to — so it was **promoted**:
+  `gf256` now lives in `corona-core`, both leaves import it, the local copies are
+  gone (canonical version = `pub` + hard `assert!` in `inv`). **The first primitive
+  to graduate out of a leaf** — the thin-core rule firing exactly when it should:
+  after a *second* leaf proved the sharing, not on speculation.
 
 ### Lineage (the pattern that predates the plan)
 

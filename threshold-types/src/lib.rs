@@ -16,7 +16,7 @@
 //! ## ⚠ TOY — not production crypto
 //!
 //! This crate exists to demonstrate a **type discipline**, not to keep secrets.
-//! The GF(256) backend ([`gf256`]) is table-driven and **not constant-time**;
+//! The GF(256) backend ([`corona_core::gf256`]) is table-driven and **not constant-time**;
 //! there is no verifiable secret sharing, no share authentication, no
 //! zeroization, and [`split_with_coeffs`] makes *you* supply the polynomial
 //! coefficients rather than pretending to manage entropy. **Do not protect real
@@ -81,7 +81,7 @@
 
 use corona_core::Threshold;
 
-pub mod gf256;
+use corona_core::gf256;
 
 /// One share of a split secret: the point `(x, y = f(x))` on the secret
 /// polynomial over GF(256). `x` ranges over `1..=n`; `x = 0` is reserved because

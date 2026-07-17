@@ -63,19 +63,19 @@
 //!
 //! ## ⚠ TOY — not production coding
 //!
-//! GF(256) here ([`gf256`], duplicated from leaf 1 — see the promotion note) is a
+//! The GF(256) field ([`corona_core::gf256`], shared with leaf 1) is a
 //! straightforward table lookup, and `decode` is plain erasure decoding with **no
 //! error detection or correction**. Do not use this to protect real data against
 //! corruption. Fragment count `n` is capped at 255 (distinct non-zero GF(256)
 //! evaluation points).
 //!
-//! ## `corona-core` promotion check (at leaf 3)
+//! ## `corona-core` promotion (done at leaf 3)
 //!
-//! GF(256) field arithmetic is now used by **two** leaves (this one and
-//! `threshold-types`), so per the CHARTER's thin-core rule it is a promotion
-//! candidate for `corona-core`. It is *not* promoted in this seed (that would mean
-//! refactoring the converged `threshold-types`); the [`gf256`] copy here is
-//! flagged debt, and promotion is queued as a deliberate follow-up.
+//! GF(256) field arithmetic is used by **two** leaves (this one and
+//! `threshold-types`), so per the CHARTER's thin-core rule it has been **promoted**
+//! to [`corona_core::gf256`] — the first primitive to graduate out of a leaf. Both
+//! leaves now import it; there is no local copy. (Leaf 2, `vss-types`, uses a
+//! different prime field and does not share it.)
 //!
 //! ## Intended use
 //!
@@ -97,7 +97,7 @@
 
 use corona_core::Threshold;
 
-pub mod gf256;
+use corona_core::gf256;
 
 /// One code symbol: the point `(index, value = p(index))` on the data polynomial
 /// over GF(256). Public data — a `Fragment` carries no secret (any fragment leaks

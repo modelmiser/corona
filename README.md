@@ -14,7 +14,7 @@ Corona leaf contributes a Lean formalization to Sol. See [`CHARTER.md`](CHARTER.
 
 ```
 corona/
-├── corona-core/      # thin shared vocabulary — today just the k-of-n Threshold
+├── corona-core/      # thin shared vocabulary — the k-of-n Threshold + the GF(256) field
 ├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 └── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
@@ -22,6 +22,8 @@ corona/
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
 only when a second leaf proves a primitive common — never speculatively from one.
+(`gf256` is the first graduate: it moved into the core once leaf 3 repeated leaf 1's
+GF(256) field. Leaf 2 uses a different prime field, so it stays shared-not-universal.)
 
 ## Leaf 1: `threshold-types`
 
@@ -93,7 +95,7 @@ public and forgeable.
 ## Build
 
 ```sh
-cargo test --workspace          # 35 unit tests + 8 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 33 unit tests + 8 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
