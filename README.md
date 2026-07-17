@@ -135,7 +135,7 @@ same way at rung 2 via a generative-lifetime brand).
 ## Build
 
 ```sh
-cargo test --workspace          # 50 unit tests + 10 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 52 unit tests + 10 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

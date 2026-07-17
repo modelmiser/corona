@@ -14,8 +14,13 @@
 //! (`0x00` for a leaf, `0x01` for an internal node). Without this, an attacker who
 //! controls leaf data could present an *internal* node's two children as a single
 //! leaf's bytes and pass verification — the classic Merkle second-preimage
-//! confusion. The tag makes the leaf-vs-node domains disjoint. This is a genuine
-//! part of the *checked path*, independent of the (toy) hash's weakness.
+//! confusion. The tag makes the leaf and node *preimages* disjoint — the two hash
+//! functions never receive identical input bytes — so the confusion cannot arise
+//! *structurally*. (This bounds the *inputs*, not the 64-bit *outputs*: whether a
+//! `leaf_hash` can still be made to *collide* a given `node_hash` is a question of
+//! the hash's strength, and with the toy FNV-1a such collisions are findable — see
+//! the TOY banner above. Domain separation is a genuine part of the *checked path*,
+//! independent of that weakness.)
 
 const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
 const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;

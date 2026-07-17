@@ -69,6 +69,12 @@
 //!   *the root you hand it*. It cannot tell you that root commits the *right* set —
 //!   that trust anchor is the caller's (exactly as `vss-types`' `Commitment` is
 //!   trusted, and `erasure-types`' `k` is caller-asserted).
+//! - **The seal binds *safe* downstream code.** [`VerifiedLeaf`]'s unforgeability
+//!   (E0451) holds against any consumer written in safe Rust — the headline
+//!   guarantee. A downstream crate that opts into its *own* `unsafe` can of course
+//!   `transmute` a value into existence; no safe-Rust seal can prevent that. This
+//!   is the *scope* of the guarantee, not a hole in it (and it is why the crate
+//!   itself is `#![forbid(unsafe_code)]`).
 //! - **Provenance gap — the rung-2 hook.** A [`VerifiedLeaf`] is **not bound to
 //!   which [`Root`] minted it**: nothing stops you presenting a `VerifiedLeaf`
 //!   obtained from root *A* while claiming membership in root *B*. This is the same
@@ -107,30 +113,43 @@
 
 pub mod hash;
 
-/// One step of an inclusion [`Proof`]: a sibling hash and which side it sits on.
-///
-/// `on_left == true` means the sibling is the *left* child at that level (so the
-/// element being proved is the right child, and they combine as
-/// `node_hash(sibling, acc)`); `false` means the sibling is on the right
-/// (`node_hash(acc, sibling)`). The side is what pins the element to a position,
-/// not just to the set.
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Sibling {
-    /// The sibling node's hash.
-    pub hash: u64,
-    /// Is the sibling the *left* child at this level?
-    pub on_left: bool,
-}
-
 /// A Merkle inclusion proof: the leaf index plus the sibling hashes from the leaf
-/// up to (but not including) the root. Public, forgeable data — its authenticity
-/// is decided only by [`Root::verify`], never by holding it.
+/// up to (but not including) the root, bottom-first. Public, forgeable data — its
+/// authenticity is decided only by [`Root::verify`], never by holding it.
+///
+/// There is **no per-sibling side flag**: which side each sibling sits on, and
+/// which levels *promote* (contribute no sibling), are both a deterministic
+/// function of `index` and the tree's leaf count. [`Root::verify`] reconstructs
+/// that shape from `index` and the root's `size` and folds the siblings on the
+/// sides `index` dictates. So `index` is **authenticated**, not a free annotation:
+/// relabeling it to a different position changes the computed root and is rejected.
+///
+/// The authentication holds **up to the commitment's own structural symmetry**, a
+/// genuine feature rather than a forgery. A Merkle root cannot distinguish two
+/// subtrees that hash identically: whenever a node's two children hash equally,
+/// swapping that node's two subtrees leaves the root unchanged. The interchangeable
+/// positions are exactly the **orbit** of a position under the group these swaps
+/// generate — nothing outside it. The minimal generator is a *sibling* leaf pair
+/// (`2j`, `2j+1`, the two children of one `node_hash`) with identical data;
+/// compositions reach further — in `["a","b","a","b"]` the two equal halves make
+/// leaves `0` and `2` interchangeable, and in `["a","a","a","a"]` the closure sweeps
+/// in every leaf. Every such swap is honest: equal-hashing structure commits the
+/// *same bytes*, so a relabeled `index` still names a position genuinely holding them
+/// — membership is untouched and only positional *uniqueness* is lost. With
+/// all-distinct leaves no node has equal-hashing children, the group is trivial, and
+/// `index` is a fully checked position. (Storing a redundant side flag *alongside*
+/// `index` is exactly what would let the two disagree — so this type does not.)
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Proof {
-    /// The leaf's index in the original ordering.
+    /// The leaf's index in the original ordering. Authenticated by [`Root::verify`]
+    /// — it drives the fold, so it cannot be relabeled without breaking the proof,
+    /// except across one structural-symmetry orbit (positions swapped by equal-hashing
+    /// sibling subtrees and their compositions — always the same bytes; see the type
+    /// doc).
     pub index: usize,
-    /// Sibling hashes, bottom (leaf level) to top.
-    pub siblings: Vec<Sibling>,
+    /// Sibling hashes, bottom (leaf level) to top. A *promoted* (odd-node) level
+    /// contributes no entry, so this can be shorter than the tree's height.
+    pub siblings: Vec<u64>,
 }
 
 /// A Merkle root: the public commitment to a set of leaves. Copyable and inert —
@@ -155,8 +174,19 @@ impl Root {
 
     /// Verify that `data` is the leaf at `proof.index` under this root, minting a
     /// sealed [`VerifiedLeaf`] iff the authentication path folds to this exact
-    /// root. Returns `None` on any mismatch (wrong data, wrong/tampered path, or
-    /// an index outside the committed set).
+    /// root. Returns `None` on any mismatch (wrong data, wrong/tampered path, an
+    /// index outside the committed set, or a sibling count that does not match the
+    /// shape `index` implies).
+    ///
+    /// `index` is **authenticated**: the tree shape (which levels promote, and
+    /// which side each sibling is on) is reconstructed here from `index` and this
+    /// root's `size`, so the siblings are folded exactly as `index` dictates.
+    /// Relabeling the index to a different position changes the computed root and
+    /// is rejected — the only exceptions are positions related by a genuine
+    /// structural symmetry (subtrees that hash identically, e.g. a sibling leaf pair
+    /// with identical data), which are truly interchangeable because they commit the
+    /// same bytes (see [`Proof`]). With all-distinct leaves the position `index()`
+    /// reports is a checked fact, not a copied annotation.
     ///
     /// This is the **sole minter** of [`VerifiedLeaf`]: the witness cannot be
     /// constructed any other way (E0451 — the fields are private and there is no
@@ -169,12 +199,31 @@ impl Root {
         }
         let leaf_hash = hash::leaf_hash(data);
         let mut acc = leaf_hash;
-        for sibling in &proof.siblings {
-            acc = if sibling.on_left {
-                hash::node_hash(sibling.hash, acc)
-            } else {
-                hash::node_hash(acc, sibling.hash)
-            };
+        let mut idx = proof.index;
+        let mut width = self.size;
+        let mut siblings = proof.siblings.iter();
+        // Walk leaf-to-root. At each level the tree shape is fixed by `width`
+        // (derived from `size`): the last node of an odd level is *promoted* (no
+        // sibling, carried up unchanged, exactly as `build_layers` does); otherwise
+        // the node pairs with a sibling whose side is fixed by `idx`'s parity.
+        while width > 1 {
+            let promoted = !width.is_multiple_of(2) && idx == width - 1;
+            if !promoted {
+                // A well-formed proof supplies exactly one sibling here.
+                let sibling = *siblings.next()?;
+                acc = if idx.is_multiple_of(2) {
+                    hash::node_hash(acc, sibling) // sibling on the right
+                } else {
+                    hash::node_hash(sibling, acc) // sibling on the left
+                };
+            }
+            idx /= 2;
+            width = width.div_ceil(2);
+        }
+        // Reject any proof carrying more siblings than its shape consumes — an
+        // over-long path must not fold to a valid root by luck.
+        if siblings.next().is_some() {
+            return None;
         }
         if acc == self.hash {
             Some(VerifiedLeaf {
@@ -247,24 +296,19 @@ impl MerkleTree {
         }
         let mut siblings = Vec::new();
         let mut idx = index;
-        // Walk every level except the top (the root has no sibling).
+        // Walk every level except the top (the root has no sibling). Emit a sibling
+        // wherever the node is *not* the promoted odd one out — the same shape
+        // `verify` reconstructs from `index` and `size`, so the two stay in lockstep.
         for level in &self.layers[..self.layers.len() - 1] {
-            if idx.is_multiple_of(2) {
-                // Left child: the sibling is on the right, if it exists. If it does
-                // not, this node was *promoted* (odd one out) — no sibling entry,
-                // matching how `build_layers` carried it up unchanged.
-                if idx + 1 < level.len() {
-                    siblings.push(Sibling {
-                        hash: level[idx + 1],
-                        on_left: false,
-                    });
-                }
-            } else {
-                // Right child: the sibling is the left node, which always exists.
-                siblings.push(Sibling {
-                    hash: level[idx - 1],
-                    on_left: true,
-                });
+            let width = level.len();
+            let promoted = !width.is_multiple_of(2) && idx == width - 1;
+            if !promoted {
+                let sibling = if idx.is_multiple_of(2) {
+                    level[idx + 1] // sibling on the right
+                } else {
+                    level[idx - 1] // sibling on the left
+                };
+                siblings.push(sibling);
             }
             idx /= 2;
         }
@@ -349,19 +393,93 @@ mod tests {
         let data = sample();
         let (root, tree) = MerkleTree::build(&data).unwrap();
         let mut proof = tree.proof(1).unwrap();
-        proof.siblings[0].hash ^= 1; // flip one bit of one sibling
+        proof.siblings[0] ^= 1; // flip one bit of one sibling
         assert!(root.verify(b"bob", &proof).is_none());
     }
 
     #[test]
-    fn flipped_side_mints_no_witness() {
-        // The side flag pins position, not just membership: flipping it must fail
-        // wherever the two children are distinct (which they are for real data).
+    fn relabeled_index_mints_no_witness() {
+        // Regression for the round-1 finding: `index` is authenticated. A genuine
+        // path for one position, relabeled to any *other* in-range index, must fail
+        // — the fold is driven by `index`, so a lie about position breaks it.
         let data = sample();
         let (root, tree) = MerkleTree::build(&data).unwrap();
-        let mut proof = tree.proof(0).unwrap();
-        proof.siblings[0].on_left = !proof.siblings[0].on_left;
-        assert!(root.verify(b"alice", &proof).is_none());
+        let genuine = tree.proof(1).unwrap();
+        assert_eq!(root.verify(b"bob", &genuine).unwrap().index(), 1);
+        for wrong in [0usize, 2, 3, 4] {
+            let mut relabeled = genuine.clone();
+            relabeled.index = wrong;
+            assert!(
+                root.verify(b"bob", &relabeled).is_none(),
+                "relabeling index 1 -> {wrong} must not verify"
+            );
+        }
+    }
+
+    #[test]
+    fn index_is_authenticated_up_to_structural_symmetry() {
+        // The precise boundary of index authentication: two positions are
+        // interchangeable EXACTLY when they sit in subtrees that hash identically —
+        // never otherwise. A true symmetry, not a forgery (equal-hashing structure
+        // commits the same bytes), and it never lets DIFFERENT data verify.
+
+        // (a) Minimal case — a sibling leaf pair (2j, 2j+1) with equal data.
+        let data = [b"a".as_ref(), b"a".as_ref(), b"c".as_ref(), b"d".as_ref()];
+        let (root, tree) = MerkleTree::build(&data).unwrap();
+        let p0 = tree.proof(0).unwrap();
+        let mut to_one = p0.clone();
+        to_one.index = 1;
+        // "a" genuinely IS the leaf at index 1 too — membership holds, only the
+        // choice between the two equal positions is unpinned.
+        assert_eq!(root.verify(b"a", &to_one).unwrap().index(), 1);
+
+        // (b) General case — two whole sibling subtrees that hash identically make
+        // even NON-adjacent positions interchangeable.
+        let sym = [b"a".as_ref(), b"b".as_ref(), b"a".as_ref(), b"b".as_ref()];
+        let (root2, tree2) = MerkleTree::build(&sym).unwrap();
+        let q0 = tree2.proof(0).unwrap();
+        let mut to_two = q0.clone();
+        to_two.index = 2; // subtrees [a,b] == [a,b]; "a" really is at index 2
+        assert_eq!(root2.verify(b"a", &to_two).unwrap().index(), 2);
+
+        // (c) NOT a blanket "equal data => interchangeable": an adjacent but
+        // NON-sibling equal pair (positions 1,2 straddling a parent) is rejected.
+        let nonsib = [b"x".as_ref(), b"a".as_ref(), b"a".as_ref(), b"d".as_ref()];
+        let (root3, tree3) = MerkleTree::build(&nonsib).unwrap();
+        let r1 = tree3.proof(1).unwrap();
+        let mut r1_to_2 = r1.clone();
+        r1_to_2.index = 2;
+        assert!(root3.verify(b"a", &r1_to_2).is_none());
+
+        // (d) Different bytes verify at NO position, even reusing a genuine proof.
+        assert!(root.verify(b"different", &p0).is_none());
+
+        // (e) Closure/transitivity — in an all-equal tree the orbit is the whole
+        // leaf set, so a genuine proof relabels to ANY index (index 3 is reached by
+        // COMPOSING swaps, not a single sibling swap). Still honest: "a" is at 3 too.
+        let all_equal = [b"a".as_ref(), b"a".as_ref(), b"a".as_ref(), b"a".as_ref()];
+        let (root4, tree4) = MerkleTree::build(&all_equal).unwrap();
+        let s0 = tree4.proof(0).unwrap();
+        let mut s0_to_3 = s0.clone();
+        s0_to_3.index = 3;
+        assert_eq!(root4.verify(b"a", &s0_to_3).unwrap().index(), 3);
+    }
+
+    #[test]
+    fn wrong_sibling_count_mints_no_witness() {
+        // The shape is fixed by (index, size); a path that is too short or too long
+        // for that shape is rejected, not folded to a lucky root.
+        let data = sample();
+        let (root, tree) = MerkleTree::build(&data).unwrap();
+        let good = tree.proof(1).unwrap();
+
+        let mut short = good.clone();
+        short.siblings.pop();
+        assert!(root.verify(b"bob", &short).is_none());
+
+        let mut long = good.clone();
+        long.siblings.push(0xdead_beef);
+        assert!(root.verify(b"bob", &long).is_none());
     }
 
     #[test]
