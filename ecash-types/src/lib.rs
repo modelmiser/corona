@@ -168,7 +168,8 @@ mod hash;
 use std::collections::BTreeSet;
 use std::fmt;
 
-/// A coin held in-process: the leaf's **linear (affine) capability**.
+/// A coin held in-process: the leaf's **consumable capability** (affine —
+/// used *at most* once; see "Affine, not linear" in the crate docs).
 ///
 /// Deliberately **not** `Clone`/`Copy`, and [`into_wire`](Coin::into_wire)
 /// takes `self` by value, so consuming a coin twice is a compile error
@@ -212,7 +213,9 @@ pub struct Coin {
 
 impl Coin {
     /// The coin's serial number. An observation, not a capability: knowing a
-    /// serial without its tag redeems nothing.
+    /// serial without its tag redeems nothing. (Under the toy hash that gap
+    /// is thin — an observer with one coin computes the matching tag; see
+    /// the banner.)
     pub fn serial(&self) -> u64 {
         self.serial
     }
@@ -245,6 +248,11 @@ impl fmt::Debug for Coin {
 /// nothing; check-passing is decided at [`Mint::redeem`]'s tag and
 /// issued-range gates ("check-passing", not "authenticity" — the toy hash
 /// admits valid-tag forgeries), and spent-ness at its spent set.
+///
+/// Its derived `Debug` prints the tag in the clear — deliberately outside
+/// the crate's redaction policy, which covers the three *sealed* types:
+/// redacting Debug over `pub` fields would be theater. The flip side is
+/// real: a logged genuine `WireCoin` is a spendable coin.
 ///
 /// Constructing one from thin air compiles (that is the point — contrast the
 /// sealed [`Coin`]):
@@ -326,12 +334,13 @@ impl Receipt {
     /// deployment-identity; only coordination (out of scope, `quorum-types`'
     /// territory) can fuse replicas into one spender-visible mint.
     ///
-    /// Identity is compared as a 64-bit *hash* of the secret, so a colliding
-    /// second secret would satisfy this check (and receipt equality) across
-    /// two distinct mints — finding *some* confusable pair is a ~2³²
-    /// birthday search; impersonating one *specific* mint is a ~2⁶⁴
-    /// second-preimage search. A real deployment derives identity with a
-    /// full-width PRF.
+    /// Identity is compared as a 64-bit *hash* of the secret — the same
+    /// invertible FNV construction as the coin tag, so ideal-hash collision
+    /// figures do not apply: an exposed `mint_id` would yield the secret
+    /// itself in the banner's ~2³² meet-in-the-middle. No path exposes one
+    /// (the field is private, `Debug`-redacted, and `PartialEq` leaks only
+    /// equality), so the operative identity attack is the seed-guess oracle
+    /// below. A real deployment derives identity with a full-width PRF.
     ///
     /// Flip side: because [`Mint::new`] is public, a receipt holder can use
     /// this check as a seed-guess confirmation oracle
@@ -715,7 +724,11 @@ mod tests {
         let coin = mint.issue();
         let coin_dbg = format!("{:?}", coin); // rendered BEFORE consuming it
         let wire = coin.into_wire();
-        for leak in [format!("{}", wire.tag), format!("{:x}", wire.tag)] {
+        for leak in [
+            format!("{}", wire.tag),
+            format!("{:x}", wire.tag),
+            format!("{:X}", wire.tag),
+        ] {
             assert!(!coin_dbg.contains(&leak), "Coin Debug must hide the tag");
         }
         assert!(coin_dbg.contains("<redacted>"));
@@ -723,7 +736,11 @@ mod tests {
         let receipt = mint.redeem(wire).expect("genuine");
         let receipt_dbg = format!("{:?}", receipt);
         let mid = hash::mint_id(0x3A);
-        for leak in [format!("{}", mid), format!("{:x}", mid)] {
+        for leak in [
+            format!("{}", mid),
+            format!("{:x}", mid),
+            format!("{:X}", mid),
+        ] {
             assert!(
                 !receipt_dbg.contains(&leak),
                 "Receipt Debug must hide the mint identity (invertible in the toy)"
