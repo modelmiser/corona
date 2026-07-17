@@ -33,8 +33,9 @@
 //!    arbitrary and unverified, so at least one program touching the bytes
 //!    sits outside any discipline. (In a *closed* system whose every endpoint
 //!    is itself a type-checked program sharing the protocol — the territory
-//!    of distributed/multiparty **session types** (Honda et al.; Wadler's
-//!    *Propositions as Sessions*) — linearity genuinely does extend across
+//!    of **session types** (Wadler's *Propositions as Sessions* for the
+//!    binary foundation; Honda et al. for the multiparty/distributed case)
+//!    — linearity genuinely does extend across
 //!    wires; but that *constrains the holder and the channel*: endpoint
 //!    protocol conformance is what session typing itself checks, while
 //!    duplication-resistance of the wire is a separate transport assumption
