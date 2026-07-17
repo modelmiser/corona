@@ -28,7 +28,10 @@ work (complete tasks, add children, keep siblings).
       Closes leaf 1's two limits. 12 unit + 2 doctests; full-workspace gates green.
 - [x] `corona-core` promotion check (leaf-2 trigger): only `Threshold` stays shared;
       redacting-`Secret` kept per-leaf (semantically distinct). See CHARTER.
-- [ ] Cold-review the leaf-2 surface to convergence (as leaf 1) — NOT yet done
+- [x] Cold-review the leaf-2 surface to convergence — 3 rounds (MOD 3→0→0), two
+      consecutive clean rounds. Round 1 caught a REAL bug (non-canonical share
+      index aliasing → f_inv(0)); fixed with a `verify` canonicalization guard +
+      regression test. Rest were gap-characterization precision.
 - [ ] E0308-branded `VerifiedShare` (bind to issuing `Commitment`) — closes the one
       documented gap; a rung-2 hardening
 

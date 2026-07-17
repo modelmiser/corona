@@ -15,17 +15,20 @@
 //! that check, and [`Commitment::recover`] reads `k` **from the commitment's own
 //! length**, so the threshold is pinned, not asserted.
 //!
-//! ## The rung's finding: verifiability *reduces* too
+//! ## The rung's finding: the *witnessing* of verifiability reduces too
 //!
 //! Leaf 1 found the *unforgeable wrapping* of a reconstructed secret reduces to
 //! **E0451** (a sealed constructor), while the *counting* stays a runtime check.
 //! Leaf 2 asks whether *verifiability* needs a **new** compile primitive. It does
-//! not: a [`VerifiedShare`] is protected by the **same E0451** — but the checked
-//! path that mints it now performs *cryptographic verification* (the Feldman
-//! equation) rather than mere counting. The witness graduates from "≥ k shares
-//! were **presented**" (leaf 1) to "this share **lies on the committed
-//! polynomial**" (leaf 2), with no new primitive. The garden's witness taxonomy
-//! gains a *cryptographically-verified* witness alongside leaf 1's counting one.
+//! not: a [`VerifiedShare`] is protected by the **same E0451** — the verification
+//! itself is a runtime computation, but the *checked path* that mints the witness
+//! performs *cryptographic verification* (the Feldman equation) where leaf 1's
+//! checked path only counted. Leaf 1's sealed witness (its `Secret`)
+//! attested "≥ k shares were **presented**"; leaf 2 adds a *per-share* sealed
+//! witness ([`VerifiedShare`], no analogue in leaf 1) attesting "this share
+//! **lies on the committed polynomial**" — a stronger fact, still under the same
+//! E0451. The garden's witness taxonomy gains a *cryptographically-verified*
+//! witness alongside leaf 1's counting one.
 //!
 //! ## ⚠ TOY — not production crypto
 //!
@@ -42,11 +45,14 @@
 //! against **some** [`Commitment`]." A [`Secret`] from [`Commitment::recover`]
 //! witnesses "reconstructed from ≥ k shares that each passed that check, with `k`
 //! fixed by the commitment." **Remaining honest gap:** a `VerifiedShare` is not
-//! bound to a *specific* `Commitment` instance — verify against commitment A and
-//! you could hand the result to `B.recover`, mixing polynomials into garbage.
-//! `recover` cannot detect this. Binding a `VerifiedShare` to its issuing
-//! `Commitment` is **E0308 brand/generativity** — the natural rung-2 hardening,
-//! and (like leaf 1's pointer to VSS) the line this rung draws to the next.
+//! bound to a *specific* `Commitment` instance. [`Commitment::recover`] uses only
+//! its own *length* (for `k`), never its coefficient values — so a full set
+//! verified against commitment A, handed to `B.recover` (same `k`), reconstructs
+//! **A's** secret, not B's (interleaving two commitments' sets gives an unrelated
+//! value). `recover` cannot detect either. Binding a `VerifiedShare` to its
+//! issuing `Commitment` is **E0308 brand/generativity** — a natural rung-2
+//! hardening, and (like leaf 1's pointer to VSS) a line this rung draws to the
+//! next.
 //!
 //! ## Intended use
 //!
@@ -102,7 +108,10 @@ pub struct Commitment {
 ///
 /// `VerifiedShare` has private fields and no public constructor: it can *only* be
 /// produced by [`Commitment::verify`], so holding one is proof the share lay on
-/// the committed polynomial. Building one directly does not compile:
+/// the polynomial of *the commitment it was verified against*. It says nothing
+/// about any *other* commitment — the same point may well lie on another's
+/// polynomial too (see the crate-level gap note). Building one directly does not
+/// compile:
 ///
 /// ```compile_fail
 /// use vss_types::VerifiedShare;
@@ -114,10 +123,13 @@ pub struct VerifiedShare {
     y: u16,
 }
 
-/// A reconstructed value: `f(0)` recovered from verified shares. Because every
-/// input was checked against the commitment and `k` was fixed by it, this *is*
-/// the dealt secret (up to the toy backend's non-secrecy) — the authenticity
-/// leaf 1 could not certify.
+/// A reconstructed value: `f(0)` recovered from verified shares. **Provided the
+/// shares were verified against *this* commitment** (see the crate-level gap
+/// note — `recover` cannot itself confirm that provenance), this is exactly the
+/// dealt secret — the authenticity leaf 1 could not certify. (Confidentiality is
+/// a separate matter the toy does not provide; see the TOY banner.) Without that
+/// pairing discipline it is the secret of *whatever*
+/// commitment the shares were verified against.
 ///
 /// # Unforgeability (E0451)
 ///
@@ -160,6 +172,12 @@ pub enum DealError {
 pub enum VerifyError {
     /// The share uses the reserved index `x = 0`.
     ReservedShareIndex,
+    /// `x` or `y` is not the canonical representative in `0..q`. A legitimate
+    /// share always is; rejecting non-canonical values keeps every `VerifiedShare`
+    /// in `1..q × 0..q`, so a raw `x` comparison equals a field comparison (no
+    /// two verified shares can alias the same field point, and `x ≡ 0 mod q`
+    /// cannot slip past the reserved-index guard).
+    NonCanonical { x: u16, y: u16 },
     /// The Feldman check failed: the share is not on the committed polynomial.
     NotOnPolynomial,
 }
@@ -242,6 +260,15 @@ impl Commitment {
         if share.x == 0 {
             return Err(VerifyError::ReservedShareIndex);
         }
+        // Require canonical field representatives. Without this, x = q (≡ 0) would
+        // slip the reserved-index guard, and x = q+1 (≡ 1) would alias a real
+        // point past recover's raw-u16 distinctness check → f_inv(0).
+        if share.x as u32 >= feldman::Q || share.y as u32 >= feldman::Q {
+            return Err(VerifyError::NonCanonical {
+                x: share.x,
+                y: share.y,
+            });
+        }
         let lhs = feldman::g_pow(feldman::G, share.y as u32);
         // rhs = Π Cⱼ^{(x^j mod q)}
         let mut rhs = 1u32;
@@ -265,9 +292,14 @@ impl Commitment {
     /// [`verify`](Commitment::verify), the caller-chosen-`k` and unauthenticated-
     /// share limits of leaf 1 are both closed.
     ///
-    /// Trusts that the `shares` were verified against *this* commitment (see the
-    /// crate-level "one gap left" note); mixing shares from a different
-    /// commitment yields garbage this method cannot detect.
+    /// **Uses only `self`'s length** (for `k`), never its coefficient values — so
+    /// it faithfully interpolates whatever verified points you pass. A full set
+    /// verified against a *different* commitment A (with `A.k == self.k`) recovers
+    /// **A's** secret, not this one's; interleaving sets from two commitments
+    /// yields an unrelated value. `recover` cannot detect either — binding a
+    /// `VerifiedShare` to its issuer (E0308) is a fix (see the crate-level gap
+    /// note). Pairing verified shares with their commitment is the caller's
+    /// responsibility until then.
     pub fn recover(&self, shares: &[VerifiedShare]) -> Result<Secret, RecoverError> {
         let k = self.threshold();
         if shares.len() < k {
@@ -341,6 +373,34 @@ mod tests {
         assert_eq!(
             c.verify(Share { x: 42, y: 99 }),
             Err(VerifyError::NotOnPolynomial)
+        );
+    }
+
+    #[test]
+    fn noncanonical_indices_and_values_are_rejected() {
+        // Regression: an x ≥ q that aliases a real point mod q (x = q+1 ≡ 1) must
+        // NOT verify — otherwise it slips recover's raw-u16 distinctness check and
+        // hits f_inv(0). And x = q ≡ 0 must not bypass the reserved-index guard.
+        let th = t(3, 5);
+        let (c, shares) = deal_with_coeffs(0x42, th, &[11, 200]).unwrap();
+        let q = feldman::Q as u16; // 257
+        assert_eq!(
+            c.verify(Share {
+                x: q + 1,
+                y: shares[0].y,
+            }),
+            Err(VerifyError::NonCanonical {
+                x: q + 1,
+                y: shares[0].y,
+            })
+        );
+        assert_eq!(
+            c.verify(Share { x: q, y: 5 }),
+            Err(VerifyError::NonCanonical { x: q, y: 5 })
+        );
+        assert_eq!(
+            c.verify(Share { x: 1, y: q + 3 }),
+            Err(VerifyError::NonCanonical { x: 1, y: q + 3 })
         );
     }
 

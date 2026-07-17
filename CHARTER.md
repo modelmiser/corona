@@ -88,7 +88,7 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 |---|---|---|---|
 | `corona-core` | infra | shared vocabulary | — (grows only when a primitive is proven shared) |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
-| `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451, but the sealed witness (`VerifiedShare`) now witnesses a cryptographic fact (share ∈ committed polynomial), not just a count.** Closes leaf 1's two limits (threshold pinned by commitment length; shares authenticated) |
+| `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451, but leaf 2 adds a per-share sealed witness (`VerifiedShare`, no analogue in leaf 1) attesting a cryptographic fact (share ∈ committed polynomial) where leaf 1's witness only counted.** Closes leaf 1's two limits (threshold pinned by commitment length; shares authenticated) |
 
 ### `corona-core` promotion check (at leaf 2)
 

@@ -48,9 +48,10 @@ shares*. A `VerifiedShare` is the E0451-sealed witness of that check, and
 `Commitment::recover` reads `k` **from the commitment's length** — so the threshold
 is pinned, not caller-asserted, and every input is authenticated. The rung's
 question — *does verifiability need a new compile primitive?* — answers **no**: the
-**same E0451**, but the sealed witness now attests a *cryptographic fact* (share ∈
-committed polynomial) rather than a count. The one gap left (a `VerifiedShare` is
-not yet bound to a *specific* commitment instance) is the pointer to an E0308-branded
+**same E0451**, but leaf 2 *adds* a per-share sealed witness (`VerifiedShare`, no
+analogue in leaf 1) attesting a *cryptographic fact* (share ∈ committed polynomial)
+where leaf 1's witness only counted. The one gap left (a `VerifiedShare` is not yet
+bound to a *specific* commitment instance) is the pointer to an E0308-branded
 hardening.
 
 > ⚠ **TOY.** `vss-types` uses breakable parameters (`q=257, p=1543, g=64`) — the
@@ -61,7 +62,7 @@ hardening.
 ## Build
 
 ```sh
-cargo test --workspace          # 25 unit tests + 5 doctests (incl. two sealed-constructor compile-fails)
+cargo test --workspace          # 26 unit tests + 5 doctests (incl. two sealed-constructor compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
