@@ -1,0 +1,9 @@
+[package]
+name = "erasure-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 3 — Reed-Solomon k-of-n erasure coding as typestate. TOY: a type-discipline demonstration, not production coding."
+license = "MIT"
+
+[dependencies]
+corona-core = { path = "../corona-core" }

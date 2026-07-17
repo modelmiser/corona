@@ -16,7 +16,8 @@ Corona leaf contributes a Lean formalization to Sol. See [`CHARTER.md`](CHARTER.
 corona/
 ├── corona-core/      # thin shared vocabulary — today just the k-of-n Threshold
 ├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
-└── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
+├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
+└── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -68,10 +69,28 @@ primitives (E0451 + brand) and introduces no new one.
 > commitments also *leak* `g^{secret}` (no hiding). Do not protect real secrets
 > with it.
 
+## Leaf 3: `erasure-types`
+
+Reed–Solomon *k-of-n* erasure coding — the **paired axis** to leaf 1. RS is
+*literally Shamir's polynomial machinery* with the secret+randomness swapped for
+`k` data symbols: `encode` makes `n` fragments (the first `k` are the data —
+systematic — the rest parity), and any `k` reconstruct the data. Same Lagrange
+interpolation, opposite property: below `k` a Shamir share reveals *nothing*
+(confidentiality), while an RS fragment *leaks* (no secrecy) but any `k` restore
+*availability*. The rung's finding: **the typestate is identical** (an E0451-sealed
+`RecoveredData` + a runtime k-of-n check); the confidentiality-vs-availability axis
+lives entirely in the *math*, invisible to the types. The deliberate contrast:
+`Secret` redacts its `Debug`; `RecoveredData` does **not** — the data is public,
+and the seal witnesses the *recovery event* (availability), not secrecy.
+
+> ⚠ **TOY.** `erasure-types` does plain *erasure* decoding — **no error detection
+> or correction**, so a corrupted fragment silently yields wrong data. Not for
+> protecting real data against corruption.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 26 unit tests + 6 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 35 unit tests + 8 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

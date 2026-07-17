@@ -35,8 +35,9 @@ work (complete tasks, add children, keep siblings).
 - [x] Brand `VerifiedShare` (bind to issuing `Commitment`) — DONE via an invariant
       *generative lifetime* (`deal_scoped`'s `for<'brand>` closure). Cross-commitment
       `recover` no longer compiles. NOTE: realized as a lifetime brand (zero-dep,
-      forbid-unsafe), so the diagnostic is a *lifetime error*, not literally E0308;
-      literal E0308 would need the `generativity` crate's unsafe guards.
+      forbid-unsafe), so the diagnostic is a *lifetime error*, not literally E0308
+      (literal E0308 needs nominal type brands, un-mintable fresh per value in safe
+      Rust — the lifetime diagnostic is inherent; see the WITHDRAWN note below).
 - [x] Cold-review the branded leaf-2 surface to convergence — 3 rounds (MOD 3→0→0),
       two consecutive clean rounds. Branding proven sound (4 rejected exploit crates).
       Fixes: sealed `interpolate_at_zero` value-bypass + type-vs-value disclosure;
@@ -46,7 +47,20 @@ work (complete tasks, add children, keep siblings).
       E0308. Literal E0308 needs nominal type brands (not mintable fresh per value in
       safe Rust). The lifetime diagnostic is inherent; no cleaner path exists.
 
+## Now (leaf 3 — erasure-types)
+
+- [x] Seed erasure-types: Reed–Solomon k-of-n erasure coding, sealed `RecoveredData`
+      (E0451, non-redacting — the deliberate paired-axis contrast to `Secret`), systematic
+      encode + Lagrange erasure decode over GF(256). 9 unit + 2 doctests; gates green.
+- [x] `corona-core` promotion check (leaf-3 trigger): **GF(256) now shared by leaf 1 +
+      leaf 3** → real promotion candidate. FLAGGED, not done (would refactor converged
+      `threshold-types`). See CHARTER.
+- [ ] Cold-review the leaf-3 surface to convergence (as before) — NOT yet done
+- [ ] Promote `gf256` → `corona-core`, refactor `threshold-types` + `erasure-types` to
+      use it (the flagged leaf-3 DRY debt)
+- [ ] Error-correcting Reed–Solomon (detect/correct *corrupted* fragments) — closes the
+      "fragments unverified" limit; the availability-axis analogue of VSS. A rung-3 hardening
+
 ## Parking lot (garden, not scheduled)
 
-- `erasure-types` — Reed–Solomon k-of-n (availability vs confidentiality paired axis)
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)

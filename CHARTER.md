@@ -89,31 +89,39 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 | `corona-core` | infra | shared vocabulary | — (grows only when a primitive is proven shared) |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
 | `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451 (`VerifiedShare` attests a cryptographic fact, not a count) plus the E0308-class *brand* (an invariant generative lifetime binding each share to its commitment).** Uses **two** garden primitives, no new one. Closes leaf 1's two limits *and* the provenance gap (cross-commitment `recover` does not compile) |
+| `erasure-types` | research (toy) | Reed–Solomon k-of-n erasure coding | the paired axis to leaf 1 — *availability*, not confidentiality → **the typestate is identical (E0451-sealed `RecoveredData` + runtime k-of-n check); the confidentiality-vs-availability axis lives in the math, invisible to the types.** RS = Shamir with data (not secret+randomness) in the polynomial; deliberate contrast: `RecoveredData` does *not* redact (data is public) |
 
-### `corona-core` promotion check (at leaf 2)
+### `corona-core` promotion check (at leaves 2 and 3)
 
-Per the thin-core rule, leaf 2 is when we ask what is *proven* shared. Finding: the
-only shared **primitive** remains [`Threshold`] (already in core). The redacting,
-sealed `Secret`-byte is *structurally* identical across both leaves but
-*semantically* distinct (leaf 1's `Secret` is `f(0)` of presented points; leaf 2's
-is authenticated), and the cold review of leaf 1 showed per-type doc precision
-carries real weight — so it stays **per-leaf**, not promoted. Revisit if a 3rd leaf
-repeats the exact shape. (Keeping core thin beats DRY here.)
+Per the thin-core rule, each new leaf asks what is *proven* shared.
+- **Leaf 2:** the redacting sealed `Secret`-byte is *structurally* identical to
+  leaf 1's but *semantically* distinct (leaf 1's is `f(0)` of presented points,
+  leaf 2's is authenticated), and cold review showed per-type doc precision carries
+  weight — so it stays **per-leaf**. Only [`Threshold`] is promoted (already core).
+- **Leaf 3:** **GF(256) field arithmetic is now genuinely shared** (leaf 1 + leaf 3
+  use the identical `gf256` module; leaf 2 uses a different prime field). This *is*
+  a real promotion candidate — the exact "3rd leaf repeats the shape" case leaf 2
+  deferred to. **Flagged, not yet done:** promoting means refactoring the converged
+  `threshold-types`, so the leaf-3 seed keeps a flagged local copy and queues the
+  promotion (`gf256` → `corona-core`) as a deliberate follow-up. This is the one
+  place DRY now beats thin-core-purity — pending the refactor.
 
 ### Lineage (the pattern that predates the plan)
 
 `warp-types` (GPU/local invariants) → `quorum-types` (distributed generalization)
-→ `threshold-types` (cryptographic thresholds) → `vss-types` (verifiable thresholds).
-Corona names the family these already form; it is recognition, not new scope.
+→ `threshold-types` (cryptographic thresholds) → `vss-types` (verifiable thresholds)
+→ `erasure-types` (the availability-axis dual). Corona names the family these
+already form; it is recognition, not new scope.
 
 ### Candidate future leaves
 
-- `erasure-types` — Reed–Solomon k-of-n. Same reconstruction skeleton as Shamir,
-  opposite property (*availability*, not confidentiality). A paired axis.
+- **Error-correcting Reed–Solomon** — detect/correct *corrupted* fragments (not
+  just erasures), the availability-axis analogue of what VSS added to Shamir.
+  Closes `erasure-types`' "fragments unverified" limit. A rung-3 hardening.
 
-*(Done: the branded `VerifiedShare` — `vss-types` now binds each share to its
-issuing `Commitment` with an invariant generative lifetime, closing the provenance
-gap. See its module docs.)*
+*(Done: the branded `VerifiedShare` (leaf 2, invariant generative lifetime,
+provenance gap closed); the erasure-coding paired axis (leaf 3). See their module
+docs.)*
 
 ## Records
 

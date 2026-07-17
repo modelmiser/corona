@@ -7,6 +7,13 @@ name = "corona-core"
 version = "0.1.0"
 
 [[package]]
+name = "erasure-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
+]
+
+[[package]]
 name = "threshold-types"
 version = "0.1.0"
 dependencies = [
