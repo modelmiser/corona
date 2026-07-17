@@ -10,9 +10,10 @@
 //! > "this witness is fresh against the current accumulator" reduce to the garden's
 //! > vocabulary, or does it stop somewhere?*
 //!
-//! The answer is a **split**, exactly the shape `ecash-types` (leaf 9) found for
-//! double-spend, now drawn *inside the brand primitive* the way `ratchet-types`
-//! (leaf 10) drew a boundary inside E0382:
+//! The answer is a **split** — the shape `ecash-types` (leaf 9) found for
+//! double-spend (there a three-layer split; here a two-part one), now drawn *inside
+//! the brand primitive* the way `ratchet-types` (leaf 10) drew a boundary inside
+//! E0382:
 //!
 //! - **Snapshot-identity binding reduces to the brand.** Each immutable snapshot of
 //!   the accumulator is taken in a fresh generative-lifetime scope. A [`Commit`] and
@@ -21,14 +22,17 @@
 //!   it does not compile. This is `merkle-types`' rung-2 mechanism, on evolving
 //!   ground.
 //! - **Freshness itself does *not* reduce** — it is an irreducible **runtime** check.
-//!   A [`Witness`] is public data that crosses the wire (a light client sends it to a
-//!   verifier), so — like `merkle-types`' `Proof` — it is **unbranded by necessity**:
-//!   you cannot brand bytes you serialize. With no brand to check, whether a wire
-//!   witness is *stale* (drawn at a different epoch than the one verifying it) can
-//!   only be decided by comparing epoch *numbers* at runtime ([`VerifyError::Stale`]).
-//!   No compile-time fact supplies it, for the same reason leaf 9's redeem-time
-//!   freshness and leaf 1's share-counting stay runtime: the thing whose freshness
-//!   you are testing is fixed before you know the current state.
+//!   A [`Witness`] must **outlive** the snapshot that issued it (it is drawn at epoch
+//!   *N* and presented to the accumulator at epoch *N+1* precisely so it can be judged
+//!   stale), and a branded value cannot escape its generative scope — so the witness
+//!   is **unbranded by necessity**, quite apart from the further fact that you cannot
+//!   brand the bytes once they are serialized across a wire. With no brand to check,
+//!   whether a wire witness is *stale* (drawn at a different epoch than the one
+//!   verifying it) can only be decided by comparing epoch *numbers* at runtime
+//!   ([`VerifyError::Stale`]). No compile-time fact supplies it, for the same reason
+//!   leaf 9's redeem-time freshness stays runtime — the state you test against changes
+//!   after compile time — while leaf 1's share-counting is runtime by nature (a
+//!   count, a different residue, not a freshness test at all).
 //!
 //! ## The new datum: the boundary is *inside* the brand
 //!
@@ -342,6 +346,14 @@ pub enum VerifyError {
     /// The witness was drawn at a different epoch than this snapshot — it is stale.
     /// This is the **runtime freshness residue**: no compile-time fact could have
     /// caught it, because the [`Witness`] is unbranded wire data.
+    ///
+    /// This verdict carries **no security weight** in this append-only toy: any `add`
+    /// changes the root, so the fold in [`Commit::verify`] would reject a stale witness
+    /// on its own (its old root no longer matches), and membership soundness rests
+    /// entirely on that root comparison — never on the `pub epoch` field, which a
+    /// caller can freely edit. The explicit check only turns "the fold happens to
+    /// fail" into a *named, total, hash-independent* verdict; do not read `Stale` vs
+    /// [`NotAMember`](VerifyError::NotAMember) as a trust boundary.
     Stale {
         /// The epoch the witness was drawn at.
         witness_epoch: u64,
@@ -750,8 +762,9 @@ mod tests {
     #[test]
     fn root_changes_on_every_add() {
         // The append-only property behind staleness-by-root: each epoch has a
-        // distinct commitment (with overwhelming probability under an honest hash;
-        // certainly for these distinct inputs).
+        // distinct commitment (with overwhelming probability under an honest hash —
+        // and, for these specific fixed inputs, verified outright by the assertions
+        // below).
         let mut acc = Accumulator::new();
         let mut roots = Vec::new();
         for e in [b"a".as_ref(), b"b", b"c", b"d"] {
