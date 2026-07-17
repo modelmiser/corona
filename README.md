@@ -270,11 +270,13 @@ binds it to the Merkle-authenticated position — which *forecloses* the
 degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 
 > ⚠ **TOY.** Inherits leaf 3's table-lookup GF(256) and leaf 4's FNV hash. The
-> anchor `(root_hash, k, n)` is caller-trusted as a unit — geometry lies are
-> largely *caught* (spurious rejection at verify; `InconsistentEncoding` at
-> retrieve), with anchor-determined truncation/extension residues under k-lies
-> (all regression-tested). Data-structure only: the AVID dispersal *protocol*
-> (echo/ready quorums) is out of scope.
+> anchor `(root_hash, k, n)` is caller-trusted as a unit — n-lies and
+> understated k-lies are *caught* (spurious rejection at verify;
+> `InconsistentEncoding` at retrieve, with a low-degree-data truncation edge),
+> while an overstated k is never caught: its whole acceptance is the
+> anchor-determined parity-extension residue (all regression-tested).
+> Data-structure only: the AVID dispersal *protocol* (echo/ready quorums) is
+> out of scope.
 
 ## Build
 

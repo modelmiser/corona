@@ -139,14 +139,18 @@
 //!   modestly claims). What an `n`-lie *does* do is **spuriously reject genuine
 //!   fragments** — possibly all of them (availability loss) — and any subset it
 //!   still accepts is then caught by the retrieval consistency check
-//!   (re-encoding under the lying `n` cannot reproduce the committed root). A
-//!   `k`-lie is likewise largely caught as
-//!   [`InconsistentEncoding`](RetrieveError::InconsistentEncoding); the
-//!   anchor-determined residue: an **overstated** `k' > k` retrieves the data
-//!   *extended* with the leading parity bytes (the true polynomial also fits
-//!   degree `k' - 1`), and an **understated** `k' < k` succeeds only when the
-//!   committed encoding happens to have degree `< k'` (e.g. GF-collinear data),
-//!   retrieving an anchor-determined *truncation* — both regression-tested.
+//!   (re-encoding under the lying `n` cannot reproduce the committed root, up
+//!   to hash collision). A `k`-lie splits by direction: an **understated**
+//!   `k' < k` is caught as
+//!   [`InconsistentEncoding`](RetrieveError::InconsistentEncoding) *except*
+//!   when the committed encoding happens to have degree `< k'` (e.g.
+//!   GF-collinear data), where it retrieves an anchor-determined *truncation*;
+//!   an **overstated** `k' > k` is *never* caught by the check — its entire
+//!   acceptance is the anchor-determined residue (the true polynomial also
+//!   fits degree `k' - 1`, so it retrieves the data *extended* with the
+//!   leading parity bytes), and it also raises the retrieval bar from `k` to
+//!   `k'` witnesses (below that: a plain `Decode` refusal — an availability
+//!   cost). All residues regression-tested.
 //!   "Pinned by the anchor" means pinned to the *anchor*, not to the truth of
 //!   the dispersal; adopt all three values from one trusted source.
 //! - **A [`VerifiedFragment`] is membership evidence, not retrievability.**
@@ -744,7 +748,16 @@ mod tests {
         let n9 = DispersalAnchor::adopt(anchor.root_hash(), 3, 9).unwrap();
         assert!(
             packages.iter().all(|p| n9.verify(p).is_none()),
-            "total spurious rejection"
+            "overstated: total spurious rejection"
+        );
+
+        // The UNDERSTATED direction likewise cannot re-position — here every
+        // genuine proof's shape disagrees with the 4-leaf geometry, so the
+        // lie is pure rejection as well.
+        let n4 = DispersalAnchor::adopt(anchor.root_hash(), 3, 4).unwrap();
+        assert!(
+            packages.iter().all(|p| n4.verify(p).is_none()),
+            "understated: total spurious rejection"
         );
 
         let n6 = DispersalAnchor::adopt(anchor.root_hash(), 3, 6).unwrap();
