@@ -3,7 +3,10 @@
 //! Corona **leaf 9**, the garden's first **negative-space leaf**. Every leaf
 //! so far answered its thesis question **yes** — *does this invariant reduce
 //! to the compile-primitive vocabulary?* for leaves 1–6, *do leaves compose?*
-//! for leaves 7–8. This leaf asks the question of double-spend prevention —
+//! for leaves 7–8 — though some yeses carried a disclosed runtime residue
+//! (leaf 1's share-counting stayed a runtime check). This leaf's residue is
+//! different in kind: argued *definitional*, not contingent, which is what
+//! makes it the first "no". It asks the question of double-spend prevention —
 //! the defining invariant of bearer value — and the answer is a **split**:
 //! the invariant reduces exactly as far as the type checker's reach extends,
 //! and — for *bearer* value, definitionally (see layer 2's scoping) — no
@@ -26,9 +29,11 @@
 //!    sits outside any discipline. (In a *closed* system whose every endpoint
 //!    is itself a type-checked program sharing the protocol — the territory
 //!    of distributed/multiparty **session types** — linearity genuinely does
-//!    extend across wires; but that *constrains the holder*, the same move
-//!    trusted hardware makes below, and bearer value is precisely the refusal
-//!    of that constraint.) [`WireCoin`] states the premise honestly by being
+//!    extend across wires; but that *constrains the holder and the channel*
+//!    (session-typed linearity assumes a non-duplicating transport — a
+//!    tapped-and-replayed wire re-forks it), the same move trusted hardware
+//!    makes below, and bearer value is precisely the refusal of those
+//!    constraints.) [`WireCoin`] states the premise honestly by being
 //!    all-public and `Copy`: after [`into_wire`](Coin::into_wire), a "double
 //!    spend" **type-checks**. What prevents it is the mint's **spent set** —
 //!    a runtime, stateful, *online* check ([`Mint::redeem`]), first
@@ -72,8 +77,8 @@
 //! not to move money. The coin tag is 64-bit FNV-1a keyed by concatenation —
 //! **not a PRF, invertible**: an adversary who observes one wire coin can
 //! unwind the serial's hash steps to the keyed intermediate state (an
-//! effective MAC key for *any* serial) and, with modest further work, the
-//! secret itself — either way, forging freely (see `src/hash.rs`). There
+//! effective MAC key for *any* serial) and, with a ~2³² meet-in-the-middle,
+//! the secret itself — either way, forging freely (see `src/hash.rs`). There
 //! is no blinding (Chaum's actual 1982 contribution — payer anonymity — is
 //! entirely absent), no denominations, no transfer between holders, no
 //! persistence. **Do not move value with this.** Graduation swaps the hash for
@@ -276,8 +281,18 @@ pub struct WireCoin {
 /// log-hygiene policy is uniform across all three secret-adjacent types).
 /// `PartialEq` compares the full fact — serial *and* mint identity — so two
 /// receipts reveal whether their mints share a secret; since receipts cannot
-/// be injected (E0451), this only ever compares facts already legitimately
-/// held, and same-seed replicas compare equal by design (layer 3).
+/// be injected (E0451), this only ever compares facts [`Mint::redeem`]
+/// actually minted (though under the toy hash the *presenter* need not be
+/// legitimate — a valid-tag forgery mints a real fact), and same-seed
+/// replicas compare equal by design (layer 3).
+///
+/// Building a `Receipt` directly does not compile — the seal is pinned like
+/// [`Coin`]'s:
+///
+/// ```compile_fail,E0451
+/// use ecash_types::Receipt;
+/// let forged = Receipt { serial: 1, mint_id: 2 }; // error[E0451]: fields are private
+/// ```
 #[derive(Clone, PartialEq, Eq)]
 pub struct Receipt {
     serial: u64,
@@ -320,10 +335,13 @@ pub enum RedeemError {
     /// spent-set membership and never burns a serial — a correctly-MAC'd
     /// *future* serial cannot front-run the genuine coin.
     Forged,
-    /// The coin is authentic and was issued by this mint value, but the mint
-    /// value has already accepted its serial once. `DoubleSpent` therefore
-    /// always implies a genuine, issued coin — this is the online check that
-    /// layer 1's compiler cannot perform across the wire.
+    /// The presentation passed both authenticity checks (valid MAC, issued
+    /// serial), but this mint value has already accepted the serial once.
+    /// `DoubleSpent` therefore always implies check-passing and issued —
+    /// this is the online check that layer 1's compiler cannot perform
+    /// across the wire. ("Check-passing", not "genuine": under the toy hash
+    /// a valid-tag forgery passes the same checks and reaches this variant
+    /// too — see the crate banner.)
     DoubleSpent {
         /// The serial that was presented again.
         serial: u64,
@@ -362,10 +380,11 @@ impl Mint {
     ///
     /// # Panics
     ///
-    /// On `u64` serial-space exhaustion (after 2⁶⁴ − 1 issues) — unreachable
-    /// in any real execution. The increment is checked and the panic is
-    /// pinned by a test, so a wrap (which would re-issue serials) cannot
-    /// slip in silently.
+    /// On `u64` serial-space exhaustion: the call after 2⁶⁴ − 2 successful
+    /// issues panics, because the checked increment overflows before serial
+    /// `u64::MAX` could be handed out — unreachable in any real execution.
+    /// The panic is pinned by a test, so a wrap (which would go on to
+    /// duplicate serials) cannot slip in silently.
     pub fn issue(&mut self) -> Coin {
         let serial = self.next_serial;
         self.next_serial = self
@@ -571,12 +590,15 @@ mod tests {
         );
     }
 
+    /// Pins "sequential from 1" exactly — not just distinctness. This is the
+    /// property that makes redeem's range check *mean* "this mint value
+    /// issued this serial": a gapped counter (e.g. step 2) would create
+    /// in-range never-issued serials and silently void "Ok implies issued".
     #[test]
-    fn serials_are_distinct_per_mint_value() {
+    fn serials_are_sequential_from_one() {
         let mut mint = Mint::new(0x07);
         let serials: Vec<u64> = (0..8).map(|_| mint.issue().serial()).collect();
-        let unique: BTreeSet<u64> = serials.iter().copied().collect();
-        assert_eq!(unique.len(), serials.len());
+        assert_eq!(serials, (1..=8).collect::<Vec<u64>>());
     }
 
     #[test]
@@ -614,7 +636,9 @@ mod tests {
 
     /// The exhaustion disclaimer is enforced, not assumed: at the u64
     /// boundary `issue` panics (before handing out a coin) rather than
-    /// wrapping — a wrap would re-issue serial 0 and then duplicate serials.
+    /// wrapping — a wrap would issue serial 0 for the first time (an
+    /// unredeemable coin, since `redeem` rejects 0) and then duplicate
+    /// serials 1, 2, ….
     #[test]
     #[should_panic(expected = "u64 serial space")]
     fn issue_panics_rather_than_wraps_at_serial_exhaustion() {
@@ -661,5 +685,9 @@ mod tests {
             !mint_dbg.to_lowercase().contains("3a"),
             "secret absent (hex)"
         );
+        // The documented operational metadata is shown, not just the secret
+        // hidden: one issue + one redeem → next_serial 2, spent-set size 1.
+        assert!(mint_dbg.contains("next_serial: 2"));
+        assert!(mint_dbg.contains("spent: 1"));
     }
 }

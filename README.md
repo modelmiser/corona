@@ -282,8 +282,9 @@ degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 ## Leaf 9: `ecash-types`
 
 The garden's first **negative-space leaf**. Every prior leaf answered its
-thesis question *yes* — this one locates a point where the vocabulary
-definitionally stops. The invariant is double-spend prevention, the defining
+thesis question *yes* (some with a disclosed runtime residue — leaf 1's
+share-counting stayed a runtime check); this one locates a point where the
+vocabulary stops *definitionally*, not contingently. The invariant is double-spend prevention, the defining
 property of bearer value, and the answer is a **split** across three layers,
 each executable:
 
@@ -295,7 +296,8 @@ each executable:
    only the program it type-checks, and a serialized coin is bytes outside every
    program. That premise is the *bearer threat model*: holders are arbitrary
    and unverified (closed session-typed systems extend linearity across wires
-   precisely by constraining the holder — the constraint bearer value refuses).
+   precisely by constraining the holder *and the channel* — constraints
+   bearer value refuses).
    `WireCoin` says so honestly: all-public and `Copy`, so a double
    spend *type-checks* and is caught instead by the mint's **spent set**
    (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
@@ -315,9 +317,9 @@ each executable:
 The literature agrees with the cut: Chaum 1982 prevents double-spending with
 exactly layer 2 (an online mint), and Chaum–Fiat–Naor (CRYPTO '88) does not
 *prevent* offline double-spends — it reveals the double-spender's identity
-after the fact. Punish, not prevent. (The two exits mirror the taxonomy:
-trusted hardware relocates the spent state into an uncopyable box — the only
-classical exit — and quantum money makes the token itself uncopyable,
+after the fact. Punish, not prevent. (Trusted hardware is a *relocation
+within* the taxonomy — the spent state moves into an uncopyable box; the one
+true exit is quantum money, which makes the token itself uncopyable,
 breaking the bytes-premise rather than the argument.)
 
 > ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
@@ -328,7 +330,7 @@ breaking the bytes-premise rather than the argument.)
 ## Build
 
 ```sh
-cargo test --workspace          # 119 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
+cargo test --workspace          # 119 unit tests + 28 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

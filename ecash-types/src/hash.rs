@@ -6,8 +6,9 @@
 //! reveals nothing about the secret. FNV-1a's steps are invertible (odd
 //! multiplier), so an adversary who has seen one wire coin unwinds the eight
 //! known serial bytes exactly, recovering the post-secret internal state — an
-//! effective MAC key for forging *any* serial — and, with modest further
-//! work, the secret itself. That weakness is deliberate and out of scope:
+//! effective MAC key for forging *any* serial — and, with more work (a ~2³²
+//! meet-in-the-middle over the eight unknown secret bytes), the secret
+//! itself. That weakness is deliberate and out of scope:
 //! this leaf demonstrates *where the type discipline ends*, not the MAC's
 //! strength. Graduation swaps this module for a vetted PRF behind the same
 //! [`coin_tag`]/[`mint_id`] seam — exactly the role the toy hashes play in the
