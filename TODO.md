@@ -73,6 +73,28 @@ work (complete tasks, add children, keep siblings).
       threshold, which took 3 iterations to land airtight (m−t reviewer-wrong → t+1
       mine-wrong-for-odd → **d−t** = ⌈(m−k)/2⌉+1, independently re-derived correct).
 
+## Now (leaf 4 — merkle-types)
+
+- [x] Seed merkle-types: Merkle inclusion proofs as typestate. E0451-sealed
+      `VerifiedLeaf` minted only by `Root::verify` (fold the authentication path,
+      compare to root). First leaf **off the polynomial substrate** (hash tree, not
+      field interpolation) → confirms the seal is **substrate-agnostic** (same
+      reduction as VSS's `Commitment::verify`/`VerifiedShare`, different mechanism).
+      First leaf importing **nothing** from `corona-core` → separates shared *code*
+      (core modules) from the shared *discipline* (the primitives). TOY FNV hash
+      (domain-separated leaf/node tags); promotes odd nodes (avoids CVE-2012-2459).
+      10 unit + 1 doctest; full-workspace gates green (50 unit + 10 doctests).
+- [x] `corona-core` promotion check (leaf-4 trigger): **nothing to promote** — and
+      that's the finding (uses neither `Threshold` nor `gf256`). Core stays thin.
+      See CHARTER.
+- [ ] Cold-review the leaf-4 surface to convergence (2 consecutive clean rounds).
+- [ ] Rung 2: brand `VerifiedLeaf` to its issuing `Root` via an invariant generative
+      lifetime (a `commit_scoped`-style `for<'brand>` closure), so a cross-root
+      mismatch does not compile — mirroring vss-types' rung 2. The identical gap and
+      fix recurring on a hash substrate is itself thesis evidence.
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)
+- Further domains off the polynomial substrate: threshold signatures, a fountain/LT
+  code, a cryptographic accumulator — each a fresh test of the vocabulary.

@@ -17,7 +17,8 @@ corona/
 ├── corona-core/      # thin shared vocabulary — the k-of-n Threshold + the GF(256) field
 ├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
-└── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
+├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
+└── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -104,10 +105,37 @@ distance) can force a *chosen* wrong output. No external commitment, just the al
 > correction but **not** cryptographic authentication. Not for protecting real data
 > against adversarial corruption.
 
+## Leaf 4: `merkle-types`
+
+Merkle inclusion proofs — the first leaf **off the polynomial substrate**. Leaves
+1–3 are all one field + polynomial interpolation; this one is a **hash tree**. It
+re-asks leaf 2's *verifiability* question — does "this element is in the committed
+set" need a new primitive? — on foreign ground, and gets the **same answer**: a
+public `Root` (a hash commitment), a public `Proof` (an authentication path), and
+`Root::verify` (fold the path, compare to root) as the **sole minter** of the
+E0451-sealed `VerifiedLeaf`. Structurally identical to VSS's `Commitment::verify` /
+`VerifiedShare`, over a completely different mechanism.
+
+That is the sharpening it buys: two leaves on one substrate couldn't tell you
+whether "verifiability reduces to E0451" was about *verifiability* or about
+*polynomials*. Merkle answers it — **the seal is substrate-agnostic**, about a
+checked path *existing*, not the math it runs. And it is the first leaf importing
+**nothing** from `corona-core` (no `Threshold`, no `gf256`): it shares the garden's
+**discipline** (the primitives), not any of its **code** (the core modules) — a
+leaf can be fully in the garden while depending on nothing in it.
+
+Rung 1 is unbranded, with the provenance gap documented (a `VerifiedLeaf` isn't yet
+bound to *which* `Root` minted it — the same gap VSS had at *its* rung 1, closing the
+same way at rung 2 via a generative-lifetime brand).
+
+> ⚠ **TOY.** The hash backend is non-cryptographic FNV-1a — a real adversary forges
+> collisions and thus membership. The *type discipline* is the subject, not the
+> hash; graduation swaps in SHA-256 behind the same `leaf_hash`/`node_hash` seam.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 40 unit tests + 9 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 50 unit tests + 10 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
