@@ -89,7 +89,7 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 | `corona-core` | infra | shared primitives | — holds `Threshold` (k-of-n gate) + `gf256` (the GF(256) field, promoted at leaf 3). Grows only when a primitive is proven shared |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
 | `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451 (`VerifiedShare` attests a cryptographic fact, not a count) plus the E0308-class *brand* (an invariant generative lifetime binding each share to its commitment).** Uses **two** garden primitives, no new one. Closes leaf 1's two limits *and* the provenance gap (cross-commitment `recover` does not compile) |
-| `erasure-types` | research (toy) | Reed–Solomon k-of-n erasure coding | a paired axis to leaf 1 — *availability*, not confidentiality → **the unforgeability mechanism is identical (E0451-sealed `RecoveredData` + runtime k-of-n check); the confid-vs-avail axis is invisible to the compiler-enforced seal, reflected only in the API by convention.** RS = the same polynomial-evaluation machinery with data in the *evaluations* vs secret+randomness in the *coefficients*; deliberate contrast: `RecoveredData` does *not* redact (data public). Seal = typestate token (from `decode`), not an availability proof (fragments forgeable) |
+| `erasure-types` | research (toy) | Reed–Solomon k-of-n erasure coding | a paired axis to leaf 1 — *availability*, not confidentiality → **the unforgeability mechanism is identical (E0451-sealed `RecoveredData` + runtime k-of-n check); the confid-vs-avail axis is invisible to the compiler-enforced seal, reflected only in the API by convention.** RS = the same polynomial-evaluation machinery with data in the *evaluations* vs secret+randomness in the *coefficients*; deliberate contrast: `RecoveredData` does *not* redact (data public). Seal = typestate token (from `decode`), not an availability proof (fragments forgeable). Rung-3 hardening `decode_correcting` (Berlekamp–Welch): stronger checked path (error correction) → stronger witness `CorrectedData`, same E0451 — integrity vs *bounded* corruption, NOT authentication (no commitment) |
 
 ### `corona-core` promotion check (at leaves 2 and 3)
 
@@ -115,14 +115,16 @@ already form; it is recognition, not new scope.
 
 ### Candidate future leaves
 
-- **Error-correcting Reed–Solomon** — detect/correct *corrupted* fragments (not
-  just erasures), the availability-axis analogue of what VSS added to Shamir (via
-  the code's own extra parity, not external commitments). Closes `erasure-types`'
-  "fragments unverified" limit. A rung-3 hardening.
+- *(None scheduled — the confidentiality/verifiability/availability axes are all
+  covered, each with its "verifiable/error-correcting" hardening. A fourth domain
+  — e.g. threshold signatures, or a non-polynomial code — would be the next leaf if
+  one is wanted.)*
 
 *(Done: the branded `VerifiedShare` (leaf 2, invariant generative lifetime,
-provenance gap closed); the erasure-coding paired axis (leaf 3). See their module
-docs.)*
+provenance gap closed); the erasure-coding paired axis (leaf 3); the `gf256`
+promotion to `corona-core`; and error-correcting Reed–Solomon (leaf-3 rung-3
+hardening — `decode_correcting`/Berlekamp–Welch, integrity-not-authentication). See
+the module docs.)*
 
 ## Records
 

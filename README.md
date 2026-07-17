@@ -88,14 +88,25 @@ seal* — it surfaces only in the *API by convention*: `Secret` redacts its `Deb
 token* (proof it came from `decode`), **not** an availability proof — fragments are
 public and forgeable.
 
-> ⚠ **TOY.** `erasure-types` does plain *erasure* decoding — **no error detection
-> or correction**, so a corrupted fragment silently yields wrong data. Not for
-> protecting real data against corruption.
+**Rung-3 hardening — `decode_correcting`:** the availability-axis analogue of what
+VSS added to Shamir. Where `decode` *trusts* fragments, `decode_correcting` uses the
+code's own redundancy (Berlekamp–Welch) to **detect and correct** up to `t =
+⌊(m−k)/2⌋` fragments corrupted at *unknown* positions, returning a stronger sealed
+witness (`CorrectedData`) under the **same E0451**. The honest limit (and the reason
+it's not literally VSS): this is *integrity against bounded corruption*, not
+authentication — an adversary controlling more than `t` fragments, or a beyond-`t`
+corruption near another codeword, is not caught. No external commitment, just the
+algebra.
+
+> ⚠ **TOY.** `decode` does plain *erasure* decoding (no integrity — a corrupted
+> fragment silently yields wrong data); `decode_correcting` adds bounded error
+> correction but **not** cryptographic authentication. Not for protecting real data
+> against adversarial corruption.
 
 ## Build
 
 ```sh
-cargo test --workspace          # 33 unit tests + 8 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 40 unit tests + 9 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

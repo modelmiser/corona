@@ -64,8 +64,10 @@ work (complete tasks, add children, keep siblings).
 - [x] Promote `gf256` → `corona-core` — DONE. Both leaves import `corona_core::gf256`;
       local copies deleted; canonical version = `pub` + hard `assert!`. The first
       primitive to graduate out of a leaf (thin-core rule fired at the 2nd sharing).
-- [ ] Error-correcting Reed–Solomon (detect/correct *corrupted* fragments) — closes the
-      "fragments unverified" limit; the availability-axis analogue of VSS. A rung-3 hardening
+- [x] Error-correcting Reed–Solomon — SEEDED as `decode_correcting` (Berlekamp–Welch
+      in `ecc` module) + sealed `CorrectedData`. Corrects ≤⌊(m−k)/2⌋ unknown-position
+      errors; detects beyond. Integrity vs bounded corruption, NOT authentication
+      (honest limit documented). 14 unit + 3 doctests; gates green. NOT yet cold-reviewed.
 
 ## Parking lot (garden, not scheduled)
 

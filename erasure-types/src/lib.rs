@@ -52,14 +52,33 @@
 //!   bound to the encoding; passing the wrong `k'` yields wrong data of the wrong
 //!   length (`k'` bytes) — reading parity symbols as data when `k' > k`, or
 //!   interpolating too low a degree when `k' < k`.
-//! - **Fragments are unverified.** This is *erasure* decoding: it assumes the
-//!   presented fragments are genuine code symbols (lost ones are simply absent). A
-//!   *corrupted* fragment is silently reconstructed into wrong data — undetectable
-//!   here. Detecting/correcting corruption needs extra redundancy
-//!   (error-correcting Reed-Solomon), the availability-axis analogue of what
-//!   verifiable secret sharing ([`vss-types`](../vss_types/index.html)) adds to
-//!   Shamir — though via the code's *own* extra parity and bounded-distance
-//!   decoding, not an external commitment. A natural next rung.
+//! - **`decode` fragments are unverified.** Plain *erasure* decoding assumes the
+//!   presented fragments are genuine (lost ones are simply absent); a *corrupted*
+//!   one is silently reconstructed into wrong data. [`decode_correcting`] closes
+//!   this — see below.
+//!
+//! ## Error correction (rung-3 hardening: [`decode_correcting`])
+//!
+//! [`decode_correcting`] is the availability-axis analogue of what verifiable
+//! secret sharing ([`vss-types`](../vss_types/index.html)) added to Shamir: a
+//! *stronger checked path* yielding a *stronger sealed witness* ([`CorrectedData`]),
+//! under the **same E0451** — no new primitive. Where [`decode`] trusts, it uses
+//! the code's own redundancy (Berlekamp–Welch) to **detect and correct** up to
+//! `t = ⌊(m−k)/2⌋` fragments corrupted at *unknown* positions.
+//!
+//! The parallel to VSS is deliberately imperfect, and the difference is the honest
+//! limit: VSS checks each share against an external cryptographic *commitment*
+//! (adversarially secure); error-correcting RS uses only the *algebraic* redundancy
+//! of the code. So [`CorrectedData`] witnesses **integrity against bounded,
+//! non-adversarial corruption**, not authentication:
+//!
+//! - it corrects up to `t` errors and *detects* more (returning
+//!   [`CorrectError::Uncorrectable`]) — but beyond `t`, bounded-distance decoding
+//!   can still *silently misdecode* to a wrong codeword if the corruption happens
+//!   to land near one;
+//! - an adversary who controls more than `t` of the `m` fragments can force any
+//!   output — `Fragment`s are public and forgeable, and RS has no commitment to
+//!   check them against. For that, you need VSS-style cryptography, not a code.
 //!
 //! ## ⚠ TOY — not production coding
 //!
@@ -95,9 +114,10 @@
 
 #![forbid(unsafe_code)]
 
+use corona_core::gf256;
 use corona_core::Threshold;
 
-use corona_core::gf256;
+mod ecc;
 
 /// One code symbol: the point `(index, value = p(index))` on the data polynomial
 /// over GF(256). Public data — a `Fragment` carries no secret (any fragment leaks
@@ -140,6 +160,42 @@ impl RecoveredData {
     }
 }
 
+/// Data reconstructed by [`decode_correcting`], having **detected and corrected**
+/// up to `t = ⌊(m−k)/2⌋` corrupted fragments.
+///
+/// # Unforgeability (E0451) — a *stronger* typestate witness
+///
+/// Like [`RecoveredData`], a private field with no public constructor — it can
+/// *only* come from [`decode_correcting`]. But its checked path is stronger: it ran
+/// Berlekamp–Welch, so holding one proves the data survived up to `t` corruptions.
+/// This is **integrity against bounded corruption**, *not* cryptographic
+/// authentication — see the crate's error-correction limits (an adversary with more
+/// than `t` bad fragments, or a beyond-`t` corruption that lands near another
+/// codeword, is not caught). The data is public; [`Debug`] is not redacting.
+/// Building one directly does not compile:
+///
+/// ```compile_fail
+/// use erasure_types::CorrectedData;
+/// let forged = CorrectedData { bytes: vec![1], corrected: 0 }; // fields are private
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct CorrectedData {
+    bytes: Vec<u8>,
+    corrected: usize,
+}
+
+impl CorrectedData {
+    /// The recovered data bytes.
+    pub fn bytes(&self) -> &[u8] {
+        &self.bytes
+    }
+
+    /// How many corrupted fragments were detected and corrected.
+    pub fn corrected(&self) -> usize {
+        self.corrected
+    }
+}
+
 /// Why encoding could not be produced.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum EncodeError {
@@ -157,6 +213,22 @@ pub enum DecodeError {
     /// Two fragments share an `index` — interpolation would divide by zero, and
     /// the pair carries no more information than one.
     DuplicateIndex { index: u8 },
+}
+
+/// Why error-correcting decode failed.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum CorrectError {
+    /// Fewer than `k` fragments were presented (can't even interpolate).
+    BelowThreshold { have: usize, need: usize },
+    /// Two fragments share an `index`.
+    DuplicateIndex { index: u8 },
+    /// More than `t = ⌊(m−k)/2⌋` fragments are corrupted — no codeword within the
+    /// correction radius. (Detection; a beyond-`t` corruption *near* a codeword can
+    /// still misdecode silently — see the crate's error-correction limits.)
+    Uncorrectable {
+        presented: usize,
+        max_correctable: usize,
+    },
 }
 
 /// Lagrange evaluation of the data polynomial `p` at `target`, given points
@@ -236,6 +308,44 @@ pub fn decode(fragments: &[Fragment], t: Threshold) -> Result<RecoveredData, Dec
     // Recover the data = p(1)..p(k).
     let bytes: Vec<u8> = (1..=k).map(|d| interpolate_at(&points, d as u8)).collect();
     Ok(RecoveredData { bytes })
+}
+
+/// Reconstruct the data from `m` fragments of which up to `t = ⌊(m−k)/2⌋` may be
+/// **corrupted at unknown positions**, correcting them via Berlekamp–Welch. Returns
+/// a [`CorrectedData`] recording how many errors were fixed, or
+/// [`CorrectError::Uncorrectable`] if the corruption exceeds the correction radius.
+///
+/// This is the rung-3 hardening of [`decode`]: a stronger checked path (algebraic
+/// error correction) yielding a stronger witness — but *integrity against bounded
+/// corruption*, not authentication (see the crate's error-correction limits).
+pub fn decode_correcting(
+    fragments: &[Fragment],
+    t: Threshold,
+) -> Result<CorrectedData, CorrectError> {
+    let k = t.k() as usize;
+    let m = fragments.len();
+    if m < k {
+        return Err(CorrectError::BelowThreshold { have: m, need: k });
+    }
+    for (i, a) in fragments.iter().enumerate() {
+        for b in &fragments[i + 1..] {
+            if a.index == b.index {
+                return Err(CorrectError::DuplicateIndex { index: a.index });
+            }
+        }
+    }
+    let points: Vec<(u8, u8)> = fragments.iter().map(|f| (f.index, f.value)).collect();
+    match ecc::berlekamp_welch(&points, k) {
+        Some((p, corrected)) => {
+            // Data = p(1)..p(k) (systematic evaluation positions).
+            let bytes: Vec<u8> = (1..=k).map(|d| ecc::eval(&p, d as u8)).collect();
+            Ok(CorrectedData { bytes, corrected })
+        }
+        None => Err(CorrectError::Uncorrectable {
+            presented: m,
+            max_correctable: (m - k) / 2,
+        }),
+    }
 }
 
 #[cfg(test)]
@@ -327,5 +437,76 @@ mod tests {
         let frags = encode(&[0x7e], th).unwrap();
         assert!(frags.iter().all(|f| f.value == 0x7e));
         assert_eq!(decode(&frags[3..4], th).unwrap().bytes(), &[0x7e]);
+    }
+
+    // ---- error-correcting decode (Berlekamp–Welch) ----
+
+    #[test]
+    fn corrects_up_to_t_errors() {
+        // 3-of-7: m=7, k=3 ⇒ t = ⌊(7-3)/2⌋ = 2 correctable errors.
+        let th = t(3, 7);
+        let data = [0x11, 0x22, 0x33];
+        for num_errs in 0..=2usize {
+            let mut frags = encode(&data, th).unwrap();
+            // Corrupt the first `num_errs` fragments (flip the value to something else).
+            for f in frags.iter_mut().take(num_errs) {
+                f.value ^= 0x9e;
+            }
+            let out = decode_correcting(&frags, th).unwrap();
+            assert_eq!(out.bytes(), &data, "failed with {num_errs} errors");
+            assert_eq!(out.corrected(), num_errs, "wrong error count");
+        }
+    }
+
+    #[test]
+    fn corrects_every_data_byte_with_one_error() {
+        // 2-of-5: t = ⌊(5-2)/2⌋ = 1. One corrupted fragment, all 256 first-byte values.
+        let th = t(2, 5);
+        for a in 0u8..=255 {
+            let data = [a, a ^ 0x3c];
+            let mut frags = encode(&data, th).unwrap();
+            frags[2].value ^= 0xff; // corrupt one parity fragment
+            let out = decode_correcting(&frags, th).unwrap();
+            assert_eq!(out.bytes(), &data);
+            assert_eq!(out.corrected(), 1);
+        }
+    }
+
+    #[test]
+    fn beyond_t_errors_is_detected() {
+        // 3-of-7, t=2. Inject 3 errors chosen to NOT land near another codeword:
+        // corrupt three fragments to a constant — decode should report Uncorrectable.
+        let th = t(3, 7);
+        let mut frags = encode(&[0x11, 0x22, 0x33], th).unwrap();
+        frags[0].value = 0;
+        frags[1].value = 0;
+        frags[2].value = 0;
+        assert_eq!(
+            decode_correcting(&frags, th),
+            Err(CorrectError::Uncorrectable {
+                presented: 7,
+                max_correctable: 2,
+            })
+        );
+    }
+
+    #[test]
+    fn clean_fragments_correct_zero_errors() {
+        let th = t(3, 6);
+        let data = [0xaa, 0xbb, 0xcc];
+        let frags = encode(&data, th).unwrap();
+        let out = decode_correcting(&frags, th).unwrap();
+        assert_eq!(out.bytes(), &data);
+        assert_eq!(out.corrected(), 0);
+    }
+
+    #[test]
+    fn correcting_below_threshold_is_refused() {
+        let th = t(3, 7);
+        let frags = encode(&[1, 2, 3], th).unwrap();
+        assert_eq!(
+            decode_correcting(&frags[..2], th),
+            Err(CorrectError::BelowThreshold { have: 2, need: 3 })
+        );
     }
 }
