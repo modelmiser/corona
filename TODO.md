@@ -95,10 +95,18 @@ work (complete tasks, add children, keep siblings).
       sharpened the index-symmetry claim to the exact group-orbit characterization
       (confirmed accepted-set == orbit across 13.7M acceptances). merkle 10→12 unit;
       workspace 50→52. Commit `b4f451b`.
-- [ ] Rung 2: brand `VerifiedLeaf` to its issuing `Root` via an invariant generative
-      lifetime (a `commit_scoped`-style `for<'brand>` closure), so a cross-root
-      mismatch does not compile — mirroring vss-types' rung 2. The identical gap and
-      fix recurring on a hash substrate is itself thesis evidence.
+- [x] Rung 2: brand `VerifiedLeaf` to its issuing `Root` via an invariant generative
+      lifetime — DONE (`36c6e99`). `Root<'brand>` + `VerifiedLeaf<'brand>` carry a
+      `PhantomData<fn(&'brand())->&'brand()>` brand introduced by `commit_scoped`'s
+      `for<'brand>` closure; same-brand consumer `Root::authenticated_positions`
+      accepts only this root's witnesses → cross-root is a compile error (verified: a
+      lifetime error + E0521, not literal E0308, as in vss). `build` → private
+      `build_inner` behind `commit_scoped` (sole entry, keeps the brand generative).
+      Leaf 4 now uses TWO garden primitives (E0451 + brand), no new one. merkle 12
+      unit + 2 doctests (added a `compile_fail`); workspace 52 unit + 11 doctests.
+- [ ] Cold-review the branded rung-2 surface to convergence (mirror vss: prove the
+      brand SOUND — adversaries write *compiling* escape/forge crates, compiler must
+      reject all; confirm no unbranded path to a `Root`/`VerifiedLeaf`).
 
 ## Parking lot (garden, not scheduled)
 
