@@ -251,9 +251,10 @@ impl fmt::Debug for Coin {
 /// admits valid-tag forgeries), and spent-ness at its spent set.
 ///
 /// Its derived `Debug` prints the tag in the clear — deliberately outside
-/// the crate's redaction policy, which covers the three *sealed* types:
-/// redacting Debug over `pub` fields would be theater. The flip side is
-/// real: a logged genuine `WireCoin` is a spendable coin.
+/// the crate's redaction policy, which covers the three *secret-adjacent*
+/// types (Coin, Receipt, Mint): redacting Debug over `pub` fields would be
+/// theater. The flip side is real: a logged genuine `WireCoin` is a
+/// spendable coin.
 ///
 /// Constructing one from thin air compiles (that is the point — contrast the
 /// sealed [`Coin`]):
@@ -268,9 +269,9 @@ impl fmt::Debug for Coin {
 pub struct WireCoin {
     /// The claimed serial number.
     pub serial: u64,
-    /// The claimed tag. It authenticates only if it equals the mint's MAC
-    /// over the serial **and** the serial is in that mint value's issued
-    /// range — both checked only by [`Mint::redeem`]. (And under the toy
+    /// The claimed tag. It passes [`Mint::redeem`]'s gates only if it
+    /// equals the mint's MAC over the serial **and** the serial is in that
+    /// mint value's issued range — checked nowhere else. (And under the toy
     /// hash anyone who has observed a coin can compute a matching MAC — see
     /// the crate banner.)
     pub tag: u64,
@@ -290,8 +291,11 @@ pub struct WireCoin {
 ///
 /// The `Debug` impl redacts the mint identity: under the toy invertible hash,
 /// a logged `mint_id` is a mint-secret–recovery channel (a real PRF-derived
-/// identity would leak nothing; it is redacted anyway so the crate's
-/// log-hygiene policy is uniform across all three secret-adjacent types).
+/// identity over a real ≥ 2¹²⁸ key space would leak nothing *about the
+/// secret* — though it would still link receipts to their mint, the same
+/// equality channel `PartialEq` discloses below; it is redacted anyway so
+/// the crate's log-hygiene policy is uniform across all three
+/// secret-adjacent types).
 /// `PartialEq` compares the full fact — serial *and* mint identity — so two
 /// *same-serial* receipts reveal whether their mints share a secret
 /// (different serials compare unequal regardless); since receipts cannot
@@ -369,8 +373,8 @@ pub enum RedeemError {
     /// spent-set membership and never burns a serial — a correctly-MAC'd
     /// *future* serial cannot front-run the genuine coin.
     Forged,
-    /// The presentation passed both authenticity checks (valid MAC, issued
-    /// serial), but this mint value has already accepted the serial once.
+    /// The presentation passed both gates (valid MAC, issued serial), but
+    /// this mint value has already accepted the serial once.
     /// `DoubleSpent` therefore always implies check-passing and issued —
     /// this is the online check that layer 1's compiler cannot perform
     /// across the wire. ("Check-passing", not "genuine": under the toy hash
@@ -444,8 +448,8 @@ impl Mint {
         }
     }
 
-    /// Redeem a wire coin: **the online check**. Verifies authenticity first
-    /// — the tag must MAC the serial under this mint's secret **and** the
+    /// Redeem a wire coin: **the online check**. Gates the presentation
+    /// first — the tag must MAC the serial under this mint's secret **and** the
     /// serial must be one this mint value has issued (so a check-failing
     /// presentation learns nothing about the spent set and burns nothing;
     /// a *valid*-tag forgery,
@@ -666,6 +670,18 @@ mod tests {
         assert!(
             mint.redeem(coin.into_wire()).is_ok(),
             "the genuine serial-1 coin was not burned by the front-run attempt"
+        );
+    }
+
+    /// The seed IS the secret: pins the seam between `Mint::new` and the
+    /// tag derivation. (A seed-relabeling mutant — `secret: seed ^ 1` —
+    /// survives every other test, because they all route the secret through
+    /// the same mutated field; this is the one seam-crossing assertion.)
+    #[test]
+    fn the_seed_is_the_secret() {
+        assert_eq!(
+            Mint::new(0x5EED).issue().into_wire().tag,
+            hash::coin_tag(0x5EED, 1)
         );
     }
 

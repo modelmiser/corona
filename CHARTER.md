@@ -55,8 +55,9 @@ A crate graduates only when **all** hold:
 1. Its thesis question is answered and recorded (DEVLOG/INSIGHTS).
 2. Every illustrative backend is replaced by a vetted dependency behind the
    *same* types — the graduation seam is an **implementation swap** (a new
-   `impl` of the seam trait, e.g. `threshold-types::Reconstruct`), **not a
-   rewrite**; the trait stays, its implementing type changes.
+   `impl` of the seam trait, e.g. `threshold-types::Reconstruct`, or a new
+   body behind a module-boundary seam, e.g. the merkle/lamport/ecash toy
+   `hash` modules), **not a rewrite**; the seam stays, what fills it changes.
 3. A security/limits section states what the types do and do **not** witness.
 4. It carries a Lean formalization contributed to Sol (see below), or an explicit
    note of why it cannot.

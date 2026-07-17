@@ -28,6 +28,8 @@ corona/
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
 only when a second leaf proves a primitive common — never speculatively from one.
+Shared *permanent* code, that is: per-leaf toy backends are graduation swap-points
+and don't promote however often they textually recur.
 (`gf256` is the first graduate: it moved into the core once leaf 3 repeated leaf 1's
 GF(256) field. Leaf 2 uses a different prime field, so it stays shared-not-universal.)
 
