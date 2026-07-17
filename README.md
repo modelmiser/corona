@@ -334,7 +334,7 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 ## Build
 
 ```sh
-cargo test --workspace          # 121 unit tests + 29 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, const-eval-wall)
+cargo test --workspace          # 122 unit tests + 29 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
