@@ -22,6 +22,14 @@ name = "merkle-types"
 version = "0.1.0"
 
 [[package]]
+name = "mss-types"
+version = "0.1.0"
+dependencies = [
+ "lamport-types",
+ "merkle-types",
+]
+
+[[package]]
 name = "static-config-types"
 version = "0.1.0"
 dependencies = [

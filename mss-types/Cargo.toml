@@ -1,0 +1,15 @@
+[package]
+name = "mss-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 7 — the Merkle Signature Scheme as a COMPOSITION of merkle-types and lamport-types. TOY: a type-discipline demonstration, not production crypto."
+license = "MIT"
+
+# The garden's first COMPOSITION leaf: it deliberately imports two sibling LEAVES
+# (not corona-core) and builds strictly on their public surfaces. That is the
+# thesis being tested here — that leaves compose into a stronger guarantee through
+# their sealed public APIs alone, with no new primitive and no private access.
+# See the "what composition discovered" section in lib.rs.
+[dependencies]
+merkle-types = { path = "../merkle-types" }
+lamport-types = { path = "../lamport-types" }

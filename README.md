@@ -20,7 +20,8 @@ corona/
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
 ├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
-└── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
+├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
+└── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -190,15 +191,44 @@ seals construction so it must route through `new()`, which forces the wall.
 > ⚠ **TOY.** Configuration marker types, not a scheme — no hash, field, or secret. The
 > point is *when* the invariant is enforced (compile time), not any crypto content.
 
-**The vocabulary is complete:** E0451 (all six leaves), the E0308-class brand (vss,
+**The vocabulary is complete:** E0451 (all leaves), the E0308-class brand (vss,
 merkle), E0382 (lamport), E0080 (static-config) — all four primitives demonstrated across
 confidentiality, verifiability, availability, authentication, and static configuration,
 with no new primitive ever introduced.
 
+## Leaf 7: `mss-types`
+
+The garden's first **composition leaf**. Leaves 1–6 demonstrate the primitives in
+isolation; this one tests the remaining direction — do leaves **compose** through
+their public surfaces alone, with no new primitive and no private access? The
+historically canonical case is the **Merkle Signature Scheme** (Merkle, 1979):
+`merkle-types` ∘ `lamport-types`, a hash tree over *n* one-time verifying keys whose
+root is a single **many-time** public key. Each signature carries its one-time key,
+the Lamport signature, and a Merkle proof that the key is committed under the root.
+
+Three primitives appear jointly, each doing its home-leaf job: **E0382 lifted from
+key to keychain** (`MssKeychain::sign_next(self, …)` consumes the chain state — the
+classic stateful-signature stale-state hazard becomes a compile error, and inside,
+each `SigningKey` is consumed by leaf 5's own `sign`); **E0451 conjoined** (the
+sealed `VerifiedMssMessage` is minted only when *both* leaves' sole minters fire);
+and **the brand penning the intermediate** (`VerifiedLeaf` lives and dies inside
+`adopt_scoped`; only unbranded facts escape). E0080 is honestly unused.
+
+The composition finding: it demanded two small **additive rungs** on the composed
+leaves — `merkle_types::adopt_scoped` (the verifier-side/light-client root entry
+point; `commit_scoped` needs all the leaves, which a verifier by design doesn't
+have) and `lamport_types::VerifyingKey::to_bytes` (a canonical key identity for the
+tree to commit to). Both are ordinary public API inside the existing vocabulary:
+**composition pressure surfaces missing *API*, not missing *vocabulary*.**
+
+> ⚠ **TOY.** Inherits both leaves' toy FNV hashes and lamport's seed caveat (a
+> retained seed re-mints the whole keychain — the linearity binds the chain *value*).
+> MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked hashing). Fixed capacity `n`.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 66 unit tests + 16 doctests (sealed-ctor, cross-brand, one-time-key + const-eval-wall compile-fails)
+cargo test --workspace          # 81 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

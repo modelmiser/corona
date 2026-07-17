@@ -80,7 +80,9 @@
 //!   authenticating one-time *public* keys is the **Merkle Signature Scheme** (MSS),
 //!   i.e. `merkle-types` (leaf 4) composed over this leaf. (XMSS is MSS's standardized
 //!   refinement, using WOTS+ leaves and bitmasked tree hashing rather than plain
-//!   Lamport.) Out of scope for the seed, but the natural next rung.
+//!   Lamport.) Out of scope for *this* leaf — and realized in the garden as
+//!   `mss-types` (leaf 7), which composes exactly these two crates through their
+//!   public surfaces.
 //!
 //! ```
 //! use lamport_types::{SigningKey, hash};
@@ -204,6 +206,25 @@ impl SigningKey {
 }
 
 impl VerifyingKey {
+    /// The key's **canonical byte encoding**: every commitment, position-major then
+    /// side-minor, each as 8 big-endian bytes — `64 × 2 × 8 = 1024` bytes total.
+    ///
+    /// A verifying key is public data, so exposing its bytes gives nothing away;
+    /// what this buys is a *stable identity for the key as a value*, so other
+    /// systems can commit to it — the concrete consumer is `mss-types` (leaf 7),
+    /// which puts these bytes in a Merkle leaf to authenticate *which* one-time
+    /// keys belong to a keychain. Injective by construction (fixed-width fields,
+    /// fixed order): two keys encode equal iff their commitments are equal.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = Vec::with_capacity(BITS * 2 * 8);
+        for pair in &self.commitments {
+            for commitment in pair {
+                out.extend_from_slice(&commitment.to_be_bytes());
+            }
+        }
+        out
+    }
+
     /// Verify `sig` on `message`, minting a sealed [`VerifiedMessage`] iff every
     /// revealed preimage commits to the value this key published for the digest bit
     /// it stands for. Returns `None` on any mismatch.
@@ -287,5 +308,18 @@ mod tests {
     fn signing_key_debug_is_redacted() {
         let (sk, _vk) = SigningKey::generate(99);
         assert_eq!(format!("{sk:?}"), "SigningKey(<redacted one-time secret>)");
+    }
+
+    #[test]
+    fn verifying_key_bytes_are_canonical() {
+        // Fixed width: 64 positions x 2 sides x 8 bytes.
+        let (_sk, vk) = SigningKey::generate(5);
+        assert_eq!(vk.to_bytes().len(), BITS * 2 * 8);
+        // Deterministic: the same key value always encodes identically.
+        let (_sk2, vk2) = SigningKey::generate(5);
+        assert_eq!(vk.to_bytes(), vk2.to_bytes());
+        // Distinct keys encode distinctly (injectivity, exercised).
+        let (_sk3, vk3) = SigningKey::generate(6);
+        assert_ne!(vk.to_bytes(), vk3.to_bytes());
     }
 }

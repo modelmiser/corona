@@ -399,8 +399,10 @@ impl MerkleTree {
 /// for every `'brand`, so it cannot smuggle a `VerifiedLeaf<'brand>` out (the return
 /// type `R` may not mention `'brand`), and two separate `commit_scoped` calls receive
 /// brands that never unify. Only an unbranded value (a [`Proof`], a `usize`, a
-/// `bool`) may escape. This is the sole way to obtain a [`Root`], which is what keeps
-/// the brand out of the caller's control.
+/// `bool`) may escape. A [`Root`] is only ever obtainable through a brand-generative
+/// scope — this one (committer side, built from the leaves) or [`adopt_scoped`]
+/// (verifier side, from a caller-trusted `(hash, size)`) — which is what keeps the
+/// brand out of the caller's control.
 pub fn commit_scoped<R>(
     leaves: &[impl AsRef<[u8]>],
     body: impl for<'brand> FnOnce(Root<'brand>, &MerkleTree) -> R,
@@ -412,6 +414,86 @@ pub fn commit_scoped<R>(
         _brand: PhantomData,
     };
     Some(body(root, &tree))
+}
+
+/// Adopt a **caller-trusted** root — a bare `(hash, size)` received out of band —
+/// under a fresh generative brand, and run `body` with the resulting
+/// `Root<'brand>`. Returns `body`'s result, or `None` if `size` is zero (there is
+/// no root of nothing, exactly as in [`commit_scoped`]).
+///
+/// This is the **verifier-side (light-client) entry point**, and it exists because
+/// [`commit_scoped`] alone cannot serve a verifier: rebuilding a `Root` there
+/// requires *all* the leaves, but a verifier holding an inclusion [`Proof`] has,
+/// by design, only its own element. What a real Merkle verifier holds instead is a
+/// root hash it trusts from elsewhere — a signed checkpoint, a block header, a
+/// pinned constant. `adopt_scoped` is that trust anchor's doorway into the type
+/// discipline.
+///
+/// **What adoption does *not* weaken.** The `Root` was *already* caller-trusted —
+/// see the crate's honest limits: [`Root::verify`] has only ever proven membership
+/// in *the root you hand it*, never that the root commits the right set. Adoption
+/// adds no new trust, it only relocates where the trusted value enters. And the
+/// brand discipline is fully preserved: the brand binds witnesses to **this
+/// adoption scope** (this checked-against instance), not to the hash value — so
+/// two adoptions of the *same* `(hash, size)` still get brands that never unify,
+/// and a [`VerifiedLeaf`] cannot leak from one scope into another's
+/// [`authenticated_positions`](Root::authenticated_positions). That is the honest
+/// semantics of a brand: it tracks
+/// *which check minted the witness*, not which bytes the check compared against.
+///
+/// **The pair is one anchor.** `size` is exactly as caller-trusted as `hash`: a
+/// mis-stated size shifts which levels *promote* and is therefore caught only for
+/// indices whose path shape the two sizes disagree on — it is **not**
+/// independently authenticated. Adopt `(hash, size)` from one trusted source as a
+/// unit, never mix a hash from one place with a size from another.
+///
+/// ```
+/// use merkle_types::{adopt_scoped, commit_scoped};
+///
+/// let data = [b"alice".as_ref(), b"bob".as_ref()];
+/// // Committer side: publish (hash, size) and hand Bob his proof.
+/// let (hash, size, proof) =
+///     commit_scoped(&data, |root, tree| (root.hash(), root.size(), tree.proof(1).unwrap()))
+///         .unwrap();
+/// // Verifier side: no leaves, just the trusted root data and the proof.
+/// adopt_scoped(hash, size, |root| {
+///     assert!(root.verify(b"bob", &proof).is_some());
+///     assert!(root.verify(b"mallory", &proof).is_none());
+/// })
+/// .unwrap();
+/// ```
+///
+/// Adoption scopes are brand-generative even for identical root data — this does
+/// **not** compile:
+///
+/// ```compile_fail
+/// use merkle_types::adopt_scoped;
+///
+/// adopt_scoped(42, 2, |root_a| {
+///     adopt_scoped(42, 2, |root_b| {
+///         // Same (hash, size), but each scope's brand is fresh: a witness that
+///         // root_b minted cannot be consumed by root_a. (None at runtime for a
+///         // bogus hash — but the brand mismatch already fails to COMPILE.)
+///         if let Some(leaf) = root_b.verify(b"x", &merkle_types::Proof { index: 0, siblings: vec![0] }) {
+///             let _ = root_a.authenticated_positions(&[leaf]);
+///         }
+///     });
+/// });
+/// ```
+pub fn adopt_scoped<R>(
+    hash: u64,
+    size: usize,
+    body: impl for<'brand> FnOnce(Root<'brand>) -> R,
+) -> Option<R> {
+    if size == 0 {
+        return None;
+    }
+    let root = Root {
+        hash,
+        size,
+        _brand: PhantomData,
+    };
+    Some(body(root))
 }
 
 /// Fold a level of hashes into the level above, pairing neighbours and **promoting**
@@ -613,6 +695,59 @@ mod tests {
     fn empty_input_has_no_root() {
         let empty: [&[u8]; 0] = [];
         assert!(commit_scoped(&empty, |_root, _tree| ()).is_none());
+    }
+
+    #[test]
+    fn adopted_root_verifies_like_the_committed_one() {
+        // The light-client path: only (hash, size) and a proof cross the wire.
+        let data = sample();
+        let (hash, size, proofs) = commit_scoped(&data, |root, tree| {
+            let proofs: Vec<Proof> = (0..root.size()).map(|i| tree.proof(i).unwrap()).collect();
+            (root.hash(), root.size(), proofs)
+        })
+        .unwrap();
+        adopt_scoped(hash, size, |root| {
+            for (i, d) in data.iter().enumerate() {
+                let verified = root.verify(d, &proofs[i]).expect("genuine member verifies");
+                assert_eq!(verified.index(), i);
+                assert_eq!(root.authenticated_positions(&[verified]), vec![i]);
+            }
+            // The adopted root rejects exactly what the committed one rejects.
+            assert!(root.verify(b"mallory", &proofs[0]).is_none());
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn adopting_a_wrong_root_mints_no_witness() {
+        let (hash, size, p0, p4) = commit_scoped(&sample(), |root, tree| {
+            (
+                root.hash(),
+                root.size(),
+                tree.proof(0).unwrap(),
+                tree.proof(4).unwrap(),
+            )
+        })
+        .unwrap();
+        // A different trusted hash (one bit off) admits nothing.
+        adopt_scoped(hash ^ 1, size, |root| {
+            assert!(root.verify(b"alice", &p0).is_none());
+        })
+        .unwrap();
+        // A mis-stated size shifts the promotion boundaries: the tail leaf's
+        // genuine 1-sibling promoted path no longer matches the 2-sibling shape a
+        // 6-leaf tree implies for index 4, so it is rejected. (For indices whose
+        // shape both sizes agree on — e.g. index 0 here — a size lie is NOT
+        // independently caught: (hash, size) is trusted as a unit; see the doc.)
+        adopt_scoped(hash, size + 1, |root| {
+            assert!(root.verify(b"erin", &p4).is_none());
+        })
+        .unwrap();
+    }
+
+    #[test]
+    fn adopting_an_empty_root_is_refused() {
+        assert!(adopt_scoped(0xdead_beef, 0, |_root| ()).is_none());
     }
 
     #[test]

@@ -93,6 +93,7 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 | `erasure-types` | research (toy) | Reed–Solomon k-of-n erasure coding | a paired axis to leaf 1 — *availability*, not confidentiality → **the unforgeability mechanism is identical (E0451-sealed `RecoveredData` + runtime k-of-n check); the confid-vs-avail axis is invisible to the compiler-enforced seal, reflected only in the API by convention.** RS = the same polynomial-evaluation machinery with data in the *evaluations* vs secret+randomness in the *coefficients*; deliberate contrast: `RecoveredData` does *not* redact (data public). Seal = typestate token (from `decode`), not an availability proof (fragments forgeable). Rung-3 hardening `decode_correcting` (Berlekamp–Welch): stronger checked path (error correction) → stronger witness `CorrectedData`, same E0451 — integrity vs *bounded* corruption, NOT authentication (no commitment) |
 | `static-config-types` | research (toy) | compile-time threshold/quorum configuration | the **E0080 leaf** — completes the four-primitive vocabulary. Where E0451/E0382/E0308 constrain *values* at runtime, **E0080 (const-eval wall)** constrains *parameters at compile time*: `StaticThreshold<const K, const N>` carries a `const` block asserting `1 <= K <= N`, so `StaticThreshold::<6,5>::new()` does **not build** (verified: `error[E0080]: evaluation panicked: … K must be <= N`). → **the same k-of-n invariant `corona_core::Threshold::new` checks at runtime, moved to compile time.** The wall *subsumes* the runtime check: a valid `StaticThreshold` bridges to `corona_core::Threshold` **infallibly** (no `Result`) → the first leaf since the early ones to *import corona-core*, deliberately (its subject is the core's invariant). Second type `StaticQuorums<N,R,W>` walls an arithmetic *relation* (`R+W>N` read/write intersection), buying a *total* `min_overlap()` (≥1, no Option). E0080 leans on E0451 (private field seals construction → forces `new()` → forces the wall). TOY config markers, no crypto content |
 | `lamport-types` | research (toy) | Lamport one-time signatures (hash-based) | the first leaf whose **central primitive is not the E0451 seal** — it centers **E0382 move-linearity**. A one-time signing key is a *consumable capability*: `SigningKey::sign` takes `self` **by value** (and the key is not `Clone`/`Copy`), so signing twice does not compile (verified: `error[E0382]: use of moved value`). → **the one-time-use invariant reduces to E0382, no new primitive.** Sharpens the *evidence-of-a-fact* (Clone-able sealed witness, E0451 — leaves 1–4) vs *consumable-capability* (linear value, E0382 — this leaf) distinction, in crypto. Honest nuance: Rust moves are **affine** (at-most-once), not full **linear** (exactly-once) — which is *exactly* OTS's need (double-sign is the catastrophe; not-signing is safe). Still keeps an E0451 seal (`VerifiedMessage` from `verify`); redacting `Debug` on the secret key (∥ Shamir `Secret`). Imports nothing from `corona-core` (∥ merkle). TOY FNV hash (unforgeability needs a one-way commitment; FNV isn't → forgeable, documented) |
+| `mss-types` | research (toy) | Merkle Signature Scheme (many-time signatures) | the first **composition leaf** — do leaves compose through **public surfaces only**, with no new primitive? → **yes.** MSS (Merkle 1979) = `merkle-types` ∘ `lamport-types`: a hash tree over *n* one-time verifying keys, root = one many-time public key. Three primitives jointly, each doing its home job: **E0382 lifted** from key to keychain (`sign_next(self, …)` consumes the chain state → stateful-signature stale-state reuse is a compile error, verified `error[E0382]`; each inner `SigningKey` consumed by leaf 5's own `sign`); **E0451 conjoined** (sealed `VerifiedMssMessage` minted only when *both* leaves' sole minters fire — Lamport verify AND Merkle membership); **brand penning the intermediate** (`VerifiedLeaf` born and dead inside `adopt_scoped`; only unbranded facts — digest, index — escape). E0080 honestly unused (3 of 4). **The composition finding:** it demanded two additive rungs on the composed leaves — `merkle_types::adopt_scoped` (verifier-side/light-client root adoption; leaf 4 was committer-complete but verifier-scope-bound) and `lamport_types::VerifyingKey::to_bytes` (canonical key identity to commit to) — both ordinary API in the existing vocabulary, no private access: **composition pressure surfaces missing API, not missing vocabulary.** Inherits both leaves' TOY hashes + the seed caveat (chain-*value* linearity) |
 | `merkle-types` | research (toy) | Merkle inclusion proofs (hash tree) | the first leaf **off the polynomial substrate** — re-asks leaf 2's *verifiability* question on hash-tree ground → **it reduces to the same E0451 seal.** `Root::verify` (fold the authentication path, compare to root) is the sole minter of the sealed `VerifiedLeaf`, structurally identical to VSS's `Commitment::verify`/`VerifiedShare` despite a completely different mechanism (hash-path fold vs homomorphic commitment). Sharpens VSS's finding: two leaves on one substrate (a field) couldn't say whether "verifiability reduces" was about verifiability or about polynomials — Merkle answers it, **the seal is substrate-agnostic** (about a checked path *existing*, not the math it runs). Also the first leaf importing **nothing** from `corona-core` (no `Threshold`, no `gf256`) → separates shared **code** (core modules) from the shared **discipline** (the primitives themselves). Two rungs: rung-1 the E0451 seal; **rung-2 the generative brand** — `Root<'brand>` + `VerifiedLeaf<'brand>` share an invariant generative lifetime (introduced by `commit_scoped`'s `for<'brand>` closure), and a same-brand *consumer* (`Root::authenticated_positions`) makes presenting one root's witness where another's is expected a **compile error** — the provenance gap closed exactly as VSS closed its own. So leaf 4, like VSS, uses **two** garden primitives (E0451 + the E0308-class brand), still no new one; and as in VSS the brand is a *lifetime*, so the diagnostic is a lifetime error, not literal E0308. TOY FNV hash; domain-separated leaf/node tags; promotes (not duplicates) odd nodes to avoid CVE-2012-2459 |
 
 ### `corona-core` promotion check (at leaves 2 and 3)
@@ -133,6 +134,18 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   to the vocabulary?") has been answered "yes" for every domain tried, and every
   vocabulary member has now earned a leaf.
 
+- **Leaf 7:** nothing to promote into the core — but the check itself grows a
+  dimension: `mss-types` is the first leaf to **import other leaves**
+  (`merkle-types`, `lamport-types`), not `corona-core`. So the garden now shares
+  three distinct things: the **discipline** (the four primitives — every leaf uses
+  them, none imports them), the **core** (modules a second leaf proved common —
+  `Threshold`, `gf256`), and now **composable leaf surfaces** (leaves are
+  libraries *to each other*, composed strictly through public API). The
+  composition also back-fed two additive rungs into reviewed leaves
+  (`adopt_scoped`, `to_bytes`) — API growth driven by a consumer, exactly how a
+  garden should grow, and flagged for the leaf-7 cold review since they touch
+  converged surfaces.
+
 ### Lineage (the pattern that predates the plan)
 
 `warp-types` (GPU/local invariants) → `quorum-types` (distributed generalization)
@@ -140,19 +153,16 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
 → `erasure-types` (an availability-axis counterpart) → `merkle-types` (verifiability
 on a *non-polynomial* substrate) → `lamport-types` (authentication as a *linear
 capability* — the E0382 leaf) → `static-config-types` (compile-time configuration — the
-E0080 leaf that completes the vocabulary). Corona names the family these already form; it
-is recognition, not new scope.
+E0080 leaf that completes the vocabulary) → `mss-types` (the composition leaf —
+`merkle ∘ lamport`, leaves as libraries to each other). Corona names the family these
+already form; it is recognition, not new scope.
 
 ### Candidate future leaves
 
-- *(None scheduled — and, notably, the **vocabulary is now complete**: all four
-  primitives (E0451, the E0308-class brand, E0382, E0080) each have a leaf, across
-  confidentiality, verifiability, availability, authentication, and static config. The
-  garden could wind down here as a finished thought. Further leaves would be *breadth*,
-  not *coverage*: the **Merkle Signature Scheme** (MSS) = `merkle-types` composed over
-  `lamport-types` (a Merkle tree authenticating one-time public keys → many signatures;
-  XMSS is its WOTS+-based refinement); threshold signatures; a fountain/LT code; an
-  accumulator; or a leaf combining primitives more deeply.)*
+- *(None scheduled. The **vocabulary is complete** (leaf 6) and **composition is
+  demonstrated** (leaf 7 — MSS, formerly the top candidate here). The garden could
+  wind down as a finished thought. Remaining candidates are pure breadth: threshold
+  signatures; a fountain/LT code; an accumulator; XMSS-style tiered trees.)*
 
 *(Done: the branded `VerifiedShare` (leaf 2, invariant generative lifetime,
 provenance gap closed); the erasure-coding paired axis (leaf 3); the `gf256`

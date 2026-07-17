@@ -167,6 +167,26 @@ work (complete tasks, add children, keep siblings).
       `Threshold::new`'s rejections; `.expect()` unreachable). Vocabulary-complete claim
       audited per-leaf and confirmed. Milestone: **all 6 leaves now cold-reviewed.**
 
+## Now (leaf 7 — mss-types)
+
+- [x] Seed mss-types: the first **composition leaf** — the Merkle Signature Scheme
+      (Merkle 1979) as `merkle-types` ∘ `lamport-types`, imported as sibling LEAVES
+      (a first) and composed strictly through public surfaces. Three primitives
+      jointly: E0382 lifted key→keychain (`sign_next(self)` consumes the chain
+      state; stale-chain reuse verified `error[E0382]`), E0451 conjoined
+      (`VerifiedMssMessage` minted only when BOTH leaves' sole minters fire), brand
+      penning the intermediate `VerifiedLeaf` inside `adopt_scoped` (cross-adoption
+      verified E0521/lifetime error). E0080 honestly unused. Composition finding:
+      demanded two additive rungs on reviewed leaves — `merkle_types::adopt_scoped`
+      (verifier-side/light-client root adoption + "(hash,size) is one anchor" size-
+      trust nuance) and `lamport_types::VerifyingKey::to_bytes` (canonical key
+      identity) → "composition pressure surfaces missing API, not missing
+      vocabulary." 11 unit + 2 doctests (mss) + 3/1 new tests on the rungs;
+      workspace 81 unit + 20 doctests, all gates green (clippy/fmt/rustdoc -D
+      warnings).
+- [ ] Cold-review the leaf-7 surface to convergence — scope: mss-types PLUS the two
+      rungs on converged leaves (merkle `adopt_scoped`, lamport `to_bytes`).
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)
