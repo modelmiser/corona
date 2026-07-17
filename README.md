@@ -15,7 +15,8 @@ Corona leaf contributes a Lean formalization to Sol. See [`CHARTER.md`](CHARTER.
 ```
 corona/
 ├── corona-core/      # thin shared vocabulary — today just the k-of-n Threshold
-└── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
+├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
+└── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -38,10 +39,29 @@ as the line to verifiable secret sharing, a natural rung 2.
 > authentication. Do not protect real secrets with it. See the crate docs and
 > `CHARTER.md`'s two-track model for the graduation path.
 
+## Leaf 2: `vss-types`
+
+Feldman *verifiable* secret sharing — the rung that **closes leaf 1's two
+documented limits**. The dealer publishes a `Commitment` (`Cⱼ = g^{aⱼ}`), and any
+share can be checked against it via `g^{f(x)} = Π Cⱼ^{xʲ}` *without the other
+shares*. A `VerifiedShare` is the E0451-sealed witness of that check, and
+`Commitment::recover` reads `k` **from the commitment's length** — so the threshold
+is pinned, not caller-asserted, and every input is authenticated. The rung's
+question — *does verifiability need a new compile primitive?* — answers **no**: the
+**same E0451**, but the sealed witness now attests a *cryptographic fact* (share ∈
+committed polynomial) rather than a count. The one gap left (a `VerifiedShare` is
+not yet bound to a *specific* commitment instance) is the pointer to an E0308-branded
+hardening.
+
+> ⚠ **TOY.** `vss-types` uses breakable parameters (`q=257, p=1543, g=64`) — the
+> "verification" secures nothing; it only makes the equation checkable. Feldman
+> commitments also *leak* `g^{secret}` (no hiding). Do not protect real secrets
+> with it.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 13 unit tests + 3 doctests (incl. the sealed-constructor compile-fail)
+cargo test --workspace          # 25 unit tests + 5 doctests (incl. two sealed-constructor compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

@@ -19,12 +19,20 @@ work (complete tasks, add children, keep siblings).
       disclosure (+ test), live `combine_with` seam (+ test), thesis/wiring precision.
 - [ ] `split` that takes an RNG (feature-gated) so the happy path isn't coeff-by-hand,
       while keeping `split_with_coeffs` as the deterministic/testable primitive
-- [ ] Decide: is leaf 1 a wind-down toy, or the base for VSS rung 2?
+- [x] Decide: base for VSS rung 2 (chosen) → seeded `vss-types` (leaf 2)
+
+## Now (leaf 2 — vss-types)
+
+- [x] Seed VSS rung 2: Feldman verifiable secret sharing, sealed `VerifiedShare`
+      (E0451) via `Commitment::verify`, threshold pinned by commitment length.
+      Closes leaf 1's two limits. 12 unit + 2 doctests; full-workspace gates green.
+- [x] `corona-core` promotion check (leaf-2 trigger): only `Threshold` stays shared;
+      redacting-`Secret` kept per-leaf (semantically distinct). See CHARTER.
+- [ ] Cold-review the leaf-2 surface to convergence (as leaf 1) — NOT yet done
+- [ ] E0308-branded `VerifiedShare` (bind to issuing `Commitment`) — closes the one
+      documented gap; a rung-2 hardening
 
 ## Parking lot (garden, not scheduled)
 
 - `erasure-types` — Reed–Solomon k-of-n (availability vs confidentiality paired axis)
-- Verifiable secret sharing — commitments so shares become authenticable (closes the
-  "does not witness authenticity" gap threshold-types documents)
-- When a 2nd leaf lands: promote genuinely-shared primitives into `corona-core`
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)

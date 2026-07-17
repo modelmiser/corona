@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["corona-core", "threshold-types"]
+members = ["corona-core", "threshold-types", "vss-types"]
 
 # Corona — a garden of typestate crates that encode a domain's invariants through
 # the same small vocabulary of compile-time primitives. See CHARTER.md.

@@ -1,0 +1,9 @@
+[package]
+name = "vss-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 2 — Feldman verifiable secret sharing as typestate. TOY: a type-discipline demonstration, not production crypto."
+license = "MIT"
+
+[dependencies]
+corona-core = { path = "../corona-core" }

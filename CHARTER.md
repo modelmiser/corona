@@ -86,21 +86,33 @@ verification tooling. Keep them distinct, to be wired only once a leaf graduates
 
 | Crate | Track | Domain | Thesis question |
 |---|---|---|---|
-| `corona-core` | infra | shared vocabulary | — (grows only with a 2nd leaf) |
+| `corona-core` | infra | shared vocabulary | — (grows only when a primitive is proven shared) |
 | `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
+| `vss-types` | research (toy) | Feldman *verifiable* secret sharing | does *verifiability* need a new primitive? → **no: the same E0451, but the sealed witness (`VerifiedShare`) now witnesses a cryptographic fact (share ∈ committed polynomial), not just a count.** Closes leaf 1's two limits (threshold pinned by commitment length; shares authenticated) |
+
+### `corona-core` promotion check (at leaf 2)
+
+Per the thin-core rule, leaf 2 is when we ask what is *proven* shared. Finding: the
+only shared **primitive** remains [`Threshold`] (already in core). The redacting,
+sealed `Secret`-byte is *structurally* identical across both leaves but
+*semantically* distinct (leaf 1's `Secret` is `f(0)` of presented points; leaf 2's
+is authenticated), and the cold review of leaf 1 showed per-type doc precision
+carries real weight — so it stays **per-leaf**, not promoted. Revisit if a 3rd leaf
+repeats the exact shape. (Keeping core thin beats DRY here.)
 
 ### Lineage (the pattern that predates the plan)
 
 `warp-types` (GPU/local invariants) → `quorum-types` (distributed generalization)
-→ `threshold-types` (cryptographic thresholds). Corona names the family these
-three already form; it is recognition, not new scope.
+→ `threshold-types` (cryptographic thresholds) → `vss-types` (verifiable thresholds).
+Corona names the family these already form; it is recognition, not new scope.
 
 ### Candidate future leaves
 
 - `erasure-types` — Reed–Solomon k-of-n. Same reconstruction skeleton as Shamir,
   opposite property (*availability*, not confidentiality). A paired axis.
-- Verifiable secret sharing — adds commitments so shares become *authenticable*;
-  a natural rung 2 that closes the gap `threshold-types` documents.
+- A **branded** `VerifiedShare` — bind it to its issuing `Commitment` via E0308
+  generativity, closing the one gap `vss-types` documents (a verified share is not
+  yet tied to a *specific* commitment instance). A rung-2 hardening, not a new leaf.
 
 ## Records
 
