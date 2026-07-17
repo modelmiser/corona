@@ -315,7 +315,10 @@ each executable:
 The literature agrees with the cut: Chaum 1982 prevents double-spending with
 exactly layer 2 (an online mint), and Chaum–Fiat–Naor (CRYPTO '88) does not
 *prevent* offline double-spends — it reveals the double-spender's identity
-after the fact. Punish, not prevent.
+after the fact. Punish, not prevent. (The two exits mirror the taxonomy:
+trusted hardware relocates the spent state into an uncopyable box — the only
+classical exit — and quantum money makes the token itself uncopyable,
+breaking the bytes-premise rather than the argument.)
 
 > ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
 > coin recovers the keyed hash state (and, with modest work, the secret) and
@@ -325,7 +328,7 @@ after the fact. Punish, not prevent.
 ## Build
 
 ```sh
-cargo test --workspace          # 118 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
+cargo test --workspace          # 119 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

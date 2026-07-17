@@ -81,10 +81,12 @@
 //!
 //! ## What the types do and do not witness
 //!
-//! - A [`Coin`] witnesses that **this mint's sole minter issued this value and
-//!   this value has not yet been consumed**. E0451-sealed (private fields; only
-//!   [`Mint::issue`] constructs one) and affine (no `Clone`/`Copy`; consuming
-//!   methods take `self`). It does **not** witness that its serial is unspent
+//! - A [`Coin`] witnesses that **a mint's sole minter constructed this value
+//!   and this value has not yet been consumed**. E0451-sealed (private fields;
+//!   only [`Mint::issue`] constructs one) and affine (no `Clone`/`Copy`;
+//!   consuming methods take `self`). *Which* mint is not recorded in the type
+//!   — it is decided only at [`Mint::redeem`], by the tag. It also does
+//!   **not** witness that its serial is unspent
 //!   at the mint — a coin's wire form cannot coexist with it (creating the
 //!   wire form consumed the coin), but with the toy's invertible hash an
 //!   observer can mint wire forms wholesale, so only the honest-path claim
@@ -180,17 +182,17 @@ use std::fmt;
 /// let copy = coin.clone(); // error[E0599]: no method named `clone` — by design
 /// ```
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// use ecash_types::Coin;
 /// let forged = Coin { serial: 1, tag: 2 }; // error[E0451]: fields are private
 /// ```
 ///
 /// (On stable, rustdoc runs `compile_fail` doctests but does **not** enforce
-/// the `,E0382`/`,E0599` code annotations — they document intent and are
-/// checked only by nightly rustdoc, and the third cannot carry one at all.
-/// All three failures were verified against the compiler directly — E0382,
-/// E0599, and E0451, the private-field reason, respectively. The suite keeps
-/// these doctests *red*; it does not pin their *codes*.)
+/// the `,E0382`/`,E0599`/`,E0451` code annotations — they document intent and
+/// are checked only by nightly rustdoc. All three failures were verified
+/// against the compiler directly — E0382, E0599, and E0451, the
+/// private-field reason, respectively. The stable suite keeps these doctests
+/// *red*; nightly rustdoc additionally pins their *codes*.)
 ///
 /// The `Debug` impl redacts the tag — the tag is the bearer credential, and a
 /// log line holding it is a spendable coin (under a real PRF; under the toy
@@ -248,8 +250,11 @@ impl fmt::Debug for Coin {
 pub struct WireCoin {
     /// The claimed serial number.
     pub serial: u64,
-    /// The claimed tag. Genuine iff it equals the mint's MAC over the serial —
-    /// checked only by [`Mint::redeem`].
+    /// The claimed tag. It authenticates only if it equals the mint's MAC
+    /// over the serial **and** the serial is in that mint value's issued
+    /// range — both checked only by [`Mint::redeem`]. (And under the toy
+    /// hash anyone who has observed a coin can compute a matching MAC — see
+    /// the crate banner.)
     pub tag: u64,
 }
 
@@ -269,6 +274,10 @@ pub struct WireCoin {
 /// a logged `mint_id` is a mint-secret–recovery channel (a real PRF-derived
 /// identity would leak nothing; it is redacted anyway so the crate's
 /// log-hygiene policy is uniform across all three secret-adjacent types).
+/// `PartialEq` compares the full fact — serial *and* mint identity — so two
+/// receipts reveal whether their mints share a secret; since receipts cannot
+/// be injected (E0451), this only ever compares facts already legitimately
+/// held, and same-seed replicas compare equal by design (layer 3).
 #[derive(Clone, PartialEq, Eq)]
 pub struct Receipt {
     serial: u64,
@@ -349,9 +358,14 @@ impl Mint {
     }
 
     /// Issue a fresh coin: the **sole minter** of the sealed [`Coin`] (E0451).
-    /// Serials are distinct per mint value (sequential from 1; `u64`
-    /// exhaustion is unreachable in any real execution, and the increment is
-    /// checked so the disclaimer is enforced rather than assumed).
+    /// Serials are distinct per mint value (sequential from 1).
+    ///
+    /// # Panics
+    ///
+    /// On `u64` serial-space exhaustion (after 2⁶⁴ − 1 issues) — unreachable
+    /// in any real execution. The increment is checked and the panic is
+    /// pinned by a test, so a wrap (which would re-issue serials) cannot
+    /// slip in silently.
     pub fn issue(&mut self) -> Coin {
         let serial = self.next_serial;
         self.next_serial = self
@@ -366,8 +380,10 @@ impl Mint {
 
     /// Redeem a wire coin: **the online check**. Verifies authenticity first
     /// — the tag must MAC the serial under this mint's secret **and** the
-    /// serial must be one this mint value has issued (so a forgery learns
-    /// nothing and burns nothing) — then admits the serial iff this mint
+    /// serial must be one this mint value has issued (so a check-failing
+    /// presentation learns nothing and burns nothing; a *valid*-tag forgery,
+    /// which the toy hash admits, is not refused here — see the crate
+    /// banner) — then admits the serial iff this mint
     /// value has not admitted it before. First presentation wins; every later
     /// copy of the same bytes gets [`RedeemError::DoubleSpent`]. Hence `Ok`
     /// implies issued-and-first, and `DoubleSpent` implies
@@ -462,6 +478,11 @@ mod tests {
     fn foreign_mint_rejects_another_mints_coin() {
         let mut mint_a = Mint::new(1);
         let mut mint_b = Mint::new(2);
+        // Give B its own serial-1 coin first, so the issued-range check
+        // cannot mask the tag check: only the MAC discriminates A's coin
+        // at B. (B's own coin is dropped unspent — affine, value burned.)
+        let b_own = mint_b.issue();
+        assert_eq!(b_own.serial(), 1);
         let wire = mint_a.issue().into_wire();
         assert_eq!(mint_b.redeem(wire), Err(RedeemError::Forged));
         // The genuine mint still accepts it — mint B's refusal burned nothing.
@@ -589,6 +610,20 @@ mod tests {
             }),
             "holding two receipts does not un-spend the coin"
         );
+    }
+
+    /// The exhaustion disclaimer is enforced, not assumed: at the u64
+    /// boundary `issue` panics (before handing out a coin) rather than
+    /// wrapping — a wrap would re-issue serial 0 and then duplicate serials.
+    #[test]
+    #[should_panic(expected = "u64 serial space")]
+    fn issue_panics_rather_than_wraps_at_serial_exhaustion() {
+        let mut mint = Mint {
+            secret: 0,
+            next_serial: u64::MAX,
+            spent: BTreeSet::new(),
+        };
+        let _never_returned = mint.issue();
     }
 
     /// All three secret-adjacent types redact: the coin's Debug is checked
