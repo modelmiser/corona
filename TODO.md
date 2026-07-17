@@ -10,7 +10,7 @@ work (complete tasks, add children, keep siblings).
 - [x] Gates green: 10 unit + 3 doctests, clippy -D warnings, rustdoc -D warnings, fmt
 - [x] CHARTER.md (two tracks + graduation criteria + Sol wiring), README
 - [x] First commit (`d0bfc3b`, local, on `main`)
-- [ ] Push to GitHub — **awaiting user go + visibility choice** (public like warp/quorum-types, or private)
+- [x] Push to GitHub — **public** at https://github.com/modelmiser/corona
 
 ## Next (leaf 1)
 
