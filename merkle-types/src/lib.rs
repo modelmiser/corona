@@ -467,9 +467,11 @@ pub fn commit_scoped<R>(
 /// *in-range position that genuinely belongs to a different committed element*
 /// (the same tail proof, relabeled to index 1, verifies under an adopted size
 /// of 2: misattribution to a real slot, not a phantom one). Under any size lie,
-/// membership of *bytes* stays sound (nothing uncommitted ever verifies); what
-/// degrades is **position semantics** — `index()` is authenticated relative to
-/// the *adopted* shape, not the true tree, in both directions. Adopt
+/// membership of *bytes* stays sound — nothing uncommitted ever verifies; the
+/// lie adds no acceptance channel of its own, so soundness is up to the toy
+/// hash's disclosed weakness exactly as under a true-sized root. What degrades
+/// is **position semantics** — `index()` is authenticated relative to the
+/// *adopted* shape, not the true tree, in both directions. Adopt
 /// `(hash, size)` from one trusted source as a unit, never mix a hash from one
 /// place with a size from another.
 ///

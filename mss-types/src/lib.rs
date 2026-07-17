@@ -131,9 +131,12 @@
 //!   belongs to a *different* committed key (misattribution to a real slot,
 //!   self-consistently `minted_by` the lying anchor) — and any lie can also
 //!   spuriously *reject* genuine signatures (all regression-tested). Under
-//!   *every* capacity lie, nothing uncommitted ever verifies: `key_index` is
-//!   authenticated relative to the *adopted* shape, in both directions. Never
-//!   mix a hash from one source with a capacity from another.
+//!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
+//!   adds **no acceptance channel of its own**; membership of bytes stays sound
+//!   up to the toy hash's disclosed weakness, exactly as under an honest anchor
+//!   — `key_index` is simply authenticated relative to the *adopted* shape, in
+//!   both directions. Never mix a hash from one source with a capacity from
+//!   another.
 //! - **An adopted anchor can be degenerate — the orbit symmetry is inherited.**
 //!   Adoption trusts the anchor's *content*, too: a root whose tree commits
 //!   **duplicate** key bytes makes those positions interchangeable — one genuine
@@ -436,7 +439,9 @@ impl MssPublicKey {
     /// `key_index` genuinely belonging to a *different* committed key (see the
     /// two regression tests and `merkle_types::adopt_scoped`'s "one anchor"
     /// doc). Membership stays sound under any capacity lie — nothing
-    /// uncommitted ever verifies — but `key_index` is authenticated only
+    /// uncommitted ever verifies (the lie adds no acceptance channel of its
+    /// own; soundness is up to the toy hash's disclosed weakness, exactly as
+    /// under an honest anchor) — but `key_index` is authenticated only
     /// *relative to the adopted anchor*, which is why [`VerifiedMssMessage`]
     /// records the full anchor and
     /// [`minted_by`](VerifiedMssMessage::minted_by) compares both halves. Adopt
