@@ -94,9 +94,10 @@ code's own redundancy (Berlekamp–Welch) to **detect and correct** up to `t =
 ⌊(m−k)/2⌋` fragments corrupted at *unknown* positions, returning a stronger sealed
 witness (`CorrectedData`) under the **same E0451**. The honest limit (and the reason
 it's not literally VSS): this is *integrity against bounded corruption*, not
-authentication — an adversary controlling more than `t` fragments, or a beyond-`t`
-corruption near another codeword, is not caught. No external commitment, just the
-algebra.
+authentication — beyond `t` the guarantee is void (a corruption near another codeword
+is silently misdecoded; at `m == k`, zero redundancy, *nothing* is caught), and an
+adversary who corrupts `d − t` chosen forgeable fragments (`d = m − k + 1`, the code
+distance) can force a *chosen* wrong output. No external commitment, just the algebra.
 
 > ⚠ **TOY.** `decode` does plain *erasure* decoding (no integrity — a corrupted
 > fragment silently yields wrong data); `decode_correcting` adds bounded error

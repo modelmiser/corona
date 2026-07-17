@@ -75,10 +75,18 @@
 //! - it corrects up to `t` errors and *detects* more (returning
 //!   [`CorrectError::Uncorrectable`]) — but beyond `t`, bounded-distance decoding
 //!   can still *silently misdecode* to a wrong codeword if the corruption happens
-//!   to land near one;
-//! - an adversary who controls more than `t` of the `m` fragments can force any
-//!   output — `Fragment`s are public and forgeable, and RS has no commitment to
-//!   check them against. For that, you need VSS-style cryptography, not a code.
+//!   to land near one. At the degenerate `m == k` (no redundancy, `t = 0`),
+//!   *nothing* is detected: any single corruption is silently reconstructed, and
+//!   `decode_correcting` collapses to plain interpolation;
+//! - beyond `t` corruptions the correctness guarantee is simply *void* — the result
+//!   may be a wrong codeword *or* [`CorrectError::Uncorrectable`]. And since
+//!   `Fragment`s are public and forgeable with no commitment to check against, an
+//!   adversary who corrupts `d − t` chosen fragments (where `d = m − k + 1` is the
+//!   code's minimum distance — that's `t + 1` for even `m − k`, `t + 2` for odd) can
+//!   move the received word within radius `t` of a chosen minimum-distance neighbor
+//!   of the true codeword, forcing a *chosen* wrong output (an arbitrary target
+//!   costs proportionally more). RS gives no authentication; for that you need
+//!   VSS-style cryptography, not a code.
 //!
 //! ## ⚠ TOY — not production coding
 //!
@@ -160,19 +168,24 @@ impl RecoveredData {
     }
 }
 
-/// Data reconstructed by [`decode_correcting`], having **detected and corrected**
-/// up to `t = ⌊(m−k)/2⌋` corrupted fragments.
+/// Data reconstructed by [`decode_correcting`], which ran Berlekamp–Welch to
+/// correct up to `t = ⌊(m−k)/2⌋` corrupted fragments.
 ///
 /// # Unforgeability (E0451) — a *stronger* typestate witness
 ///
 /// Like [`RecoveredData`], a private field with no public constructor — it can
-/// *only* come from [`decode_correcting`]. But its checked path is stronger: it ran
-/// Berlekamp–Welch, so holding one proves the data survived up to `t` corruptions.
-/// This is **integrity against bounded corruption**, *not* cryptographic
-/// authentication — see the crate's error-correction limits (an adversary with more
-/// than `t` bad fragments, or a beyond-`t` corruption that lands near another
-/// codeword, is not caught). The data is public; [`Debug`] is not redacting.
-/// Building one directly does not compile:
+/// *only* come from [`decode_correcting`]. What holding one **proves** is
+/// *provenance*: the data came from the Berlekamp–Welch checked path — the same
+/// typestate discipline as `RecoveredData`, one rung stronger. It does **not** prove
+/// the bytes are correct: correction is guaranteed only *if* at most `t` fragments
+/// were actually corrupted. Beyond `t`, bounded-distance decoding can hand you a
+/// `CorrectedData` of *wrong* bytes with a bogus [`corrected`](CorrectedData::corrected)
+/// count; at the degenerate `m == k` (`t = 0`), *nothing* is checked at all. So this
+/// is **integrity against bounded, non-adversarial corruption**, not authentication:
+/// the public, forgeable [`Fragment`]s have no commitment to check against, so an
+/// adversary who corrupts `d − t` chosen fragments (`d = m − k + 1`, the minimum
+/// distance) can force a *chosen* wrong output. The data is public; [`Debug`] is not
+/// redacting. Building one directly does not compile:
 ///
 /// ```compile_fail
 /// use erasure_types::CorrectedData;
@@ -190,7 +203,9 @@ impl CorrectedData {
         &self.bytes
     }
 
-    /// How many corrupted fragments were detected and corrected.
+    /// How many corrupted fragments were detected and corrected. Trustworthy only
+    /// when the true corruption was within `t` — beyond that this count can be bogus
+    /// (see the type-level docs and the crate's error-correction limits).
     pub fn corrected(&self) -> usize {
         self.corrected
     }

@@ -123,10 +123,13 @@ fn solve(mut a: Vec<Vec<u8>>, mut b: Vec<u8>, u: usize) -> Option<Vec<u8>> {
 /// Returns `(p_coeffs, num_errors)` with `p_coeffs` padded to length `k`, or
 /// `None` if uncorrectable. Tries increasing error counts `e = 0, 1, …` and
 /// returns the first `e` that yields a valid codeword (minimal-distance decode).
+///
+/// Precondition: the `points` have **distinct** `x` (the caller,
+/// [`decode_correcting`](crate::decode_correcting), enforces this).
 pub(crate) fn berlekamp_welch(points: &[(u8, u8)], k: usize) -> Option<(Vec<u8>, usize)> {
     let m = points.len();
     if m < k {
-        return None;
+        return None; // load-bearing: also guards the `m - k` below from usize underflow
     }
     let max_e = (m - k) / 2;
     for e in 0..=max_e {
@@ -162,8 +165,10 @@ pub(crate) fn berlekamp_welch(points: &[(u8, u8)], k: usize) -> Option<(Vec<u8>,
         let Some(p) = poly_div_exact(n_coeffs, &e_coeffs) else {
             continue;
         };
+        // Defensive: provably unreachable (deg N ≤ k+e-1, deg E = e ⇒ deg p ≤ k-1),
+        // but cheap insurance against a too-high-degree quotient.
         if degree(&p).map(|d| d >= k).unwrap_or(false) {
-            continue; // recovered polynomial too high a degree
+            continue;
         }
         let mut pk = p;
         pk.resize(k, 0);

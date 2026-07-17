@@ -115,10 +115,11 @@ already form; it is recognition, not new scope.
 
 ### Candidate future leaves
 
-- *(None scheduled — the confidentiality/verifiability/availability axes are all
-  covered, each with its "verifiable/error-correcting" hardening. A fourth domain
-  — e.g. threshold signatures, or a non-polynomial code — would be the next leaf if
-  one is wanted.)*
+- *(None scheduled — the two domain axes, confidentiality (Shamir) and availability
+  (Reed–Solomon), are both covered, each with its strengthening: VSS for
+  confidentiality, error-correcting RS for availability. A different domain — e.g.
+  threshold signatures, or a non-polynomial code — would be the next leaf if one is
+  wanted.)*
 
 *(Done: the branded `VerifiedShare` (leaf 2, invariant generative lifetime,
 provenance gap closed); the erasure-coding paired axis (leaf 3); the `gf256`

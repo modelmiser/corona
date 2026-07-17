@@ -66,8 +66,12 @@ work (complete tasks, add children, keep siblings).
       primitive to graduate out of a leaf (thin-core rule fired at the 2nd sharing).
 - [x] Error-correcting Reed–Solomon — SEEDED as `decode_correcting` (Berlekamp–Welch
       in `ecc` module) + sealed `CorrectedData`. Corrects ≤⌊(m−k)/2⌋ unknown-position
-      errors; detects beyond. Integrity vs bounded corruption, NOT authentication
-      (honest limit documented). 14 unit + 3 doctests; gates green. NOT yet cold-reviewed.
+      errors; detects beyond. Integrity vs bounded corruption, NOT authentication.
+- [x] Cold-review `decode_correcting` — CONVERGED (practical: 5 rounds, MOD 0→1→0→1→0,
+      soundness proven 5× with ZERO correctness/soundness defects). Fixes were all
+      doc-precision: CorrectedData provenance-not-correctness framing; the adversary
+      threshold, which took 3 iterations to land airtight (m−t reviewer-wrong → t+1
+      mine-wrong-for-odd → **d−t** = ⌈(m−k)/2⌉+1, independently re-derived correct).
 
 ## Parking lot (garden, not scheduled)
 
