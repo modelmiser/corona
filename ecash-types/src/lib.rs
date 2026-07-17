@@ -326,10 +326,12 @@ impl Receipt {
     /// deployment-identity; only coordination (out of scope, `quorum-types`'
     /// territory) can fuse replicas into one spender-visible mint.
     ///
-    /// Identity is compared as a 64-bit *hash* of the secret, so in the toy
-    /// a colliding second secret would satisfy this check (and receipt
-    /// equality) for the wrong mint — birthday bound ~2³²; a real deployment
-    /// derives identity with a full-width PRF.
+    /// Identity is compared as a 64-bit *hash* of the secret, so a colliding
+    /// second secret would satisfy this check (and receipt equality) across
+    /// two distinct mints — finding *some* confusable pair is a ~2³²
+    /// birthday search; impersonating one *specific* mint is a ~2⁶⁴
+    /// second-preimage search. A real deployment derives identity with a
+    /// full-width PRF.
     ///
     /// Flip side: because [`Mint::new`] is public, a receipt holder can use
     /// this check as a seed-guess confirmation oracle
@@ -527,6 +529,9 @@ mod tests {
             serial: 999,
             tag: 999,
         };
+        // Guard the documented input shape: the guess must actually be a
+        // WRONG tag (a hash-constant change could silently make it valid).
+        assert_ne!(forged.tag, hash::coin_tag(0xD4, 999));
         assert_eq!(mint.redeem(forged), Err(RedeemError::Forged));
     }
 
