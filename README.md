@@ -325,14 +325,14 @@ exit abandons bit-strings altogether — quantum money makes the token itself
 uncopyable, breaking the bytes-premise rather than the argument.)
 
 > ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
-> coin recovers the keyed hash state (and, with modest work, the secret) and
-> forges freely. No blinding (Chaum's actual contribution), no denominations,
-> no transfer, no persistence.
+> coin recovers the keyed hash state (and, via a ~2³² time-and-memory
+> meet-in-the-middle, the secret) and forges freely. No blinding (Chaum's
+> actual contribution), no denominations, no transfer, no persistence.
 
 ## Build
 
 ```sh
-cargo test --workspace          # 119 unit tests + 29 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
+cargo test --workspace          # 121 unit tests + 29 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

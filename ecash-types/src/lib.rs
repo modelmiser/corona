@@ -31,9 +31,9 @@
 //!    of distributed/multiparty **session types** — linearity genuinely does
 //!    extend across wires; but that *constrains the holder and the channel*
 //!    (session-typed linearity assumes a non-duplicating transport — a
-//!    tapped-and-replayed wire re-forks it), the holder half being the same
-//!    move trusted hardware makes below, and bearer value is precisely the
-//!    refusal of those constraints.) [`WireCoin`] states the premise honestly by being
+//!    tapped-and-replayed wire re-forks it). Constraining the holder is the
+//!    same move trusted hardware makes below; bearer value is precisely the
+//!    refusal of both constraints.) [`WireCoin`] states the premise honestly by being
 //!    all-public and `Copy`: after [`into_wire`](Coin::into_wire), a "double
 //!    spend" **type-checks**. What prevents it is the mint's **spent set** —
 //!    a runtime, stateful, *online* check ([`Mint::redeem`]), first
@@ -78,8 +78,9 @@
 //! not to move money. The coin tag is 64-bit FNV-1a keyed by concatenation —
 //! **not a PRF, invertible**: an adversary who observes one wire coin can
 //! unwind the serial's hash steps to the keyed intermediate state (an
-//! effective MAC key for *any* serial) and, with a ~2³² meet-in-the-middle,
-//! the secret itself — either way, forging freely (see `src/hash.rs`). There
+//! effective MAC key for *any* serial) and, with a meet-in-the-middle at
+//! ~2³² time and memory, the secret itself — either way, forging freely
+//! (see `src/hash.rs`). There
 //! is no blinding (Chaum's actual 1982 contribution — payer anonymity — is
 //! entirely absent), no denominations, no transfer between holders, no
 //! persistence. **Do not move value with this.** Graduation swaps the hash for

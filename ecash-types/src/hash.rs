@@ -6,9 +6,9 @@
 //! reveals nothing about the secret. FNV-1a's steps are invertible (odd
 //! multiplier), so an adversary who has seen one wire coin unwinds the eight
 //! known serial bytes exactly, recovering the post-secret internal state — an
-//! effective MAC key for forging *any* serial — and, with more work (a ~2³²
-//! meet-in-the-middle over the eight unknown secret bytes), the secret
-//! itself. That weakness is deliberate and out of scope:
+//! effective MAC key for forging *any* serial — and, with more work (a
+//! meet-in-the-middle over the eight unknown secret bytes, ~2³² time and
+//! memory), the secret itself. That weakness is deliberate and out of scope:
 //! this leaf demonstrates *where the type discipline ends*, not the MAC's
 //! strength. Graduation swaps this module for a vetted PRF behind the same
 //! [`coin_tag`]/[`mint_id`] seam — exactly the role the toy hashes play in the
@@ -49,4 +49,34 @@ pub(crate) fn mint_id(secret: u64) -> u64 {
     buf[0] = 0x02;
     buf[1..9].copy_from_slice(&secret.to_be_bytes());
     fnv1a(&buf)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Pins that this module actually is 64-bit FNV-1a (a self-consistent
+    /// wrong constant would pass every behavioral test in the crate, since
+    /// they all compute expected tags through this same module).
+    #[test]
+    fn fnv1a_matches_known_answer_vectors() {
+        assert_eq!(fnv1a(b""), FNV_OFFSET);
+        assert_eq!(fnv1a(b"a"), 0xaf63_dc4c_8601_ec8c);
+        // Oddness of the multiplier is what makes the steps invertible —
+        // the property the banner's attack narrative rests on.
+        assert_eq!(FNV_PRIME & 1, 1);
+    }
+
+    /// Pins the domain separation the two derivations document: the same
+    /// secret must not produce confusable outputs across roles. (The buffer
+    /// lengths already differ, but the tags are the *stated* mechanism.)
+    #[test]
+    fn coin_tag_and_mint_id_domains_are_separated() {
+        let secret = 0x5EED;
+        assert_ne!(coin_tag(secret, 0x5EED), mint_id(secret));
+        let mut collapsed = [0u8; 9];
+        collapsed[0] = 0x01; // mint_id computed under coin_tag's domain tag
+        collapsed[1..9].copy_from_slice(&secret.to_be_bytes());
+        assert_ne!(fnv1a(&collapsed), mint_id(secret));
+    }
 }
