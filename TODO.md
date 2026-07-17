@@ -143,6 +143,26 @@ work (complete tasks, add children, keep siblings).
       (merkle∘lamport = Merkle Signature Scheme; XMSS is the WOTS+ refinement);
       CHARTER glossary "E0382 … exactly once" → "at most once (affine)".
 
+## Now (leaf 6 — static-config-types)
+
+- [x] Seed static-config-types: the **E0080 leaf** — compile-time threshold/quorum
+      config. `StaticThreshold<const K, const N>` walls `1<=K<=N` at const-eval →
+      `StaticThreshold::<6,5>::new()` does not build (verified: `error[E0080]:
+      evaluation panicked: … K must be <= N`). Same invariant as
+      `corona_core::Threshold::new` (runtime Result), moved to compile time; the wall
+      subsumes the check → `to_threshold()` bridges INFALLIBLY. First leaf since the
+      early ones to import corona-core (deliberate). Second type `StaticQuorums<N,R,W>`
+      walls `R+W>N` (arithmetic relation) → total `min_overlap()`. E0080 leans on E0451
+      (private field forces `new()` → forces the wall). 5 unit + 3 doctests (2
+      const-eval-wall `compile_fail`s); workspace 66 unit + 16 doctests, gates green.
+- [x] **VOCABULARY COMPLETE** — all four primitives now each have a leaf: E0451 (all
+      six), E0308-brand (vss/merkle), E0382 (lamport), E0080 (static-config). Thesis
+      milestone; the garden is a finished thought (could wind down here).
+- [ ] Cold-review the leaf-6 surface to convergence. Focus: does the const-eval wall
+      actually fire (E0080) on every bad config and NOT on valid ones; can construction
+      bypass the wall (Default/literal/Clone/transmute-free)?; is `to_threshold`'s
+      infallibility genuinely guaranteed by the wall; overflow in `R+W`.
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)

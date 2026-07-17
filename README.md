@@ -19,7 +19,8 @@ corona/
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
-└── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
+├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
+└── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -168,10 +169,36 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > is the subject, not the hash. It stops key *reuse* (E0382), not *forgery* (the hash's
 > job) — two orthogonal protections; this leaf supplies the first.
 
+## Leaf 6: `static-config-types`
+
+The **E0080 leaf** — and the one that completes the four-primitive vocabulary. E0451,
+E0382, and E0308 all constrain *values* at runtime; **E0080 (the const-eval wall)**
+constrains *parameters at compile time, before any value exists*. `StaticThreshold<const
+K, const N>` carries a `const` block asserting `1 ≤ K ≤ N`, so an impossible
+`StaticThreshold::<6, 5>::new()` does not *build* — `error[E0080]: evaluation panicked:
+… K must be <= N`. It is the same k-of-n invariant `corona_core::Threshold::new` checks
+at *runtime*, moved to compile time.
+
+The wall **subsumes** the runtime check: a valid `StaticThreshold` converts to a
+`corona_core::Threshold` **infallibly** (no `Result`) — so this is the first leaf since
+the early ones to *import* `corona-core`, deliberately, because its subject is the core's
+own invariant seen one phase earlier. A second type, `StaticQuorums<N, R, W>`, walls an
+arithmetic *relation* (`R + W > N`, read/write quorum intersection) and buys a *total*
+`min_overlap()` (guaranteed ≥ 1, no `Option`). And E0080 leans on E0451: a private field
+seals construction so it must route through `new()`, which forces the wall.
+
+> ⚠ **TOY.** Configuration marker types, not a scheme — no hash, field, or secret. The
+> point is *when* the invariant is enforced (compile time), not any crypto content.
+
+**The vocabulary is complete:** E0451 (all six leaves), the E0308-class brand (vss,
+merkle), E0382 (lamport), E0080 (static-config) — all four primitives demonstrated across
+confidentiality, verifiability, availability, authentication, and static configuration,
+with no new primitive ever introduced.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 61 unit tests + 13 doctests (incl. sealed-ctor, cross-brand + one-time-key compile-fails)
+cargo test --workspace          # 66 unit tests + 16 doctests (sealed-ctor, cross-brand, one-time-key + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

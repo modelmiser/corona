@@ -22,6 +22,13 @@ name = "merkle-types"
 version = "0.1.0"
 
 [[package]]
+name = "static-config-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
+]
+
+[[package]]
 name = "threshold-types"
 version = "0.1.0"
 dependencies = [

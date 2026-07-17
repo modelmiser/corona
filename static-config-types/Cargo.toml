@@ -1,0 +1,13 @@
+[package]
+name = "static-config-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 6 — compile-time threshold/quorum configuration via const-eval walls (E0080). TOY: a type-discipline demonstration."
+license = "MIT"
+
+# The one leaf (besides the early ones) that DOES import `corona-core` — deliberately.
+# Its subject is the core's own k-of-n invariant, viewed at compile time: a valid
+# `StaticThreshold<K, N>` bridges to `corona_core::Threshold` infallibly, because the
+# const-eval wall already proved what `Threshold::new` checks at runtime.
+[dependencies]
+corona-core = { path = "../corona-core" }
