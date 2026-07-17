@@ -212,10 +212,11 @@ classic stateful-signature stale-state hazard becomes a compile error *for that
 chain value* (a retained deterministic seed re-mints it — the disclosed leaf-5
 caveat, inherited), and inside, each `SigningKey` is consumed by leaf 5's own
 `sign`); **E0451 conjoined** (the sealed `VerifiedMssMessage` is minted only when
-*both* leaves' sole minters fire, and records its minting root — value-level
-provenance, checkable via `root_hash()`); and **the brand penning the
-intermediate** (`VerifiedLeaf` lives and dies inside `adopt_scoped`; only
-unbranded facts escape). E0080 is honestly unused.
+*both* leaves' sole minters fire, and records its minting key's full
+`(root_hash, capacity)` anchor — value-level provenance, checkable via
+`minted_by()`); and **the brand penning the intermediate** (`VerifiedLeaf` lives
+and dies inside `adopt_scoped`; only unbranded facts escape). E0080 is honestly
+unused.
 
 The composition finding: it demanded two small **additive rungs** on the composed
 leaves — `merkle_types::adopt_scoped` (the verifier-side/light-client root entry
@@ -225,8 +226,8 @@ tree to commit to). Both are ordinary public API inside the existing vocabulary:
 **composition pressure surfaces missing *API*, not missing *vocabulary*.** And the
 pressure propagates: cold review caught leaf 7 re-creating both component gaps one
 level up — an unbranded witness, a verifier-unconstructible public key — closed by
-`VerifiedMssMessage::root_hash` and `MssPublicKey::adopt`. A composition inherits
-its components' *obligations*, not just their guarantees.
+full-anchor witness provenance (`minted_by()`) and `MssPublicKey::adopt`. A
+composition inherits its components' *obligations*, not just their guarantees.
 
 > ⚠ **TOY.** Inherits both leaves' toy FNV hashes and lamport's seed caveat (a
 > retained seed re-mints the whole keychain — the linearity binds the chain *value*).
@@ -235,7 +236,7 @@ its components' *obligations*, not just their guarantees.
 ## Build
 
 ```sh
-cargo test --workspace          # 84 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
+cargo test --workspace          # 86 unit tests + 20 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

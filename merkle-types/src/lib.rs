@@ -432,7 +432,10 @@ pub fn commit_scoped<R>(
 /// **What adoption does *not* weaken.** The `Root` was *already* caller-trusted —
 /// see the crate's honest limits: [`Root::verify`] has only ever proven membership
 /// in *the root you hand it*, never that the root commits the right set. Adoption
-/// adds no new trust, it only relocates where the trusted value enters. And the
+/// adds no new *kind* of trust — the same single-source trust the committer-side
+/// root always demanded — though the pair's *internal consistency* (that `size`
+/// really is that tree's leaf count) now becomes part of what the source is
+/// trusted for, since [`commit_scoped`] could never mint an inconsistent pair. And the
 /// brand discipline is fully preserved: the brand binds witnesses to **this
 /// adoption scope** (this checked-against instance), not to the hash value — so
 /// two adoptions of the *same* `(hash, size)` still get brands that never unify,
@@ -441,10 +444,19 @@ pub fn commit_scoped<R>(
 /// semantics of a brand: it tracks
 /// *which check minted the witness*, not which bytes the check compared against.
 ///
-/// **The pair is one anchor.** `size` is exactly as caller-trusted as `hash`: a
-/// mis-stated size shifts which levels *promote* and is therefore caught only for
-/// indices whose path shape the two sizes disagree on — it is **not**
-/// independently authenticated. Adopt `(hash, size)` from one trusted source as a
+/// **The pair is one anchor.** `size` is exactly as caller-trusted as `hash`, and
+/// it does **two** jobs in verification: it bounds the admissible index range
+/// (`index < size`) and it fixes which levels *promote*. Neither is independently
+/// authenticated, so a mis-stated size is caught only where the implied path
+/// shape disagrees — and the failure mode is not just spurious *rejection*: an
+/// **overstated** size can *accept genuine committed bytes at a phantom
+/// position* — a relabeled index that exists only under the lie, whose extra
+/// promoted levels fold the same genuine siblings to the same root (e.g. a
+/// 5-leaf tree's tail proof, relabeled to index 8, verifies under an adopted
+/// size of 9 — see the regression test). Under any size lie, membership of
+/// *bytes* stays sound (nothing uncommitted ever verifies); what degrades is
+/// **position semantics** — `index()` is authenticated relative to the *adopted*
+/// shape, not the true tree. Adopt `(hash, size)` from one trusted source as a
 /// unit, never mix a hash from one place with a size from another.
 ///
 /// ```
@@ -748,6 +760,39 @@ mod tests {
     #[test]
     fn adopting_an_empty_root_is_refused() {
         assert!(adopt_scoped(0xdead_beef, 0, |_root| ()).is_none());
+    }
+
+    #[test]
+    fn overstated_size_admits_phantom_positions_from_genuine_material() {
+        // The ACCEPTANCE channel of a size lie (see the "pair is one anchor"
+        // doc): real n = 5; the tail leaf's genuine 1-sibling promoted path,
+        // relabeled to index 8, verifies under adopted size 9 — widths 9→5→3→2
+        // promote index 8 three times (8→4→2→1) and then pair it once with the
+        // same genuine sibling, folding to the same root. Genuine bytes, phantom
+        // position: membership is intact, position semantics are relative to the
+        // ADOPTED shape.
+        let (hash, p4) = commit_scoped(&sample(), |root, tree| {
+            (root.hash(), tree.proof(4).unwrap())
+        })
+        .unwrap();
+        let mut phantom = p4.clone();
+        phantom.index = 8;
+        adopt_scoped(hash, 9, |root| {
+            let v = root
+                .verify(b"erin", &phantom)
+                .expect("genuine bytes verify at the phantom position");
+            assert_eq!(
+                v.index(),
+                8,
+                "an index that does not exist in the true tree"
+            );
+        })
+        .unwrap();
+        // The honestly-sized root rejects the same relabel at the range gate.
+        adopt_scoped(hash, 5, |root| {
+            assert!(root.verify(b"erin", &phantom).is_none());
+        })
+        .unwrap();
     }
 
     #[test]

@@ -36,16 +36,18 @@
 //!   `VerifyingKey::verify` (leaf 5) must mint a `VerifiedMessage`, *and*
 //!   `Root::verify` (leaf 4) must mint a `VerifiedLeaf`. The composed witness is
 //!   evidence of the **conjunction** — this message verified under a one-time key
-//!   *that is a committed member of this root* — and it records *which* root, at
-//!   the value level ([`VerifiedMssMessage::root_hash`]; see the honest limits for
-//!   why value-level and not a brand).
+//!   *that is a committed member of this root* — and it records *which key*, at
+//!   the value level: the full `(root_hash, capacity)` anchor, checkable via
+//!   [`VerifiedMssMessage::minted_by`] (see the honest limits for why value-level
+//!   and not a brand).
 //! - **The brand, penning the intermediate.** Verification adopts the trusted root
 //!   inside `merkle_types::adopt_scoped`, so the intermediate `VerifiedLeaf<'brand>`
-//!   is born penned in that scope and *cannot leak out of it*; only its unbranded
-//!   facts (the leaf index, the digest, the root hash) escape into
-//!   [`VerifiedMssMessage`]. The brand does exactly what it does at home: the
-//!   *intermediate* witness stays bound, at compile time, to the check that minted
-//!   it.
+//!   is born penned in that scope and *cannot leak out of it*: the one fact
+//!   extracted from it — the authenticated leaf index — escapes unbranded into
+//!   [`VerifiedMssMessage`], joined there with the digest (from leaf 5's
+//!   `VerifiedMessage`) and the verifying key's own anchor. The brand does
+//!   exactly what it does at home: the *intermediate* witness stays bound, at
+//!   compile time, to the check that minted it.
 //! - **E0080 is honestly absent.** The composition needed three primitives, not
 //!   four; nothing here walls a const parameter. (Capacity `n` is a runtime value.)
 //!
@@ -73,9 +75,9 @@
 //! rungs caught this crate re-creating *both* component gaps one level up — a
 //! composed witness with no provenance (the gap vss/merkle each closed at their
 //! rung 2), and a public key a wire-side verifier could not construct (the gap
-//! `adopt_scoped` closed for leaf 4). Hence [`VerifiedMssMessage::root_hash`] and
-//! [`MssPublicKey::adopt`]. A composition inherits its components' *obligations*,
-//! not just their guarantees.
+//! `adopt_scoped` closed for leaf 4). Hence the full-anchor witness provenance
+//! ([`VerifiedMssMessage::minted_by`]) and [`MssPublicKey::adopt`]. A composition
+//! inherits its components' *obligations*, not just their guarantees.
 //!
 //! ## Honest limits
 //!
@@ -103,21 +105,29 @@
 //!   schemes tier trees over trees (Merkle's own suggestion; XMSS^MT's structure)
 //!   — out of scope for the toy.
 //! - **Witness provenance is value-level, not a brand.** [`VerifiedMssMessage`]
-//!   records the minting root's hash ([`root_hash`](VerifiedMssMessage::root_hash))
-//!   so provenance is *checkable at runtime* (compare against
-//!   [`MssPublicKey::root_hash`]) — but presenting a witness where another public
-//!   key's evidence is expected still *type-checks*; only the comparison catches
-//!   it. A compile-time brand here would have to scope the public key itself,
-//!   and an MSS public key exists to be distributed (`Copy`, wire-crossing) — a
-//!   scoped-signature design would fight the scheme's whole point. This is a
-//!   deliberate trade, disclosed: compile-time provenance for the *intermediate*
-//!   (the brand pens `VerifiedLeaf`), value-level provenance for the *export*.
-//! - **An adopted public key is caller-trusted.** [`MssPublicKey::adopt`] mints a
-//!   key from a bare `(root_hash, capacity)` received out of band — the
-//!   verifier-side doorway, with exactly `adopt_scoped`'s trust model: adoption
-//!   adds no new trust (the anchor was always caller-trusted), and the pair is
-//!   **one anchor** (a mis-stated capacity is only shape-caught; never mix a hash
-//!   from one source with a capacity from another).
+//!   records the minting key's **full anchor** — root hash *and* capacity — so
+//!   provenance is *checkable at runtime* via
+//!   [`minted_by`](VerifiedMssMessage::minted_by) (both halves matter:
+//!   `key_index` is authenticated only relative to the minting capacity, and a
+//!   hash-only check cannot tell an honest key from a same-hash, lying-capacity
+//!   adoption). But presenting a witness where another public key's evidence is
+//!   expected still *type-checks*; only the check catches it. A compile-time
+//!   brand here would have to scope the public key itself, and an MSS public key
+//!   exists to be distributed (`Copy`, wire-crossing) — a scoped-signature
+//!   design would fight the scheme's whole point. This is a deliberate trade,
+//!   disclosed: compile-time provenance for the *intermediate* (the brand pens
+//!   `VerifiedLeaf`), value-level provenance for the *export*.
+//! - **An adopted public key is caller-trusted — and a capacity lie degrades
+//!   *position*, never *membership*.** [`MssPublicKey::adopt`] mints a key from
+//!   a bare `(root_hash, capacity)` received out of band — the verifier-side
+//!   doorway, with exactly `adopt_scoped`'s trust model (no new *kind* of trust;
+//!   the pair's internal consistency joins what the source is trusted for). The
+//!   pair is **one anchor**: capacity bounds the admissible `key_index` range
+//!   *and* fixes the tree shape, so an **overstated** capacity can accept
+//!   genuine committed material at a phantom `key_index` outside the true tree
+//!   (regression-tested) — while under *any* capacity lie, nothing uncommitted
+//!   ever verifies. Never mix a hash from one source with a capacity from
+//!   another.
 //! - **MSS, not XMSS.** The standardized descendant (XMSS, RFC 8391) uses WOTS+
 //!   one-time keys and bitmasked tree hashing, not plain Lamport + plain trees.
 //!   This leaf composes the two crates the garden actually has.
@@ -229,18 +239,25 @@ pub struct MssSignature {
 /// one-time key proved membership under the root (leaf 4's sole minter). Evidence
 /// of the conjunction; `Clone`-able, like every evidence witness in the garden.
 ///
-/// The witness records **which root minted it** ([`root_hash`](Self::root_hash))
-/// — value-level provenance, so a consumer holding a specific [`MssPublicKey`]
-/// can *check* the binding (`w.root_hash() == pk.root_hash()`). It is not a
-/// compile-time brand: presenting it where another key's evidence is expected
-/// still type-checks, and only the comparison catches it (see the honest limits
-/// for why that trade is deliberate — a branded export would scope the
-/// distributable public key).
+/// The witness records the **full anchor of the key that minted it** — both the
+/// root hash *and* the capacity — as value-level provenance. Check the binding
+/// with [`minted_by`](Self::minted_by): a consumer holding a specific
+/// [`MssPublicKey`] can confirm the witness is evidence under *that exact* key.
+/// Both halves matter: the docs call `(root_hash, capacity)` **one anchor**, and
+/// [`key_index`](Self::key_index) is authenticated only *relative to the minting
+/// key's capacity* — a hash-only comparison could not distinguish an
+/// honestly-adopted key from one adopted with the same hash and a lying capacity.
+/// The provenance is not a compile-time brand: presenting the witness where
+/// another key's evidence is expected still type-checks, and only the
+/// [`minted_by`](Self::minted_by) check catches it (see the honest limits for why
+/// that trade is deliberate — a branded export would scope the distributable
+/// public key).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedMssMessage {
     digest: u64,
     key_index: usize,
     root_hash: u64,
+    capacity: usize,
 }
 
 impl VerifiedMssMessage {
@@ -249,19 +266,36 @@ impl VerifiedMssMessage {
         self.digest
     }
 
-    /// Which one-time key signed it — the authenticated Merkle leaf index (leaf
-    /// 4's public fact, extracted from the brand-penned `VerifiedLeaf` before the
-    /// adoption scope closed).
+    /// Which one-time key signed it — the Merkle leaf index, authenticated
+    /// **relative to the minting key's anchor** (leaf 4's public fact, extracted
+    /// from the brand-penned `VerifiedLeaf` before the adoption scope closed).
+    /// Meaningless across keys (every chain has an index 0), and meaningful
+    /// under a mis-adopted capacity only relative to the *adopted* shape — use
+    /// [`minted_by`](Self::minted_by) to pin which anchor this index is about.
     pub fn key_index(&self) -> usize {
         self.key_index
     }
 
-    /// The root hash of the [`MssPublicKey`] that minted this witness — its
-    /// value-level provenance. Compare against [`MssPublicKey::root_hash`] to
-    /// check the witness is evidence under *your* key, not merely *some* key.
-    /// (`key_index` alone is meaningless across keys: every chain has an index 0.)
+    /// The root-hash half of the minting key's anchor. On its own this is only
+    /// **half** the provenance — two keys sharing a hash under different
+    /// capacities compare equal here — so prefer [`minted_by`](Self::minted_by)
+    /// for the binding check.
     pub fn root_hash(&self) -> u64 {
         self.root_hash
+    }
+
+    /// The capacity half of the minting key's anchor.
+    pub fn capacity(&self) -> usize {
+        self.capacity
+    }
+
+    /// The **full-anchor provenance check**: `true` iff this witness was minted
+    /// by a key with exactly `pk`'s `(root_hash, capacity)` anchor. This is the
+    /// binding a consumer should require before treating the witness — and in
+    /// particular its [`key_index`](Self::key_index) — as evidence under `pk`.
+    /// (Value-level, not a brand: the check is a runtime comparison.)
+    pub fn minted_by(&self, pk: &MssPublicKey) -> bool {
+        self.root_hash == pk.root_hash && self.capacity == pk.size
     }
 }
 
@@ -362,12 +396,23 @@ impl MssPublicKey {
     /// ever hold a public key was to (transitively) run keygen, and a wire-side
     /// verifier holding exactly what MSS publishes could not enter the API at
     /// all: the same *committer-complete, verifier-scope-bound* gap this crate's
-    /// composition surfaced in leaf 4, re-created one level up. Adoption closes
-    /// it at the same cost it cost there: **none** — the key was already a
-    /// caller-trusted anchor (see the type doc), so trusting a received
-    /// `(root_hash, capacity)` adds no trust that keygen-side minting didn't
-    /// already assume. The pair is **one anchor**: a mis-stated capacity shifts
-    /// only promotion boundaries and is not independently authenticated — adopt
+    /// composition surfaced in leaf 4, re-created one level up. Adoption adds no
+    /// new *kind* of trust — the key was already a caller-trusted anchor (see
+    /// the type doc) — though the pair's *internal consistency* (that `capacity`
+    /// really is that tree's leaf count) now becomes part of what the source is
+    /// trusted for, since [`generate`] could never mint an inconsistent pair.
+    ///
+    /// The pair is **one anchor**, and `capacity` does two jobs: it bounds the
+    /// admissible `key_index` range and fixes the tree shape (promotions).
+    /// Neither is independently authenticated, and the failure mode of a lie is
+    /// not just spurious rejection: an **overstated** capacity can accept
+    /// genuine committed material at a **phantom `key_index`** that does not
+    /// exist in the true tree (see the regression test and
+    /// `merkle_types::adopt_scoped`'s "one anchor" doc). Membership stays sound
+    /// under any capacity lie — nothing uncommitted ever verifies — but
+    /// `key_index` is authenticated only *relative to the adopted anchor*, which
+    /// is why [`VerifiedMssMessage`] records the full anchor and
+    /// [`minted_by`](VerifiedMssMessage::minted_by) compares both halves. Adopt
     /// both values from one trusted source.
     pub fn adopt(root_hash: u64, capacity: usize) -> Option<MssPublicKey> {
         if capacity == 0 {
@@ -400,6 +445,7 @@ impl MssPublicKey {
                 digest: vm.digest(),
                 key_index: leaf.index(),
                 root_hash: self.root_hash,
+                capacity: self.size,
             })
         })
         // `size >= 1` by construction (generate and adopt both refuse 0), so
@@ -575,8 +621,51 @@ mod tests {
         assert_eq!(va.digest(), vb.digest());
         assert_eq!(va.key_index(), vb.key_index());
         assert_ne!(va, vb, "provenance distinguishes the witnesses");
-        assert_eq!(va.root_hash(), pk_a.root_hash());
-        assert_eq!(vb.root_hash(), pk_b.root_hash());
-        assert_ne!(va.root_hash(), pk_b.root_hash());
+        assert!(va.minted_by(&pk_a) && vb.minted_by(&pk_b));
+        assert!(!va.minted_by(&pk_b) && !vb.minted_by(&pk_a));
+        assert_eq!((va.root_hash(), va.capacity()), (pk_a.root_hash(), 2));
+    }
+
+    #[test]
+    fn overstated_adopted_capacity_yields_phantom_indices_caught_by_minted_by() {
+        // The acceptance channel of a capacity lie, at the composition level:
+        // real n = 2; key 1's genuine signature relabeled to index 2 verifies
+        // under an adopted capacity of 3 (width 3 promotes index 2, then the
+        // same genuine sibling folds to the same root), minting key_index 2 — a
+        // position the honest key can never emit and correctly rejects. Genuine
+        // material only: the rogue-key membership guarantee is untouched; what
+        // degrades is position semantics. The full-anchor witness makes the
+        // degradation *checkable*: minted_by pins which anchor the index is
+        // relative to, where a hash-only comparison could not.
+        let (chain, pk) = generate(5, 2).unwrap();
+        let (_s0, rest) = chain.sign_next(b"first");
+        let (sig, _) = rest.unwrap().sign_next(b"m");
+        assert_eq!(sig.proof.index, 1);
+        let mut phantom = sig.clone();
+        phantom.proof.index = 2;
+        assert!(
+            pk.verify(b"m", &phantom).is_none(),
+            "honest key: range gate"
+        );
+
+        let inflated = MssPublicKey::adopt(pk.root_hash(), 3).unwrap();
+        let v = inflated
+            .verify(b"m", &phantom)
+            .expect("genuine bytes at a phantom index under the inflated anchor");
+        assert_eq!(v.key_index(), 2, "an index outside the true tree");
+        // Full-anchor provenance tells the two keys apart; the hash half alone
+        // cannot (same root hash on both).
+        assert!(v.minted_by(&inflated));
+        assert!(!v.minted_by(&pk));
+        assert_eq!(v.root_hash(), pk.root_hash());
+        // And no capacity lie ever admits UNcommitted material: a rogue key
+        // stapled to the genuine proof still fails membership under the lie.
+        let (rogue_sk, rogue_vk) = SigningKey::generate(0xBAD);
+        let forged = MssSignature {
+            ots: rogue_sk.sign(b"m"),
+            vk: rogue_vk,
+            proof: phantom.proof.clone(),
+        };
+        assert!(inflated.verify(b"m", &forged).is_none());
     }
 }
