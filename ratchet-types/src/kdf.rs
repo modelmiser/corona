@@ -81,7 +81,10 @@ mod tests {
         // 32 bytes read as a seed.
         let ck = init(0x1234_5678);
         assert_ne!(next_chain(&ck), message_key(&ck));
-        // The init domain is disjoint too (tag 0x00 vs 0x01 vs 0x02).
+        // `init` from those 8 bytes differs from both — but note this pair differs in
+        // the key input too (init zero-pads 8 bytes; `next_chain`/`message_key` take the
+        // full 32-byte `ck`), so unlike the assertion above this is a sanity check on the
+        // mixing, not the tag-only bijection guarantee (which needs an identical suffix).
         let seedish = init(u64::from_be_bytes(ck[..8].try_into().unwrap()));
         assert_ne!(seedish, next_chain(&ck));
         assert_ne!(seedish, message_key(&ck));

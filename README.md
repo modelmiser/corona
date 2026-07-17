@@ -345,12 +345,16 @@ the same primitive at a different catastrophe, *retention*. `ChainKey` is a line
 capability — not `Clone`/`Copy`, E0451-sealed — and `advance(self) -> (MessageKey,
 ChainKey)` consumes it. After a step, no live binding can reach the old chain key, so
 no code path re-derives the message key it would have produced: **forward secrecy, at
-the level of program access, reduces to E0382.** Here the *absence of `Clone`* is
-load-bearing, not hygiene — cloning the chain key *is* keeping the past readable.
+the level of program access, reduces to E0382.** Cloning the chain key *is* keeping
+the past readable, so the *absence of `Clone`* carries the guarantee as directly as
+the consuming move — load-bearing exactly as in every affine leaf (a cloned signing
+key double-signs, a cloned coin double-spends), the twist being that here the
+duplicate's danger is *retention*, not the reuse of leaves 5 and 9.
 
 Two orthogonal protections, the leaf-5 shape again: the **type** stops *retention*
 (E0382); a **one-way KDF** stops *inversion* (recovering `CKᵢ` from `CKᵢ₊₁` — the toy
-FNV backend fails this deliberately). And a boundary *within* the primitive — the one
+FNV backend gives no such guarantee, a non-cryptographic hash; no cheap inversion is
+exhibited, it simply is not one-way). And a boundary *within* the primitive — the one
 genuinely new datum for the garden's map: E0382 gives **logical** forward secrecy (the
 old key is unreachable) but **not memory-level** (its bytes are not scrubbed — a move
 relocates a value, it does not zero its old home). Memory-level secrecy needs

@@ -27,17 +27,20 @@
 //! would re-derive `MKᵢ`. Retention is the forward-secrecy violation, and the type
 //! system forbids it.
 //!
-//! Note *which* compile error carries the security here. In leaves 5 and 9 the headline
-//! is E0382 (no double-use); the absence of `Clone` is hygiene. Here the **no-`Clone`**
-//! is itself load-bearing: cloning the chain key *is* keeping the past readable. So this
-//! leaf leans on both faces of linearity — you may not use the old value again (E0382),
-//! and you could never have duplicated it in the first place (no `Clone`). Both rest on
-//! the **E0451 seal**: the `secret` field is private, so it cannot simply be *read out*.
-//! Were it public, safe code could stash a copy (`[u8; 32]` is `Copy`) before advancing
-//! and re-derive the past keys with no move and no clone at all — so three mechanisms,
-//! not two, foreclose retention. E0382 and the no-`Clone` face are the *novel* pair that
-//! makes forward secrecy fall out of ownership; the seal is what makes them govern
-//! *every* path to the secret rather than just the two obvious ones.
+//! Note what *kind* of catastrophe the linearity guards against here. An affine value is
+//! neither `Clone`/`Copy` nor reusable, and **both** halves are load-bearing in *every*
+//! affine leaf — leaves 5 and 9 included, where a cloned signing key double-signs (leaking
+//! both preimage sides → forgery) and a cloned coin double-spends just as surely as reuse
+//! does. What differs in leaf 10 is the catastrophe a surviving duplicate would enable:
+//! not *reuse* (using the value a second time) but *retention* (keeping the old value at
+//! all). So here the no-`Clone` face maps straight onto the security statement — *a copy
+//! you keep is the past staying readable* — and forward secrecy turns out to be linearity
+//! read against a different failure, not a new mechanism. Both faces rest on the **E0451
+//! seal**: the `secret` field is private, so it cannot simply be *read out*. Were it
+//! public, safe code could stash a copy (`[u8; 32]` is `Copy`) before advancing and
+//! re-derive the past keys with no move and no clone at all — so three mechanisms, not
+//! two, foreclose retention, and the seal is what makes the linear discipline govern
+//! *every* path to the secret, not just the two obvious ones.
 //!
 //! ## Two orthogonal forward-secrecy protections (the leaf-5 shape, again)
 //!
@@ -49,8 +52,9 @@
 //!   safe-code binding can reach `CKᵢ`, so no code path re-derives `MKᵢ` from the state.
 //! - **A one-way KDF stops *inversion*** (the backend). Even code that *only* holds the
 //!   new `CKᵢ₊₁` must not be able to compute `CKᵢ` back out of it. That is the KDF's
-//!   job — and the toy FNV backend fails it deliberately (see the banner). This leaf
-//!   supplies the first protection; a real KDF supplies the second.
+//!   job — and the toy FNV backend makes *no such guarantee* (a non-cryptographic hash,
+//!   deliberately; see the banner — this is an *absence* of one-wayness, not an exhibited
+//!   inversion). This leaf supplies the first protection; a real KDF supplies the second.
 //!
 //! And there is a **third** thing neither the type nor the KDF provides, called out in
 //! the honest limits below: *memory-level* forward secrecy (the old key's **bytes**
@@ -111,9 +115,10 @@
 //!
 //! ## Primitives used
 //!
-//! **E0382** (linear [`ChainKey`]: `advance` consumes it, and there is no `Clone` to
-//! pre-duplicate it — the *novel* pair that makes forward secrecy fall out of ownership)
-//! over **E0451** (sealed [`ChainKey`] and [`MessageKey`]) — here doing double duty: not
+//! **E0382** (the affine discipline on [`ChainKey`]: `advance` consumes it, and there is
+//! no `Clone` to pre-duplicate it — the no-`Clone` half surfaces as E0599, not E0382, but
+//! both are the one move-linearity primitive at work, here read as forward secrecy) over
+//! **E0451** (sealed [`ChainKey`] and [`MessageKey`]) — here doing double duty: not
 //! only "no forged witness" but "the raw secret cannot be read out and stashed", without
 //! which the linear discipline would guard a value whose contents had already escaped.
 //! The brand and E0080 are honestly unused. The new datum this leaf
