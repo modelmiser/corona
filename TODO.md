@@ -220,8 +220,25 @@ work (complete tasks, add children, keep siblings).
       suite: [0x11,0x22,0x33] is GF(256)-COLLINEAR (p = 0x11·x) → k-lie
       invisible for it; use non-collinear data. vid 13 unit + 2 doctests;
       workspace 101 unit + 22 doctests, all gates green.
-- [ ] Cold-review the leaf-8 surface to convergence — scope: vid-types (both
-      component leaves' touched surfaces unchanged this time — no new rungs).
+- [x] Cold-review the leaf-8 surface to convergence — CONVERGED at round 3 (2
+      consecutive clean rounds; MOD 3→0→0; commits 086db88→d308c06 + doctest nit).
+      Round 1's load-bearing find: per-fragment verification proves MEMBERSHIP
+      not CONSISTENCY — a malicious disperser committing off-polynomial
+      fragments made retrieve() subset-dependent. Fixed by DESIGN (AVID-H
+      retrieval check: re-encode → re-derive root → must equal anchor's) →
+      **AvailableData is a function of the anchor alone** (up to hash; EXACT for
+      honest anchors), inconsistent dispersals = InconsistentEncoding from every
+      subset. Also: pedigree corrected (Krawczyk 1993 fingerprints; Merkle form
+      = AVID-H in CT05; CT05 headline = async protocol); n-lie taxonomy is
+      NARROWER than merkle's (embedded-index binding forecloses phantom +
+      misattribution — R1 adversarial matrix 23,400 attacks/0 position-lies; R2
+      sweep 232 Oks all anchor-identical + malformed-leaf class 4096+/0; R3
+      re-confirmed raw-merkle phantom channel real and vid's double-bind closing
+      it); k-lie taxonomy split by direction and PROVEN exact (understated
+      caught except degree-<k' truncation edge; overstated never caught =
+      parity-extension residue + raised bar). All five expect() sites proven
+      unreachable ×3 independent reviews. vid 18 unit + 2 doctests; workspace
+      106 + 22. **All 8 leaves now cold-reviewed.**
 
 ## Parking lot (garden, not scheduled)
 

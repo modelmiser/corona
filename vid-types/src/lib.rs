@@ -205,6 +205,8 @@
 //! ```compile_fail,E0451
 //! let forged = vid_types::AvailableData {
 //!     bytes: vec![1, 2, 3], // ERROR[E0451]: fields are private
+//!     // (`anchor`, the struct's other field, is equally private — no
+//!     // combination of initializers compiles.)
 //! };
 //! ```
 
