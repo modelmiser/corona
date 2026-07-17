@@ -71,17 +71,20 @@ primitives (E0451 + brand) and introduces no new one.
 
 ## Leaf 3: `erasure-types`
 
-Reed–Solomon *k-of-n* erasure coding — the **paired axis** to leaf 1. RS is
-*literally Shamir's polynomial machinery* with the secret+randomness swapped for
-`k` data symbols: `encode` makes `n` fragments (the first `k` are the data —
-systematic — the rest parity), and any `k` reconstruct the data. Same Lagrange
-interpolation, opposite property: below `k` a Shamir share reveals *nothing*
-(confidentiality), while an RS fragment *leaks* (no secrecy) but any `k` restore
-*availability*. The rung's finding: **the typestate is identical** (an E0451-sealed
-`RecoveredData` + a runtime k-of-n check); the confidentiality-vs-availability axis
-lives entirely in the *math*, invisible to the types. The deliberate contrast:
-`Secret` redacts its `Debug`; `RecoveredData` does **not** — the data is public,
-and the seal witnesses the *recovery event* (availability), not secrecy.
+Reed–Solomon *k-of-n* erasure coding — *a* **paired axis** to leaf 1. RS is the
+*same polynomial-evaluation machinery* as Shamir (a degree-(k-1) GF(256) polynomial
+reconstructed by Lagrange), with the message in the *evaluations* (`k` data bytes)
+rather than the *coefficients* (a secret + random padding): `encode` makes `n`
+fragments (the first `k` are the data — systematic — the rest parity), and any `k`
+reconstruct the data. Same interpolation, opposite property: below `k` a Shamir
+share reveals *nothing* (confidentiality), while an RS fragment *leaks* (no secrecy)
+but any `k` restore *availability*. The rung's finding: **the unforgeability
+mechanism is identical** (an E0451-sealed `RecoveredData` + a runtime k-of-n check),
+so the confidentiality-vs-availability axis is invisible to the *compiler-enforced
+seal* — it surfaces only in the *API by convention*: `Secret` redacts its `Debug`,
+`RecoveredData` does **not** (the data is public). And the seal is a *typestate
+token* (proof it came from `decode`), **not** an availability proof — fragments are
+public and forgeable.
 
 > ⚠ **TOY.** `erasure-types` does plain *erasure* decoding — **no error detection
 > or correction**, so a corrupted fragment silently yields wrong data. Not for

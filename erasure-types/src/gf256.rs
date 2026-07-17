@@ -36,13 +36,13 @@ const LOG: [u8; 256] = TABLES.1;
 
 /// Field addition (and subtraction — they coincide) is XOR.
 #[inline]
-pub fn add(a: u8, b: u8) -> u8 {
+pub(crate) fn add(a: u8, b: u8) -> u8 {
     a ^ b
 }
 
 /// Field multiplication.
 #[inline]
-pub fn mul(a: u8, b: u8) -> u8 {
+pub(crate) fn mul(a: u8, b: u8) -> u8 {
     if a == 0 || b == 0 {
         return 0;
     }
@@ -53,7 +53,7 @@ pub fn mul(a: u8, b: u8) -> u8 {
 /// backstop; unreachable through the crate's gated decode path (distinct indices
 /// keep every `x_i − x_j` non-zero).
 #[inline]
-pub fn inv(a: u8) -> u8 {
+pub(crate) fn inv(a: u8) -> u8 {
     assert!(a != 0, "0 has no inverse in GF(256)");
     EXP[(255 - LOG[a as usize] as usize) % 255]
 }

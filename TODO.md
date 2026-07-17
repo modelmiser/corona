@@ -55,7 +55,12 @@ work (complete tasks, add children, keep siblings).
 - [x] `corona-core` promotion check (leaf-3 trigger): **GF(256) now shared by leaf 1 +
       leaf 3** → real promotion candidate. FLAGGED, not done (would refactor converged
       `threshold-types`). See CHARTER.
-- [ ] Cold-review the leaf-3 surface to convergence (as before) — NOT yet done
+- [x] Cold-review the leaf-3 surface to convergence — 3 rounds (MOD 2→0→0), two
+      consecutive clean rounds. ZERO correctness/soundness defects; all findings were
+      thesis-precision (RS-is-Shamir over-claim → "same machinery, msg in evaluations
+      not coefficients"; "axis invisible to the types" → invisible to the seal, visible
+      in the API by convention; seal = typestate token not availability proof). Sealed
+      gf256 arithmetic pub(crate).
 - [ ] Promote `gf256` → `corona-core`, refactor `threshold-types` + `erasure-types` to
       use it (the flagged leaf-3 DRY debt)
 - [ ] Error-correcting Reed–Solomon (detect/correct *corrupted* fragments) — closes the

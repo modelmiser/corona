@@ -1,54 +1,65 @@
 //! # erasure-types — Reed-Solomon *k-of-n* erasure coding as typestate
 //!
-//! Corona **leaf 3**, and the **paired axis** to leaf 1 (`threshold-types`,
-//! Shamir secret sharing). The two are the *same polynomial machinery* used for
+//! Corona **leaf 3**, and *a* **paired axis** to leaf 1 (`threshold-types`,
+//! Shamir secret sharing). The two are the *same polynomial-evaluation machinery*
+//! — a degree-`(k-1)` GF(256) polynomial reconstructed by Lagrange — used for
 //! opposite ends:
 //!
 //! | | Shamir (leaf 1) | Reed-Solomon (this leaf) |
 //! |---|---|---|
-//! | polynomial | 1 secret + `k-1` **random** coefficients | `k` **data** symbols, no randomness |
+//! | message lives in | a secret in the **constant coefficient** (the other `k-1` coefficients **random**) | `k` **data** bytes, as the **evaluations** `p(1..k)` |
 //! | below `k` | reveals **nothing** (confidentiality) | fragments **leak** (no secrecy) |
 //! | any `k` | reconstruct the secret | reconstruct the data (**availability**) |
 //! | reconstruction | Lagrange interpolation | Lagrange interpolation |
 //!
-//! Encode treats the `k` data bytes as the values `p(1)…p(k)` of a degree-`(k-1)`
-//! polynomial over GF(256); the `n` fragments are `p(1)…p(n)` (the first `k` are
-//! the data — *systematic* — the rest are parity). Any `k` fragments interpolate
-//! `p` and recover the data. It is literally Shamir with the secret+randomness
-//! swapped for data.
+//! Encode treats the `k` data bytes as the values `p(1)…p(k)` of the polynomial;
+//! the `n` fragments are `p(1)…p(n)` (the first `k` are the data — *systematic* —
+//! the rest are parity). Any `k` fragments interpolate `p` and recover the data.
+//! It is the same machinery as Shamir with the message in the *evaluations* (data)
+//! rather than the *coefficients* (a secret + random padding) — not a literal
+//! coefficient-for-coefficient swap, but the same code family. (Shamir's scheme
+//! *is* itself a Reed–Solomon code; this is its availability-facing sibling.)
 //!
-//! ## The rung's finding: the axis lives in the math, not the types
+//! ## The rung's finding: the axis is invisible to the *seal*, not to the API
 //!
-//! The typestate is **identical** to leaf 1: an **E0451**-sealed reconstruction
-//! witness ([`RecoveredData`]) plus a runtime k-of-n check. The
-//! confidentiality-vs-availability axis is *not visible to the type system* — the
-//! sealed witness records "recovered from ≥ k fragments through the checked path,"
-//! and *which* property that path delivers (secrecy for Shamir, availability here)
-//! is a property of what went into the polynomial, not of the type.
+//! The **unforgeability mechanism** is identical to leaf 1: an **E0451**-sealed
+//! reconstruction witness ([`RecoveredData`]) plus a runtime k-of-n check. That
+//! machinery is **property-agnostic** — the compiler enforces nothing that
+//! distinguishes "below k reveals nothing" (Shamir) from "fragments leak" (RS).
+//! So the confidentiality-vs-availability axis is invisible to the
+//! *compiler-enforced typestate*: which property the checked path delivers is a
+//! fact about what went into the polynomial, not about the seal.
 //!
-//! Two things make the contrast concrete:
+//! It is **not** invisible to the human-facing API — and that difference is
+//! deliberate, but it is **convention, not enforcement**:
 //!
-//! - **Disclosure posture is opposite, deliberately.** Shamir's `Secret` has a
-//!   *redacting* `Debug` and gates its byte behind `expose`. [`RecoveredData`] has
+//! - **Disclosure posture is opposite, on purpose.** Shamir's `Secret` has a
+//!   *redacting* `Debug` and gates its byte behind `expose`; [`RecoveredData`] has
 //!   a **plain** `Debug` and a public [`bytes`](RecoveredData::bytes) accessor —
-//!   the data is *not* secret; hiding it would misrepresent what RS provides.
-//! - **The seal witnesses the *recovery event*, not secrecy.** Even though the
-//!   recovered data is public, a `RecoveredData` still can't be forged: it proves
-//!   *availability was met* (≥ k fragments assembled through the checked path).
-//!   E0451 is property-agnostic — it seals the token, whatever the token means.
+//!   the data is *not* secret, and hiding it would misrepresent what RS provides.
+//!   The compiler enforces neither posture; both are the author's convention.
+//! - **The seal is a typestate token, not an availability *proof*.** A
+//!   `RecoveredData` can't be forged (E0451), so holding one proves it came from
+//!   [`decode`]'s ≥ k checked path — a *typestate* fact, useful for keeping
+//!   reconstructed data distinct from raw. It is **not** a security guarantee:
+//!   [`Fragment`]s are public and forgeable (see limits), so "≥ k assembled" says
+//!   nothing about *genuine* availability. E0451 seals the token, whatever the
+//!   token means.
 //!
 //! ## Honest limits (parallel to leaf 1)
 //!
 //! - **`k` is caller-asserted.** [`decode`] takes the [`Threshold`], not something
-//!   bound to the encoding; passing the wrong `k` interpolates the wrong-degree
-//!   polynomial and yields wrong data.
+//!   bound to the encoding; passing the wrong `k'` yields wrong data of the wrong
+//!   length (`k'` bytes) — reading parity symbols as data when `k' > k`, or
+//!   interpolating too low a degree when `k' < k`.
 //! - **Fragments are unverified.** This is *erasure* decoding: it assumes the
 //!   presented fragments are genuine code symbols (lost ones are simply absent). A
 //!   *corrupted* fragment is silently reconstructed into wrong data — undetectable
 //!   here. Detecting/correcting corruption needs extra redundancy
 //!   (error-correcting Reed-Solomon), the availability-axis analogue of what
 //!   verifiable secret sharing ([`vss-types`](../vss_types/index.html)) adds to
-//!   Shamir — a natural next rung.
+//!   Shamir — though via the code's *own* extra parity and bounded-distance
+//!   decoding, not an external commitment. A natural next rung.
 //!
 //! ## ⚠ TOY — not production coding
 //!
@@ -101,15 +112,17 @@ pub struct Fragment {
 
 /// Data reconstructed from `≥ k` fragments.
 ///
-/// # Unforgeability (E0451) — of the *recovery*, not of secrecy
+/// # Unforgeability (E0451) — of the *typestate*, not of secrecy
 ///
 /// `RecoveredData` has a private field and no public constructor: it can *only*
-/// arrive from [`decode`], after the threshold check. So holding one is proof that
-/// **availability was met** — at least `k` fragments were assembled through the
-/// checked path. The data itself is **not** secret (RS provides no confidentiality),
-/// which is exactly why — unlike Shamir's `Secret` — the [`Debug`] is *not*
-/// redacting and [`bytes`](RecoveredData::bytes) hands the data out plainly.
-/// Building one directly does not compile:
+/// arrive from [`decode`], after the threshold check. So holding one proves it came
+/// from `decode`'s ≥ k checked path — a *typestate* fact (it keeps reconstructed
+/// data distinct from raw), **not** a security or availability guarantee: since
+/// [`Fragment`]s are public and forgeable, anyone can present `k` fabricated ones
+/// and get a `RecoveredData` (of wrong bytes). The data itself is **not** secret
+/// (RS provides no confidentiality), which is exactly why — unlike Shamir's
+/// `Secret` — the [`Debug`] is *not* redacting and [`bytes`](RecoveredData::bytes)
+/// hands the data out plainly. Building one directly does not compile:
 ///
 /// ```compile_fail
 /// use erasure_types::RecoveredData;
