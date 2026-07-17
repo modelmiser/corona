@@ -303,7 +303,8 @@ each executable:
    spend *type-checks* and is caught instead by the mint's **spent set**
    (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
    before the set, so `Ok` implies issued and check-failing presentations
-   neither probe the spent set nor burn a serial; first presentation wins).
+   neither probe the spent set nor burn a serial — a *valid*-tag forgery,
+   which the toy hash admits, behaves as authentic; first presentation wins).
    No fifth compile primitive is missing: what this
    layer needs is *fresh knowledge at redeem time*, which no compile-time fact
    can supply.

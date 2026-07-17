@@ -667,9 +667,15 @@ mod tests {
     fn many_coins_each_spend_exactly_once() {
         let mut mint = Mint::new(0x18);
         let wires: Vec<WireCoin> = (0..8).map(|_| mint.issue().into_wire()).collect();
-        for w in &wires {
-            assert!(mint.redeem(*w).is_ok());
-        }
+        let receipts: Vec<Receipt> = wires
+            .iter()
+            .map(|w| mint.redeem(*w).expect("first spend"))
+            .collect();
+        // Pins the third leg of Receipt equality: same mint, DIFFERENT
+        // serials compare unequal (a mint_id-only eq would pass the other
+        // two legs — cross-secret and same-seed-replica — and everything
+        // else in the suite).
+        assert_ne!(receipts[0], receipts[1]);
         for w in &wires {
             assert_eq!(
                 mint.redeem(*w),
