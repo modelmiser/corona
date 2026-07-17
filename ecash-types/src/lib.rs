@@ -1,12 +1,14 @@
 //! # ecash-types — bearer value and the double-spend boundary
 //!
-//! Corona **leaf 9**, the garden's first **negative-space leaf**. Every leaf so
-//! far asked *does this invariant reduce to the compile-primitive vocabulary?*
-//! and answered **yes**. This leaf asks the question of double-spend prevention
-//! — the defining invariant of bearer value — and the answer is a **split**:
+//! Corona **leaf 9**, the garden's first **negative-space leaf**. Every leaf
+//! so far answered its thesis question **yes** — *does this invariant reduce
+//! to the compile-primitive vocabulary?* for leaves 1–6, *do leaves compose?*
+//! for leaves 7–8. This leaf asks the question of double-spend prevention —
+//! the defining invariant of bearer value — and the answer is a **split**:
 //! the invariant reduces exactly as far as the type checker's reach extends,
-//! and *provably no further*. The finding is the **location and character of
-//! the cut**, made executable:
+//! and — for *bearer* value, definitionally (see layer 2's scoping) — no
+//! further. The finding is the **location and character of the cut**, made
+//! executable:
 //!
 //! 1. **Inside one ownership graph** (one type-checked program), a coin is a
 //!    consumable capability: [`Coin`] is not `Clone`/`Copy`, and the only
@@ -18,10 +20,18 @@
 //! 2. **Across the wire**, linearity dies — definitionally, not as a toy
 //!    limitation. A type discipline binds only the program it type-checks; a
 //!    serialized coin is bytes *outside every program*, and copying bytes is
-//!    invisible to the issuer's compiler. [`WireCoin`] states this honestly by
-//!    being all-public and `Copy`: after [`into_wire`](Coin::into_wire), a
-//!    "double spend" **type-checks**. What prevents it is the mint's **spent
-//!    set** — a runtime, stateful, *online* check ([`Mint::redeem`]), first
+//!    invisible to the issuer's compiler. That premise is the **bearer threat
+//!    model** made explicit: a bearer instrument's holder is by definition
+//!    arbitrary and unverified, so at least one program touching the bytes
+//!    sits outside any discipline. (In a *closed* system whose every endpoint
+//!    is itself a type-checked program sharing the protocol — the territory
+//!    of distributed/multiparty **session types** — linearity genuinely does
+//!    extend across wires; but that *constrains the holder*, the same move
+//!    trusted hardware makes below, and bearer value is precisely the refusal
+//!    of that constraint.) [`WireCoin`] states the premise honestly by being
+//!    all-public and `Copy`: after [`into_wire`](Coin::into_wire), a "double
+//!    spend" **type-checks**. What prevents it is the mint's **spent set** —
+//!    a runtime, stateful, *online* check ([`Mint::redeem`]), first
 //!    presentation wins. No fifth compile primitive is missing here: what
 //!    layer 2 needs is **fresh knowledge at redeem time** ("has this serial
 //!    been presented before?"), and no compile-time fact — established before
@@ -29,9 +39,11 @@
 //!
 //! 3. **Replicating the mint re-opens the hole.** The spent set is fused to
 //!    one [`Mint`] *value*. Two mints built from the same seed are the same
-//!    mint in identity (same secret, same [`minted_by`](Receipt::minted_by))
-//!    but have independent spent sets, and one wire coin redeems at both
-//!    (regression-tested below). "Serial *s* is unspent" is a claim about the
+//!    mint in identity (same secret, same [`minted_by`](Receipt::minted_by)),
+//!    and — issuing independently — they mint *byte-identical* coins; each
+//!    replica then accepts the same wire bytes once, because issuance state
+//!    and spent state are both replica-local (regression-tested below).
+//!    "Serial *s* is unspent" is a claim about the
 //!    **absence** of a prior event — non-monotone in the CALM sense
 //!    (Hellerstein–Alvaro, *Keeping CALM*, CACM 2020) — so a replicated mint
 //!    must coordinate (quorum its reads and writes). That is the **witness
@@ -46,15 +58,17 @@
 //! without fresh knowledge" is *punish, not prevent* — independent support for
 //! the negative claim. (Preventing, rather than punishing, offline
 //! double-spending requires trusted/tamper-resistant hardware, i.e. moving the
-//! spent state into a box the spender cannot copy — relocating the
-//! coordination, not eliminating it.)
+//! spent state into a box the spender cannot copy — relocating the stateful
+//! check, not eliminating it.)
 //!
 //! ## ⚠ TOY — not production crypto
 //!
 //! This crate exists to demonstrate a **type discipline and its boundary**,
 //! not to move money. The coin tag is 64-bit FNV-1a keyed by concatenation —
-//! **not a PRF, trivially invertible**: an adversary who observes one wire
-//! coin recovers the mint secret and forges freely (see `src/hash.rs`). There
+//! **not a PRF, invertible**: an adversary who observes one wire coin can
+//! unwind the serial's hash steps to the keyed intermediate state (an
+//! effective MAC key for *any* serial) and, with modest further work, the
+//! secret itself — either way, forging freely (see `src/hash.rs`). There
 //! is no blinding (Chaum's actual 1982 contribution — payer anonymity — is
 //! entirely absent), no denominations, no transfer between holders, no
 //! persistence. **Do not move value with this.** Graduation swaps the hash for
@@ -72,10 +86,12 @@
 //!   stands.
 //! - A [`WireCoin`] witnesses **nothing**. It is the doorway type: all-public,
 //!   `Copy`, freely constructible — because that is what bytes on a wire are.
-//!   Its authenticity is decided only at [`Mint::redeem`]'s tag check.
+//!   Its authenticity is decided only at [`Mint::redeem`]'s tag and
+//!   issued-range checks.
 //! - A [`Receipt`] witnesses that **a mint holding this secret accepted this
-//!   serial while it was absent from that mint value's spent set, which now
-//!   contains it**. E0451-sealed; minted only by [`Mint::redeem`]'s checked
+//!   serial — one that mint value had itself issued — while it was absent
+//!   from that mint value's spent set, which now contains it**. E0451-sealed;
+//!   minted only by [`Mint::redeem`]'s checked
 //!   path. It is `Clone`-able *evidence-of-a-fact*, in deliberate contrast to
 //!   the consumable-capability [`Coin`] (the leaf-5 distinction). It does
 //!   **not** witness *who* presented the coin (bearer instrument: no owner
@@ -89,11 +105,13 @@
 //!   objection — as with cash in a fire, losing a bearer instrument burns it.
 //!   That is the safe direction for this invariant (the catastrophe is
 //!   spending twice, not failing to spend), exactly as in leaf 5.
-//! - **`DoubleSpent` implies authentic.** [`Mint::redeem`] checks the tag
-//!   *before* the spent set, so a forged presentation never learns spent-set
-//!   membership and never returns [`RedeemError::DoubleSpent`]; and a forged
-//!   attempt does not burn the serial for the genuine holder
-//!   (regression-tested).
+//! - **`DoubleSpent` implies authentic-and-issued, and `Ok` implies issued.**
+//!   [`Mint::redeem`] checks the tag *and* the issued range *before* the
+//!   spent set, so a forged presentation never learns spent-set membership
+//!   and never returns [`RedeemError::DoubleSpent`]; a forged attempt does
+//!   not burn the serial for the genuine holder; and even a correctly-MAC'd
+//!   *future* serial cannot front-run the coin issued later (all
+//!   regression-tested).
 //!
 //! ## Primitives used
 //!
@@ -101,8 +119,8 @@
 //! [`Coin`]). The brand and E0080 are honestly unused. The point of the leaf
 //! is what is *not* on this list: layer 2's missing piece is not a fifth
 //! compile primitive — it is runtime state with fresh knowledge, which is not
-//! a compile-time thing at all. The first "no" completes the garden's map by
-//! drawing its outer edge.
+//! a compile-time thing at all. The first "no" gives the garden's map its
+//! first *boundary point* — one located cut, not a surveyed edge.
 //!
 //! ## Intended use
 //!
@@ -223,19 +241,34 @@ pub struct WireCoin {
 }
 
 /// Evidence that a redeem succeeded: **a mint holding this secret accepted
-/// this serial while it was absent from that mint value's spent set** (which
-/// now contains it). E0451-sealed — minted only by [`Mint::redeem`]'s checked
-/// path — and `Clone`-able: a receipt is *evidence-of-a-fact*, not a
-/// consumable capability (the leaf-5 distinction, both halves present in one
-/// leaf: linear [`Coin`], clonable `Receipt`).
+/// this serial — one that mint value had itself issued — while it was absent
+/// from that mint value's spent set** (which now contains it). E0451-sealed —
+/// minted only by [`Mint::redeem`]'s checked path — and `Clone`-able: a
+/// receipt is *evidence-of-a-fact*, not a consumable capability (the leaf-5
+/// distinction; its two halves recur here as the linear [`Coin`] and the
+/// clonable `Receipt`).
 ///
 /// It does **not** witness who presented the coin (no owner binding), nor
 /// anything about *other* mint values sharing the same seed — see the crate's
 /// layer-3 discussion.
-#[derive(Clone, Debug, PartialEq, Eq)]
+///
+/// The `Debug` impl redacts the mint identity: under the toy invertible hash,
+/// a logged `mint_id` is a mint-secret–recovery channel (a real PRF-derived
+/// identity would leak nothing; it is redacted anyway so the crate's
+/// log-hygiene policy is uniform across all three secret-adjacent types).
+#[derive(Clone, PartialEq, Eq)]
 pub struct Receipt {
     serial: u64,
     mint_id: u64,
+}
+
+impl fmt::Debug for Receipt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Receipt")
+            .field("serial", &self.serial)
+            .field("mint_id", &"<redacted>")
+            .finish()
+    }
 }
 
 impl Receipt {
@@ -258,14 +291,17 @@ impl Receipt {
 /// Why a redeem was refused.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RedeemError {
-    /// The tag does not authenticate the serial under this mint's secret.
-    /// Checked **first**, so a forged presentation never observes spent-set
-    /// membership and never burns a serial.
+    /// The presentation does not authenticate as a coin **this mint value
+    /// issued**: the tag fails the MAC check, or the serial is outside the
+    /// issued range (0, or not yet issued). Both checks run **before** the
+    /// spent set is consulted, so a forged presentation never observes
+    /// spent-set membership and never burns a serial — a correctly-MAC'd
+    /// *future* serial cannot front-run the genuine coin.
     Forged,
-    /// The tag is authentic, but this mint value has already accepted this
-    /// serial once. `DoubleSpent` therefore always implies a genuine coin —
-    /// this is the online check that layer 1's compiler cannot perform across
-    /// the wire.
+    /// The coin is authentic and was issued by this mint value, but the mint
+    /// value has already accepted its serial once. `DoubleSpent` therefore
+    /// always implies a genuine, issued coin — this is the online check that
+    /// layer 1's compiler cannot perform across the wire.
     DoubleSpent {
         /// The serial that was presented again.
         serial: u64,
@@ -309,17 +345,23 @@ impl Mint {
         }
     }
 
-    /// Redeem a wire coin: **the online check**. Verifies the tag (first — a
-    /// forgery learns nothing and burns nothing), then admits the serial iff
-    /// this mint value has not admitted it before. First presentation wins;
-    /// every later copy of the same bytes gets
-    /// [`RedeemError::DoubleSpent`].
+    /// Redeem a wire coin: **the online check**. Verifies authenticity first
+    /// — the tag must MAC the serial under this mint's secret **and** the
+    /// serial must be one this mint value has issued (so a forgery learns
+    /// nothing and burns nothing) — then admits the serial iff this mint
+    /// value has not admitted it before. First presentation wins; every later
+    /// copy of the same bytes gets [`RedeemError::DoubleSpent`]. Hence `Ok`
+    /// implies issued-and-first, and `DoubleSpent` implies
+    /// authentic-and-issued.
     ///
     /// This method is the runtime residue of the leaf's negative claim: it is
     /// what remains of "a coin spends once" after the compiler's reach ends at
     /// [`Coin::into_wire`].
     pub fn redeem(&mut self, wire: WireCoin) -> Result<Receipt, RedeemError> {
         if wire.tag != hash::coin_tag(self.secret, wire.serial) {
+            return Err(RedeemError::Forged);
+        }
+        if wire.serial == 0 || wire.serial >= self.next_serial {
             return Err(RedeemError::Forged);
         }
         if !self.spent.insert(wire.serial) {
@@ -436,20 +478,55 @@ mod tests {
     }
 
     /// Layer 3, executable: two mint values from one seed are one identity
-    /// (`minted_by` cannot tell them apart) with **independent spent sets** —
-    /// the same wire bytes redeem at both. This is the coordination seam:
-    /// nothing in this crate's vocabulary can close it, because "unspent" is
+    /// (`minted_by` cannot tell them apart), and — issuing independently —
+    /// they mint **byte-identical** coins (same secret, same serial counter).
+    /// One coin's bytes then redeem at both, because issuance state and spent
+    /// state are both replica-local. This is the coordination seam: nothing
+    /// in this crate's vocabulary can close it, because "unspent" is
     /// knowledge about absence, and each replica's absence is only local.
     #[test]
     fn same_seed_replicas_double_spend_across_each_other() {
         let mut replica_a = Mint::new(0xF6);
         let mut replica_b = Mint::new(0xF6);
-        let wire = replica_a.issue().into_wire();
-        let ra = replica_a.redeem(wire).expect("spends at replica A");
-        let rb = replica_b.redeem(wire).expect("...and AGAIN at replica B");
+        let wire_a = replica_a.issue().into_wire();
+        let wire_b = replica_b.issue().into_wire();
+        assert_eq!(wire_a, wire_b, "replicas mint indistinguishable money");
+        let ra = replica_a.redeem(wire_a).expect("spends at replica A");
+        let rb = replica_b.redeem(wire_a).expect("...and AGAIN at replica B");
         // Same identity, twice the money.
         assert!(ra.minted_by(&replica_a) && ra.minted_by(&replica_b));
         assert!(rb.minted_by(&replica_a) && rb.minted_by(&replica_b));
+    }
+
+    /// `Ok` implies issued: even a correctly-MAC'd serial this mint value
+    /// never issued (0, or a future serial) is refused as `Forged` — and a
+    /// pre-forged future serial cannot front-run (burn) the genuine coin
+    /// issued later. In-crate tests can compute real tags; an outsider
+    /// cannot reach `hash::coin_tag` (and under a real PRF could not compute
+    /// one even with the source).
+    #[test]
+    fn valid_tag_on_unissued_serial_is_refused_and_burns_nothing() {
+        let mut mint = Mint::new(0x4B);
+        let zero = WireCoin {
+            serial: 0,
+            tag: hash::coin_tag(0x4B, 0),
+        };
+        assert_eq!(mint.redeem(zero), Err(RedeemError::Forged));
+        let future = WireCoin {
+            serial: 1,
+            tag: hash::coin_tag(0x4B, 1),
+        };
+        assert_eq!(
+            mint.redeem(future),
+            Err(RedeemError::Forged),
+            "front-running an unissued serial is refused"
+        );
+        let coin = mint.issue();
+        assert_eq!(coin.serial(), 1);
+        assert!(
+            mint.redeem(coin.into_wire()).is_ok(),
+            "the genuine serial-1 coin was not burned by the front-run attempt"
+        );
     }
 
     #[test]
@@ -475,7 +552,7 @@ mod tests {
         }
     }
 
-    /// The leaf-5 contrast, both halves in one leaf: a `Receipt` is clonable
+    /// The leaf-5 contrast restated: a `Receipt` is clonable
     /// evidence-of-a-fact; cloning it mints no value and re-spends nothing.
     #[test]
     fn receipt_is_cloneable_evidence_not_a_capability() {
@@ -493,15 +570,40 @@ mod tests {
         );
     }
 
+    /// All three secret-adjacent types redact: the coin's Debug is checked
+    /// against ITS OWN tag (in both decimal — Debug's radix — and hex), the
+    /// receipt's against its own mint identity, the mint's against its seed.
     #[test]
     fn debug_redacts_the_bearer_credential_and_the_mint_secret() {
         let mut mint = Mint::new(0x3A);
         let coin = mint.issue();
-        let tag_hex = format!("{:x}", coin.into_wire().tag);
-        let coin2 = mint.issue();
-        let shown = format!("{:?} {:?}", coin2, mint);
-        assert!(shown.contains("<redacted>"));
-        assert!(!shown.contains(&tag_hex));
-        assert!(!format!("{:?}", mint).contains("58")); // 0x3A = 58: secret absent
+        let coin_dbg = format!("{:?}", coin); // rendered BEFORE consuming it
+        let wire = coin.into_wire();
+        for leak in [format!("{}", wire.tag), format!("{:x}", wire.tag)] {
+            assert!(!coin_dbg.contains(&leak), "Coin Debug must hide the tag");
+        }
+        assert!(coin_dbg.contains("<redacted>"));
+
+        let receipt = mint.redeem(wire).expect("genuine");
+        let receipt_dbg = format!("{:?}", receipt);
+        let mid = hash::mint_id(0x3A);
+        for leak in [format!("{}", mid), format!("{:x}", mid)] {
+            assert!(
+                !receipt_dbg.contains(&leak),
+                "Receipt Debug must hide the mint identity (invertible in the toy)"
+            );
+        }
+        assert!(receipt_dbg.contains("<redacted>"));
+
+        let mint_dbg = format!("{:?}", mint);
+        assert!(mint_dbg.contains("<redacted>"));
+        assert!(
+            !mint_dbg.contains("58"),
+            "0x3A = 58: secret absent (decimal)"
+        );
+        assert!(
+            !mint_dbg.to_lowercase().contains("3a"),
+            "secret absent (hex)"
+        );
     }
 }

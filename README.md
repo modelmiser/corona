@@ -281,10 +281,11 @@ degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 
 ## Leaf 9: `ecash-types`
 
-The garden's first **negative-space leaf**. Leaves 1–8 all answered *yes* — this
-one maps where the vocabulary provably stops. The invariant is double-spend
-prevention, the defining property of bearer value, and the answer is a **split**
-across three layers, each executable:
+The garden's first **negative-space leaf**. Every prior leaf answered its
+thesis question *yes* — this one locates a point where the vocabulary
+definitionally stops. The invariant is double-spend prevention, the defining
+property of bearer value, and the answer is a **split** across three layers,
+each executable:
 
 1. **Inside one ownership graph**, a coin spends once by **E0382**: `Coin` is
    not `Clone`/`Copy` and `into_wire(self)` consumes it — spending twice is a
@@ -292,13 +293,19 @@ across three layers, each executable:
    capability, applied to value.
 2. **Across the wire, linearity dies definitionally** — a type discipline binds
    only the program it type-checks, and a serialized coin is bytes outside every
-   program. `WireCoin` says so honestly: all-public and `Copy`, so a double
+   program. That premise is the *bearer threat model*: holders are arbitrary
+   and unverified (closed session-typed systems extend linearity across wires
+   precisely by constraining the holder — the constraint bearer value refuses).
+   `WireCoin` says so honestly: all-public and `Copy`, so a double
    spend *type-checks* and is caught instead by the mint's **spent set**
-   (`Mint::redeem` — runtime, stateful, online; first presentation wins). No
-   fifth compile primitive is missing: what this layer needs is *fresh knowledge
-   at redeem time*, which no compile-time fact can supply.
+   (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
+   before the set, so `Ok` implies issued and forgery neither probes nor burns;
+   first presentation wins). No fifth compile primitive is missing: what this
+   layer needs is *fresh knowledge at redeem time*, which no compile-time fact
+   can supply.
 3. **Replicating the mint re-opens the hole**: two `Mint` values from one seed
-   share identity but not spent sets, and one wire coin redeems at both
+   share identity but not state — issuing independently, they mint
+   byte-identical coins, and one coin's bytes redeem at both
    (regression-tested). "Unspent" is knowledge about *absence* — non-monotone in
    the CALM sense — so a replicated mint must coordinate. That is
    `quorum-types`' territory: this leaf is the seam between the two gardens,
@@ -310,13 +317,14 @@ exactly layer 2 (an online mint), and Chaum–Fiat–Naor (CRYPTO '88) does not
 after the fact. Punish, not prevent.
 
 > ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
-> coin recovers the mint secret. No blinding (Chaum's actual contribution),
-> no denominations, no transfer, no persistence.
+> coin recovers the keyed hash state (and, with modest work, the secret) and
+> forges freely. No blinding (Chaum's actual contribution), no denominations,
+> no transfer, no persistence.
 
 ## Build
 
 ```sh
-cargo test --workspace          # 117 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, wire-copy + const-eval-wall compile-fails)
+cargo test --workspace          # 118 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
