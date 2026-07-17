@@ -104,9 +104,21 @@ work (complete tasks, add children, keep siblings).
       `build_inner` behind `commit_scoped` (sole entry, keeps the brand generative).
       Leaf 4 now uses TWO garden primitives (E0451 + brand), no new one. merkle 12
       unit + 2 doctests (added a `compile_fail`); workspace 52 unit + 11 doctests.
-- [ ] Cold-review the branded rung-2 surface to convergence (mirror vss: prove the
-      brand SOUND — adversaries write *compiling* escape/forge crates, compiler must
-      reject all; confirm no unbranded path to a `Root`/`VerifiedLeaf`).
+- [x] Cold-review the branded rung-2 surface to convergence — 2 consecutive clean
+      rounds (MOD 0→0), ZERO findings, ZERO changes: the brand was correct as
+      committed (`36c6e99`). Brand proven SOUND by adversarial *compilation* — ~24
+      exploit crates across two rounds (scope-escape, cross-brand launder via
+      variance/`RefCell`/`Any`/trait-object/GAT/fn-ptr, safe-code forge, `'static`
+      coercion) all compiler-rejected; positive controls hold. Cross-root = lifetime
+      error + E0521 (not E0308), compiler-confirmed. `commit_scoped` grep-confirmed
+      sole `Root` constructor. (Mechanism-copy of vss's proven brand → converged in
+      the minimum 2 rounds vs vss's 3.)
+
+## Parking lot additions (optional, not scheduled)
+
+- Parity nicety (NOT a finding — two claims lenses cleared it): add a `compile_fail`
+  sealed-constructor doctest so merkle's E0451 claim is self-testing like vss's. The
+  cross-brand `compile_fail` already exists; this would cover the seal too.
 
 ## Parking lot (garden, not scheduled)
 
