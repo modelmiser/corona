@@ -29,7 +29,8 @@ fn fnv1a(bytes: &[u8]) -> u64 {
 
 /// The tag a mint attaches to a coin: a toy MAC over the serial under the
 /// mint's secret (domain tag `0x01`). Only a holder of `secret` can compute it
-/// — which in this toy means "anyone", per the module banner.
+/// — which in this toy means "anyone who has seen one coin", per the
+/// module banner.
 pub(crate) fn coin_tag(secret: u64, serial: u64) -> u64 {
     let mut buf = [0u8; 17];
     buf[0] = 0x01;

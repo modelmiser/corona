@@ -284,8 +284,9 @@ degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 The garden's first **negative-space leaf**. Every prior leaf answered its
 thesis question *yes* (some with a disclosed runtime residue — leaf 1's
 share-counting stayed a runtime check); this one locates a point where the
-vocabulary stops *definitionally*, not contingently. The invariant is double-spend prevention, the defining
-property of bearer value, and the answer is a **split** across three layers,
+vocabulary stops *definitionally* — argued from the bearer definition —
+not contingently. The invariant is double-spend prevention, the defining
+property of digital bearer value, and the answer is a **split** across three layers,
 each executable:
 
 1. **Inside one ownership graph**, a coin spends once by **E0382**: `Coin` is
@@ -319,8 +320,8 @@ exactly layer 2 (an online mint), and Chaum–Fiat–Naor (CRYPTO '88) does not
 *prevent* offline double-spends — it reveals the double-spender's identity
 after the fact. Punish, not prevent. (Trusted hardware is a *relocation
 within* the taxonomy — the spent state moves into an uncopyable box; the one
-true exit is quantum money, which makes the token itself uncopyable,
-breaking the bytes-premise rather than the argument.)
+exit abandons bit-strings altogether — quantum money makes the token itself
+uncopyable, breaking the bytes-premise rather than the argument.)
 
 > ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
 > coin recovers the keyed hash state (and, with modest work, the secret) and
@@ -330,7 +331,7 @@ breaking the bytes-premise rather than the argument.)
 ## Build
 
 ```sh
-cargo test --workspace          # 119 unit tests + 28 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
+cargo test --workspace          # 119 unit tests + 29 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, coin-reuse + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

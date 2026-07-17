@@ -7,7 +7,7 @@
 //! (leaf 1's share-counting stayed a runtime check). This leaf's residue is
 //! different in kind: argued *definitional*, not contingent, which is what
 //! makes it the first "no". It asks the question of double-spend prevention —
-//! the defining invariant of bearer value — and the answer is a **split**:
+//! the defining invariant of *digital* bearer value — and the answer is a **split**:
 //! the invariant reduces exactly as far as the type checker's reach extends,
 //! and — for *bearer* value, definitionally (see layer 2's scoping) — no
 //! further. The finding is the **location and character of the cut**, made
@@ -117,7 +117,7 @@
 //!   objection — as with cash in a fire, losing a bearer instrument burns it.
 //!   That is the safe direction for this invariant (the catastrophe is
 //!   spending twice, not failing to spend), exactly as in leaf 5.
-//! - **`DoubleSpent` implies authentic-and-issued, and `Ok` implies issued.**
+//! - **`DoubleSpent` implies check-passing-and-issued, and `Ok` implies issued.**
 //!   [`Mint::redeem`] checks the tag *and* the issued range *before* the
 //!   spent set, so a forged presentation never learns spent-set membership
 //!   and never returns [`RedeemError::DoubleSpent`]; a forged attempt does
@@ -357,6 +357,19 @@ pub enum RedeemError {
 /// The `Debug` impl redacts the secret; it deliberately shows `next_serial`
 /// and the spent-set size — operational metadata (issuance and spend volume),
 /// not credentials.
+///
+/// `Mint` is also deliberately **not** `Clone`: a clone would fork the spent
+/// set in-process — the layer-3 hazard, one method call away — so the
+/// in-graph replica is pinned closed:
+///
+/// ```compile_fail,E0599
+/// use ecash_types::Mint;
+/// let mint = Mint::new(7);
+/// let replica = mint.clone(); // error[E0599]: no method named `clone`
+/// ```
+///
+/// (Replicas can still be built *deliberately*, via `Mint::new` with a reused
+/// seed — that doorway is the point of layer 3, and it is loud.)
 pub struct Mint {
     secret: u64,
     next_serial: u64,
@@ -406,7 +419,7 @@ impl Mint {
     /// value has not admitted it before. First presentation wins; every later
     /// copy of the same bytes gets [`RedeemError::DoubleSpent`]. Hence `Ok`
     /// implies issued-and-first, and `DoubleSpent` implies
-    /// authentic-and-issued.
+    /// check-passing-and-issued.
     ///
     /// This method is the runtime residue of the leaf's negative claim: it is
     /// what remains of "a coin spends once" after the compiler's reach ends at
@@ -483,6 +496,10 @@ mod tests {
         assert_eq!(mint.redeem(forged), Err(RedeemError::Forged));
     }
 
+    /// Note: with a wrong tag, the MAC check rejects before the issued-range
+    /// check runs — this pins the guessed-tag path. The range branch itself
+    /// (unissued serial with a VALID tag) is pinned by
+    /// `valid_tag_on_unissued_serial_is_refused_and_burns_nothing`.
     #[test]
     fn unissued_serial_with_guessed_tag_is_rejected() {
         let mut mint = Mint::new(0xD4);
@@ -499,7 +516,7 @@ mod tests {
         let mut mint_b = Mint::new(2);
         // Give B its own serial-1 coin first, so the issued-range check
         // cannot mask the tag check: only the MAC discriminates A's coin
-        // at B. (B's own coin is dropped unspent — affine, value burned.)
+        // at B. (B's coin is redeemed at the end, for the eq check.)
         let b_own = mint_b.issue();
         assert_eq!(b_own.serial(), 1);
         let wire = mint_a.issue().into_wire();
@@ -508,13 +525,20 @@ mod tests {
         let receipt = mint_a.redeem(wire).expect("genuine at issuer");
         assert!(receipt.minted_by(&mint_a));
         assert!(!receipt.minted_by(&mint_b));
+        // Pins the documented PartialEq semantics, cross-secret half: B's
+        // own serial-1 receipt is UNEQUAL to A's (same serial, different
+        // mint identity) — a serial-only eq would pass everything else.
+        let receipt_b = mint_b.redeem(b_own.into_wire()).expect("B's own coin");
+        assert_eq!(receipt_b.serial(), receipt.serial());
+        assert_ne!(receipt_b, receipt);
     }
 
     /// Tag-before-spent-set ordering, both halves:
     /// a forged attempt on an outstanding serial does not burn it for the
     /// genuine holder, and a forged attempt on a *spent* serial reports
-    /// `Forged`, not `DoubleSpent` — so `DoubleSpent` always implies authentic
-    /// and check-failing presentations never learn spent-set membership.
+    /// `Forged`, not `DoubleSpent` — so `DoubleSpent` always implies
+    /// check-passing and check-failing presentations never learn spent-set
+    /// membership.
     /// ("Forged" = failing `redeem`'s checks; a *valid*-tag forgery, which
     /// the toy hash admits, behaves as authentic — see the crate banner.)
     #[test]
@@ -557,6 +581,10 @@ mod tests {
         // Same identity, twice the money.
         assert!(ra.minted_by(&replica_a) && ra.minted_by(&replica_b));
         assert!(rb.minted_by(&replica_a) && rb.minted_by(&replica_b));
+        // Pins the documented PartialEq semantics, replica half: same-seed
+        // receipts for the same serial compare EQUAL (mint identity is the
+        // secret). The cross-secret half lives in the foreign-mint test.
+        assert_eq!(ra, rb);
     }
 
     /// `Ok` implies issued: even a correctly-MAC'd serial this mint value
