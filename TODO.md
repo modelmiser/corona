@@ -9,7 +9,8 @@ work (complete tasks, add children, keep siblings).
 - [x] Leaf 1 rung 1: Shamir k-of-n, unforgeable `Secret` (E0451), GF(256) toy backend
 - [x] Gates green: 10 unit + 3 doctests, clippy -D warnings, rustdoc -D warnings, fmt
 - [x] CHARTER.md (two tracks + graduation criteria + Sol wiring), README
-- [ ] First commit + push to `~/Claude/github/corona` (own repo, like warp/quorum-types)
+- [x] First commit (`d0bfc3b`, local, on `main`)
+- [ ] Push to GitHub — **awaiting user go + visibility choice** (public like warp/quorum-types, or private)
 
 ## Next (leaf 1)
 
