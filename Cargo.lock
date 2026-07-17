@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "accumulator-types"
+version = "0.1.0"
+
+[[package]]
 name = "corona-core"
 version = "0.1.0"
 

@@ -326,17 +326,54 @@ work (complete tasks, add children, keep siblings).
       cross-leaf comparisons are the highest-risk sentences. **All 10 leaves now
       cold-reviewed.** ratchet 10 unit + 4 doctests; workspace 132 + 33.
 
+## Now (leaf 11 — accumulator-types)
+
+- [x] Seed accumulator-types: an **append-only Merkle accumulator** — the first leaf
+      to point the **E0308-class brand** at *time* not *provenance*. An accumulator
+      evolves (`add` advances the epoch), so a membership witness goes **stale**; does
+      "fresh against the current accumulator" reduce? → **it SPLITS** (∥ leaf 9's
+      double-spend, drawn *inside the brand* ∥ leaf 10 inside E0382). Snapshot-identity
+      binding reduces to the brand (`Commit<'epoch>` + sealed `Included<'epoch>` frozen
+      by `snapshot_scoped`; cross-snapshot use = compile error, verified `lifetime may
+      not live long enough` + E0521 — merkle rung-2's mechanism on evolving ground).
+      Freshness itself does NOT reduce — a runtime check: the `Witness` crosses the
+      wire so it is unbranded by necessity (∥ merkle `Proof`); staleness = comparing
+      epoch numbers at runtime (`VerifyError::Stale`), the leaf-9/leaf-1 runtime
+      residue. NEW DATUM = the brand's first intra-primitive boundary (symmetric
+      partner to leaf 10's on E0382): the brand captures snapshot-*instance* identity
+      (value-level) but NOT epoch *freshness* (timeline). Two executable consequences:
+      (1) two snapshots at the same epoch get different brands (compile-fail doctest);
+      (2) the verified `Included` carries the brand, the incoming `Witness` can't → the
+      brand guards the answer's provenance, never the question's freshness. Two
+      primitives (E0451 + brand), no new one. Standalone (∥ merkle/lamport/ecash/
+      ratchet — reuses merkle's brand *discipline*, not its *code*). TOY FNV hash;
+      append-only (epoch == count). 16 unit + 2 doctests; workspace **148 unit + 35
+      doctests**, all gates green (clippy/fmt/rustdoc -D warnings). Mechanism proven
+      before seed (cross-snapshot → E0521, confirmed against rustc directly).
+- [x] `corona-core` promotion check (leaf-11 trigger): nothing to promote (hash-based,
+      imports neither core module; toy FNV = graduation-swap placeholder — the settled
+      leaf-9/10 finding, third restatement). Contribution is *primitive-coverage depth
+      on the brand* — the brand widened from provenance to snapshot-version identity,
+      and its first intra-primitive boundary drawn (the symmetric partner to leaf 10's
+      on E0382). See CHARTER.
+- [ ] Cold-review the leaf-11 surface to convergence (awaits a "ready"). Watch the
+      highest-risk class (leaf-9/10 lesson): the cross-leaf comparison sentences —
+      the "∥ leaf 9 / ∥ leaf 10 / symmetric partner" claims assert facts about code
+      no one is looking at. And the epoch==count / staleness-by-root==staleness-by-epoch
+      simplification is a likely precision target.
+
 ## Garden state (2026-07-17)
 
-- **All 10 leaves cold-reviewed.** corona-core + 10 leaves; vocabulary complete
-  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9),
-  E0382 read to its widest — no-going-back/forward secrecy, with the first
-  intra-primitive boundary (10). No open thesis direction. Next is the user's
-  call: wind-down synthesis (the natural close), or the CHARTER's remaining
-  breadth (FROST, accumulator-with-witness-staleness, fountain/LT, XMSS).
+- **Leaf 11 (`accumulator-types`) SEEDED, not yet cold-reviewed.** corona-core + 11
+  leaves; 10 fully cold-reviewed. Vocabulary complete (leaf 6), composition
+  demonstrated (7) + repeated (8), outer edge drawn (9), and **both value primitives
+  read to their widest with a matched pair of intra-primitive boundaries** — E0382
+  (leaf 10, logical vs memory-level) and the E0308-class brand (leaf 11,
+  instance-identity vs timeline-freshness). Next: a "ready" to cold-review leaf 11,
+  another breadth leaf (FROST, fountain/LT, XMSS), or wind-down synthesis.
 
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)
-- Further domains off the polynomial substrate: threshold signatures, a fountain/LT
-  code, a cryptographic accumulator — each a fresh test of the vocabulary.
+- Further domains off the polynomial substrate: threshold signatures (FROST), a
+  fountain/LT code, XMSS tiering — each a fresh test of the vocabulary.

@@ -24,7 +24,8 @@ corona/
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
-└── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
+├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
+└── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -370,10 +371,53 @@ relocates a value, it does not zero its old home). Memory-level secrecy needs
 > conditional on discarding the deterministic root seed (leaf 5's caveat, in the FS
 > setting).
 
+## Leaf 11: `accumulator-types`
+
+An **append-only Merkle accumulator** — the first leaf to point the **E0308-class
+brand** at *time* rather than *provenance*. Leaves 2, 4, and 7 used the brand to bind
+a witness to *which* commitment minted it; this one asks the temporal question: an
+accumulator **evolves** (you `add` elements, it advances to a new epoch), so a
+membership witness drawn against an old version goes **stale** — does "this witness is
+fresh against the current accumulator" reduce to the vocabulary?
+
+The answer **splits** — the shape leaf 9 found for double-spend, now drawn *inside the
+brand* the way leaf 10 drew a boundary inside E0382:
+
+- **Snapshot-identity binding reduces to the brand.** Each immutable snapshot is frozen
+  in a fresh generative-lifetime scope (`Accumulator::snapshot_scoped`). A `Commit` and
+  the sealed `Included` witnesses it mints share that scope's `'epoch` brand, so a
+  witness from one snapshot presented to another's consumer is a **compile error**
+  (verified: `lifetime may not live long enough` + E0521, the vss/merkle signature). It
+  is `merkle-types`' rung-2 mechanism on evolving ground.
+- **Freshness itself does *not* reduce** — it is an irreducible **runtime** check. A
+  `Witness` crosses the wire (light client → verifier), so like `merkle-types`' `Proof`
+  it is **unbranded by necessity** — you cannot brand serialized bytes. With no brand to
+  check, whether a wire witness is stale is decided by comparing epoch *numbers* at
+  runtime (`VerifyError::Stale`), for the same reason leaf 9's redeem-time freshness and
+  leaf 1's share-counting stay runtime.
+
+**The new datum — the boundary is *inside* the brand.** The brand captures
+snapshot-*instance* identity (a value-level fact) but structurally **cannot** capture
+epoch *freshness* (a timeline fact): a brand is fixed at a value's creation, and
+advancing the accumulator mints a *new* snapshot rather than re-stamping old witnesses.
+Two executable consequences: (1) two snapshots at the **same** epoch still get
+**different** brands (the compile-fail doctest — so the brand is finer than the epoch
+number, and unordered); (2) the verified *result* (`Included`) can carry the brand, the
+incoming *request* (`Witness`) cannot — so the brand guards the answer's provenance,
+never the question's freshness, and the wire is exactly where the reduction stops. Two
+garden primitives (E0451 + brand), no new one.
+
+> ⚠ **TOY.** FNV-1a hash (domain-separated leaf/node tags), append-only, no deletion,
+> no consistency proofs or witness compaction (a real Merkle Mountain Range /
+> Certificate-Transparency log adds these). Because there is no deletion the epoch
+> equals the element count, so staleness-by-epoch and staleness-by-root coincide — the
+> explicit epoch check just makes staleness a named, total, hash-independent verdict.
+> The type discipline (the epoch brand) is the subject, not accumulator engineering.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 132 unit tests + 33 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, const-eval-wall)
+cargo test --workspace          # 148 unit tests + 35 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
