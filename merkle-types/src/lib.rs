@@ -1,4 +1,4 @@
-//! # merkle-types — Merkle inclusion proofs as typestate
+//! # merkle-types — Merkle inclusion proofs as typestate, generatively branded
 //!
 //! Corona **leaf 4**, and the first leaf to step **off the polynomial substrate**.
 //! Leaves 1–3 (`threshold-types` Shamir, `vss-types` Feldman VSS, `erasure-types`
@@ -37,7 +37,8 @@
 //! reconstruction; membership is a yes/no fact about one element), and not
 //! [`gf256`](../corona_core/gf256/index.html) (a hash tree is not field
 //! arithmetic). Yet it is unambiguously in the garden, because it speaks the same
-//! **vocabulary** — the E0451 seal discipline.
+//! **vocabulary** — the E0451 seal discipline, and now (rung 2) the E0308-class
+//! brand as well.
 //!
 //! So the garden shares two different things, and this leaf separates them:
 //! - `corona-core` holds shared **code** — modules a *second* leaf proved common
@@ -55,11 +56,43 @@
 //! Like `erasure-types`' `RecoveredData` (and unlike Shamir's redacting `Secret`),
 //! [`VerifiedLeaf`] does **not** redact: membership is a public fact, so its
 //! `Debug` is plain and its accessors are open. Holding one is a *typestate* fact
-//! — "this data verified against *a* root through the sole checked path" — useful
-//! for keeping verified elements distinct from unverified input. It is **not** a
-//! security guarantee on its own; see the honest limits.
+//! — "this data verified against *this* root (rung 2 binds *which*) through the
+//! sole checked path" — useful for keeping verified elements distinct from
+//! unverified input. It is **not** a security guarantee on its own; see the honest
+//! limits.
 //!
-//! ## Honest limits (rung 1)
+//! ## Rung 2 — the generative brand (provenance, closed)
+//!
+//! Rung 1 left one honest gap: a [`VerifiedLeaf`] was not bound to *which* [`Root`]
+//! minted it, so nothing at the type level stopped you presenting a witness from
+//! root *A* where a witness for root *B* was expected. That is the identical
+//! provenance gap `vss-types` had at *its* rung 1, and it closes the same way — the
+//! garden's **E0308-class brand-unification** primitive:
+//!
+//! - [`Root`] and [`VerifiedLeaf`] each carry an **invariant, generative lifetime**
+//!   `'brand`. [`commit_scoped`] introduces a fresh `'brand` through a `for<'brand>`
+//!   closure and hands your code a `Root<'brand>`; everything branded lives inside
+//!   that scope.
+//! - [`Root::verify`] stamps its own `'brand` onto every [`VerifiedLeaf`] it mints.
+//! - The same-brand **consumer** [`Root::authenticated_positions`] accepts only
+//!   `VerifiedLeaf<'brand>` of *this* root's brand — a leaf minted by any other root
+//!   is a **compile error**. (A brand needs a consumer to bite: `verify` only
+//!   *mints*, so without an operation that *takes* a branded witness the brand would
+//!   be inert. This is the analogue of `vss-types`' `Commitment::recover`.)
+//! - Because `'brand` is invariant and generative, two [`commit_scoped`] scopes get
+//!   brands that never unify, and a branded value cannot escape its scope (the value
+//!   the closure returns may not mention `'brand`). Unbranded values — a [`Proof`],
+//!   a `usize`, a `bool` — escape freely; only branded ones are penned in.
+//!
+//! So merkle-types now uses **two** garden primitives (E0451 + the brand), still no
+//! new one. As in `vss-types`, the brand is realized as a *lifetime* (the
+//! zero-dependency, `forbid(unsafe)` choice), so a cross-root mismatch surfaces as a
+//! **lifetime error**, not a literal `error[E0308]`; a literal E0308 would need
+//! distinct nominal *type* brands, which cannot be minted fresh per runtime value in
+//! safe Rust. The `generativity` crate brands with lifetimes too, so it would give
+//! the same lifetime diagnostic — this is inherent to value-generative branding.
+//!
+//! ## Honest limits
 //!
 //! - **TOY hash (see [`hash`]).** The backend is non-cryptographic FNV-1a; a real
 //!   adversary forges collisions and thus forges membership. The *type* discipline
@@ -69,20 +102,12 @@
 //!   *the root you hand it*. It cannot tell you that root commits the *right* set —
 //!   that trust anchor is the caller's (exactly as `vss-types`' `Commitment` is
 //!   trusted, and `erasure-types`' `k` is caller-asserted).
-//! - **The seal binds *safe* downstream code.** [`VerifiedLeaf`]'s unforgeability
-//!   (E0451) holds against any consumer written in safe Rust — the headline
-//!   guarantee. A downstream crate that opts into its *own* `unsafe` can of course
-//!   `transmute` a value into existence; no safe-Rust seal can prevent that. This
-//!   is the *scope* of the guarantee, not a hole in it (and it is why the crate
-//!   itself is `#![forbid(unsafe_code)]`).
-//! - **Provenance gap — the rung-2 hook.** A [`VerifiedLeaf`] is **not bound to
-//!   which [`Root`] minted it**: nothing stops you presenting a `VerifiedLeaf`
-//!   obtained from root *A* while claiming membership in root *B*. This is the same
-//!   gap `vss-types` had at its rung 1, and it closes the same way — an invariant
-//!   *generative-lifetime brand* binding `VerifiedLeaf<'root>` to its issuing
-//!   `Root<'root>`, so a cross-root mismatch does not compile. That the identical
-//!   gap and identical fix recur on a hash substrate is itself thesis evidence; it
-//!   is deferred to rung 2 to keep this seed one complete thought.
+//! - **The seal and brand bind *safe* downstream code.** [`VerifiedLeaf`]'s
+//!   unforgeability (E0451) and its brand hold against any consumer written in safe
+//!   Rust — the headline guarantee. A downstream crate that opts into its *own*
+//!   `unsafe` can of course `transmute` a value into existence; no safe-Rust seal can
+//!   prevent that. This is the *scope* of the guarantee, not a hole in it (and it is
+//!   why the crate itself is `#![forbid(unsafe_code)]`).
 //!
 //! ## Construction note
 //!
@@ -93,29 +118,55 @@
 //! forgery.
 //!
 //! ```
-//! use merkle_types::MerkleTree;
+//! use merkle_types::commit_scoped;
 //!
 //! let data = [b"alice".as_ref(), b"bob".as_ref(), b"carol".as_ref()];
-//! let (root, tree) = MerkleTree::build(&data).unwrap();
+//! commit_scoped(&data, |root, tree| {
+//!     // Prove "bob" (index 1) is a member.
+//!     let proof = tree.proof(1).unwrap();
+//!     let verified = root.verify(b"bob", &proof).expect("bob is a member");
+//!     assert_eq!(verified.index(), 1);
+//!     // The witness is branded to THIS root — the batch consumer takes only its own.
+//!     assert_eq!(root.authenticated_positions(&[verified]), vec![1]);
+//!     // Wrong data against the same proof mints no witness.
+//!     assert!(root.verify(b"mallory", &proof).is_none());
+//! })
+//! .unwrap();
+//! ```
 //!
-//! // Prove "bob" (index 1) is a member.
-//! let proof = tree.proof(1).unwrap();
-//! let verified = root.verify(b"bob", &proof).expect("bob is a member");
-//! assert_eq!(verified.index(), 1);
+//! A witness cannot cross roots — this does **not** compile:
 //!
-//! // Wrong data against the same proof mints no witness.
-//! assert!(root.verify(b"mallory", &proof).is_none());
+//! ```compile_fail
+//! use merkle_types::commit_scoped;
+//!
+//! commit_scoped(&[b"a".as_ref(), b"b".as_ref()], |root_a, tree_a| {
+//!     let p = tree_a.proof(0).unwrap();
+//!     let leaf_a = root_a.verify(b"a", &p).unwrap();
+//!     commit_scoped(&[b"c".as_ref(), b"d".as_ref()], |root_b, _tree_b| {
+//!         // `leaf_a` carries root_a's brand; root_b expects its own — brand mismatch.
+//!         let _ = root_b.authenticated_positions(&[leaf_a]);
+//!     });
+//! });
 //! ```
 //!
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 
 #![forbid(unsafe_code)]
 
+use core::marker::PhantomData;
+
 pub mod hash;
 
+/// An **invariant, generative** lifetime brand. Invariant (via the
+/// `fn(&'brand ()) -> &'brand ()` pointer, which puts `'brand` in both argument and
+/// return position) so `'brand` cannot be subtyped to merge two brands; generative
+/// because it is only ever introduced by [`commit_scoped`]'s `for<'brand>` closure.
+type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
+
 /// A Merkle inclusion proof: the leaf index plus the sibling hashes from the leaf
-/// up to (but not including) the root, bottom-first. Public, forgeable data — its
-/// authenticity is decided only by [`Root::verify`], never by holding it.
+/// up to (but not including) the root, bottom-first. Public, forgeable, **unbranded**
+/// data — its authenticity is decided only by [`Root::verify`], never by holding it,
+/// and it may pass freely across scopes.
 ///
 /// There is **no per-sibling side flag**: which side each sibling sits on, and
 /// which levels *promote* (contribute no sibling), are both a deterministic
@@ -152,16 +203,19 @@ pub struct Proof {
     pub siblings: Vec<u64>,
 }
 
-/// A Merkle root: the public commitment to a set of leaves. Copyable and inert —
-/// it is just a hash and the leaf count. The only thing it *does* is
-/// [`verify`](Root::verify) an element against a [`Proof`].
+/// A Merkle root: the public commitment to a set of leaves, carrying the generative
+/// `'brand` of the [`commit_scoped`] scope that produced it. Copyable and inert — a
+/// hash, the leaf count, and the brand. Its jobs are to [`verify`](Root::verify) an
+/// element against a [`Proof`] and to [read back](Root::authenticated_positions) the
+/// positions of witnesses it minted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Root {
+pub struct Root<'brand> {
     hash: u64,
     size: usize,
+    _brand: Brand<'brand>,
 }
 
-impl Root {
+impl<'brand> Root<'brand> {
     /// The number of leaves committed under this root.
     pub fn size(&self) -> usize {
         self.size
@@ -173,10 +227,10 @@ impl Root {
     }
 
     /// Verify that `data` is the leaf at `proof.index` under this root, minting a
-    /// sealed [`VerifiedLeaf`] iff the authentication path folds to this exact
-    /// root. Returns `None` on any mismatch (wrong data, wrong/tampered path, an
-    /// index outside the committed set, or a sibling count that does not match the
-    /// shape `index` implies).
+    /// sealed [`VerifiedLeaf`] — stamped with *this* root's `'brand` — iff the
+    /// authentication path folds to this exact root. Returns `None` on any mismatch
+    /// (wrong data, wrong/tampered path, an index outside the committed set, or a
+    /// sibling count that does not match the shape `index` implies).
     ///
     /// `index` is **authenticated**: the tree shape (which levels promote, and
     /// which side each sibling is on) is reconstructed here from `index` and this
@@ -190,8 +244,9 @@ impl Root {
     ///
     /// This is the **sole minter** of [`VerifiedLeaf`]: the witness cannot be
     /// constructed any other way (E0451 — the fields are private and there is no
-    /// public constructor), so possessing one is proof it passed *this* check.
-    pub fn verify(&self, data: &[u8], proof: &Proof) -> Option<VerifiedLeaf> {
+    /// public constructor), so possessing one is proof it passed *this* check, and
+    /// its `'brand` proves it passed *this root's* check specifically.
+    pub fn verify(&self, data: &[u8], proof: &Proof) -> Option<VerifiedLeaf<'brand>> {
         // An index outside the committed set can never be a genuine member, even
         // if a crafted path happened to fold to the root.
         if proof.index >= self.size {
@@ -229,28 +284,45 @@ impl Root {
             Some(VerifiedLeaf {
                 index: proof.index,
                 leaf_hash,
+                _brand: PhantomData,
             })
         } else {
             None
         }
     }
+
+    /// Read back the authenticated positions of leaves *this* root verified.
+    ///
+    /// This is the brand's **consumer**: it accepts only [`VerifiedLeaf`]s carrying
+    /// this root's own `'brand`, so mixing in a witness minted by any *other* root is
+    /// a **compile error** — the rung-2 provenance gap, closed. The value of the
+    /// brand is exactly that type-level guarantee: every position returned is known
+    /// to belong to *this* commitment, not merely to *some* root. (The body is a
+    /// plain read; the guarantee lives entirely in the branded signature — as with
+    /// `vss-types`' `Commitment::recover`.)
+    pub fn authenticated_positions(&self, leaves: &[VerifiedLeaf<'brand>]) -> Vec<usize> {
+        leaves.iter().map(VerifiedLeaf::index).collect()
+    }
 }
 
-/// A **sealed witness** (E0451) that a specific element verified against a Merkle
-/// root through [`Root::verify`] — the only path that can construct one.
+/// A **sealed witness** (E0451) that a specific element verified against a specific
+/// Merkle root through [`Root::verify`] — the only path that can construct one —
+/// carrying that root's generative `'brand`.
 ///
 /// Non-redacting on purpose (membership is public, mirroring `erasure-types`'
 /// `RecoveredData`, not Shamir's redacting `Secret`). Holding one is a *typestate*
-/// fact — verified-through-the-checked-path — not, on its own, a security
-/// guarantee (the backend hash is a toy, and the witness is not yet bound to
-/// *which* root minted it; see the crate-level honest limits).
+/// fact — verified-through-the-checked-path, against the root whose brand it bears —
+/// not, on its own, a security guarantee (the backend hash is a toy). The brand
+/// binds it to its issuing root: it cannot be presented where another root's witness
+/// is expected (see [`Root::authenticated_positions`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct VerifiedLeaf {
+pub struct VerifiedLeaf<'brand> {
     index: usize,
     leaf_hash: u64,
+    _brand: Brand<'brand>,
 }
 
-impl VerifiedLeaf {
+impl VerifiedLeaf<'_> {
     /// The verified element's index under its root.
     pub fn index(&self) -> usize {
         self.index
@@ -263,8 +335,10 @@ impl VerifiedLeaf {
 }
 
 /// A built Merkle tree: retains every level so it can emit an inclusion [`Proof`]
-/// for any leaf. Distinct from the [`Root`] it produces — the root is the public
-/// commitment you distribute; the tree is the prover's private working state.
+/// for any leaf. Distinct from the branded [`Root`] it produces — the root is the
+/// public commitment you distribute; the tree is the prover's private working state.
+/// Unbranded: proofs are public data, so the tree may be used freely inside the
+/// [`commit_scoped`] closure that owns it.
 #[derive(Clone, Debug)]
 pub struct MerkleTree {
     /// `layers[0]` is the leaf hashes; each subsequent layer is the level above;
@@ -273,10 +347,11 @@ pub struct MerkleTree {
 }
 
 impl MerkleTree {
-    /// Build a tree over `leaves` (in order), returning the public [`Root`] and the
-    /// prover-side tree. Returns `None` for an empty input — there is no root of
-    /// nothing to commit to.
-    pub fn build(leaves: &[impl AsRef<[u8]>]) -> Option<(Root, Self)> {
+    /// Build the tree and its raw root data (hash + leaf count) over `leaves`, in
+    /// order. `None` for empty input — there is no root of nothing to commit to.
+    /// Private: a branded [`Root`] is only ever handed out by [`commit_scoped`], so
+    /// that its `'brand` is generative and cannot be chosen by the caller.
+    fn build_inner(leaves: &[impl AsRef<[u8]>]) -> Option<(u64, usize, Self)> {
         if leaves.is_empty() {
             return None;
         }
@@ -285,7 +360,7 @@ impl MerkleTree {
         let layers = build_layers(leaf_hashes);
         // `build_layers` always terminates with a single-element top layer.
         let hash = layers[layers.len() - 1][0];
-        Some((Root { hash, size }, MerkleTree { layers }))
+        Some((hash, size, MerkleTree { layers }))
     }
 
     /// Emit an inclusion [`Proof`] for the leaf at `index`, or `None` if the index
@@ -314,6 +389,29 @@ impl MerkleTree {
         }
         Some(Proof { index, siblings })
     }
+}
+
+/// Commit to `leaves` and run `body` inside a fresh **generative brand** scope,
+/// handing it the branded `Root<'brand>` and the prover-side [`MerkleTree`]. Returns
+/// `body`'s result, or `None` for empty input (no root of nothing).
+///
+/// The `for<'brand>` bound is what makes the brand *generative*: `body` must work
+/// for every `'brand`, so it cannot smuggle a `VerifiedLeaf<'brand>` out (the return
+/// type `R` may not mention `'brand`), and two separate `commit_scoped` calls receive
+/// brands that never unify. Only an unbranded value (a [`Proof`], a `usize`, a
+/// `bool`) may escape. This is the sole way to obtain a [`Root`], which is what keeps
+/// the brand out of the caller's control.
+pub fn commit_scoped<R>(
+    leaves: &[impl AsRef<[u8]>],
+    body: impl for<'brand> FnOnce(Root<'brand>, &MerkleTree) -> R,
+) -> Option<R> {
+    let (hash, size, tree) = MerkleTree::build_inner(leaves)?;
+    let root = Root {
+        hash,
+        size,
+        _brand: PhantomData,
+    };
+    Some(body(root, &tree))
 }
 
 /// Fold a level of hashes into the level above, pairing neighbours and **promoting**
@@ -355,46 +453,54 @@ mod tests {
     #[test]
     fn every_leaf_verifies_against_its_proof() {
         let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        assert_eq!(root.size(), 5);
-        for (i, d) in data.iter().enumerate() {
-            let proof = tree.proof(i).unwrap();
-            let verified = root.verify(d, &proof).expect("genuine member verifies");
-            assert_eq!(verified.index(), i);
-            assert_eq!(verified.leaf_hash(), hash::leaf_hash(d));
-        }
+        commit_scoped(&data, |root, tree| {
+            assert_eq!(root.size(), 5);
+            for (i, d) in data.iter().enumerate() {
+                let proof = tree.proof(i).unwrap();
+                let verified = root.verify(d, &proof).expect("genuine member verifies");
+                assert_eq!(verified.index(), i);
+                assert_eq!(verified.leaf_hash(), hash::leaf_hash(d));
+                // The branded consumer reads it back under this same root.
+                assert_eq!(root.authenticated_positions(&[verified]), vec![i]);
+            }
+        })
+        .unwrap();
     }
 
     #[test]
     fn single_leaf_tree() {
         let data = [b"only".as_ref()];
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        assert_eq!(root.size(), 1);
-        let proof = tree.proof(0).unwrap();
-        assert!(proof.siblings.is_empty());
-        assert!(root.verify(b"only", &proof).is_some());
-        assert!(root.verify(b"other", &proof).is_none());
+        commit_scoped(&data, |root, tree| {
+            assert_eq!(root.size(), 1);
+            let proof = tree.proof(0).unwrap();
+            assert!(proof.siblings.is_empty());
+            assert!(root.verify(b"only", &proof).is_some());
+            assert!(root.verify(b"other", &proof).is_none());
+        })
+        .unwrap();
     }
 
     #[test]
     fn wrong_data_mints_no_witness() {
-        let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        let proof = tree.proof(2).unwrap();
-        // Correct index, wrong bytes.
-        assert!(root.verify(b"not-carol", &proof).is_none());
-        // Correct bytes, wrong leaf's proof.
-        let other = tree.proof(3).unwrap();
-        assert!(root.verify(b"carol", &other).is_none());
+        commit_scoped(&sample(), |root, tree| {
+            let proof = tree.proof(2).unwrap();
+            // Correct index, wrong bytes.
+            assert!(root.verify(b"not-carol", &proof).is_none());
+            // Correct bytes, wrong leaf's proof.
+            let other = tree.proof(3).unwrap();
+            assert!(root.verify(b"carol", &other).is_none());
+        })
+        .unwrap();
     }
 
     #[test]
     fn tampered_sibling_mints_no_witness() {
-        let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        let mut proof = tree.proof(1).unwrap();
-        proof.siblings[0] ^= 1; // flip one bit of one sibling
-        assert!(root.verify(b"bob", &proof).is_none());
+        commit_scoped(&sample(), |root, tree| {
+            let mut proof = tree.proof(1).unwrap();
+            proof.siblings[0] ^= 1; // flip one bit of one sibling
+            assert!(root.verify(b"bob", &proof).is_none());
+        })
+        .unwrap();
     }
 
     #[test]
@@ -402,18 +508,19 @@ mod tests {
         // Regression for the round-1 finding: `index` is authenticated. A genuine
         // path for one position, relabeled to any *other* in-range index, must fail
         // — the fold is driven by `index`, so a lie about position breaks it.
-        let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        let genuine = tree.proof(1).unwrap();
-        assert_eq!(root.verify(b"bob", &genuine).unwrap().index(), 1);
-        for wrong in [0usize, 2, 3, 4] {
-            let mut relabeled = genuine.clone();
-            relabeled.index = wrong;
-            assert!(
-                root.verify(b"bob", &relabeled).is_none(),
-                "relabeling index 1 -> {wrong} must not verify"
-            );
-        }
+        commit_scoped(&sample(), |root, tree| {
+            let genuine = tree.proof(1).unwrap();
+            assert_eq!(root.verify(b"bob", &genuine).unwrap().index(), 1);
+            for wrong in [0usize, 2, 3, 4] {
+                let mut relabeled = genuine.clone();
+                relabeled.index = wrong;
+                assert!(
+                    root.verify(b"bob", &relabeled).is_none(),
+                    "relabeling index 1 -> {wrong} must not verify"
+                );
+            }
+        })
+        .unwrap();
     }
 
     #[test]
@@ -423,93 +530,106 @@ mod tests {
         // never otherwise. A true symmetry, not a forgery (equal-hashing structure
         // commits the same bytes), and it never lets DIFFERENT data verify.
 
-        // (a) Minimal case — a sibling leaf pair (2j, 2j+1) with equal data.
+        // (a) Minimal case — a sibling leaf pair (2j, 2j+1) with equal data; plus
+        // (d) different bytes verify at NO position, even reusing a genuine proof.
         let data = [b"a".as_ref(), b"a".as_ref(), b"c".as_ref(), b"d".as_ref()];
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        let p0 = tree.proof(0).unwrap();
-        let mut to_one = p0.clone();
-        to_one.index = 1;
-        // "a" genuinely IS the leaf at index 1 too — membership holds, only the
-        // choice between the two equal positions is unpinned.
-        assert_eq!(root.verify(b"a", &to_one).unwrap().index(), 1);
+        commit_scoped(&data, |root, tree| {
+            let p0 = tree.proof(0).unwrap();
+            let mut to_one = p0.clone();
+            to_one.index = 1;
+            // "a" genuinely IS the leaf at index 1 too — membership holds, only the
+            // choice between the two equal positions is unpinned.
+            assert_eq!(root.verify(b"a", &to_one).unwrap().index(), 1);
+            // (d)
+            assert!(root.verify(b"different", &p0).is_none());
+        })
+        .unwrap();
 
         // (b) General case — two whole sibling subtrees that hash identically make
         // even NON-adjacent positions interchangeable.
         let sym = [b"a".as_ref(), b"b".as_ref(), b"a".as_ref(), b"b".as_ref()];
-        let (root2, tree2) = MerkleTree::build(&sym).unwrap();
-        let q0 = tree2.proof(0).unwrap();
-        let mut to_two = q0.clone();
-        to_two.index = 2; // subtrees [a,b] == [a,b]; "a" really is at index 2
-        assert_eq!(root2.verify(b"a", &to_two).unwrap().index(), 2);
+        commit_scoped(&sym, |root, tree| {
+            let mut to_two = tree.proof(0).unwrap();
+            to_two.index = 2; // subtrees [a,b] == [a,b]; "a" really is at index 2
+            assert_eq!(root.verify(b"a", &to_two).unwrap().index(), 2);
+        })
+        .unwrap();
 
         // (c) NOT a blanket "equal data => interchangeable": an adjacent but
         // NON-sibling equal pair (positions 1,2 straddling a parent) is rejected.
         let nonsib = [b"x".as_ref(), b"a".as_ref(), b"a".as_ref(), b"d".as_ref()];
-        let (root3, tree3) = MerkleTree::build(&nonsib).unwrap();
-        let r1 = tree3.proof(1).unwrap();
-        let mut r1_to_2 = r1.clone();
-        r1_to_2.index = 2;
-        assert!(root3.verify(b"a", &r1_to_2).is_none());
-
-        // (d) Different bytes verify at NO position, even reusing a genuine proof.
-        assert!(root.verify(b"different", &p0).is_none());
+        commit_scoped(&nonsib, |root, tree| {
+            let mut r1_to_2 = tree.proof(1).unwrap();
+            r1_to_2.index = 2;
+            assert!(root.verify(b"a", &r1_to_2).is_none());
+        })
+        .unwrap();
 
         // (e) Closure/transitivity — in an all-equal tree the orbit is the whole
         // leaf set, so a genuine proof relabels to ANY index (index 3 is reached by
         // COMPOSING swaps, not a single sibling swap). Still honest: "a" is at 3 too.
         let all_equal = [b"a".as_ref(), b"a".as_ref(), b"a".as_ref(), b"a".as_ref()];
-        let (root4, tree4) = MerkleTree::build(&all_equal).unwrap();
-        let s0 = tree4.proof(0).unwrap();
-        let mut s0_to_3 = s0.clone();
-        s0_to_3.index = 3;
-        assert_eq!(root4.verify(b"a", &s0_to_3).unwrap().index(), 3);
+        commit_scoped(&all_equal, |root, tree| {
+            let mut s0_to_3 = tree.proof(0).unwrap();
+            s0_to_3.index = 3;
+            assert_eq!(root.verify(b"a", &s0_to_3).unwrap().index(), 3);
+        })
+        .unwrap();
     }
 
     #[test]
     fn wrong_sibling_count_mints_no_witness() {
         // The shape is fixed by (index, size); a path that is too short or too long
         // for that shape is rejected, not folded to a lucky root.
-        let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        let good = tree.proof(1).unwrap();
+        commit_scoped(&sample(), |root, tree| {
+            let good = tree.proof(1).unwrap();
 
-        let mut short = good.clone();
-        short.siblings.pop();
-        assert!(root.verify(b"bob", &short).is_none());
+            let mut short = good.clone();
+            short.siblings.pop();
+            assert!(root.verify(b"bob", &short).is_none());
 
-        let mut long = good.clone();
-        long.siblings.push(0xdead_beef);
-        assert!(root.verify(b"bob", &long).is_none());
+            let mut long = good.clone();
+            long.siblings.push(0xdead_beef);
+            assert!(root.verify(b"bob", &long).is_none());
+        })
+        .unwrap();
     }
 
     #[test]
     fn index_beyond_size_is_rejected() {
-        let data = sample();
-        let (root, tree) = MerkleTree::build(&data).unwrap();
-        assert!(tree.proof(5).is_none());
-        // Even a hand-built proof with an out-of-range index cannot verify.
-        let rogue = Proof {
-            index: 99,
-            siblings: Vec::new(),
-        };
-        assert!(root.verify(b"alice", &rogue).is_none());
+        commit_scoped(&sample(), |root, tree| {
+            assert!(tree.proof(5).is_none());
+            // Even a hand-built proof with an out-of-range index cannot verify.
+            let rogue = Proof {
+                index: 99,
+                siblings: Vec::new(),
+            };
+            assert!(root.verify(b"alice", &rogue).is_none());
+        })
+        .unwrap();
     }
 
     #[test]
     fn empty_input_has_no_root() {
         let empty: [&[u8]; 0] = [];
-        assert!(MerkleTree::build(&empty).is_none());
+        assert!(commit_scoped(&empty, |_root, _tree| ()).is_none());
     }
 
     #[test]
     fn a_proof_does_not_transfer_across_roots() {
-        // The rung-1 provenance gap, stated as a test (NOT yet prevented by types):
-        // a proof from one tree naturally fails against a different root at the
-        // value level. Rung 2's brand makes the *mismatch* a compile error too.
-        let (root_a, tree_a) = MerkleTree::build(&sample()).unwrap();
-        let (root_b, _tree_b) = MerkleTree::build(&[b"x".as_ref(), b"y".as_ref()]).unwrap();
-        let proof = tree_a.proof(0).unwrap();
-        assert!(root_a.verify(b"alice", &proof).is_some());
-        assert!(root_b.verify(b"alice", &proof).is_none());
+        // The provenance gap at the *value* level: a proof from one tree fails
+        // against a different root by the fold. Rung 2 additionally makes the
+        // *witness* mismatch a compile error (see the crate-level `compile_fail`
+        // doctest on `authenticated_positions`). Proofs are unbranded, so passing a
+        // foreign proof still type-checks — and is correctly rejected at runtime.
+        commit_scoped(&sample(), |root_a, tree_a| {
+            let proof = tree_a.proof(0).unwrap();
+            assert!(root_a.verify(b"alice", &proof).is_some());
+            commit_scoped(&[b"x".as_ref(), b"y".as_ref()], |root_b, _tree_b| {
+                assert!(root_b.verify(b"alice", &proof).is_none());
+            })
+            .unwrap();
+        })
+        .unwrap();
     }
 }

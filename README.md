@@ -124,9 +124,14 @@ checked path *existing*, not the math it runs. And it is the first leaf importin
 **discipline** (the primitives), not any of its **code** (the core modules) — a
 leaf can be fully in the garden while depending on nothing in it.
 
-Rung 1 is unbranded, with the provenance gap documented (a `VerifiedLeaf` isn't yet
-bound to *which* `Root` minted it — the same gap VSS had at *its* rung 1, closing the
-same way at rung 2 via a generative-lifetime brand).
+**Rung 2 (done): the generative brand.** `Root<'brand>` and `VerifiedLeaf<'brand>`
+share an invariant generative lifetime introduced by `commit_scoped`'s `for<'brand>`
+closure; a same-brand consumer (`Root::authenticated_positions`) accepts only *this*
+root's witnesses, so presenting a `VerifiedLeaf` from one root where another's is
+expected is a **compile error** — the provenance gap, closed exactly as VSS closed
+its own. That makes leaf 4 the second leaf to use **two** garden primitives (E0451 +
+the E0308-class brand) with still no new one. As in VSS the brand is a *lifetime*, so
+the mismatch is a lifetime error, not a literal `error[E0308]`.
 
 > ⚠ **TOY.** The hash backend is non-cryptographic FNV-1a — a real adversary forges
 > collisions and thus membership. The *type discipline* is the subject, not the
@@ -135,7 +140,7 @@ same way at rung 2 via a generative-lifetime brand).
 ## Build
 
 ```sh
-cargo test --workspace          # 52 unit tests + 10 doctests (incl. sealed-constructor + cross-brand compile-fails)
+cargo test --workspace          # 52 unit tests + 11 doctests (incl. sealed-constructor + cross-brand compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
