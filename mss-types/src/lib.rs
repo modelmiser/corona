@@ -732,6 +732,9 @@ mod tests {
         );
 
         let understated = MssPublicKey::adopt(pk.root_hash(), 2).unwrap();
+        // Spurious rejection in this direction too: the UN-relabeled genuine
+        // signature trips the range gate under the understated anchor.
+        assert!(understated.verify(b"m", &sig4).is_none());
         let v = understated
             .verify(b"m", &relabeled)
             .expect("in-range misattribution under the understated anchor");
