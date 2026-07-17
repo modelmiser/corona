@@ -14,7 +14,9 @@ work (complete tasks, add children, keep siblings).
 
 ## Next (leaf 1)
 
-- [ ] Cold-review the rung-1 surface (docs + honesty framing) to convergence
+- [x] Cold-review the rung-1 surface to convergence — 5 rounds (MOD 3→1→1→0→0),
+      two consecutive clean rounds. Fixes: redacting `Debug`, caller-chosen-k
+      disclosure (+ test), live `combine_with` seam (+ test), thesis/wiring precision.
 - [ ] `split` that takes an RNG (feature-gated) so the happy path isn't coeff-by-hand,
       while keeping `split_with_coeffs` as the deterministic/testable primitive
 - [ ] Decide: is leaf 1 a wind-down toy, or the base for VSS rung 2?

@@ -6,9 +6,9 @@ unforgeability (E0451), move-linearity (E0382), brand-unification (E0308), and
 const-eval walls (E0080) — first isolated in `warp-types` and `quorum-types`.
 
 Corona is the **type** face of the Radiant verification work. Its sibling **Sol**
-is the **proof** face (machine-checked Lean lemmas). They are wired, not merged:
-a graduated Corona leaf contributes a Lean formalization to Sol. See
-[`CHARTER.md`](CHARTER.md).
+is the **proof** face (machine-checked Lean lemmas). The *intended* wiring — not
+yet exercised, since no leaf has graduated — is one-directional: a graduated
+Corona leaf contributes a Lean formalization to Sol. See [`CHARTER.md`](CHARTER.md).
 
 ## Layout
 
@@ -25,12 +25,13 @@ only when a second leaf proves a primitive common — never speculatively from o
 
 Shamir *k-of-n* secret sharing, encoded so a reconstructed `Secret` is
 **unforgeable** — it has a sealed constructor and can only arrive from the
-threshold-checked `combine` path (E0451). The rung's question: *does cryptographic
+threshold-checked `combine` / `combine_with` path (E0451). The rung's question: *does cryptographic
 threshold evidence break the garden's compile-primitive vocabulary, or reduce
-under it?* Answer so far: the **counting half reduces** — no new primitive, just
-E0451 + a runtime `Threshold` check. The *authenticity* half (proving a share is
-genuine, not merely well-typed) is documented as the line to verifiable secret
-sharing, the natural rung 2.
+under it?* Answer so far: the **unforgeable wrapping reduces** to E0451 (no new
+primitive); the *counting* itself stays an ordinary runtime `Threshold` check, not
+type-encoded. The *authenticity* half (proving a share is genuine, not merely
+well-typed — and that the caller's `k` matches the dealing threshold) is documented
+as the line to verifiable secret sharing, a natural rung 2.
 
 > ⚠ **TOY.** `threshold-types` demonstrates a type discipline, not production
 > crypto. Its GF(256) backend is not constant-time and there is no share
@@ -40,7 +41,7 @@ sharing, the natural rung 2.
 ## Build
 
 ```sh
-cargo test --workspace          # 10 unit tests + 3 doctests (incl. the E0451 compile-fail)
+cargo test --workspace          # 13 unit tests + 3 doctests (incl. the sealed-constructor compile-fail)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

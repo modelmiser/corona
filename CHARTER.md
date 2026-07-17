@@ -2,8 +2,9 @@
 
 *A garden of typestate crates that encode a domain's invariants through one small
 vocabulary of compile-time primitives. Corona is the **type** face of the Radiant
-verification work; [Sol](../../active/sol) is the **proof** face. They are wired,
-not merged (see "Relationship to Sol").*
+verification work; [Sol](../../active/sol) is the **proof** face. They are
+*intended to be* wired, not merged (see "Relationship to Sol" — the flow is not
+yet exercised by any graduated leaf).*
 
 ## Why "garden"
 
@@ -51,8 +52,9 @@ A crate graduates only when **all** hold:
 
 1. Its thesis question is answered and recorded (DEVLOG/INSIGHTS).
 2. Every illustrative backend is replaced by a vetted dependency behind the
-   *same* types — the graduation seam is a **trait swap, not a rewrite** (e.g.
-   `threshold-types::Reconstruct`).
+   *same* types — the graduation seam is an **implementation swap** (a new
+   `impl` of the seam trait, e.g. `threshold-types::Reconstruct`), **not a
+   rewrite**; the trait stays, its implementing type changes.
 3. A security/limits section states what the types do and do **not** witness.
 4. It carries a Lean formalization contributed to Sol (see below), or an explicit
    note of why it cannot.
@@ -71,18 +73,21 @@ Corona and [Sol](../../active/sol) are two faces of the same fundamentals:
   library from worked domains. Its Rust workspace (`sol-verify*`) is verification
   **tooling**, not a home for domain crates.
 
-`warp-types` already lives at both — a Rust crate here, a Lean formalization that
-is one of Sol's test beds. The intended flow is **one-directional: a graduated
-Corona leaf contributes a Lean formalization to Sol** (domains feed lemmas). A
-`threshold-types` crate does **not** belong in Sol's `sol-verify` workspace — that
-would mix domain types with verification tooling. Keep them distinct-but-wired.
+This flow is **intended, not yet exercised** — no Corona leaf has graduated, so it
+has zero realized instances today. `warp-types` — the *pre-Corona ancestor*, not a
+leaf in this workspace — prefigures it: it is both a Rust crate and a Lean
+formalization that is one of Sol's test beds. Once a leaf graduates, the direction
+is **one-directional: a graduated Corona leaf contributes a Lean formalization to
+Sol** (domains feed lemmas). A `threshold-types`-style domain crate does **not**
+belong in Sol's `sol-verify` workspace — that would mix domain types with
+verification tooling. Keep them distinct, to be wired only once a leaf graduates.
 
 ## Leaves
 
 | Crate | Track | Domain | Thesis question |
 |---|---|---|---|
 | `corona-core` | infra | shared vocabulary | — (grows only with a 2nd leaf) |
-| `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **counting half: yes** |
+| `threshold-types` | research (toy) | Shamir k-of-n secret sharing | does crypto threshold evidence reduce to the vocabulary? → **the unforgeable wrapping reduces to E0451; the counting stays a runtime check, not type-encoded** |
 
 ### Lineage (the pattern that predates the plan)
 
@@ -93,9 +98,9 @@ three already form; it is recognition, not new scope.
 ### Candidate future leaves
 
 - `erasure-types` — Reed–Solomon k-of-n. Same reconstruction skeleton as Shamir,
-  opposite property (*availability*, not confidentiality). The paired axis.
+  opposite property (*availability*, not confidentiality). A paired axis.
 - Verifiable secret sharing — adds commitments so shares become *authenticable*;
-  the natural rung 2 that closes the gap `threshold-types` documents.
+  a natural rung 2 that closes the gap `threshold-types` documents.
 
 ## Records
 

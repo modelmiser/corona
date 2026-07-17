@@ -67,6 +67,12 @@ impl Threshold {
     }
 
     /// Does presenting `count` shares meet the bar (`count >= k`)?
+    ///
+    /// This is a **count-only** check against *this* threshold's `k`. A
+    /// `Threshold` is a caller-asserted parameter — it is not derived from, or
+    /// bound to, the shares themselves. A protocol that needs `k` to match the
+    /// threshold a secret was *dealt* under must enforce that out of band; this
+    /// method cannot.
     pub fn met_by(&self, count: usize) -> bool {
         count >= self.k as usize
     }
