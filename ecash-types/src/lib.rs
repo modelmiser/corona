@@ -31,9 +31,9 @@
 //!    of distributed/multiparty **session types** — linearity genuinely does
 //!    extend across wires; but that *constrains the holder and the channel*
 //!    (session-typed linearity assumes a non-duplicating transport — a
-//!    tapped-and-replayed wire re-forks it), the same move trusted hardware
-//!    makes below, and bearer value is precisely the refusal of those
-//!    constraints.) [`WireCoin`] states the premise honestly by being
+//!    tapped-and-replayed wire re-forks it), the holder half being the same
+//!    move trusted hardware makes below, and bearer value is precisely the
+//!    refusal of those constraints.) [`WireCoin`] states the premise honestly by being
 //!    all-public and `Copy`: after [`into_wire`](Coin::into_wire), a "double
 //!    spend" **type-checks**. What prevents it is the mint's **spent set** —
 //!    a runtime, stateful, *online* check ([`Mint::redeem`]), first
@@ -280,7 +280,8 @@ pub struct WireCoin {
 /// identity would leak nothing; it is redacted anyway so the crate's
 /// log-hygiene policy is uniform across all three secret-adjacent types).
 /// `PartialEq` compares the full fact — serial *and* mint identity — so two
-/// receipts reveal whether their mints share a secret; since receipts cannot
+/// *same-serial* receipts reveal whether their mints share a secret
+/// (different serials compare unequal regardless); since receipts cannot
 /// be injected (E0451), this only ever compares facts [`Mint::redeem`]
 /// actually minted (though under the toy hash the *presenter* need not be
 /// legitimate — a valid-tag forgery mints a real fact), and same-seed
@@ -320,6 +321,12 @@ impl Receipt {
     /// spent sets* — precisely the layer-3 gap. Value-identity is not
     /// deployment-identity; only coordination (out of scope, `quorum-types`'
     /// territory) can fuse replicas into one spender-visible mint.
+    ///
+    /// Flip side: because [`Mint::new`] is public, a receipt holder can use
+    /// this check as a seed-guess confirmation oracle
+    /// (`receipt.minted_by(&Mint::new(guess))`). Infeasible over a real
+    /// 2⁶⁴+ key space, and moot in the toy — one observed coin already
+    /// yields the forging state (see the banner).
     pub fn minted_by(&self, mint: &Mint) -> bool {
         self.mint_id == hash::mint_id(mint.secret)
     }
@@ -496,10 +503,12 @@ mod tests {
         assert_eq!(mint.redeem(forged), Err(RedeemError::Forged));
     }
 
-    /// Note: with a wrong tag, the MAC check rejects before the issued-range
-    /// check runs — this pins the guessed-tag path. The range branch itself
-    /// (unissued serial with a VALID tag) is pinned by
-    /// `valid_tag_on_unissued_serial_is_refused_and_burns_nothing`.
+    /// Pins the guessed-tag *input shape* (wrong tag on an unissued serial).
+    /// Both the MAC and range branches return the same `Forged` here, so
+    /// their order is unobservable in this test; the range branch is pinned
+    /// on its own — with VALID tags — by
+    /// `valid_tag_on_unissued_serial_is_refused_and_burns_nothing`, and the
+    /// MAC branch by `forged_tag_is_rejected` on issued serials.
     #[test]
     fn unissued_serial_with_guessed_tag_is_rejected() {
         let mut mint = Mint::new(0xD4);
