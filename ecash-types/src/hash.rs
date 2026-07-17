@@ -73,7 +73,8 @@ mod tests {
     /// (`mint_id = secret` — which would silently falsify the Receipt
     /// Debug-redaction rationale) fails here. (An inequality-only
     /// separation test cannot pin `coin_tag`'s `0x01`: the differing buffer
-    /// lengths force inequality regardless of the tags.)
+    /// lengths alone make inequality overwhelmingly likely regardless of
+    /// the tags.)
     #[test]
     fn coin_tag_and_mint_id_known_answers_pin_the_derivations() {
         assert_eq!(coin_tag(0x5EED, 1), 0x47d7_e9f1_9395_b9ee);

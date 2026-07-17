@@ -77,10 +77,10 @@
 //! This crate exists to demonstrate a **type discipline and its boundary**,
 //! not to move money. The coin tag is 64-bit FNV-1a keyed by concatenation —
 //! **not a PRF, invertible**: an adversary who observes one wire coin can
-//! unwind the serial's hash steps to the keyed intermediate state (an
-//! effective MAC key for *any* serial) and, with a meet-in-the-middle at
-//! ~2³² time and memory, the secret itself — either way, forging freely
-//! (see `src/hash.rs`). There
+//! unwind the serial's hash steps to the keyed intermediate state — an
+//! effective MAC key for *any* serial, so forging is free from that state
+//! alone — and a further meet-in-the-middle at ~2³² time and memory yields
+//! the secret itself (see `src/hash.rs`). There
 //! is no blinding (Chaum's actual 1982 contribution — payer anonymity — is
 //! entirely absent), no denominations, no transfer between holders, no
 //! persistence. **Do not move value with this.** Graduation swaps the hash for
@@ -135,8 +135,8 @@
 //!
 //! ## Primitives used
 //!
-//! **E0451** (sealed [`Coin`] and [`Receipt`]) and **E0382** (linear
-//! [`Coin`]). The brand and E0080 are honestly unused. The point of the leaf
+//! **E0451** (sealed [`Coin`] and [`Receipt`]) and **E0382** (affine
+//! [`Coin`] — the honesty note above draws the affine/linear line). The brand and E0080 are honestly unused. The point of the leaf
 //! is what is *not* on this list: layer 2's missing piece is not a fifth
 //! compile primitive — it is runtime state with fresh knowledge, which is not
 //! a compile-time thing at all. The first "no" gives the garden's map its
@@ -148,7 +148,7 @@
 //! use ecash_types::{Mint, RedeemError};
 //!
 //! let mut mint = Mint::new(0xC0FFEE);
-//! let coin = mint.issue(); // linear capability: not Clone, not Copy
+//! let coin = mint.issue(); // affine capability: not Clone, not Copy
 //! let serial = coin.serial();
 //!
 //! // Crossing the wire consumes the coin — and steps the guarantee down:
@@ -650,6 +650,17 @@ mod tests {
             Err(RedeemError::Forged),
             "front-running an unissued serial is refused"
         );
+        // Strictly BEYOND the boundary too, not just at it: a `>=`-to-`==`
+        // mutant of the range check would accept this never-issued serial.
+        let far_future = WireCoin {
+            serial: 3,
+            tag: hash::coin_tag(0x4B, 3),
+        };
+        assert_eq!(
+            mint.redeem(far_future),
+            Err(RedeemError::Forged),
+            "serials strictly beyond next_serial are refused"
+        );
         let coin = mint.issue();
         assert_eq!(coin.serial(), 1);
         assert!(
@@ -759,6 +770,10 @@ mod tests {
             );
         }
         assert!(receipt_dbg.contains("<redacted>"));
+
+        // The one promised LEAK is pinned too: WireCoin's Debug shows the
+        // tag in the clear (doorway type — documented, deliberate).
+        assert!(format!("{:?}", wire).contains(&format!("{}", wire.tag)));
 
         let mint_dbg = format!("{:?}", mint);
         assert!(mint_dbg.contains("<redacted>"));
