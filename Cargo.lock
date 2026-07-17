@@ -7,6 +7,10 @@ name = "corona-core"
 version = "0.1.0"
 
 [[package]]
+name = "ecash-types"
+version = "0.1.0"
+
+[[package]]
 name = "erasure-types"
 version = "0.1.0"
 dependencies = [

@@ -22,7 +22,8 @@ corona/
 ├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
-└── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
+├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
+└── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -278,10 +279,44 @@ degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 > Data-structure only: the AVID dispersal *protocol* (echo/ready quorums) is
 > out of scope.
 
+## Leaf 9: `ecash-types`
+
+The garden's first **negative-space leaf**. Leaves 1–8 all answered *yes* — this
+one maps where the vocabulary provably stops. The invariant is double-spend
+prevention, the defining property of bearer value, and the answer is a **split**
+across three layers, each executable:
+
+1. **Inside one ownership graph**, a coin spends once by **E0382**: `Coin` is
+   not `Clone`/`Copy` and `into_wire(self)` consumes it — spending twice is a
+   compile error (verified `error[E0382]`), exactly leaf 5's consumable
+   capability, applied to value.
+2. **Across the wire, linearity dies definitionally** — a type discipline binds
+   only the program it type-checks, and a serialized coin is bytes outside every
+   program. `WireCoin` says so honestly: all-public and `Copy`, so a double
+   spend *type-checks* and is caught instead by the mint's **spent set**
+   (`Mint::redeem` — runtime, stateful, online; first presentation wins). No
+   fifth compile primitive is missing: what this layer needs is *fresh knowledge
+   at redeem time*, which no compile-time fact can supply.
+3. **Replicating the mint re-opens the hole**: two `Mint` values from one seed
+   share identity but not spent sets, and one wire coin redeems at both
+   (regression-tested). "Unspent" is knowledge about *absence* — non-monotone in
+   the CALM sense — so a replicated mint must coordinate. That is
+   `quorum-types`' territory: this leaf is the seam between the two gardens,
+   drawn from corona's side.
+
+The literature agrees with the cut: Chaum 1982 prevents double-spending with
+exactly layer 2 (an online mint), and Chaum–Fiat–Naor (CRYPTO '88) does not
+*prevent* offline double-spends — it reveals the double-spender's identity
+after the fact. Punish, not prevent.
+
+> ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
+> coin recovers the mint secret. No blinding (Chaum's actual contribution),
+> no denominations, no transfer, no persistence.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 106 unit tests + 22 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain + const-eval-wall compile-fails)
+cargo test --workspace          # 117 unit tests + 27 doctests (sealed-ctor, cross-brand/cross-adoption, one-time-key, stale-chain, wire-copy + const-eval-wall compile-fails)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

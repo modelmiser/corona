@@ -240,6 +240,26 @@ work (complete tasks, add children, keep siblings).
       unreachable ×3 independent reviews. vid 18 unit + 2 doctests; workspace
       106 + 22. **All 8 leaves now cold-reviewed.**
 
+## Now (leaf 9 — ecash-types)
+
+- [x] Seed ecash-types: the first **negative-space leaf** — where does the
+      vocabulary provably stop? Answer: a three-layer split, each executable.
+      L1 in-graph = E0382 (`Coin` linear, `into_wire(self)`; double-spend =
+      compile error, verified E0382). L2 wire = NOT reducible, definitionally
+      (`WireCoin` all-public + Copy — bytes copy; the doorway witnesses
+      NOTHING); prevention = mint's spent set (`redeem`: tag checked BEFORE the
+      set → DoubleSpent implies authentic; forgery neither probes nor burns —
+      regression-tested). L3 replicas = the coordination seam ("unspent" =
+      knowledge of absence = non-monotone/CALM; two same-seed mints share
+      identity but not spent sets, one wire coin redeems at both —
+      regression-tested; quorum-types' territory, the seam drawn from corona's
+      side). Pedigree: Chaum 1982 = layer 2; CFN '88 offline = punish-not-
+      prevent. Standalone (imports nothing — boundary-drawing independence).
+      11 unit + 5 doctests (E0382/E0599 pinned); workspace 117 + 27, all gates
+      green. CHARTER row + promotion note, README leaf-9 section, lineage +
+      candidates refreshed.
+- [ ] Cold-review the leaf-9 surface to convergence (separate step, on request)
+
 ## Parking lot (garden, not scheduled)
 
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)

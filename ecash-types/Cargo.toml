@@ -1,0 +1,8 @@
+[package]
+name = "ecash-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 9 (negative space): bearer value as a linear capability — and the exact boundary where compile-time double-spend prevention ends. TOY, not production crypto."
+license = "MIT"
+
+[dependencies]
