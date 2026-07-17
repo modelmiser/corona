@@ -134,9 +134,14 @@ work (complete tasks, add children, keep siblings).
 - [x] `corona-core` promotion check (leaf-5 trigger): nothing to promote (hash-based,
       single-signer). Contribution is *primitive coverage* — E0382 now centrally used;
       only E0080 remains unexercised as a leaf's core. See CHARTER.
-- [ ] Cold-review the leaf-5 surface to convergence. Focus: the E0382 linearity claim
-      (can a double-sign be smuggled past the move — Clone/re-borrow/`&self` variant?);
-      the affine-not-linear framing; the reuse-vs-forgery separation; toy-hash honesty.
+- [x] Cold-review the leaf-5 surface to convergence — round 1 (1 MODERATE + 1 LOW) →
+      round 2 clean (0 CRIT/0 MOD, 1 LOW fixed); practical convergence. Commit
+      `088364e`. Linearity proven SOUND by adversarial compilation twice (~30 exploits
+      rejected). MODERATE (cross-confirmed): deterministic `generate(seed)` makes the
+      key one-time per *value* not per key *material* — a retained seed re-mints keys
+      → documented as an Honest-limits bullet + headline caveat. LOWs: XMSS→MSS
+      (merkle∘lamport = Merkle Signature Scheme; XMSS is the WOTS+ refinement);
+      CHARTER glossary "E0382 … exactly once" → "at most once (affine)".
 
 ## Parking lot (garden, not scheduled)
 
