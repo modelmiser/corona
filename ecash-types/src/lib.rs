@@ -57,9 +57,14 @@
 //! spender's identity* after the fact. The field's own answer to "prevent
 //! without fresh knowledge" is *punish, not prevent* — independent support for
 //! the negative claim. (Preventing, rather than punishing, offline
-//! double-spending requires trusted/tamper-resistant hardware, i.e. moving the
-//! spent state into a box the spender cannot copy — relocating the stateful
-//! check, not eliminating it.)
+//! double-spending of *classical* coins — bit-strings — requires
+//! trusted/tamper-resistant hardware, i.e. moving the spent state into a box
+//! the spender cannot copy: relocating the stateful check, not eliminating
+//! it. The one exit from this taxonomy abandons bit-strings altogether —
+//! quantum money (Wiesner's conjugate coding; Aaronson–Christiano's
+//! public-key variant) makes the *token itself* uncopyable by physics,
+//! escaping the argument by breaking its "a serialized coin is bytes"
+//! premise rather than its logic.)
 //!
 //! ## ⚠ TOY — not production crypto
 //!
@@ -111,7 +116,11 @@
 //!   and never returns [`RedeemError::DoubleSpent`]; a forged attempt does
 //!   not burn the serial for the genuine holder; and even a correctly-MAC'd
 //!   *future* serial cannot front-run the coin issued later (all
-//!   regression-tested).
+//!   regression-tested). "Forged" here means a presentation *failing
+//!   `redeem`'s own checks* ([`RedeemError::Forged`]); under the toy's
+//!   invertible hash an observer can craft **valid**-tag presentations for
+//!   issued serials, and those probe and burn exactly as authentic coins do —
+//!   what forecloses them is a real PRF (see the banner), not check ordering.
 //!
 //! ## Primitives used
 //!
@@ -176,8 +185,12 @@ use std::fmt;
 /// let forged = Coin { serial: 1, tag: 2 }; // error[E0451]: fields are private
 /// ```
 ///
-/// (rustdoc cannot pin the third doctest to E0451 specifically; it fails today
-/// for the intended private-field reason.)
+/// (On stable, rustdoc runs `compile_fail` doctests but does **not** enforce
+/// the `,E0382`/`,E0599` code annotations — they document intent and are
+/// checked only by nightly rustdoc, and the third cannot carry one at all.
+/// All three failures were verified against the compiler directly — E0382,
+/// E0599, and E0451, the private-field reason, respectively. The suite keeps
+/// these doctests *red*; it does not pin their *codes*.)
 ///
 /// The `Debug` impl redacts the tag — the tag is the bearer credential, and a
 /// log line holding it is a spendable coin (under a real PRF; under the toy
@@ -219,8 +232,8 @@ impl fmt::Debug for Coin {
 /// A coin on the wire: the **doorway type**. All fields public, `Copy`,
 /// freely constructible — deliberately, because a serialized coin is bytes
 /// outside every type-checked program, and bytes copy. `WireCoin` witnesses
-/// nothing; authenticity is decided at [`Mint::redeem`]'s tag check, and
-/// spent-ness at its spent set.
+/// nothing; authenticity is decided at [`Mint::redeem`]'s tag and
+/// issued-range checks, and spent-ness at its spent set.
 ///
 /// Constructing one from thin air compiles (that is the point — contrast the
 /// sealed [`Coin`]):
@@ -314,7 +327,9 @@ pub enum RedeemError {
 /// replicating a mint (same seed, second value) re-opens double-spending
 /// across the replicas — see the crate's layer-3 discussion.
 ///
-/// The `Debug` impl redacts the secret.
+/// The `Debug` impl redacts the secret; it deliberately shows `next_serial`
+/// and the spent-set size — operational metadata (issuance and spend volume),
+/// not credentials.
 pub struct Mint {
     secret: u64,
     next_serial: u64,
@@ -334,11 +349,15 @@ impl Mint {
     }
 
     /// Issue a fresh coin: the **sole minter** of the sealed [`Coin`] (E0451).
-    /// Serials are distinct per mint value (sequential from 1; `u64` does not
-    /// exhaust in any real execution).
+    /// Serials are distinct per mint value (sequential from 1; `u64`
+    /// exhaustion is unreachable in any real execution, and the increment is
+    /// checked so the disclaimer is enforced rather than assumed).
     pub fn issue(&mut self) -> Coin {
         let serial = self.next_serial;
-        self.next_serial += 1;
+        self.next_serial = self
+            .next_serial
+            .checked_add(1)
+            .expect("u64 serial space does not exhaust in any real execution");
         Coin {
             serial,
             tag: hash::coin_tag(self.secret, serial),
@@ -455,7 +474,9 @@ mod tests {
     /// a forged attempt on an outstanding serial does not burn it for the
     /// genuine holder, and a forged attempt on a *spent* serial reports
     /// `Forged`, not `DoubleSpent` — so `DoubleSpent` always implies authentic
-    /// and forgers never learn spent-set membership.
+    /// and check-failing presentations never learn spent-set membership.
+    /// ("Forged" = failing `redeem`'s checks; a *valid*-tag forgery, which
+    /// the toy hash admits, behaves as authentic — see the crate banner.)
     #[test]
     fn forgery_neither_burns_serials_nor_probes_the_spent_set() {
         let mut mint = Mint::new(0xE5);
@@ -501,9 +522,9 @@ mod tests {
     /// `Ok` implies issued: even a correctly-MAC'd serial this mint value
     /// never issued (0, or a future serial) is refused as `Forged` — and a
     /// pre-forged future serial cannot front-run (burn) the genuine coin
-    /// issued later. In-crate tests can compute real tags; an outsider
-    /// cannot reach `hash::coin_tag` (and under a real PRF could not compute
-    /// one even with the source).
+    /// issued later. In-crate tests compute real tags directly; an outsider
+    /// needs no such access — under the toy hash one observed coin suffices
+    /// (see the banner), and under a real PRF even the source would not help.
     #[test]
     fn valid_tag_on_unissued_serial_is_refused_and_burns_nothing() {
         let mut mint = Mint::new(0x4B);

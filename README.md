@@ -299,8 +299,9 @@ each executable:
    `WireCoin` says so honestly: all-public and `Copy`, so a double
    spend *type-checks* and is caught instead by the mint's **spent set**
    (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
-   before the set, so `Ok` implies issued and forgery neither probes nor burns;
-   first presentation wins). No fifth compile primitive is missing: what this
+   before the set, so `Ok` implies issued and check-failing presentations
+   neither probe the spent set nor burn a serial; first presentation wins).
+   No fifth compile primitive is missing: what this
    layer needs is *fresh knowledge at redeem time*, which no compile-time fact
    can supply.
 3. **Replicating the mint re-opens the hole**: two `Mint` values from one seed
