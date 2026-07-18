@@ -619,7 +619,7 @@ time); `Debug` does not redact (public state, the `RecoveredData` posture).
 ## Build
 
 ```sh
-cargo test --workspace          # 209 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 211 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

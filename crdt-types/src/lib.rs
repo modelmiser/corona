@@ -242,6 +242,10 @@ impl GCounter {
     /// the monotonicity the seal exists to protect. Unreachable in any real execution;
     /// pinned by a test.
     pub fn increment(&mut self) {
+        // `self.local` is inserted by `new` and preserved by every constructor (`merge`
+        // keeps `self.local`; `Clone` copies), so this entry always exists for a
+        // publicly-constructed counter — the `or_insert(0)` default is unreachable
+        // defensive code (an equivalent mutant no black-box test can distinguish).
         let slot = self.entries.entry(self.local).or_insert(0);
         *slot = slot
             .checked_add(1)
@@ -334,10 +338,15 @@ mod tests {
     }
 
     fn min_merge(a: &GCounter, b: &GCounter) -> GCounter {
+        // A non-inflationary merge. `min` is a valid meet-semilattice (idempotent /
+        // commutative / associative), just the WRONG one for a G-counter — it drops
+        // updates. (This fixture folds only `b`'s keys, so it coincides with a faithful
+        // elementwise-min exactly on shared key sets — which is all the tests feed it —
+        // enough to exhibit "min type-checks yet loses updates".)
         let mut entries = a.entries.clone();
         for (&r, &c) in &b.entries {
             let slot = entries.entry(r).or_insert(0);
-            *slot = (*slot).min(c); // a valid semilattice, but NOT inflationary
+            *slot = (*slot).min(c);
         }
         GCounter {
             local: a.local,
@@ -389,6 +398,34 @@ mod tests {
 
     // ---- The four semilattice laws that make a CvRDT converge (SEC). These stand in
     // ---- for the Sol lemmas; the code below them shows the compiler enforces none.
+
+    #[test]
+    fn count_for_an_unseen_replica_is_zero() {
+        // Pins `count_for`'s `unwrap_or(0)` default (kills an `unwrap_or(k>0)` mutant).
+        // `count_for` is the sole reader behind `dominates`, so a nonzero default would
+        // make a counter falsely claim to have seen a peer's update it never received.
+        let me = GCounter::new(ReplicaId(1));
+        assert_eq!(me.count_for(ReplicaId(999)), 0);
+        // The lattice-order consequence: not having seen a peer's update ⇒ you do not
+        // dominate it (this is what makes the inflationary/no-lost-updates argument bite).
+        let mut peer = GCounter::new(ReplicaId(2));
+        peer.increment();
+        assert!(!me.dominates(&peer));
+    }
+
+    #[test]
+    fn merge_keeps_the_local_replica_of_self_not_other() {
+        // Pins the documented contract "the result keeps `self`'s `local` id" (kills a
+        // `self.local` -> `other.local` mutant). A merged counter must still increment its
+        // OWN axis; adopting the peer's `local` would have two nodes bump the same entry
+        // concurrently — the max-clobbers-a-lost-update hazard the whole leaf is about.
+        let a = GCounter::new(ReplicaId(1));
+        let b = GCounter::new(ReplicaId(2));
+        let mut merged = a.merge(&b); // local must be replica 1
+        merged.increment();
+        assert_eq!(merged.count_for(ReplicaId(1)), 1); // self axis moved
+        assert_eq!(merged.count_for(ReplicaId(2)), 0); // peer axis untouched
+    }
 
     #[test]
     fn merge_preserves_a_zero_crossing_replica() {

@@ -523,6 +523,15 @@ work (complete tasks, add children, keep siblings).
       u16). Claims CLEAN — 0 genuine defects, claim 2 empirically validated vs live rustc; 5
       defensible-wording nits LEFT per converge-then-stop. crdt 17 unit + 3 doctests;
       workspace 209 + 46. NEED R3 (confirmation) for 2 consecutive clean → convergence.
+      **R3 NOT clean** — correctness mutation-swept and found 2 MODERATE surviving
+      non-equivalent mutants (`count_for`-absent → underpins `dominates`; `merge` keeps
+      `self.local` contract) + 1 LOW equivalent mutant (`increment` `or_insert(0)`
+      unreachable). Claims CLEAN (0 defects; 1 defensible nit on the `min_merge` fixture).
+      Adversarial NO BREAK + calibration correct (FRU seal-bypass rejected E0451; law-as-type
+      attempt confirms no primitive captures a law as a type). **Fixed the WHOLE CLASS at once**
+      (leaf-9 anti-ratchet): +2 pinning tests (both verified to kill their mutants), comment on
+      the unreachable `increment` default, clarifying comment on `min_merge`. Streak reset:
+      R2 clean, R3 not → need R4 + R5 both clean. crdt 19 unit + 3 doctests; workspace 211 + 46.
 
 ## Garden state (2026-07-18)
 
