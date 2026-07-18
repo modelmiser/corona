@@ -532,6 +532,14 @@ work (complete tasks, add children, keep siblings).
       (leaf-9 anti-ratchet): +2 pinning tests (both verified to kill their mutants), comment on
       the unreachable `increment` default, clarifying comment on `min_merge`. Streak reset:
       R2 clean, R3 not → need R4 + R5 both clean. crdt 19 unit + 3 doctests; workspace 211 + 46.
+      **R4 = CLEAN (0 CRIT/0 MOD, all 3 lenses).** Correctness: exhaustive mutation sweep —
+      every non-equivalent mutant KILLED (the class-pinning closed the R3 gaps), only 2
+      EQUIVALENT-mutant survivors (`new` insert-nothing ≡ 0-count entry; `increment`
+      or_insert(0) unreachable) = non-gaps. Claims CLEAN (0 defects; 3 defensible nits left —
+      "property tests"→example-based, `⊒a` shorthand, "pass the seal"). Adversarial NO BREAK
+      (bare `{..base}` FRU also rejected E0451; a `SemilatticeJoin` marker trait impls for the
+      non-idempotent impostor + compiles → confirms no primitive captures a law as a type).
+      NO code changes from R4 → crate byte-stable. R5 = confirmation pass on identical text.
 
 ## Garden state (2026-07-18)
 
