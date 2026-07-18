@@ -659,7 +659,7 @@ unused.
 ## Build
 
 ```sh
-cargo test --workspace          # 226 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 227 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

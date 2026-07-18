@@ -38,10 +38,11 @@
 //! The compiler cannot tell them apart in strength — to it both are sealed tokens, exactly
 //! as `crdt-types` (leaf 15) found `max`, `+`, and `min` all type-check as a "merge." The
 //! seal faithfully witnesses **the checked path and nothing more**: for `DefinitelyAbsent`
-//! the path ("some bit unset") happens to *equal* the domain claim ("never inserted"), so
-//! the witness is sound; for `PossiblyPresent` the path ("all bits set") is only a
-//! *probabilistic proxy* for the domain claim ("was inserted"), so the witness is
-//! one-sided. **The type cannot promote "possibly" to "certainly," and that refusal is the
+//! the path ("some bit unset") **soundly entails** the domain claim ("never inserted") — a
+//! *certain*, not merely probabilistic, one-way implication (the converse fails: a
+//! never-inserted item in a saturated filter has no bit unset), so the witness is sound; for
+//! `PossiblyPresent` the path ("all bits set") is only a *probabilistic proxy* for the domain
+//! claim ("was inserted"), so the witness is one-sided. **The type cannot promote "possibly" to "certainly," and that refusal is the
 //! honesty.** It is `merkle-types`' lesson — *the seal is about a checked path existing,
 //! not the math it runs* — pushed one step further: the seal stays faithful even when the
 //! checked path is a *probabilistic* proxy for what the caller wants to know.
@@ -94,10 +95,11 @@
 //! ## Honest limits
 //!
 //! - **TOY.** Two non-independent FNV-1a hashes combined by Kirsch–Mitzenmacher double
-//!   hashing — *not* independent cryptographic hashes. A real adversary who knows the
-//!   hashes chooses inputs to force false positives (a *pollution* attack); the
-//!   false-positive *rate* is a statistical claim about *random* inputs, not an adversarial
-//!   guarantee. Graduation swaps the FNV backend for keyed/cryptographic hashing behind the
+//!   hashing — *not* independent cryptographic hashes. A real adversary who knows the hashes
+//!   can craft *insertions* that inflate the false-positive rate (a *pollution* attack, in
+//!   the Gerbet–Cachin–Minier sense) or craft *queries* that hit set bits against a fixed
+//!   filter — either way forcing false positives; the false-positive *rate* is a statistical
+//!   claim about *random* inputs, not an adversarial guarantee. Graduation swaps the FNV backend for keyed/cryptographic hashing behind the
 //!   same `probe_positions` seam. The subject is the *seal-direction* discipline, not the
 //!   hash.
 //! - **No sizing.** `m` and `k` are caller-chosen and fixed; there is no optimal-`k`
@@ -131,7 +133,8 @@
 //! }
 //! ```
 //!
-//! You cannot forge either sealed witness — the private field is the seal (E0451):
+//! You cannot forge either sealed witness from safe code — the private field is the seal
+//! (E0451; like any privacy seal it binds safe code, not `unsafe` transmutes in a consumer):
 //!
 //! ```compile_fail,E0451
 //! use bloom_types::PossiblyPresent;
@@ -479,6 +482,10 @@ mod tests {
         while f.set_bits() < f.m_bits() {
             f.insert(format!("s-{i}").as_bytes());
             i += 1;
+            assert!(
+                i < 10_000,
+                "small filter should saturate quickly (guards a set-only mutant)"
+            );
         }
         match f.query(b"provably-never-inserted") {
             Membership::PossiblyPresent(w) => {
@@ -523,17 +530,23 @@ mod tests {
     }
 
     #[test]
-    fn union_is_idempotent_commutative_and_inflationary() {
+    fn union_is_a_semilattice_join_idempotent_commutative_associative_inflationary() {
         let mut a = BloomFilter::new(256, 3);
         let mut b = BloomFilter::new(256, 3);
+        let mut c = BloomFilter::new(256, 3);
         for i in 0..20 {
             a.insert(format!("a{i}").as_bytes());
             b.insert(format!("b{i}").as_bytes());
+            c.insert(format!("c{i}").as_bytes());
         }
         // Idempotent: joining with self changes nothing (the CvRDT re-delivery property).
         assert_eq!(a.union(&a).unwrap(), a);
         // Commutative.
         assert_eq!(a.union(&b).unwrap(), b.union(&a).unwrap());
+        // Associative — the fourth semilattice law the docs claim (a grouping-independent join).
+        let left = a.union(&b).unwrap().union(&c).unwrap();
+        let right = a.union(&b.union(&c).unwrap()).unwrap();
+        assert_eq!(left, right);
         // Inflationary: the union has at least as many bits set as either input.
         let u = a.union(&b).unwrap();
         assert!(u.set_bits() >= a.set_bits() && u.set_bits() >= b.set_bits());
@@ -587,6 +600,45 @@ mod tests {
         assert!(is_present(&f, b"x"), "insertion never removes a member");
         let g = f.union(&BloomFilter::new(2048, 4)).unwrap();
         assert!(is_present(&g, b"x"), "union with anything keeps the member");
+    }
+
+    // ---- The probe count is exactly k — and the witness's `probes()` cannot drift from it. ----
+
+    #[test]
+    fn a_query_probes_exactly_k_bits_and_the_witness_reports_that_k() {
+        // Pins the probe COUNT against the sealed witness's claim. `probe_positions` yields
+        // `(0..k)` positions and `PossiblyPresent::probes()` returns `self.k`; if the range
+        // ever drifted (`0..k+1`, `1..k`) the witness would *claim* "k bits set" while a
+        // different number was tested — a witness-integrity mismatch no soundness test catches
+        // (insert/query stay in lockstep either way). Kills those range mutants.
+        for &k in &[1u32, 2, 4, 7] {
+            let f = BloomFilter::new(1024, k);
+            for item in [b"alpha".as_slice(), b"", b"a-longer-item-here"] {
+                assert_eq!(
+                    f.probe_positions(item).count(),
+                    k as usize,
+                    "a query must probe exactly k bit positions"
+                );
+            }
+        }
+        // And the count the witness advertises is that same k. With a power-of-two m and the
+        // odd `h2`, the k positions are distinct, so a single insert into a fresh filter sets
+        // exactly k bits — tying the advertised `probes()` to the bits actually set.
+        let mut f = BloomFilter::new(1024, 4);
+        f.insert(b"solo");
+        assert_eq!(
+            f.set_bits(),
+            4,
+            "one insert sets exactly k distinct bits (m a power of two)"
+        );
+        match f.query(b"solo") {
+            Membership::PossiblyPresent(w) => assert_eq!(
+                w.probes(),
+                f.k(),
+                "the witness advertises exactly the k probes that were tested"
+            ),
+            Membership::DefinitelyAbsent(_) => panic!("an inserted item is never absent"),
+        }
     }
 
     // ---- State posture: sealed, monotone, public (non-secret) Debug. ----
