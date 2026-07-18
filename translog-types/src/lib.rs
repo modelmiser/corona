@@ -554,6 +554,12 @@ fn verify_consistency_hashes(m: usize, n: usize, root1: u64, root2: u64, proof: 
         idx += 1;
         (seed, seed)
     } else {
+        // `m` is a power of two (`node` shifted all the way to 0). NOTE: `hash1` stays
+        // `== root1` for the rest of this function — the loop below only rewrites `hash1`
+        // in the odd-node case, which cannot fire once `node == 0`, so the final
+        // `hash1 == root1` check is *vacuous* here. Soundness still holds: `hash2` folds
+        // *from* `root1` up to the new root, so a wrong old root fails `hash2 == root2`.
+        // (Confirmed by the power-of-two adversarial fuzz — 0 wrong-old-root acceptances.)
         (root1, root1)
     };
 
@@ -796,6 +802,18 @@ mod tests {
             let rel = new.verify_consistency(&old, proof).unwrap();
             assert_eq!((rel.old_size(), rel.new_size()), (3, 3));
             assert_eq!(rel.old_root(), rel.new_root());
+            // A NON-empty proof at equal size carries slack: it must be rejected, not
+            // waved through on root equality alone (the roots ARE equal here, so the
+            // emptiness guard is the only thing standing between junk and an `Ok`).
+            let slacked = ConsistencyProof {
+                hashes: vec![0xdead_beef],
+                old_size: 3,
+                new_size: 3,
+            };
+            assert_eq!(
+                new.verify_consistency(&old, &slacked),
+                Err(ConsistencyError::Inconsistent)
+            );
         })
         .unwrap();
     }

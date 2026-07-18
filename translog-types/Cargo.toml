@@ -6,7 +6,7 @@ description = "Corona leaf 17 — Merkle consistency proofs (RFC 6962 / Certific
 license = "MIT"
 
 # Deliberately depends on nothing — not even `corona-core`. Like `merkle-types`,
-# `accumulator-types`, and the other hash-membership leaves, this leaf shares the
+# `accumulator-types`, and the other hash-tree leaves, this leaf shares the
 # garden's *vocabulary* (here the E0308-class brand and the E0451 seal), not any of
 # the core's shared *modules*: a log's consistency is a yes/no prefix fact (no k-of-n
 # `Threshold`) and a hash tree is not field arithmetic (no `gf256`). It reuses

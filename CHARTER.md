@@ -285,7 +285,7 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   soundly checkable, and stay honest (one-sided) about the other. Which fact that is belongs
   to the *structure*, never to the primitive.
 
-- **Leaf 17:** nothing to promote — the same *shape* as leaves 4 and 11 (a hash-membership
+- **Leaf 17:** nothing to promote — the same *shape* as leaves 4 and 11 (a hash-tree
   structure, so neither `Threshold` nor `gf256` applies; its toy FNV hashes are
   graduation-swap placeholders — the settled leaf-9–13 finding). What it adds is
   *primitive-coverage depth on the brand*, but of a new kind: not a wider *reading* of the
