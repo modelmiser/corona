@@ -684,19 +684,35 @@ work (complete tasks, add children, keep siblings).
       about the *observer's view across a distribution*) and the first primitive that is not
       merely unused but **structurally inapplicable** (the brand's guarantee is the negative of
       what the domain needs). See CHARTER.
-- [ ] **Cold-review the leaf-19 surface to convergence** — PENDING (fires on the next "ready").
+- [x] **Cold-review the leaf-19 surface to convergence — CONVERGED** (8 rounds, R7 & R8 two
+      consecutive clean; commits `a3e7467` R1 → `9078128` R2 → `2c8f0fb` R3 → `bb66df3` R4 →
+      `bd8ef91` R5 → `472646d` R6 → `6ad94ee` R7, R8 no-change). **Shipped code CORRECT and
+      adversarial NO BREAK in ALL 8 ROUNDS** — E0451 seal + E0382 linearity held under ~130
+      forge/reuse exploit crates (rejected at exact codes E0451/E0616/E0277/E0382/E0599/E0507)
+      and ~90M cumulative runtime cases (the full 3233² verify space swept exhaustively every
+      round, 0 unsound mints; unlinkability confirmed 3120/3120 each round; 0 panics). R1 carried
+      the only real code+doc defects (cross-key `blind` panic → root-caused by binding the factor
+      to its whole key; `from_primes` overflow/underflow validation; 2 doc MODERATEs). R2 clean.
+      **R3–R7 were a prose-mutation ratchet: the CODE was clean every round, but the elaborate
+      docs yielded one genuine-but-narrow defect per round** — a residue-taxonomy that looked
+      exhaustive (mis-filed pow's cost, then omitted freshness), a "structural" over-claim at
+      three doc sites, a `from_primes` `e=0` self-contradiction. Broke it by (a) making the
+      taxonomy explicitly NON-exhaustive ("among them"), identical across all three docs, and
+      (b) removing every specific edge-case behavioral claim ("name precisely or not at all" →
+      for a toy constructor's exponent edges, *not at all*). blindsig 20 unit + 3 doctests;
+      workspace 286 + 60, all gates green.
 
-## Garden state (2026-07-18h)
+## Garden state (2026-07-18i)
 
-- **ALL 18 leaves cold-reviewed; leaf 19 SEEDED, cold-review PENDING.** corona-core + **19
-  leaves**. Leaf 19 (`blindsig-types`, Chaum blind signatures — the first leaf whose residue is
-  a property of the *observer's view* (unlinkability, a statistical indistinguishability), and
-  the first where a primitive is *structurally inapplicable* rather than merely unused: the
-  E0308-class brand **relates**, but unlinkability demands a *guaranteed absence* of a relation).
-  Validity reduces to E0451, one-time-ness to E0382; the toy *inverts* the usual break (perfect
-  info-theoretic hiding, broken unforgeability). An *unscheduled* open-ended domain seeded after
-  the garden was again a finished thought (∥ leaves 16–18). Next: cold-review to convergence on
-  the next "ready". Nothing else auto-starts.
+- **ALL 19 leaves cold-reviewed. No review debt.** corona-core + **19 leaves**. Leaf 19
+  (`blindsig-types`, Chaum blind signatures — the first leaf whose residue is a property of the
+  *observer's view* (unlinkability, a statistical indistinguishability), and the first where a
+  primitive is *structurally inapplicable* rather than merely unused: the E0308-class brand
+  **relates**, but unlinkability demands a *guaranteed absence* of a relation) CONVERGED this
+  session (8 rounds — the code unbreakable throughout; every post-R1 finding was doc prose). An
+  *unscheduled* open-ended domain seeded after the garden was again a finished thought (∥ leaves
+  16–18). The garden is again a finished thought: any further leaf is a fresh open-ended domain,
+  not backlog; wind-down synthesis remains a valid close. Nothing auto-starts.
 
 ## Now (leaf 18 — pow-types)
 
