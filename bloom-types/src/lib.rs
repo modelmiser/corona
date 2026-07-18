@@ -27,8 +27,8 @@
 //! ## The finding: which direction is soundly sealable is structural, not primitive
 //!
 //! [`query`](BloomFilter::query) returns a [`Membership`], carrying one of two E0451-sealed witnesses —
-//! *structurally identical* tokens (both minted only here, both `Clone`, both with a
-//! private field no outside code can forge), yet attesting facts of **opposite strength**:
+//! *identically sealed* tokens (both minted only here, both `Clone`, both a private-field
+//! newtype no outside code can forge), yet attesting facts of **opposite strength**:
 //!
 //! | witness | attests | sound? | analogue |
 //! |---|---|---|---|
@@ -501,7 +501,7 @@ mod tests {
     }
 
     #[test]
-    fn the_two_witnesses_are_structurally_identical_sealed_tokens() {
+    fn the_two_witnesses_are_identically_sealed_tokens() {
         // To the compiler both are just sealed, cloneable tokens minted by `query`; the
         // strength difference (sound absence vs one-sided presence) lives only in the docs
         // — the leaf-15 "max/+/min all type-check" observation, for witnesses.
@@ -639,6 +639,45 @@ mod tests {
             ),
             Membership::DefinitelyAbsent(_) => panic!("an inserted item is never absent"),
         }
+    }
+
+    #[test]
+    fn probes_stay_distinct_even_when_the_raw_second_hash_is_even() {
+        // Pins the `h2 | 1` odd-forcing (in `probe_positions`). Chosen so the mutant that
+        // drops `| 1` is provably killed: at `m = 2` (a power of two) and `k = 2`, the two
+        // probes are `h1 % 2` and `(h1 + h2) % 2`. If `h2` is EVEN they coincide (one bit,
+        // an inflated false-positive rate); the `| 1` forces `h2` odd so they always differ.
+        // We must feed an item whose RAW h2 is even, or the `| 1` is a no-op and the mutant
+        // hides (`fnv1a`/`FNV_OFFSET_B` are in scope in this module). Non-soundness (insert
+        // and query stay in lockstep) but a real, documented quality invariant.
+        let item = (0u32..)
+            .map(|i| format!("even-h2-{i}").into_bytes())
+            .find(|c| fnv1a(FNV_OFFSET_B, c) & 1 == 0)
+            .expect("some item has an even raw h2");
+        let f = BloomFilter::new(2, 2);
+        let distinct: std::collections::BTreeSet<usize> = f.probe_positions(&item).collect();
+        assert_eq!(
+            distinct.len(),
+            2,
+            "odd-forced h2 keeps both probes distinct even when the raw h2 is even \
+             (drop the `| 1` and they collapse to one bit)"
+        );
+    }
+
+    #[test]
+    fn a_single_bit_filter_is_valid_and_works() {
+        // Pins the `m_bits >= 1` lower boundary (kills a `>= 1` -> `> 1` mutant that would
+        // reject a documented-valid degenerate filter). A 1-bit filter probes bit 0 every
+        // time: after one insert it is saturated and everything queries possibly-present, but
+        // an inserted item is still (trivially) never a false negative.
+        let mut f = BloomFilter::new(1, 4);
+        assert_eq!(f.m_bits(), 1);
+        assert!(matches!(f.query(b"x"), Membership::DefinitelyAbsent(_)));
+        f.insert(b"x");
+        assert_eq!(f.set_bits(), 1, "the single bit is now set");
+        assert!(matches!(f.query(b"x"), Membership::PossiblyPresent(_)));
+        // No false negative even in the degenerate case.
+        assert!(is_present(&f, b"x"));
     }
 
     // ---- State posture: sealed, monotone, public (non-secret) Debug. ----

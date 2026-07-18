@@ -629,12 +629,14 @@ attest merely *probably*: a sealed `PossiblyPresent` means "all `k` bits set," w
 only a **one-sided proxy** for insertion — a false positive (bits set by other
 insertions) mints the very same witness.
 
-The two witnesses are **structurally identical** sealed tokens; the compiler cannot
+The two witnesses are **identically sealed** tokens; the compiler cannot
 tell them apart in strength, exactly as `crdt-types` (leaf 15) found `max`, `+`, and
 `min` all type-check as a "merge." The seal faithfully witnesses **the checked path and
-nothing more** — for `DefinitelyAbsent` the path ("some bit unset") *equals* the domain
-claim ("never inserted"), so it is sound; for `PossiblyPresent` the path ("all bits
-set") is only a probabilistic proxy, so it is one-sided. *Which* fact a structure can
+nothing more** — for `DefinitelyAbsent` the path ("some bit unset") **soundly entails** the
+domain claim ("never inserted"), a certain one-way implication whose converse fails (a
+never-inserted item in a saturated filter has no bit unset), so it is sound; for
+`PossiblyPresent` the path ("all bits set") is only a probabilistic proxy, so it is
+one-sided. *Which* fact a structure can
 soundly seal is a property of the **structure**, invisible to the primitive: a sorted
 Merkle tree seals membership soundly and needs a range proof for absence; a Bloom filter
 is its photographic negative. This is `merkle-types`' *substrate-agnostic seal* and
@@ -659,7 +661,7 @@ unused.
 ## Build
 
 ```sh
-cargo test --workspace          # 227 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 229 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
