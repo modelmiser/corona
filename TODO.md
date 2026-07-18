@@ -560,8 +560,9 @@ work (complete tasks, add children, keep siblings).
       mints the same token). The two witnesses are structurally identical sealed tokens; the
       compiler can't tell them apart in strength (∥ leaf 15's `max`/`+`/`min` all type-check
       as "merge"). The seal witnesses **the checked path and nothing more** — for
-      `DefinitelyAbsent` the path *equals* the domain claim (sound), for `PossiblyPresent`
-      it's a probabilistic proxy (one-sided). Sharpens merkle's *substrate-agnostic seal* +
+      `DefinitelyAbsent` the path *soundly entails* the domain claim (sound, converse fails),
+      for `PossiblyPresent` it's a probabilistic proxy (one-sided). Sharpens merkle's
+      *substrate-agnostic seal* +
       erasure's *axis invisible to the seal* onto a new axis: the **direction/one-sidedness**
       of the soundness the same E0451 carries — a property of the *structure*, invisible to
       the primitive. Second probabilistic leaf (∥ leaf 13, count-probabilistic there,

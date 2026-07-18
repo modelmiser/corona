@@ -97,9 +97,9 @@
 //! - **TOY.** Two non-independent FNV-1a hashes combined by Kirsch–Mitzenmacher double
 //!   hashing — *not* independent cryptographic hashes. A real adversary who knows the hashes
 //!   can craft *insertions* that inflate the false-positive rate (a *pollution* attack, in
-//!   the Gerbet–Cachin–Minier sense) or craft *queries* that hit set bits against a fixed
-//!   filter — either way forcing false positives; the false-positive *rate* is a statistical
-//!   claim about *random* inputs, not an adversarial guarantee. Graduation swaps the FNV backend for keyed/cryptographic hashing behind the
+//!   the Gerbet–Kumar–Lauradoux sense — DSN 2015) or craft *queries* that hit set bits
+//!   against a fixed filter — either way forcing false positives; the false-positive *rate*
+//!   is a statistical claim about *random* inputs, not an adversarial guarantee. Graduation swaps the FNV backend for keyed/cryptographic hashing behind the
 //!   same `probe_positions` seam. The subject is the *seal-direction* discipline, not the
 //!   hash.
 //! - **No sizing.** `m` and `k` are caller-chosen and fixed; there is no optimal-`k`
@@ -108,6 +108,17 @@
 //! - **`DefinitelyAbsent` is snapshot-relative** (see the monotone aside): it is a sound
 //!   proof of non-membership *in the filter state at query time*, which a later `insert`
 //!   can invalidate. It is not a durable non-membership certificate.
+//! - **The witnesses are unbranded** (evidence-of-a-fact, not bound to a subject). A
+//!   witness records only the bare fact of *a* query (`unset_bit` / `probes`), not *which*
+//!   item or *which* filter instance produced it — both types are `Clone`, so a caller can
+//!   carry a `DefinitelyAbsent` minted for item X against filter A and mistakenly read it as
+//!   evidence about item Y or filter B (its `unset_bit` would then be a meaningless, possibly
+//!   out-of-range index). This cannot forge a seal, cause a false negative, or clear a bit —
+//!   it is a *misuse*, not an unsoundness — but the type does not prevent it. A per-query
+//!   brand (à la `accumulator-types`, leaf 11) would bind a witness to its `(item, filter)`;
+//!   this leaf leaves it disclosed, since its subject is the seal's *direction*, not
+//!   provenance. (The recurring garden note: a witness is only as strong as what its checked
+//!   path establishes — here, a fact about *some* query, not about a named subject.)
 //!
 //! ## Intended use
 //!
@@ -600,6 +611,34 @@ mod tests {
         assert!(is_present(&f, b"x"), "insertion never removes a member");
         let g = f.union(&BloomFilter::new(2048, 4)).unwrap();
         assert!(is_present(&g, b"x"), "union with anything keeps the member");
+    }
+
+    // ---- The probe positions follow the documented formula exactly (pins the whole mapping). ----
+
+    #[test]
+    fn probe_positions_follow_the_documented_km_formula_exactly() {
+        // The definitive pin on the position mapping: assert `probe_positions` equals an
+        // INDEPENDENTLY recomputed Kirsch–Mitzenmacher sequence `pos_i = (h1 + i·h2) mod m`
+        // with the odd-forced `h2`. This one oracle subsumes count / distinctness / spread and
+        // kills the whole class of position mutants at once — dropping `·h2` (consecutive
+        // slots, which makes h2 dead code and passes every derived-property test), dropping
+        // `| 1`, dropping `% m`, or shifting the `0..k` range all make the recomputed sequence
+        // differ. (`fnv1a`/`FNV_OFFSET_*` are in scope in this module.)
+        for &(m, k) in &[(1024usize, 5u32), (997, 3), (64, 7), (2, 2)] {
+            let f = BloomFilter::new(m, k);
+            for item in [b"km-oracle".as_slice(), b"", b"a-second-item"] {
+                let h1 = fnv1a(FNV_OFFSET_A, item);
+                let h2 = fnv1a(FNV_OFFSET_B, item) | 1;
+                let expected: Vec<usize> = (0..k)
+                    .map(|i| (h1.wrapping_add((i as u64).wrapping_mul(h2)) % m as u64) as usize)
+                    .collect();
+                let got: Vec<usize> = f.probe_positions(item).collect();
+                assert_eq!(
+                    got, expected,
+                    "probe positions must be exactly (h1 + i·h2) mod m"
+                );
+            }
+        }
     }
 
     // ---- The probe count is exactly k — and the witness's `probes()` cannot drift from it. ----
