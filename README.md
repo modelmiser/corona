@@ -28,7 +28,8 @@ corona/
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
-└── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
+├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
+└── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -564,10 +565,58 @@ sole-minters firing two levels deep.
 > **persistence** protocol — which is the whole point of finding 3. Not for signing
 > anything real.
 
+## Leaf 15: `crdt-types`
+
+A **state-based grow-only counter** (G-Counter, the canonical CvRDT) — the garden's
+**second negative-space leaf**. Leaf 9 (`ecash-types`) asked where the vocabulary
+provably *stops* and found its edge at the **wire**, drawing a seam to `quorum-types`
+(the coordination face). This leaf finds a *different* edge and draws a seam to the
+garden's *other* sibling, **Sol** (the proof face) — the first leaf to name a concrete
+obligation for it.
+
+Each replica keeps a per-replica tally, increments only its own entry, and gossips its
+whole state; a peer folds it in with `merge` (the elementwise **maximum**). Replicas
+updated independently and exchanged in any order converge with **no coordination** —
+*strong eventual consistency*. That is the **CALM** theorem's *positive* side (monotone
+operations need no consensus), the mirror of the *negative* side leaf 9 invoked
+("unspent" is non-monotone and so *requires* coordination).
+
+Does a CvRDT reduce to the four primitives? **It splits, and the halves land on two
+different siblings:**
+
+- **Encapsulation reduces to E0451.** Convergence needs the state to move only *up* the
+  lattice. A public field would let any caller write a smaller count and manufacture an
+  unreachable state; so `GCounter` is **sealed** (private map, only monotone methods
+  exposed — there is not even a `decrement`, E0599). Every value a caller can hold was
+  reached by `new`/`increment`/`merge`. *That* the seal enforces.
+- **The merge being a *join* does not reduce — it is an algebraic proof obligation.**
+  Convergence also needs `merge` to be a semilattice **join**: idempotent, commutative,
+  associative, inflationary. **No compile primitive expresses any of those.** Swap the
+  `max` for `+` (not idempotent → re-delivery double-counts) or `min` (a valid
+  semilattice, just the *wrong*, non-inflationary one → silently drops updates) and the
+  crate still compiles, still type-checks, still passes the seal. The compiler cannot
+  tell a join from an impostor; only a proof can. The seal moves that obligation from
+  *every caller* down to *the one implementer with private access* — but it does **not
+  discharge** it. A machine-checked proof of the four laws is exactly what **Sol** is
+  for.
+
+So the two negative-space leaves bound the garden on both sides, and the
+**`Clone`-vs-linear** axis maps onto the **monotone-vs-non-monotone** one: leaf 9's coin
+is *linear* (must not be copied) and its replication *breaks* safety and needs
+coordination; leaf 15's counter is deliberately **`Clone`** (you gossip copies), its
+replication *is* safety, and its residue is not coordination but an *algebraic proof*.
+Only **E0451** is used (like leaves 3 and 13, one primitive — a different finding each
+time); `Debug` does not redact (public state, the `RecoveredData` posture).
+
+> ⚠ **TOY.** Grow-only counter only (no PN-counter, OR-Set, delta-CRDTs, or real
+> transport). The four laws are checked by unit *tests* — a stand-in for Sol lemmas;
+> graduating this leaf means replacing them with a machine-checked Lean proof. The
+> subject is the type/proof boundary, not a production CRDT.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 192 unit tests + 43 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 207 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

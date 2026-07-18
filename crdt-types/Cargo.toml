@@ -1,0 +1,8 @@
+[package]
+name = "crdt-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 15 (negative space): a state-based grow-only counter (CvRDT) — encapsulation reduces to E0451, but the semilattice laws that make it converge are an algebraic proof obligation (Sol's territory). TOY, not a production CRDT."
+license = "MIT"
+
+[dependencies]

@@ -474,6 +474,42 @@ work (complete tasks, add children, keep siblings).
       I introduced in R1 (false for `decode`'s free-`usize` k) + a 32-bit `d*(d-1)` overflow
       (compute in f64). Residual LOWs (documented panics on invalid input) left by design.
 
+## Now (leaf 15 — crdt-types)
+
+- [x] **Seed leaf 15: state-based grow-only counter (CvRDT)** — the garden's **second
+      negative-space leaf** (∥ leaf 9) and the first to draw a seam to **Sol** (the proof
+      face), where leaf 9 drew one to `quorum-types` (coordination). A G-Counter converges
+      with no coordination = the CALM theorem's *positive* side (monotone → no consensus),
+      mirror of leaf 9's negative side. Does a CvRDT reduce? → **it SPLITS across two
+      siblings**: (1) **encapsulation reduces to E0451** — convergence needs monotone-only
+      state, so `GCounter`'s per-replica map is sealed (only `new`/`increment`/`merge`; no
+      `decrement`, E0599 verified); (2) **the merge being a semilattice *join* does NOT
+      reduce** — the four laws (idempotent/commutative/associative/inflationary) that make
+      replicas converge are expressible by no primitive; swap `max`→`+` (not idempotent) or
+      `min` (wrong semilattice) and it still compiles/type-checks/passes the seal (both
+      EXECUTABLE: the wrong merges type-check, only the law-tests reject them). The seal
+      moves the obligation from every caller to the one implementer with private access but
+      does NOT discharge it → a Lean proof of the four laws is **Sol's** job (first concrete
+      garden→Sol obligation; graduation = replace law-tests with lemmas). `Clone`-vs-linear
+      maps onto monotone-vs-non-monotone: leaf 9's linear coin needs coordination, leaf 15's
+      `Clone` counter needs a proof. One primitive (E0451, ∥ leaves 3/13); Debug
+      non-redacting (public state). Standalone. Both compile-fails (E0451 sealed field,
+      E0599 no-decrement) verified vs rustc directly. 15 unit + 3 doctests; workspace
+      **207 unit + 46 doctests**, all gates green (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-15 trigger): nothing to promote (standalone) —
+      and the point is *what* discharges the second half: nothing in the garden at all, but
+      a **proof in another repo** (Sol). The check names a fourth thing the garden leans on
+      beyond discipline/code/surfaces — Sol's lemma library. See CHARTER.
+- [ ] **Cold-review the leaf-15 surface to convergence** (fires on next "ready"). Watch:
+      the Sol-seam framing and the CALM/leaf-9 pairing are cross-leaf comparison claims
+      (the garden's highest-risk class); the "no primitive expresses the laws" claim wants
+      an adversarial lens trying to find a typed encoding that WOULD reduce a law.
+
+## Garden state (2026-07-18)
+
+- **Leaf 15 (`crdt-types`) SEEDED; cold-review PENDING** (fires on next "ready"). All 14
+  prior leaves remain cold-reviewed. corona-core + **15 leaves**.
+
 ## Garden state (2026-07-17)
 
 - **ALL 14 leaves cold-reviewed.** corona-core + **14 leaves**; vocabulary complete (leaf 6),
