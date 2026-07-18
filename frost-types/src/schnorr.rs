@@ -101,10 +101,15 @@ pub fn g_pow(mut base: u32, mut exp: u32) -> u32 {
 ///
 /// `λ_i = Π_{x_j ∈ xs, x_j ≠ x_i} x_j / (x_j − x_i)` in `Z_q`. Summed against the
 /// shares, `Σ_i λ_i · s_i = f(0) = s`, which is why any `k` (or more) consistent
-/// shares reconstruct the secret — the k-of-n property, in the exponent. The caller
-/// guarantees the `xs` are distinct and non-zero (so every `x_j − x_i` is
-/// invertible) and that `xi ∈ xs`.
-pub fn lagrange_at_zero(xs: &[u32], xi: u32) -> u32 {
+/// shares reconstruct the secret — the k-of-n property, in the exponent.
+///
+/// `pub(crate)`: this is the crate-internal reconstruction helper (∥ `vss-types`'
+/// `pub(crate) interpolate_at_zero`), not a public field primitive. Its precondition
+/// — the `xs` are distinct **mod q** and non-zero, and `xi ∈ xs`, so every
+/// `x_j − x_i` is invertible — is discharged by [`SigningPackage::new`](crate::SigningPackage::new),
+/// which rejects any index outside `1..q`. Keeping it off the public surface is what
+/// makes its `f_inv` precondition unreachable from outside the crate.
+pub(crate) fn lagrange_at_zero(xs: &[u32], xi: u32) -> u32 {
     let mut num = 1u32;
     let mut den = 1u32;
     for &xj in xs {

@@ -69,7 +69,7 @@
 //! the seal *itself* delivers is **type**-unforgeability — you cannot fabricate a
 //! `VerifiedPartial`. That the witness *means* honest share-knowledge, rather than a
 //! merely-satisfied public equation, rests on a real discrete-log-hard group, as every
-//! garden seal rests on its backend; the toy's 8-bit challenge lets a party craft
+//! garden seal rests on its backend; the toy's 257-value challenge lets a party craft
 //! commitments to forge one — see the banner. The *reduction to E0451* is about the
 //! checked-path seal, not the group's hardness.)
 //!
@@ -91,12 +91,14 @@
 //! - **Breakable group ([`schnorr`]).** Tiny parameters; discrete log is trivial, so
 //!   the signature secures nothing and the published `Yᵢ` leak `sᵢ`. A real leaf
 //!   swaps in a prime-order group behind these types.
-//! - **8-bit challenge → forgeable (Fiat–Shamir defeated).** The challenge lives in
-//!   `Z_q` (`q = 257`), so it is only 8 bits. A party holding *no shares* can predict a
-//!   challenge and then *craft* nonce commitments `Rᵢ = g^{zᵢ}·Yᵢ^{-λᵢ·c}` (public
-//!   group ops only) that satisfy [`SigningPackage::verify_partial`] and aggregate to a
-//!   signature [`GroupKey::verify`] accepts — an outright forgery from the public key, needing
-//!   neither the broken dlog above nor nonce reuse (the
+//! - **Tiny challenge → forgeable (Fiat–Shamir defeated).** The challenge lives in
+//!   `Z_q` (`q = 257`), so it takes only 257 values (just over 8 bits). A party holding
+//!   *no shares* can predict a challenge and then *craft* nonce commitments
+//!   `Rᵢ = g^{zᵢ}·Yᵢ^{-λᵢ·c}` (public group ops only) that satisfy
+//!   [`SigningPackage::verify_partial`] and aggregate to a signature
+//!   [`GroupKey::verify`] accepts — an outright forgery from the public key, by a
+//!   *different mechanism* than the broken dlog above (a small-challenge fixed-point
+//!   search, not dlog recovery) and needing no nonce reuse (the
 //!   `toy_challenge_forgery_from_public_key` test does exactly this). The same tiny
 //!   space lets two messages share a challenge, transferring a signature between them.
 //!   A real large-order group with a cryptographic hash makes the fixed-point and
@@ -316,7 +318,7 @@ pub struct PartialResponse {
 /// discrete-log-hard group with a large challenge space, holding one is evidence the
 /// signer knew its committed share and nonce — the satisfying `zᵢ` is otherwise
 /// uncomputable, and a committed `Rᵢ` cannot be chosen to fit a target challenge
-/// (Fiat–Shamir). **In this toy neither holds** (breakable dlog + an 8-bit challenge —
+/// (Fiat–Shamir). **In this toy neither holds** (breakable dlog + a 257-value challenge —
 /// see the crate banner): the E0451 *type*-unforgeability is real (you cannot fabricate
 /// the struct), but the *cryptographic* content rests on the backend, not the type,
 /// exactly as in every garden seal (∥ `lamport-types`: the type stops key *reuse*, the
@@ -1019,8 +1021,9 @@ mod tests {
         // crafted commitments reproduce it. The crafted partials pass the local check
         // and aggregate to a signature `GroupKey::verify` accepts. A real large-order
         // group + cryptographic hash closes this; the TYPE discipline (E0382/E0451) is
-        // untouched — this is the group's weakness, the analogue of the broken-dlog
-        // forgery, not a typestate escape.
+        // untouched — the group's weakness, same *class* as the broken-dlog forgery (a
+        // toy-parameter break leaving the seals intact) though a different mechanism,
+        // not a typestate escape.
         let thr = t(2, 3);
         let (gk, _shares) = deal(0x2a, thr, &[7]).unwrap(); // attacker discards the shares
         let xs = [1u32, 2];

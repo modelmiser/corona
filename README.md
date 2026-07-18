@@ -452,9 +452,9 @@ The two witness species return, split through *time*: a long-term `SecretShare`
 `Nonce::respond`.
 
 > ⚠ **TOY.** Breakable group (discrete log is trivial, so the published `Yᵢ` leak `sᵢ`).
-> The challenge lives in `Z_q` (`q = 257`), so it is only **8 bits** — Fiat–Shamir is
-> defeated: a party holding *no shares* can craft nonce commitments to hit a predicted
-> challenge and forge a signature from the public key alone (the
+> The challenge lives in `Z_q` (`q = 257`), so it takes only **257 values** (just over 8
+> bits) — Fiat–Shamir is defeated: a party holding *no shares* can craft nonce commitments
+> to hit a predicted challenge and forge a signature from the public key alone (the
 > `toy_challenge_forgery_from_public_key` test does exactly this). Both are the *group's*
 > weakness, not the type discipline's — E0382/E0451 hold regardless; a real large-order
 > group with a cryptographic hash closes them. The nonce is *deterministic*, so a retained
