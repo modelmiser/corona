@@ -329,7 +329,9 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   it — the brand is not "honestly unused" (leaves 5, 9, 13, 16, 18) but *structurally
   inapplicable*, its guarantee being the exact **negative** of what is needed. Meanwhile
   *validity* reduces to E0451 and the blinding factor's *one-time-ness* to E0382 (the fifth
-  E0382 leaf, a reuse-kind catastrophe ∥ leaves 5/9/12), so the split is E0451 + E0382 + an
+  leaf whose *headline* reduction is E0382 — lamport 5, ecash 9, ratchet 10, frost 12, then
+  this; the composition-lift leaves 7/14 also realize E0382 linear state but are not counted
+  as headline-E0382 leaves — a reuse-kind catastrophe ∥ leaves 5/9/12), so the split is E0451 + E0382 + an
   irreducible-and-brand-negating residue — no new primitive, with the toy *inverting* the usual
   break (perfect information-theoretic hiding, broken unforgeability).
 

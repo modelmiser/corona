@@ -268,9 +268,11 @@ impl Signer {
     /// `d = e⁻¹ mod φ(n)`. Returns `None` if `p < 2` or `q < 2` (so `φ(n) > 0` and the
     /// subtractions below cannot underflow), or if `e` is not invertible mod `φ(n)`.
     ///
-    /// **Note:** this does not check `p`, `q` are actually *prime* — a toy convenience. Passing
-    /// non-primes yields a `Signer` whose `φ` is wrong, so signing/verification will be
-    /// inconsistent; but it will not panic or build an unusable (`n ≤ 1`) key.
+    /// **Note:** this does not check `p`, `q` are actually *prime*, nor that `e` is a sane
+    /// public exponent (`e = 0` or `e = 1` build degenerate but self-consistent keys) — a toy
+    /// convenience. Passing non-primes yields a `Signer` whose `φ` is wrong, so
+    /// signing/verification will be inconsistent; but it will not panic or build an unusable
+    /// (`n ≤ 1`) key, and `verify` stays sound relative to whatever `(n, e)` the key carries.
     pub fn from_primes(p: u64, q: u64, e: u64) -> Option<Self> {
         if p < 2 || q < 2 {
             return None;
@@ -444,8 +446,9 @@ impl BlindingFactor {
 }
 
 /// The value sent to the signer: `m' = m · rᵉ mod n`. A public "doorway" value that **witnesses
-/// nothing** — over a fresh factor it is uniform and independent of `m` (∥ `ecash-types`' wire
-/// coin, leaf 9: the doorway type deliberately carries no guarantee). `Copy`, all-public.
+/// nothing** — over a fresh factor (and a message coprime to `n`, per [`BlindingFactor`]) it is
+/// uniform and independent of `m` (∥ `ecash-types`' wire coin, leaf 9: the doorway type
+/// deliberately carries no guarantee). `Copy`, all-public.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct BlindedMessage(u64);
 
