@@ -22,6 +22,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "fountain-types"
+version = "0.1.0"
+
+[[package]]
 name = "frost-types"
 version = "0.1.0"
 dependencies = [

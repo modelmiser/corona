@@ -26,7 +26,8 @@ corona/
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
-└── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
+├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
+└── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -466,10 +467,58 @@ The two witness species return, split through *time*: a long-term `SecretShare`
 > attack; this naive version is clean for the typestate but concurrently insecure. Trusted
 > dealer, no DKG or abort/retry.
 
+## Leaf 13: `fountain-types`
+
+An **LT (Luby-transform) rateless erasure code** — leaf 3's own availability-axis
+sibling, and the leaf that stress-tests the one thing the garden's threshold leaves
+have all shared: the **runtime count residue**. Reed–Solomon (leaf 3) is *fixed-rate*
+— `n` fragments fixed at encode time, any `k` reconstruct. A **fountain** code is
+**rateless**: `symbol(data, seed)` is a *generator* you call an unbounded number of
+times, and the receiver decodes once it has collected *enough*. Each encoded symbol
+XORs a random subset of the `k` source symbols (the subset chosen by a PRNG keyed on
+the symbol's seed); the decoder recovers the source by **peeling** — repeatedly
+resolving any symbol that combines exactly one still-unknown source symbol.
+
+The rung's question — *does the rateless, probabilistic nature need a new primitive?*
+— answers **no**, but it reshapes leaf 3's residue, and that reshaping is the finding.
+Leaf 3's headline was: unforgeability reduces to an E0451 seal, while the *counting*
+("are there ≥ `k`?") stays a runtime `corona_core::Threshold` check. A rateless code
+breaks the *shape* of that count two ways:
+
+- **There is no `n`.** The encoded stream is unbounded, so the `(k, n)` pair
+  `corona_core::Threshold` validates **cannot even be constructed** — which is exactly
+  why this leaf, *alone among the availability leaves*, imports nothing from
+  `corona-core`. Its fixed-rate sibling (leaf 3) *does* import `Threshold`.
+- **Acceptance is not a count.** Collecting `k` valid symbols — or even `k` *plus
+  several* — does not imply you can decode: peeling can **stall**. Success is an
+  **emergent predicate** ("did peeling recover all `k`?"), only *probabilistically*
+  related to how many symbols you hold; you cannot name the acceptance count in
+  advance. (Measured on the toy at `k = 24`: exactly `k` symbols stall in **200/200**
+  independent instances, `1.5×` in 37%, `2×` in 7%, `3×` in 0% — the classic
+  belief-propagation cliff, where RS's acceptance is a step function at `k`.)
+
+So the garden's runtime **count residue** splits into two species — **exact-count**
+(Shamir, RS: any `k` suffice, deterministically) versus **emergent-completion**
+(fountain: "the decoder finished," a probabilistic runtime predicate). This is the
+third *intra-primitive* boundary in the garden's map, after leaf 10 (inside E0382 —
+logical vs memory-level secrecy) and leaf 11 (inside the brand — instance-identity vs
+timeline-freshness); this one is drawn *inside the runtime count residue* itself. And
+it re-confirms merkle's lesson: the **E0451 seal is about a checked path *existing***,
+not the arithmetic it runs — here the checked path is "a peeling decoder reached a
+fixed point," with no count anywhere in it. `Decoded` (the sealed witness) is minted
+only by that path; like leaf 3's `RecoveredData` it is a *typestate token*, not an
+availability proof (symbols are public and forgeable).
+
+> ⚠ **TOY.** Source symbols are single bytes, combination is XOR, the PRNG is
+> `splitmix64` (not cryptographic), and the robust-soliton parameters are chosen for
+> legibility, not the tuned low overhead a real fountain code (Raptor/RaptorQ, RFC
+> 6330) achieves. `k` is caller-asserted (a wrong `k'` derives different plans and
+> does not recover the source — leaf 3's limit). Not for protecting real data.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 173 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 183 unit tests + 40 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

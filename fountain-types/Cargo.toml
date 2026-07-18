@@ -1,0 +1,11 @@
+[package]
+name = "fountain-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 13 — LT (Luby-transform) rateless erasure coding as typestate. TOY: a type-discipline demonstration, not production coding."
+license = "MIT"
+
+# Deliberately imports NOTHING from corona-core — that is the finding. A rateless
+# code has no `n` (the encoded stream is unbounded), so `corona_core::Threshold`'s
+# k-of-n gate cannot even be constructed. See the crate docs' promotion note.
+[dependencies]
