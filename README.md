@@ -27,7 +27,8 @@ corona/
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
-└── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
+├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
+└── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -515,10 +516,55 @@ availability proof (symbols are public and forgeable).
 > 6330) achieves. `k` is caller-asserted (a wrong `k'` derives different plans and
 > does not recover the source — leaf 3's limit). Not for protecting real data.
 
+## Leaf 14: `hypertree-types`
+
+An **XMSS^MT-style hypertree signature** — the garden's first **recursive** composition:
+`mss-types` (leaf 7) composed with *itself*. A **top** `MssKeychain` signs the *root of a
+bottom* `MssKeychain`, and the bottom signs the message — so one long-term public key
+certifies a virtual keyspace of `top_capacity × bottom_capacity` signatures, with the
+bottom subtrees regenerated on demand from a seed. Leaves 7 and 8 each composed *two
+distinct* leaves *once*; this one nests one leaf under itself (`mss ∘ mss`), the shape of
+a hypertree (XMSS^MT, RFC 8391; SPHINCS+'s hypertree layer).
+
+The rung's question — *does composition **nest**?* — answers **yes, with no new
+primitive** and (∥ leaf 8) **zero new rungs** into leaf 7: it builds entirely on
+`mss-types`' public surface, reused verbatim. Three connected findings:
+
+- **Composition self-nests.** Not merely *repeatable* (leaf 8) but recursive — a leaf
+  composed with itself, working through the same sealed public API with no private access.
+- **Composing *stateful* leaves needs *coordinated* linear state — the new datum.** Leaves
+  7/8 composed *stateless verification* (merkle/erasure `verify` are pure functions). Here
+  **both** composed instances are stateful — each `MssKeychain` carries a linear
+  one-time-use counter — and `HyperKeychain::sign_next(self)` threads **two** counters *in
+  lockstep* (the bottom once per signature, the top once per subtree exhaustion) inside one
+  move. The whole nested state is a single linear object, so a stale hypertree is a compile
+  error (E0382) and no counter can desync. Composing stateful leaves is strictly harder
+  than stateless, and E0382 is exactly the tool — no new primitive.
+- **The catastrophe lives at the persistence boundary.** Stateful hash-based signatures'
+  real-world break is one-time-index reuse across process restarts, VM clones, and
+  backup-restores. E0382 guards the *in-memory* state value; it cannot guard a serialized
+  copy (save, restore twice, sign different messages → index reuse). That is exactly leaf
+  9's *wire boundary* and leaf 11's *unbranded-wire* finding, now for **signature state** —
+  and precisely *why stateless SPHINCS+ exists*: it eliminates the state because this
+  boundary is uncrossable by any local type discipline.
+
+A **bonus** finding mirrors leaf 7's lesson in reverse: leaf 7's `MssPublicKey::adopt`
+takes a caller-trusted `(root, capacity)` pair whose capacity a liar can overstate. A
+hypertree **discharges** that obligation — the top *signs* the child's full
+`(root, capacity)` bytes, so a lied capacity fails top verification. Composition can
+discharge a component's obligation, not only inherit it. The sealed
+`VerifiedHypertreeMessage` (E0451) is minted only when both links verify — four
+sole-minters firing two levels deep.
+
+> ⚠ **TOY.** Inherits all of `mss-types`' FNV hashing (hence lamport + merkle);
+> deterministic seeds; 2 fixed layers (real XMSS^MT uses `d` layers and WOTS+); no state
+> **persistence** protocol — which is the whole point of finding 3. Not for signing
+> anything real.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 183 unit tests + 40 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 192 unit tests + 43 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

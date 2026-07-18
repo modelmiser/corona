@@ -33,6 +33,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "hypertree-types"
+version = "0.1.0"
+dependencies = [
+ "mss-types",
+]
+
+[[package]]
 name = "lamport-types"
 version = "0.1.0"
 

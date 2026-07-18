@@ -1,0 +1,14 @@
+[package]
+name = "hypertree-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 14 — an XMSS^MT-style hypertree signature as a COMPOSITION of mss-types with ITSELF (mss ∘ mss). TOY: a type-discipline demonstration, not production crypto."
+license = "MIT"
+
+# The garden's first RECURSIVE composition: it imports a single sibling leaf —
+# `mss-types` (itself merkle ∘ lamport) — and nests it under itself. A top keychain
+# signs the root of a bottom keychain; the bottom signs the message. Built strictly
+# on mss-types' public surface, with NO new rungs into it (∥ leaf 8's verbatim reuse
+# of `adopt_scoped`). See the "what recursive composition discovered" section in lib.rs.
+[dependencies]
+mss-types = { path = "../mss-types" }
