@@ -313,7 +313,8 @@ impl BloomFilter {
     }
 
     /// How many bits are currently set (population count). `0` in a fresh filter, `m_bits`
-    /// in a saturated one (where every query is a false positive).
+    /// in a saturated one (where every query returns possibly-present — a false positive for
+    /// any non-member; a genuine member is still a true positive).
     pub fn set_bits(&self) -> usize {
         // Padding bits above `m_bits` are never set (probes are `% m_bits`), so a full-word
         // popcount counts exactly the usable set bits.
