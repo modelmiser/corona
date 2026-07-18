@@ -500,10 +500,21 @@ work (complete tasks, add children, keep siblings).
       and the point is *what* discharges the second half: nothing in the garden at all, but
       a **proof in another repo** (Sol). The check names a fourth thing the garden leans on
       beyond discipline/code/surfaces — Sol's lemma library. See CHARTER.
-- [ ] **Cold-review the leaf-15 surface to convergence** (fires on next "ready"). Watch:
-      the Sol-seam framing and the CALM/leaf-9 pairing are cross-leaf comparison claims
-      (the garden's highest-risk class); the "no primitive expresses the laws" claim wants
-      an adversarial lens trying to find a typed encoding that WOULD reduce a law.
+- [ ] **Cold-review the leaf-15 surface to convergence** (IN PROGRESS). **R1 done** (3
+      blind lenses): seal proven (NO BREAK — ~7 construction/mutation probes rejected at
+      exact codes E0451/E0277/E0616/E0608). **2 MODERATE, both fixed:** (M-const, adversarial
+      +claims CROSS-CONFIRMED) the "no primitive expresses the laws / E0080 unused" absolute
+      was overstated — an adversary *built* the encoding: E0080 const-exhausts all four laws
+      over a BOUNDED model (rejects `+`/`min` at compile time), just not the `u64` domain →
+      reframed to the 3-point spectrum (tests sample → E0080 exhausts bounded → Sol proves
+      unbounded); (M-laws, claims) the four laws split into convergence-3 (semilattice) +
+      no-lost-updates-1 (inflationary) — `min` converges-but-lossy, `+` diverges. **Real
+      LOWs fixed:** `value` saturation now pinned by a test (killed a `wrapping_add` mutant
+      + made the "pinned by tests" claim true); "maps exactly"→"mirrors"; linear-posture
+      list +leaf 7; "three sole minters"→precise (new/merge produce, increment advances,
+      Clone duplicates). Watch next round: verify the reframed E0080/bounded claim is now
+      accurate (not under- or over-corrected), and that the convergence-vs-correctness split
+      reads true. crdt 16 unit + 3 doctests; workspace 208 + 46, gates green.
 
 ## Garden state (2026-07-18)
 

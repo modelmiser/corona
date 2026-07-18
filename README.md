@@ -589,19 +589,22 @@ different siblings:**
   unreachable state; so `GCounter` is **sealed** (private map, only monotone methods
   exposed — there is not even a `decrement`, E0599). Every value a caller can hold was
   reached by `new`/`increment`/`merge`. *That* the seal enforces.
-- **The merge being a *join* does not reduce — it is an algebraic proof obligation.**
-  Convergence also needs `merge` to be a semilattice **join**: idempotent, commutative,
-  associative, inflationary. **No compile primitive expresses any of those.** Swap the
-  `max` for `+` (not idempotent → re-delivery double-counts) or `min` (a valid
-  semilattice, just the *wrong*, non-inflationary one → silently drops updates) and the
-  crate still compiles, still type-checks, still passes the seal. The compiler cannot
-  tell a join from an impostor; only a proof can. The seal moves that obligation from
-  *every caller* down to *the one implementer with private access* — but it does **not
-  discharge** it. A machine-checked proof of the four laws is exactly what **Sol** is
-  for.
+- **The merge being the *right* join does not reduce — it is a proof obligation.** Two
+  laws, really: `merge` must be a *semilattice* (idempotent, commutative, associative) to
+  **converge**, and the join *for the growth order* (inflationary) to converge on the
+  *right*, lossless value. The two impostors split them — `+` isn't idempotent →
+  replicas **diverge**; `min` is a valid semilattice → it converges, but the *wrong* one
+  → it **drops updates** — and both compile, type-check, and pass the seal. **No garden
+  primitive constrains `merge`'s algebra as a type** (E0451/E0382/brand inspect a value's
+  identity, never a function's outputs). E0080 *can* — but only by *const-executing*
+  `merge` over a **bounded** model (proof by exhaustion, rejecting `+`/`min` at compile
+  time), which neither scales to the counter's `u64` domain nor is a *type* constraining
+  the algebra. So over the real domain the four laws fall to a **proof** — a
+  machine-checked one is exactly what **Sol** is for. The seal moved the obligation from
+  every caller to the one implementer with private access; only a proof *closes* it.
 
 So the two negative-space leaves bound the garden on both sides, and the
-**`Clone`-vs-linear** axis maps onto the **monotone-vs-non-monotone** one: leaf 9's coin
+**`Clone`-vs-linear** axis mirrors the **monotone-vs-non-monotone** one: leaf 9's coin
 is *linear* (must not be copied) and its replication *breaks* safety and needs
 coordination; leaf 15's counter is deliberately **`Clone`** (you gossip copies), its
 replication *is* safety, and its residue is not coordination but an *algebraic proof*.
@@ -616,7 +619,7 @@ time); `Debug` does not redact (public state, the `RecoveredData` posture).
 ## Build
 
 ```sh
-cargo test --workspace          # 207 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 208 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

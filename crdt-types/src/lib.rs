@@ -48,25 +48,50 @@
 //! monotone by construction, and *that* reduces to the seal. There is even no
 //! `decrement` to call (E0599); the lattice has no down.
 //!
-//! ### What does *not* reduce — *the merge being a join*, an algebraic proof obligation
+//! ### What does *not* reduce — *the merge being the right join*, a proof obligation
 //!
-//! Convergence needs more than "the API only goes up." It needs [`merge`](GCounter::merge)
-//! to be the **join (least upper bound) of a semilattice** — formally, that it is
-//! **idempotent**, **commutative**, **associative**, and **inflationary**
-//! (`merge(a, b) ⊒ a`). Those four laws are what make re-delivered, reordered, batched
-//! gossip converge. And **not one of them is expressible in the type system.** A type
-//! can *name* `merge`; it cannot constrain what its body computes. Swap the elementwise
-//! `max` for `+` and the crate still compiles, still type-checks, still passes the seal
-//! — yet `+` is not idempotent, so a re-delivered state double-counts and replicas
-//! diverge. Swap it for `min` and it *also* compiles — `min` is a perfectly good
-//! semilattice, just the *wrong* one (not inflationary), silently dropping every
-//! update. The compiler has no opinion. Only an *algebraic proof* (or, weakly, a
-//! property test) distinguishes the join from an impostor — and a machine-checked proof
-//! of those four laws is exactly what **Sol** is for. This is the leaf's finding: the
-//! seal moves the correctness obligation from *every caller* down to *the one
-//! implementer with private access*, but it does **not discharge** it. The residue is
-//! not a *runtime* check (as in leaves 1/9/11) and not a *missing primitive* — it is a
-//! **proof about a function's algebra**, and it belongs to the proof face.
+//! "The API only goes up" is not enough, and what [`merge`](GCounter::merge) must satisfy
+//! is really *two* obligations, which it helps to keep apart:
+//!
+//! - **Convergence (SEC)** needs `merge` to be a **semilattice** — *idempotent*,
+//!   *commutative*, *associative* — so re-delivered, reordered, batched gossip reaches
+//!   one value regardless of schedule.
+//! - **No lost updates** needs it to be the join *for the growth order* — *inflationary*,
+//!   `merge(a, b) ⊒ a` — so the value replicas agree on is the *right* one.
+//!
+//! The two "wrong merges" break these apart, which is the sharpest way to see they are
+//! distinct laws. `+` (elementwise add) is commutative and associative but **not
+//! idempotent**: a re-delivered state double-counts, so replicas genuinely **diverge**
+//! (convergence fails). `min` is a *perfectly good* semilattice — idempotent,
+//! commutative, associative, so `min`-merged replicas **do converge** — but the **wrong**
+//! one (the meet, not the join for `≥`): **not inflationary**, it silently **drops
+//! updates**, so replicas converge on a *lossy* value (correctness fails, convergence
+//! does not). Two laws, two failure modes — and *both merges compile, type-check, and
+//! pass the seal.*
+//!
+//! Now the primitive question. **No garden primitive constrains `merge`'s algebra as a
+//! *type*.** E0451 (seal/identity), E0382 (linearity), and the E0308-class brand
+//! (provenance) each inspect a value's *construction or identity*; none can look at
+//! whether a *function's outputs* satisfy an equation across its inputs. A type can
+//! *name* `merge`; it cannot constrain what its body computes — so `max`, `+`, and `min`
+//! are indistinguishable to it.
+//!
+//! The one primitive that *can* touch the laws is **E0080 (the const-eval wall)** — but
+//! only by *executing* `merge`, and only over a domain small enough to enumerate. For a
+//! **bounded** counter (few replicas, small counts — a finite state space), a `const`
+//! block can run `merge` over every input and assert all four laws, turning an impostor
+//! into a **compile error** (`+` → E0080 "idempotence violated"; `min` → "inflation
+//! violated"). That is a genuine compile-time rejection — but note what it *is*: **proof
+//! by exhaustion of a finite model**, the const-eval analogue of the property tests below
+//! (they *sample* that check; const-eval makes it *total*), **not a type constraining the
+//! algebra**. And it **does not scale**: the real counter's counts are `u64`, a space
+//! const-eval cannot enumerate, so for the actual type the four laws lie beyond *every*
+//! primitive. That unbounded, universally-quantified obligation is what a **proof**, not
+//! a program, discharges — **Sol's** territory. So the residue here is neither a
+//! *runtime* check (leaves 1/9/11) nor simply a *missing primitive*: the seal moved the
+//! obligation from every caller to the one implementer with private access; E0080 can
+//! *check a finite model* of it at compile time; only a proof *closes* it over the real
+//! domain. That closing proof is what belongs to the proof face.
 //!
 //! The two negative-space leaves thus bound the garden on *both* sides:
 //!
@@ -78,20 +103,23 @@
 //! | the residue is | *coordination* | *an algebraic proof* |
 //! | seam drawn to | `quorum-types` (coordination face) | **Sol** (proof face) |
 //!
-//! Note the middle rows especially: the **`Clone`-vs-linear** axis maps exactly onto
-//! the **monotone-vs-non-monotone** axis. Leaf 9's coin *must not* be copied and its
-//! replication needs coordination; leaf 15's counter *is meant* to be copied and its
-//! replication needs none. Deliberately, then, [`GCounter`] is `Clone` — the opposite
-//! posture from every linear leaf (5, 9, 10, 12, 14) — and its `Debug` does **not**
-//! redact (a counter is public state, the same non-secret posture as
-//! `erasure-types`' `RecoveredData`).
+//! Note the middle rows especially: the **`Clone`-vs-linear** axis mirrors the
+//! **monotone-vs-non-monotone** axis (a motivated two-point parallel, not a proven
+//! bijection). Leaf 9's coin *must not* be copied and its replication needs coordination;
+//! leaf 15's counter *is meant* to be copied and its replication needs none. Deliberately,
+//! then, [`GCounter`] is `Clone` — the opposite posture from the garden's secret-bearing
+//! linear leaves (5, 7, 9, 10, 12, 14) — and its `Debug` does **not** redact (a counter is
+//! public state, the same non-secret posture as `erasure-types`' `RecoveredData`).
 //!
 //! ## Primitives used
 //!
-//! **E0451** alone (the sealed [`GCounter`] state — the monotone-API guarantee). E0382,
-//! the brand, and E0080 are honestly unused: this leaf's whole point is that its
-//! *second* half is discharged by no primitive at all. (One primitive used, like leaf
-//! 3 and leaf 13 — but, as always, a different finding.)
+//! **E0451** alone is *used* (the sealed [`GCounter`] state — the monotone-API
+//! guarantee). E0382 and the E0308-class brand are honestly unused. E0080 is unused here
+//! too, but for the subtler reason spelled out above: a const-eval wall *could* enforce
+//! the four laws over a *bounded* model (proof by exhaustion), yet not over the counter's
+//! real `u64` domain — so the laws' discharge over the real domain falls to a proof
+//! (Sol), not a primitive. (One primitive used, like leaves 3 and 13 — a different
+//! finding each time.)
 //!
 //! ## Honest limits
 //!
@@ -168,11 +196,13 @@ pub struct ReplicaId(pub u64);
 /// (E0451) carrier of the monotone-state guarantee.
 ///
 /// The `entries` map (per-replica counts) and the `local` replica id are **private**:
-/// the only ways to obtain or change a `GCounter` are [`new`](GCounter::new),
-/// [`increment`](GCounter::increment), and [`merge`](GCounter::merge), each of which
-/// moves the state monotonically *up* the lattice. That seal is the entire reducible
-/// half of the leaf (see the crate docs); the *correctness of `merge` as a semilattice
-/// join* is the irreducible half, an algebraic proof obligation for Sol.
+/// the only operations that produce or change a `GCounter` are [`new`](GCounter::new)
+/// (produces a zero counter), [`merge`](GCounter::merge) (produces a joined one), and
+/// [`increment`](GCounter::increment) (advances one in place) — each moving the state
+/// monotonically *up* the lattice — plus derived `Clone`, which only *duplicates* an
+/// already-reachable value and so cannot introduce a non-monotone state. That seal is the
+/// entire reducible half of the leaf (see the crate docs); the *correctness of `merge` as
+/// a semilattice join* is the irreducible half, an algebraic proof obligation for Sol.
 ///
 /// Deliberately **`Clone`** (state-based replication ships copies) and its derived
 /// `Debug` deliberately does **not** redact — a replicated counter is public state, not
@@ -191,8 +221,8 @@ pub struct GCounter {
 
 impl GCounter {
     /// A fresh counter local to `replica`, with every count at zero
-    /// ([`value`](GCounter::value) `== 0`). One of the three sole minters of the sealed
-    /// [`GCounter`].
+    /// ([`value`](GCounter::value) `== 0`). One of the two value-producing constructors of
+    /// the sealed [`GCounter`] (with [`merge`](GCounter::merge)).
     pub fn new(replica: ReplicaId) -> GCounter {
         let mut entries = BTreeMap::new();
         entries.insert(replica, 0);
@@ -223,9 +253,12 @@ impl GCounter {
     /// the operation whose four algebraic laws (idempotent, commutative, associative,
     /// inflationary) make replicas converge, and whose correctness *no compile primitive
     /// checks* (see the crate docs — swapping `max` for `+` or `min` still compiles).
-    /// The result keeps `self`'s `local` id (you merge peers *into your own view*).
+    /// The result keeps `self`'s `local` id (you merge peers *into your own view*), so
+    /// the semilattice laws hold on the lattice *state* (`entries`), which is what the
+    /// tests compare — not on the whole struct.
     ///
-    /// The third sole minter of the sealed [`GCounter`].
+    /// The other value-producing constructor of the sealed [`GCounter`] (with
+    /// [`new`](GCounter::new)).
     pub fn merge(&self, other: &GCounter) -> GCounter {
         let mut entries = self.entries.clone();
         for (&replica, &count) in &other.entries {
@@ -462,6 +495,18 @@ mod tests {
         let c = state(1, &[(1, 2)]);
         let shown = format!("{c:?}");
         assert!(shown.contains('2'), "counts are public — not redacted");
+    }
+
+    #[test]
+    fn value_saturates_upward_rather_than_wrapping_at_the_sum_boundary() {
+        // Pins the `value` overflow claim: summing per-replica counts past u64::MAX
+        // saturates UP, it never wraps DOWN (a wrap would be the very monotonicity
+        // violation the leaf is about). Kills a `saturating_add` -> `wrapping_add` mutant.
+        // Reachable only via the private `state` helper — the sealed public API cannot
+        // build a counter whose parts sum past u64::MAX, which is why the boundary is
+        // asserted by construction here rather than through `increment`.
+        let c = state(1, &[(1, u64::MAX), (2, 5)]);
+        assert_eq!(c.value(), u64::MAX);
     }
 
     #[test]
