@@ -407,24 +407,33 @@ work (complete tasks, add children, keep siblings).
       `gf256` (the settled leaf-9/10/11 finding, now for the group). Contribution is
       *primitive-coverage breadth*: the first leaf where three concerns split across
       three prior findings at once (synthesis, where 10/11 were depth). See CHARTER.
-- [ ] **Cold-review the leaf-12 surface to convergence** — NOT started (garden rhythm:
-      seed and review are separate steps; nothing auto-starts). Convergence = 2
-      consecutive clean rounds (0 CRIT + 0 MOD) across correctness/claims/adversarial,
-      fresh blind subagents, fix all MODs + LOWs, verify compile-fail claims against
-      rustc. Watch the highest-risk class (holding across leaves 9/10/11): **cross-leaf
-      comparison sentences** — this leaf has many (it cites leaves 1, 5, 6, 8, 9, 10).
-      And the honesty of layer 3's boundary (local-reduces / distributed-does-not) and
-      the "no binding factors / concurrently-insecure" TOY caveat.
+- [x] **Cold-review the leaf-12 surface to convergence** — CONVERGED at round 4 (2
+      consecutive clean rounds 3 & 4; MOD arc 3→2→0→0; commits
+      1825bb0→66749da→5e4ad71→e170696). **The first leaf whose CODE carried real
+      findings** (leaves 10/11 were prose-only): R1 fixed a soundness gap —
+      `verify_partial` trusted the partial's self-reported `Rᵢ` not the committed one
+      (a `VerifiedPartial` mintable by shifting a public `(z,R)` pair, no secrets) →
+      `PartialResponse` now carries no `Rᵢ`, the package retains committed commitments,
+      the witness records its session challenge. R2 disclosed a toy-parameter forgery
+      (share-less outsider forges from the public key via a 257-value fixed-point
+      challenge — Fiat–Shamir defeated, the broken-dlog analogue, E0382/E0451 untouched)
+      the leaf-9 way: TOY banner bullet + prose hedges (leaf-5 type-vs-backend split) +
+      an executable `toy_challenge_forgery_from_public_key` test; also fixed a mod-q
+      index panic (range-check in the sole session constructor, vss "canonicalize at the
+      seal"). R3/R4 clean — adversarial found NO UNDISCLOSED BREAK (28 compile-fail
+      probes across the two rounds all rejected; 20,000 randomized honest sessions
+      verified, 0 corrupted partials accepted). 25 unit + 3 doctests; workspace 173 + 38.
 
 ## Garden state (2026-07-17)
 
-- **All 11 leaves cold-reviewed; leaf 12 (frost-types) SEEDED, review pending.**
-  corona-core + 12 leaves; vocabulary complete (leaf 6), composition demonstrated (7)
-  + repeated (8), outer edge drawn (9), **both value primitives read to their widest
-  with a matched pair of intra-primitive boundaries** — E0382 (leaf 10) and the
-  E0308-class brand (leaf 11) — and the **first synthesis leaf** (12 — FROST: three
-  prior findings meeting in one scheme). Next: "ready" → cold-review leaf 12; or
-  wind-down synthesis; or the CHARTER's remaining breadth (fountain/LT, XMSS).
+- **All 12 leaves cold-reviewed.** corona-core + 12 leaves; vocabulary complete (leaf
+  6), composition demonstrated (7) + repeated (8), outer edge drawn (9), **both value
+  primitives read to their widest with a matched pair of intra-primitive boundaries** —
+  E0382 (leaf 10) and the E0308-class brand (leaf 11) — and the **first synthesis leaf**
+  (12 — FROST threshold Schnorr: three prior findings meeting in one scheme, no new
+  primitive). No open thesis direction. Next is the user's call: wind-down synthesis
+  (the natural close), or the CHARTER's remaining breadth (fountain/LT, XMSS — both
+  likely re-instantiations of leaves 3 / 7).
 
 ## Parking lot (garden, not scheduled)
 
