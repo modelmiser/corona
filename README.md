@@ -427,21 +427,25 @@ only familiar vocabulary, **no new primitive**:
 - **The per-session nonce reduces to E0382.** Answering two challenges with one nonce
   leaks the share (`sᵢ = (zᵢ¹ − zᵢ²)·(c₁ − c₂)⁻¹·λᵢ⁻¹`), so a `Nonce` is a **linear
   (affine) capability**: not `Clone`/`Copy`, and `Nonce::respond` takes `self` by value,
-  so a second response does not compile (E0382, verified against rustc). This is leaf 5's
-  one-time key and leaf 10's ratchet step pointed at a *third* catastrophe — not "sign
-  twice" nor "keep the past" but *"answer two challenges with one nonce."*
+  so a second response does not compile (E0382, verified against rustc). By the garden's
+  taxonomy this is a **reuse** catastrophe — leaf 5's *kind* ("sign twice"), not leaf 10's
+  *retention* ("keep the past") — but a new instance: the value consumed is an ephemeral,
+  per-session nonce, yet reusing it leaks a *long-term* secret that outlives it.
 - **The k-of-n aggregation stays a runtime count (leaf 1's residue).** The partial sum
   equals `k + c·s` exactly when the coalition carries `≥ k` consistent shares
-  (`Σ λᵢ·sᵢ = f(0) = s` — the same Lagrange reconstruction as `threshold-types`), and, as
-  in leaf 1, the counting is checked against a runtime `corona_core::Threshold`, never
-  type-encoded.
-- **Robustness splits again.** A cheating `zᵢ` is caught *locally* by
-  `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` — a sole minter of the E0451-sealed `VerifiedPartial`,
-  structurally identical to `vss-types`' `Commitment::verify`, and `aggregate` consumes
-  only `VerifiedPartial`s. What does **not** reduce is the *distributed* remainder —
-  agreeing the coalition, the DKG behind the `Yᵢ`, and re-running with fresh nonces after
-  an abort — which is `quorum-types`' territory, exactly the handoff `ecash-types` (leaf 9)
-  drew from corona's side.
+  (`Σ λᵢ·sᵢ = f(0) = s`). The interpolation runs over the prime field of `vss-types`
+  (leaf 2), *in the exponent* (`s` is never materialized); what it borrows from leaf 1 is
+  narrower — the *residue* that the k-of-n **count** stays a runtime
+  `corona_core::Threshold` check, never type-encoded (the runtime-count import parallels
+  leaf 8; leaf 6 moves its count to compile time).
+- **Robustness splits again.** A cheating or nonce-swapping `zᵢ` is caught *locally* by
+  `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` against the signer's **committed** `Rᵢ` — a sole minter of the
+  E0451-sealed `VerifiedPartial` (the same seal shape as `vss-types`' `Commitment::verify`,
+  with a recorded-challenge session binding in place of vss's brand), and `aggregate`
+  consumes only same-session `VerifiedPartial`s. What does **not** reduce is the
+  *distributed* remainder — agreeing the coalition, the DKG behind the `Yᵢ`, and re-running
+  with fresh nonces after an abort — which is `quorum-types`' territory, exactly the handoff
+  `ecash-types` (leaf 9) drew from corona's side.
 
 The two witness species return, split through *time*: a long-term `SecretShare`
 (reusable, `Clone`-able, redacted) meets the per-session linear `Nonce` at
@@ -458,7 +462,7 @@ The two witness species return, split through *time*: a long-term `SecretShare`
 ## Build
 
 ```sh
-cargo test --workspace          # 169 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 171 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

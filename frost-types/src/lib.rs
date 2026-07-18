@@ -21,32 +21,43 @@
 //! (and, reused across a whole coalition, the master secret `s`; see the
 //! `nonce_reuse_recovers_the_master_secret` test). So a [`Nonce`] is a **linear
 //! (affine) capability**: not `Clone`/`Copy`, and [`Nonce::respond`] takes `self`
-//! **by value**, so a second response does not compile (E0382). This is leaf 5's
-//! one-time key (`lamport-types`) and leaf 10's ratchet step (`ratchet-types`), now
-//! guarding a *long-term* secret through a *per-session* value — a third catastrophe
-//! for the same primitive: not "sign twice" (leaf 5) nor "keep the past" (leaf 10)
-//! but *"answer two challenges with one nonce."*
+//! **by value**, so a second response does not compile (E0382). This is the same
+//! primitive as leaf 5's one-time key (`lamport-types`) and leaf 10's ratchet step
+//! (`ratchet-types`). By the garden's taxonomy it is a **reuse** catastrophe — leaf
+//! 5's *kind* ("sign twice"), *not* leaf 10's *retention* ("keep the past") — but a
+//! new instance of it: the value consumed is an *ephemeral, per-session* nonce, yet
+//! reusing it leaks a *long-term* secret that outlives it. Leaf 5 spent a key that
+//! *was* the secret; here a throwaway nonce guards a share that survives the session.
 //!
 //! **2. The k-of-n aggregation is a count → stays a runtime check (leaf 1's
 //! residue).** The coordinator sums the partial responses; the sum equals
 //! `k + c·s` **iff** the coalition carries `≥ k` consistent shares, because
-//! `Σ λᵢ·sᵢ = f(0) = s` is Lagrange interpolation — the same k-of-n reconstruction
-//! `threshold-types` (leaf 1) performs. And exactly as in leaf 1, **the counting is
-//! not type-encoded**: [`SigningPackage::new`] and [`aggregate`] check the coalition
-//! against a runtime [`corona_core::Threshold`] (imported for precisely this reason,
-//! ∥ leaves 6 and 8). A type cannot hold "these are `k` *distinct, consistent*
-//! shares"; that is a runtime fact about values.
+//! `Σ λᵢ·sᵢ = f(0) = s` is Lagrange interpolation. Two prior leaves are in play, and
+//! which matters: the interpolation runs over the *prime field* `Z_q` of `vss-types`
+//! (leaf 2) — **not** the char-2 GF(256) of `threshold-types` (leaf 1) — and it
+//! happens *in the exponent* (`s` is never materialized; summing the `zᵢ`
+//! reconstructs `g^s`). What this layer borrows from **leaf 1** is narrower and
+//! exact: its *residue* — that the k-of-n **count** stays a runtime check, not a
+//! type-level fact. [`SigningPackage::new`] and [`aggregate`] check the coalition
+//! against a runtime [`corona_core::Threshold`] — imported because the subject *is*
+//! k-of-n (∥ leaves 6 and 8; the *runtime-count* parallel is leaf 8's specifically,
+//! leaf 6 moves its count to compile time). A type cannot hold "these are `k`
+//! *distinct, consistent* shares"; that is a runtime fact about values.
 //!
 //! **3. Robustness splits again — local detection reduces to E0451, distributed
 //! coordination does not.** A malicious signer can submit a wrong `zᵢ`. Because the
 //! deal publishes each participant's verification share `Yᵢ = g^{sᵢ}` (a standard
-//! DKG output), the coordinator can check one partial *locally*:
-//! `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}`. That check has a **sole minter**
+//! DKG output), the coordinator can check one partial *locally* against the signer's
+//! **committed** nonce: `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` (`Rᵢ` read from the package, not
+//! from anything the response reports). That check has a **sole minter**
 //! ([`SigningPackage::verify_partial`]) producing an **E0451-sealed**
-//! [`VerifiedPartial`] — structurally identical to `vss-types`'
-//! `Commitment::verify`/`VerifiedShare`. [`aggregate`] consumes only
-//! `VerifiedPartial`s, so an unverified (or cheating) partial cannot enter a
-//! signature at the type level. What does **not** reduce is the *distributed*
+//! [`VerifiedPartial`] — the same sole-minter seal as `vss-types`'
+//! `Commitment::verify` (though frost's witness binds its session with a *recorded
+//! challenge* rather than vss's generative brand — value-level provenance ∥
+//! `mss-types`' `minted_by`; a cross-session partial would only fail
+//! [`GroupKey::verify`], never forge, so no compile-time brand is needed). [`aggregate`]
+//! consumes only `VerifiedPartial`s of its own session, so an unverified, cheating, or
+//! replayed partial cannot enter a signature. What does **not** reduce is the *distributed*
 //! remainder: agreeing the coalition, running the honest DKG that fixed the `Yᵢ`,
 //! and — when a partial fails — excluding the cheater and re-running with **fresh
 //! nonces** (you cannot reuse them; see split 1). That is coordination over a
@@ -143,7 +154,9 @@ pub mod schnorr;
 /// A share is *reusable*: a participant signs many sessions with the same share —
 /// the deliberate contrast to the one-time [`Nonce`]. So it is `Clone`-able (like
 /// every other sealed *evidence* in the garden), but its `Debug` **redacts** the
-/// value, mirroring `threshold-types`' `Secret` and `lamport-types`' `SigningKey`.
+/// value, as `threshold-types`' `Secret` does. It is the *reusable* dual of
+/// `lamport-types`' `SigningKey`: both redact a secret, but `SigningKey` is **linear**
+/// (spent by one use), where a share is `Clone`-able and outlives many sessions.
 ///
 /// Sealed (E0451): private fields, minted only by [`deal`]. In *this toy* the value
 /// is recoverable from the published `Yᵢ = g^{sᵢ}` under breakable discrete log — a
@@ -239,50 +252,65 @@ pub struct NonceCommitment {
     pub r: u16,
 }
 
-/// The coordinator's broadcast for one signing session: the aggregate commitment
-/// `R = Π Rᵢ`, the challenge `c = H(R, Y, m)`, and the fixed **coalition** (the
-/// sorted participant indices). Every signer answers *this* package.
+/// The coordinator's broadcast for one signing session: the coalition's individual
+/// nonce commitments `Rᵢ`, their aggregate `R = Π Rᵢ`, and the challenge
+/// `c = H(R, Y, m)`. Every signer answers *this* package.
+///
+/// The individual `Rᵢ` are retained (not just their product) precisely so
+/// [`verify_partial`](SigningPackage::verify_partial) can check a partial against the
+/// nonce the signer actually **committed** — see that method. `coalition` is the
+/// sorted index projection of `commitments`, kept for the hot-path Lagrange `xs`.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SigningPackage {
+    commitments: Vec<NonceCommitment>,
     r: u16,
     challenge: u16,
     coalition: Vec<u16>,
 }
 
-/// A signer's **partial response** `zᵢ = kᵢ + λᵢ·sᵢ·c`, carrying its own `Rᵢ` so a
-/// coordinator can check it. Public, forgeable data — its validity is decided only
-/// by [`SigningPackage::verify_partial`], never by holding it (∥ `lamport-types`'
+/// A signer's **partial response** — just its index and the scalar `zᵢ = kᵢ + λᵢ·sᵢ·c`.
+/// Public, forgeable data — its validity is decided only by
+/// [`SigningPackage::verify_partial`], never by holding it (∥ `lamport-types`'
 /// `Signature`).
+///
+/// It deliberately carries **no** `Rᵢ`: the committed nonce lives in the
+/// [`SigningPackage`], so a signer cannot present a response against a *different*
+/// nonce than the one it committed (that was a real hole — a self-reported `Rᵢ` lets
+/// a coalition member mint a locally-valid partial that poisons the aggregate).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct PartialResponse {
     /// The responding participant's index.
     pub index: u16,
     /// The response scalar `zᵢ`.
     pub z: u16,
-    /// The participant's own nonce commitment `Rᵢ`.
-    pub r: u16,
 }
 
 /// A [`PartialResponse`] that passed [`SigningPackage::verify_partial`] against the
-/// participant's published `Yᵢ`.
+/// participant's published `Yᵢ` and its **committed** nonce `Rᵢ`.
 ///
-/// # Unforgeability (E0451)
+/// # Unforgeability (E0451) and session binding
 ///
 /// Private fields, no public constructor: a `VerifiedPartial` can *only* be minted
-/// by the local check `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}`, so holding one is proof the signer
-/// computed `zᵢ` honestly from its committed share and nonce. [`aggregate`] accepts
-/// only `VerifiedPartial`s — a cheating partial cannot enter a signature.
+/// by the local check `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` — where `Rᵢ` is the nonce the signer
+/// *committed into this package*, not one the response reports — so holding one is
+/// proof the signer computed `zᵢ` honestly from its committed share **and committed
+/// nonce**. It also records the `challenge` it answered, binding it to this session:
+/// [`aggregate`] accepts only `VerifiedPartial`s whose challenge matches the package,
+/// so a partial cannot be replayed into a different session. (This is a *value-level*
+/// session binding — a recorded fact, like `mss-types`' `minted_by`, not the
+/// `vss-types` generative brand; a cross-session partial would only ever fail
+/// [`GroupKey::verify`], never forge, so a compile-time brand is not needed here.)
 ///
 /// ```compile_fail
 /// use frost_types::VerifiedPartial;
 /// // Private fields — a struct literal does not compile.
-/// let forged = VerifiedPartial { index: 1, z: 2, r: 3 };
+/// let forged = VerifiedPartial { index: 1, z: 2, challenge: 3 };
 /// ```
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VerifiedPartial {
     index: u16,
     z: u16,
-    r: u16,
+    challenge: u16,
 }
 
 /// The aggregate Schnorr signature `(R, z)` — an ordinary signature under the group
@@ -351,6 +379,9 @@ pub enum AggregateError {
     CoalitionMismatch,
     /// Two partials share a participant index.
     DuplicateParticipant { index: u16 },
+    /// A partial was verified under a different session (its challenge does not match
+    /// this package's) — it must not be replayed into this signature.
+    SessionMismatch,
 }
 
 /// Trusted-dealer key generation: Shamir-share `secret` over `Z_q` on a
@@ -481,7 +512,6 @@ impl Nonce {
         Ok(PartialResponse {
             index: self.index,
             z: z as u16,
-            r: self.commitment,
         })
     }
 }
@@ -506,7 +536,7 @@ impl SigningPackage {
                 need: t.k() as usize,
             });
         }
-        // Distinct participants; aggregate R = Π Rᵢ; collect the coalition.
+        // Distinct participants; aggregate R = Π Rᵢ; retain the individual Rᵢ.
         let mut coalition = Vec::with_capacity(commitments.len());
         let mut r = 1u32;
         for c in commitments {
@@ -517,12 +547,23 @@ impl SigningPackage {
             r = schnorr::g_mul(r, c.r as u32);
         }
         coalition.sort_unstable();
+        let mut kept = commitments.to_vec();
+        kept.sort_unstable_by_key(|c| c.index);
         let challenge = schnorr::challenge(r, group_key.y as u32, message);
         Ok(SigningPackage {
+            commitments: kept,
             r: r as u16,
             challenge: challenge as u16,
             coalition,
         })
+    }
+
+    /// The committed nonce `Rᵢ` for participant `index`, if in this session.
+    fn committed_nonce(&self, index: u16) -> Option<u16> {
+        self.commitments
+            .iter()
+            .find(|c| c.index == index)
+            .map(|c| c.r)
     }
 
     /// The aggregate nonce commitment `R = Π Rᵢ`.
@@ -541,35 +582,37 @@ impl SigningPackage {
     }
 
     /// Check one [`PartialResponse`] locally against the participant's published
-    /// verification share: `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}`. On success returns an
-    /// E0451-sealed [`VerifiedPartial`] — the **sole minter**.
+    /// verification share **and its committed nonce**: `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}`,
+    /// where `Rᵢ` is read from *this package's* commitments — not from anything the
+    /// response reports. On success returns an E0451-sealed [`VerifiedPartial`]
+    /// stamped with this session's challenge — the **sole minter**.
     ///
-    /// This is robustness's *local* half: a cheating signer's `zᵢ` fails the check,
-    /// so it never becomes a [`VerifiedPartial`] and [`aggregate`] rejects it. The
-    /// *distributed* half — agreeing the coalition, the DKG behind `Yᵢ`, and
-    /// re-running with fresh nonces after an abort — is `quorum-types`' territory.
-    /// Returns `None` on any mismatch, or if the participant is unknown / not in the
-    /// coalition.
+    /// This is robustness's *local* half: because `Rᵢ` is the committed nonce (the one
+    /// that fed the aggregate `R` and thus the challenge), a signer that responds
+    /// against any other nonce — or with any `zᵢ` not equal to the honest
+    /// `kᵢ + λᵢ·sᵢ·c` — fails the check, so it never becomes a [`VerifiedPartial`] and
+    /// [`aggregate`] rejects it. The *distributed* half — agreeing the coalition, the
+    /// DKG behind `Yᵢ`, and re-running with fresh nonces after an abort — is
+    /// `quorum-types`' territory. Returns `None` on any mismatch, or if the
+    /// participant is unknown / not in the coalition.
     pub fn verify_partial(
         &self,
         group_key: &GroupKey,
         partial: &PartialResponse,
     ) -> Option<VerifiedPartial> {
-        if !self.coalition.contains(&partial.index) {
-            return None;
-        }
+        let ri = self.committed_nonce(partial.index)?;
         let yi = group_key.verification_share(partial.index)?;
         let xs: Vec<u32> = self.coalition.iter().map(|&x| x as u32).collect();
         let lambda = schnorr::lagrange_at_zero(&xs, partial.index as u32);
-        // lhs = g^{zᵢ};  rhs = Rᵢ · Yᵢ^{λᵢ·c}
+        // lhs = g^{zᵢ};  rhs = Rᵢ · Yᵢ^{λᵢ·c}  (Rᵢ = the COMMITTED nonce)
         let lhs = schnorr::g_pow(schnorr::G, partial.z as u32);
         let exp = schnorr::f_mul(lambda, self.challenge as u32);
-        let rhs = schnorr::g_mul(partial.r as u32, schnorr::g_pow(yi as u32, exp));
+        let rhs = schnorr::g_mul(ri as u32, schnorr::g_pow(yi as u32, exp));
         if lhs == rhs {
             Some(VerifiedPartial {
                 index: partial.index,
                 z: partial.z,
-                r: partial.r,
+                challenge: self.challenge,
             })
         } else {
             None
@@ -598,11 +641,13 @@ impl GroupKey {
 /// Aggregate verified partials into one Schnorr signature `(R, z)`, `z = Σ zᵢ mod q`.
 ///
 /// Requires the verified partials to be **exactly** the package's coalition — every
-/// member present, no strangers, none duplicated — and `≥ k` of them (the runtime
-/// [`Threshold`] count, leaf 1's residue). A missing member yields a signature that
-/// would not verify (the nonce sum `R` and the share sum would disagree), so it is
-/// refused up front. Because the inputs are [`VerifiedPartial`]s (E0451), every
-/// summed `zᵢ` was already checked honest.
+/// member present, no strangers, none duplicated — all verified under **this
+/// session's** challenge, and `≥ k` of them (the runtime [`Threshold`] count, leaf 1's
+/// residue). A missing member yields a signature that would not verify (the nonce sum
+/// `R` and the share sum would disagree), so it is refused up front. Because the
+/// inputs are [`VerifiedPartial`]s (E0451), every summed `zᵢ` was already checked
+/// honest against its committed nonce, and the challenge match forbids replaying a
+/// partial from another session.
 pub fn aggregate(
     group_key: &GroupKey,
     package: &SigningPackage,
@@ -616,9 +661,13 @@ pub fn aggregate(
             need: t.k() as usize,
         });
     }
-    // The partials must match the coalition exactly (distinct, same set).
+    // The partials must match the coalition exactly (distinct, same set) and all be
+    // from this session (challenge match).
     let mut seen = Vec::with_capacity(partials.len());
     for p in partials {
+        if p.challenge != package.challenge {
+            return Err(AggregateError::SessionMismatch);
+        }
         if seen.contains(&p.index) {
             return Err(AggregateError::DuplicateParticipant { index: p.index });
         }
@@ -764,6 +813,62 @@ mod tests {
         // The honest one still verifies.
         let p2 = n2.respond(&shares[1], &package).unwrap();
         assert!(package.verify_partial(&gk, &p2).is_some());
+    }
+
+    #[test]
+    fn a_swapped_nonce_fails_local_verification() {
+        // Regression: `verify_partial` checks against the COMMITTED nonce, not one the
+        // response reports. A signer that commits Rᵢ (feeding the challenge) but
+        // responds against a *different* nonce must fail locally — otherwise it could
+        // mint a valid-looking VerifiedPartial that poisons the aggregate.
+        let (gk, shares) = deal(0x2a, t(2, 3), &[7]).unwrap();
+        let n1 = Nonce::generate(1, 0xA1);
+        let n2_committed = Nonce::generate(2, 0xB2);
+        let package = SigningPackage::new(
+            &gk,
+            b"hello",
+            &[n1.commitment(), n2_committed.commitment()],
+            t(2, 3),
+        )
+        .unwrap();
+        // Signer 2 responds with a nonce it did NOT commit.
+        let n2_swap = Nonce::generate(2, 0x99);
+        let p_swap = n2_swap.respond(&shares[1], &package).unwrap();
+        assert!(
+            package.verify_partial(&gk, &p_swap).is_none(),
+            "a swapped nonce must fail local verification"
+        );
+        // Responding with the committed nonce passes.
+        let p_honest = n2_committed.respond(&shares[1], &package).unwrap();
+        assert!(package.verify_partial(&gk, &p_honest).is_some());
+    }
+
+    #[test]
+    fn a_partial_from_another_session_is_refused_at_aggregate() {
+        // Regression: a VerifiedPartial records the challenge it answered, so a partial
+        // verified in session A cannot be replayed into session B's signature — even
+        // with the same coalition.
+        let (gk, shares) = deal(0x2a, t(2, 3), &[7]).unwrap();
+        // Session A.
+        let a1 = Nonce::generate(1, 1);
+        let a2 = Nonce::generate(2, 2);
+        let pkg_a =
+            SigningPackage::new(&gk, b"msg A", &[a1.commitment(), a2.commitment()], t(2, 3))
+                .unwrap();
+        let va1 = pkg_a
+            .verify_partial(&gk, &a1.respond(&shares[0], &pkg_a).unwrap())
+            .unwrap();
+        let va2 = pkg_a
+            .verify_partial(&gk, &a2.respond(&shares[1], &pkg_a).unwrap())
+            .unwrap();
+        // Session B: fresh nonces, different message, same coalition.
+        let b1 = Nonce::generate(1, 3);
+        let b2 = Nonce::generate(2, 4);
+        let pkg_b =
+            SigningPackage::new(&gk, b"msg B", &[b1.commitment(), b2.commitment()], t(2, 3))
+                .unwrap();
+        let err = aggregate(&gk, &pkg_b, &[va1, va2], t(2, 3)).unwrap_err();
+        assert_eq!(err, AggregateError::SessionMismatch);
     }
 
     #[test]
