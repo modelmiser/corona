@@ -82,10 +82,13 @@
 //!   brand (à la `accumulator-types` leaf 11) would *bind* it; this leaf leaves it disclosed,
 //!   since its subject is the **cost residue**, not provenance (∥ `bloom-types` leaf 16).
 //!   Note [`Puzzle::owns`] is a *tag* comparison (`challenge_digest == fnv1a(challenge)`), so
-//!   its detection is only as strong as the hash's collision resistance — which the toy FNV
-//!   does *not* provide; a real hash (or a brand) makes it robust. Even a tag collision would
-//!   only let a foreign solution be *presented* as owned, never make it clear the other
-//!   puzzle's actual work target.
+//!   it identifies a puzzle only up to the hash's collision resistance — which the toy FNV
+//!   does *not* provide; a real hash (or a brand) restores injective identity. For an
+//!   *iterated* hash like FNV this is benign, though: because the hash state **is** its output,
+//!   `fnv1a(A) == fnv1a(B)` forces `work_digest(A, n) == work_digest(B, n)` for *every* nonce,
+//!   so a colliding `A` and `B` denote the **same** puzzle — a solution `owns`-matched across
+//!   them genuinely solves it and saves no work. The collision confuses puzzle *identity*, not
+//!   the *work* guarantee.
 //! - **No real PoW protocol.** No difficulty retargeting, no chain/accumulated work, no
 //!   double-spend/Sybil economics. The security purpose of work — making attacks *expensive* —
 //!   is an **economic** assumption about an adversary's budget, downstream of and out of scope
@@ -397,6 +400,66 @@ mod tests {
             first_clearing + 1,
             "attempts == first-clearing-nonce + 1 (nonces 0..=first were tried)"
         );
+    }
+
+    #[test]
+    fn solution_accessors_report_exact_values_not_merely_bounds() {
+        // Pin the WHOLE Solution accessor surface at once (anti-ratchet, leaf-9 lesson): every
+        // public accessor must return its EXACT value, not merely satisfy `>= BITS`. A
+        // bounds-only assertion lets a class of accessor mutants survive — `leading_zeros()` ->
+        // `trailing_zeros()`, `bits()` -> `0`, and `nonce()`/`digest()` field swaps. One test
+        // closes the class.
+
+        // Choose a solved BITS=8 solution whose digest has leading_zeros != trailing_zeros, so
+        // the trailing-zeros mutant is provably distinguished (not a coincidental match).
+        let mut found = None;
+        for i in 0u32.. {
+            let c = format!("accessor-{i}").into_bytes();
+            if let Some((sol, _)) = Puzzle::<8>::new(&c).solve(1 << 20) {
+                let d = sol.digest();
+                if d.leading_zeros() != d.trailing_zeros() {
+                    found = Some((c, sol));
+                    break;
+                }
+            }
+            assert!(
+                i < 10_000,
+                "a distinguishing 8-bit solution should appear quickly"
+            );
+        }
+        let (challenge, sol) = found.expect("a distinguishing BITS=8 solution");
+
+        // `digest()` is exactly work_digest(challenge, nonce) — recomputed independently.
+        let digest = work_digest(&challenge, sol.nonce());
+        assert_eq!(
+            sol.digest(),
+            digest,
+            "digest() returns the real work digest of its nonce"
+        );
+        // `leading_zeros()` is the digest's LEADING zeros (kills the trailing_zeros mutant,
+        // since we selected a digest where the two differ) — and it clears the 8-bit target.
+        assert_eq!(
+            sol.leading_zeros(),
+            digest.leading_zeros(),
+            "leading_zeros() reflects the digest's leading zeros exactly"
+        );
+        assert_ne!(
+            digest.leading_zeros(),
+            digest.trailing_zeros(),
+            "test precondition: this digest distinguishes leading from trailing zeros"
+        );
+        assert!(sol.leading_zeros() >= 8, "and it clears the 8-bit target");
+        // `bits()` is exactly the puzzle difficulty (kills the constant-0 mutant).
+        assert_eq!(sol.bits(), 8, "bits() returns the exact difficulty, not 0");
+
+        // `bits()` tracks the puzzle, not a constant: a different difficulty reports differently.
+        let sol3 = (0u32..)
+            .find_map(|i| {
+                let c = format!("bits3-{i}").into_bytes();
+                Puzzle::<3>::new(&c).solve(1 << 20).map(|(s, _)| s)
+            })
+            .expect("a 3-bit solution");
+        assert_eq!(sol3.bits(), 3, "bits() varies with the puzzle difficulty");
     }
 
     #[test]

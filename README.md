@@ -716,11 +716,12 @@ the split adds a residue the garden did not yet have.
   exactly when the digest clears the target — `merkle-types`' `Root::verify` /
   `bloom-types`' `query` again, a checked path that is the only door to the witness.
 - **Cost does *not* reduce — the effort residue.** The seal witnesses that the digest
-  clears the target and **nothing about how the nonce was found**. A solution found on
-  the first guess is **byte-identical** to one found after `2^BITS` hashes: effort is a
-  property of the *search that produced* a value, not of the value — two identical
-  values can have had arbitrarily different costs — so no type, and no compile-time
-  fact, can witness it. `Puzzle::solve` hands the attempt count back as a *return value
+  clears the target and **nothing about how the nonce was found**. The *same* winning
+  nonce reached on the first guess or after `2^BITS` hashes mints the **byte-identical**
+  witness, and no `Solution` — cheaply or dearly found — carries a field distinguishing
+  the two: effort is a property of the *search that produced* a value, not of the value —
+  two identical values can have had arbitrarily different costs — so no type, and no
+  compile-time fact, can witness it. `Puzzle::solve` hands the attempt count back as a *return value
   of the search*, deliberately **not** a field of the witness. This is the garden's
   first residue about a value's **production history** rather than the value itself
   (the prior residues are all facts *about* a value or its relations — the k-of-n
