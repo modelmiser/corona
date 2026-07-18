@@ -1,0 +1,8 @@
+[package]
+name = "bloom-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 16: a Bloom filter (probabilistic set membership) as typestate — the first leaf whose sound seal witnesses non-membership, not membership; presence is a one-sided probabilistic proxy. Both directions reduce to E0451; which one is soundly sealable is structural, invisible to the primitive. TOY."
+license = "MIT"
+
+[dependencies]

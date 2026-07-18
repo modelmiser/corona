@@ -548,6 +548,47 @@ work (complete tasks, add children, keep siblings).
       non-idempotent impostor + compiles → confirms no primitive captures a law as a type).
       NO code changes from R4 → crate byte-stable. R5 = confirmation pass on identical text.
 
+## Now (leaf 16 — bloom-types)
+
+- [x] **Seed leaf 16: a Bloom filter (probabilistic set membership)** — the first leaf
+      where the **E0451 seal's soundness inverts**. Every prior membership leaf
+      (`merkle-types`, `accumulator-types`) mints a *sound* witness of *presence*; a Bloom
+      filter can soundly seal only **non-membership**. `query` returns a sealed
+      `DefinitelyAbsent` (a probe bit unset ⟹ never inserted — **exact**: an inserted item
+      sets all `k`, and this append-only filter clears none) or a sealed `PossiblyPresent`
+      (all `k` bits set — a **one-sided probabilistic proxy** for insertion; a false positive
+      mints the same token). The two witnesses are structurally identical sealed tokens; the
+      compiler can't tell them apart in strength (∥ leaf 15's `max`/`+`/`min` all type-check
+      as "merge"). The seal witnesses **the checked path and nothing more** — for
+      `DefinitelyAbsent` the path *equals* the domain claim (sound), for `PossiblyPresent`
+      it's a probabilistic proxy (one-sided). Sharpens merkle's *substrate-agnostic seal* +
+      erasure's *axis invisible to the seal* onto a new axis: the **direction/one-sidedness**
+      of the soundness the same E0451 carries — a property of the *structure*, invisible to
+      the primitive. Second probabilistic leaf (∥ leaf 13, count-probabilistic there,
+      membership-probabilistic here). Monotone aside (ties leaf 15): bits only turn on,
+      `union` = bitwise OR = an idempotent/comm/assoc/inflationary **join** → also a grow-only
+      approximate-set CRDT; presence monotone, **absence anti-monotone** → a `DefinitelyAbsent`
+      witness is **snapshot-relative** (a later insert flips it — the leaf-11 freshness
+      boundary, disclosed not branded). One primitive (**E0451**, two roles — witnesses AND
+      sealed monotone state, `insert`/`union` set-only, no removal); E0382/brand/E0080 unused.
+      Standalone. All three compile-fails (`PossiblyPresent`/`BloomFilter` sealed-field forge
+      → **E0451**; `.remove` → **E0599**) independently verified vs rustc. 15 unit + 4
+      doctests; workspace **226 unit + 50 doctests**, all gates green (clippy/fmt/rustdoc
+      -D warnings).
+- [x] `corona-core` promotion check (leaf-16 trigger): nothing to promote — same *shape* as
+      leaf 4 (hash-membership, neither core module applies; toy FNV = graduation-swap
+      placeholder). Novelty is what the seal *carries*: the seal is not only substrate-
+      agnostic (leaf 4) and axis-agnostic (leaf 3) but **direction-agnostic**. See CHARTER.
+- [ ] **Cold-review the leaf-16 surface to convergence** — PENDING, fires on next "ready".
+
+## Garden state (2026-07-18b)
+
+- **Leaf 16 (`bloom-types`) SEEDED; cold-review pending.** corona-core + **16 leaves**. Leaf
+  16 is the garden's second probabilistic leaf and the first where the E0451 seal's soundness
+  *inverts* (non-membership sound, presence one-sided). Seeded after the garden was already a
+  finished thought — an unscheduled open-ended domain, exactly the "never done" model. **15 of
+  16 leaves cold-reviewed; leaf 16 is the only review debt.** Nothing else auto-starts.
+
 ## Garden state (2026-07-18)
 
 - **ALL 15 leaves cold-reviewed. No review debt.** corona-core + **15 leaves**. Leaf 15

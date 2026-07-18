@@ -7,6 +7,10 @@ name = "accumulator-types"
 version = "0.1.0"
 
 [[package]]
+name = "bloom-types"
+version = "0.1.0"
+
+[[package]]
 name = "corona-core"
 version = "0.1.0"
 

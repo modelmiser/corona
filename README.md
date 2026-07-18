@@ -29,7 +29,8 @@ corona/
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
 ├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
-└── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
+├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
+└── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -616,10 +617,49 @@ time); `Debug` does not redact (public state, the `RecoveredData` posture).
 > graduating this leaf means replacing them with a machine-checked Lean proof. The
 > subject is the type/proof boundary, not a production CRDT.
 
+## Leaf 16: `bloom-types`
+
+A **Bloom filter** — probabilistic set membership, and the first leaf where the
+E0451 seal's **soundness flips direction**. Every prior verifiable-membership leaf
+(`merkle-types`, `accumulator-types`) mints a sound witness of *membership*. A Bloom
+filter can only soundly seal **non-membership**: `query` returns a sealed
+`DefinitelyAbsent` the moment a probe bit is unset — an inserted item would have set
+all `k`, and there is no removal to clear one, so that is **exact**. Membership it can
+attest merely *probably*: a sealed `PossiblyPresent` means "all `k` bits set," which is
+only a **one-sided proxy** for insertion — a false positive (bits set by other
+insertions) mints the very same witness.
+
+The two witnesses are **structurally identical** sealed tokens; the compiler cannot
+tell them apart in strength, exactly as `crdt-types` (leaf 15) found `max`, `+`, and
+`min` all type-check as a "merge." The seal faithfully witnesses **the checked path and
+nothing more** — for `DefinitelyAbsent` the path ("some bit unset") *equals* the domain
+claim ("never inserted"), so it is sound; for `PossiblyPresent` the path ("all bits
+set") is only a probabilistic proxy, so it is one-sided. *Which* fact a structure can
+soundly seal is a property of the **structure**, invisible to the primitive: a sorted
+Merkle tree seals membership soundly and needs a range proof for absence; a Bloom filter
+is its photographic negative. This is `merkle-types`' *substrate-agnostic seal* and
+`erasure-types`' *axis invisible to the seal*, on a new axis — the **direction and
+one-sidedness** of the soundness the same E0451 carries.
+
+A monotone aside makes the leaf-15 tie concrete: bits only ever turn on and `union` is
+bitwise OR — an idempotent/commutative/associative/inflationary **join**, so a Bloom
+filter is *also* a grow-only (approximate) set CRDT. Presence is monotone; absence is
+**anti-monotone**, so a `DefinitelyAbsent` witness is **snapshot-relative** — a later
+insert can flip the same item to possibly-present (the `accumulator-types` freshness
+boundary, here disclosed rather than branded). Only **E0451** is used (in two roles: the
+witnesses and the sealed monotone state); E0382, the brand, and E0080 are honestly
+unused.
+
+> ⚠ **TOY.** Two non-independent FNV-1a hashes via Kirsch–Mitzenmacher double hashing —
+> not independent cryptographic hashes. An adversary who knows them forces false
+> positives (a pollution attack); the false-positive *rate* is a claim about random
+> inputs, not an adversarial guarantee. No optimal-`k` sizing, no counting/removal, no
+> scalable variant, no persistence. The seal-direction discipline is the subject.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 211 unit tests + 46 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 226 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
