@@ -1,0 +1,16 @@
+[package]
+name = "frost-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Corona leaf 12 — threshold Schnorr (FROST-style) signatures as typestate: the per-session nonce is a one-time linear capability (E0382), the k-of-n aggregation stays a runtime count (leaf 1's residue), and robust coordination hands off to quorum-types (leaf 9's boundary). TOY, not production crypto."
+
+# frost-types imports corona-core because its subject *is* k-of-n: the threshold
+# aggregation of partial signatures is a Threshold check (parallel to leaves 6 and
+# 8, which import corona-core for the same reason). Its toy prime-order group lives
+# in a standalone `schnorr` module — it textually overlaps vss-types' feldman
+# parameters (q=257, p=1543, g=64) but is a *graduation swap-point* (→ a real
+# prime-order EC group), not permanent shared math like `gf256`, so it is not
+# promoted — the settled leaf-9/10/11 finding, now for the group.
+[dependencies]
+corona-core = { path = "../corona-core" }

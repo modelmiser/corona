@@ -22,6 +22,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "frost-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
+]
+
+[[package]]
 name = "lamport-types"
 version = "0.1.0"
 

@@ -375,15 +375,56 @@ work (complete tasks, add children, keep siblings).
       equal count forces the old root exactly). R3: 0 findings. Leaf-9/10
       prose-mutation-ratchet observed once (R1 fix → R2 finding) and closed.
 
+## Now (leaf 12 — frost-types)
+
+- [x] Seed frost-types: **threshold Schnorr (FROST) signatures** — the first threshold
+      *signature* and the first **synthesis leaf**. Does threshold signing need a new
+      primitive? → **no; a three-way split, each layer landing on a prior leaf's
+      finding.** (1) The per-session nonce is a *one-time linear capability* → **E0382**
+      (`Nonce` not `Clone`/`Copy`, `respond(self,…)` consumes it; a second response =
+      compile error, verified against rustc `error[E0382]: use of moved value: n`) —
+      leaves 5/10's third catastrophe, "answer two challenges with one nonce," which
+      leaks the share (and across a coalition the master `s` — the
+      `nonce_reuse_recovers_the_master_secret` break test recovers `s` and confirms
+      `g^s == Y`). (2) The k-of-n aggregation is the **same runtime count as leaf 1**
+      (`Σλᵢsᵢ = f(0) = s` Lagrange; checked against a runtime `corona_core::Threshold`,
+      not type-encoded). (3) Robustness **splits again**: local cheater-detection
+      `g^{zᵢ} = Rᵢ·Yᵢ^{λᵢc}` reduces to **E0451** (sole-minter `VerifiedPartial`,
+      structurally identical to vss `Commitment::verify`; `aggregate` consumes only
+      `VerifiedPartial`s), but the *distributed* remainder (coalition agreement, DKG
+      behind the published `Yᵢ`, abort/retry with fresh nonces) does **not** —
+      `quorum-types`' territory, leaf 9's handoff. Four familiar things
+      (E0382 + E0451 + leaf-1 count + leaf-9 boundary), **no fifth**. Two witness
+      species again, split through *time*: reusable redacted `SecretShare` vs one-time
+      linear `Nonce`. Imports `corona-core` (`Threshold`; subject IS k-of-n, ∥ 6/8);
+      standalone toy prime-order group in a `schnorr` module. 21 unit + 3 doctests
+      (happy path + nonce-reuse `compile_fail` E0382 + sealed-`VerifiedPartial`
+      `compile_fail`); workspace **169 unit + 38 doctests**, all gates green
+      (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-12 trigger): nothing to promote — the toy
+      prime-order group overlaps vss's `feldman` params but is a **graduation-swap
+      placeholder** (→ real prime-order EC group), not permanent shared math like
+      `gf256` (the settled leaf-9/10/11 finding, now for the group). Contribution is
+      *primitive-coverage breadth*: the first leaf where three concerns split across
+      three prior findings at once (synthesis, where 10/11 were depth). See CHARTER.
+- [ ] **Cold-review the leaf-12 surface to convergence** — NOT started (garden rhythm:
+      seed and review are separate steps; nothing auto-starts). Convergence = 2
+      consecutive clean rounds (0 CRIT + 0 MOD) across correctness/claims/adversarial,
+      fresh blind subagents, fix all MODs + LOWs, verify compile-fail claims against
+      rustc. Watch the highest-risk class (holding across leaves 9/10/11): **cross-leaf
+      comparison sentences** — this leaf has many (it cites leaves 1, 5, 6, 8, 9, 10).
+      And the honesty of layer 3's boundary (local-reduces / distributed-does-not) and
+      the "no binding factors / concurrently-insecure" TOY caveat.
+
 ## Garden state (2026-07-17)
 
-- **All 11 leaves cold-reviewed.** corona-core + 11 leaves; vocabulary complete
-  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9), and
-  **both value primitives read to their widest with a matched pair of intra-primitive
-  boundaries** — E0382 (leaf 10, logical vs memory-level) and the E0308-class brand
-  (leaf 11, instance-identity vs timeline-freshness). No open thesis direction. Next
-  is the user's call: wind-down synthesis (the natural close), or the CHARTER's
-  remaining breadth (FROST, fountain/LT, XMSS).
+- **All 11 leaves cold-reviewed; leaf 12 (frost-types) SEEDED, review pending.**
+  corona-core + 12 leaves; vocabulary complete (leaf 6), composition demonstrated (7)
+  + repeated (8), outer edge drawn (9), **both value primitives read to their widest
+  with a matched pair of intra-primitive boundaries** — E0382 (leaf 10) and the
+  E0308-class brand (leaf 11) — and the **first synthesis leaf** (12 — FROST: three
+  prior findings meeting in one scheme). Next: "ready" → cold-review leaf 12; or
+  wind-down synthesis; or the CHARTER's remaining breadth (fountain/LT, XMSS).
 
 ## Parking lot (garden, not scheduled)
 

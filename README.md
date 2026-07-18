@@ -25,7 +25,8 @@ corona/
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
-└── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
+├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
+└── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -414,10 +415,50 @@ garden primitives (E0451 + brand), no new one.
 > explicit epoch check just makes staleness a named, total, hash-independent verdict.
 > The type discipline (the epoch brand) is the subject, not accumulator engineering.
 
+## Leaf 12: `frost-types`
+
+**Threshold Schnorr signatures** (FROST) — the garden's first threshold *signature*,
+and a **synthesis** leaf. `n` participants hold Shamir shares of one secret key `s`;
+any `k` of them jointly produce an ordinary Schnorr signature that verifies against a
+single group key `Y = gˢ`, and no participant ever sees `s`. Signing splits into three
+concerns, and each lands on a finding an earlier leaf already made — so the leaf spends
+only familiar vocabulary, **no new primitive**:
+
+- **The per-session nonce reduces to E0382.** Answering two challenges with one nonce
+  leaks the share (`sᵢ = (zᵢ¹ − zᵢ²)·(c₁ − c₂)⁻¹·λᵢ⁻¹`), so a `Nonce` is a **linear
+  (affine) capability**: not `Clone`/`Copy`, and `Nonce::respond` takes `self` by value,
+  so a second response does not compile (E0382, verified against rustc). This is leaf 5's
+  one-time key and leaf 10's ratchet step pointed at a *third* catastrophe — not "sign
+  twice" nor "keep the past" but *"answer two challenges with one nonce."*
+- **The k-of-n aggregation stays a runtime count (leaf 1's residue).** The partial sum
+  equals `k + c·s` exactly when the coalition carries `≥ k` consistent shares
+  (`Σ λᵢ·sᵢ = f(0) = s` — the same Lagrange reconstruction as `threshold-types`), and, as
+  in leaf 1, the counting is checked against a runtime `corona_core::Threshold`, never
+  type-encoded.
+- **Robustness splits again.** A cheating `zᵢ` is caught *locally* by
+  `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` — a sole minter of the E0451-sealed `VerifiedPartial`,
+  structurally identical to `vss-types`' `Commitment::verify`, and `aggregate` consumes
+  only `VerifiedPartial`s. What does **not** reduce is the *distributed* remainder —
+  agreeing the coalition, the DKG behind the `Yᵢ`, and re-running with fresh nonces after
+  an abort — which is `quorum-types`' territory, exactly the handoff `ecash-types` (leaf 9)
+  drew from corona's side.
+
+The two witness species return, split through *time*: a long-term `SecretShare`
+(reusable, `Clone`-able, redacted) meets the per-session linear `Nonce` at
+`Nonce::respond`.
+
+> ⚠ **TOY.** Breakable group (discrete log is trivial, so the published `Yᵢ` leak `sᵢ`);
+> a *deterministic* nonce, so a retained seed re-mints it and reopens the reuse hole the
+> linear type closes within a program (the `nonce_reuse_recovers_the_master_secret` test
+> does exactly this — the guarantee is conditional on a freshly-random, discarded nonce,
+> leaf 5's seed caveat). Single nonce, **no binding factors** — real FROST uses two nonces
+> to resist the Drijvers concurrent-session (ROS) attack; this naive version is clean for
+> the typestate but concurrently insecure. Trusted dealer, no DKG or abort/retry.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 148 unit tests + 35 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, const-eval-wall)
+cargo test --workspace          # 169 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
