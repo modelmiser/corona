@@ -440,12 +440,14 @@ work (complete tasks, add children, keep siblings).
       the top signs the child anchor). E0382 + E0451; brand inherited internally; E0080
       unused. 9 unit + 3 doctests; workspace 192 + 43; clippy/fmt/rustdoc -D warnings clean.
       See CHARTER + README.
-- [ ] **Cold-review the leaf-14 surface to convergence** — fresh blind subagents, 2
-      consecutive clean rounds. Adversarial angles: the nested verify chain (can a
-      cross-subtree or cross-hypertree sig be made to verify? — foreign-key / lied-anchor
-      tests exist, probe harder), the two-counter state machine (off-by-one at the subtree
-      rotation, exhaustion boundary), the capacity-discharge claim, the persistence-boundary
-      framing precision, and the E0451/E0382 seals.
+- [x] **Cold-review the leaf-14 surface to convergence** — CONVERGED (batched with leaf 13;
+      MOD arc 0→0→0 across 3 rounds; R2+R3 both 0 CRITICAL/0 MODERATE on final text). No code
+      defects found (state machine exhaustively verified across 12 shapes; adversarial: 64-case
+      splice brute + both-direction anchor tampering all rejected; seals held vs rustc). The
+      one substantive fix was a claims LOW (R1): "leaves 7/8 composed stateless verification"
+      understated leaf 7 → reframed to "coordination of TWO counters (leaf 7 had one)",
+      re-verified TRUE by R2+R3. Residual LOWs (defensible wording: "lockstep",
+      "one-time-use counter") left per converge-then-stop.
 
 ## Now (leaf 13 — fountain-types)
 
@@ -463,25 +465,26 @@ work (complete tasks, add children, keep siblings).
       count residue itself. E0451 seal untouched (`Decoded` from a completed peel).
       One primitive (E0451); standalone. 10 unit + 2 doctests; workspace 183 + 40;
       clippy/fmt/rustdoc -D warnings clean. See CHARTER + README.
-- [ ] **Cold-review the leaf-13 surface to convergence** — 2 consecutive clean rounds
-      (0 CRITICAL + 0 MODERATE across correctness/claims/adversarial), fresh blind
-      subagents. Fires on the next "ready". Adversarial angles to expect: peeling
-      decoder soundness (can a crafted symbol set make `peel` return *wrong* bytes
-      rather than stall?), the finding's empirical claims (stall-rate numbers), the
-      "no `n`/not-a-count" framing precision, and the `Decoded` seal.
+- [x] **Cold-review the leaf-13 surface to convergence** — CONVERGED (batched with leaf 14;
+      MOD arc 1→0→0; R2+R3 both 0 CRITICAL/0 MODERATE on final text). >10M honest fuzz trials
+      across rounds: 0 wrong-bytes-on-success (the decoder stalls or returns the exact source,
+      never lies). Fixes: R1 MODERATE — `lt` module's pub helpers panicked on k=0 → made `lt`
+      PRIVATE (collapse the public surface to the sealed boundary symbol/decode/Symbol/Decoded;
+      "enforce at the seal"), which also closed a sibling LOW. R2 LOWs — corrected a doc clause
+      I introduced in R1 (false for `decode`'s free-`usize` k) + a 32-bit `d*(d-1)` overflow
+      (compute in f64). Residual LOWs (documented panics on invalid input) left by design.
 
 ## Garden state (2026-07-17)
 
-- **12 leaves cold-reviewed; leaves 13 & 14 seeded (both review-pending).** corona-core +
-  **14 leaves**; vocabulary complete (leaf 6), composition demonstrated (7) + repeated (8)
-  + **self-nested (14)**, outer edge drawn (9), **both value primitives read to their
-  widest with a matched pair of intra-primitive boundaries** — E0382 (leaf 10) and the
-  E0308-class brand (leaf 11) — the **first synthesis leaf** (12 — FROST), a **third
-  intra-primitive boundary** inside the runtime count residue (13 — LT fountain), and the
-  first **recursive composition of stateful leaves** (14 — XMSS^MT hypertree). **Every
-  named CHARTER breadth candidate is now built.** Review debt: 2 leaves (13, 14). After
-  they converge, wind-down synthesis is the natural close — the garden is a finished
-  thought (any further leaf would be an open-ended new domain, not a backlog item).
+- **ALL 14 leaves cold-reviewed.** corona-core + **14 leaves**; vocabulary complete (leaf 6),
+  composition demonstrated (7) + repeated (8) + **self-nested (14)**, outer edge drawn (9),
+  **both value primitives read to their widest with a matched pair of intra-primitive
+  boundaries** — E0382 (leaf 10) and the E0308-class brand (leaf 11) — the **first synthesis
+  leaf** (12 — FROST), a **third intra-primitive boundary** inside the runtime count residue
+  (13 — LT fountain), and the first **recursive composition of stateful leaves** (14 — XMSS^MT
+  hypertree). **Every named CHARTER breadth candidate is built and reviewed. No review debt.**
+  The garden is a finished thought: wind-down synthesis is the natural close; any further leaf
+  would be an open-ended new domain, not a backlog item. Nothing auto-starts.
 
 ## Parking lot (garden, not scheduled)
 
