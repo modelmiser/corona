@@ -31,9 +31,11 @@
 //! unlinkability (a one-time factor), never unlinkability *the property*. That property is the
 //! guarantee that the signer's **view** — the blinded value `m'` it saw — is *statistically
 //! independent* of the message `m`, so that every `(m, s)` output is equally consistent with
-//! every session. This is not a fact about a value (`pow`'s cost, leaf 1/12's count), nor a
-//! relation between values (`translog`'s ordering, leaf 17), nor a domain law (`crdt`'s merge
-//! algebra, leaf 15). It is a property of the **adversary's view across a distribution** — an
+//! every session. This is not a fact about a value (leaf 1/12's count), nor a *production
+//! history* of a value (`pow`'s cost, leaf 18 — which leaf 18 stresses is pointedly *not* a fact
+//! about the value), nor a relation between values (`translog`'s ordering, leaf 17), nor a domain
+//! law (`crdt`'s merge algebra, leaf 15). It is a property of the **adversary's view across a
+//! distribution** — an
 //! *indistinguishability* claim. And the one primitive it seems to call for is the one whose
 //! guarantee is its exact **opposite**:
 //!
@@ -295,16 +297,22 @@ impl Signer {
     /// [`BlindedMessage`]; over a fresh blinding factor that value is independent of the true
     /// message, so this signature carries no information about which message was signed.
     ///
-    /// This is the *only* signing entry point exposed to the outside world — the signer has no
-    /// API that takes a cleartext message from a client, which is why unlinkability is
-    /// structural rather than merely a promise.
+    /// This is the blind protocol's signing entry point: it accepts only a [`BlindedMessage`],
+    /// so a signer following the protocol never sees the cleartext. Note this is a property of
+    /// *the protocol*, not a compiler-enforced one — [`sign_unblinded_for_test`] is also a
+    /// `pub` method (a documented test aid; see its note), so unlinkability rests on the client
+    /// never revealing `m`, not on the absence of any cleartext-signing method.
+    ///
+    /// [`sign_unblinded_for_test`]: Signer::sign_unblinded_for_test
     pub fn sign_blinded(&self, blinded: BlindedMessage) -> BlindSignature {
         BlindSignature(mod_exp(blinded.0, self.d, self.n))
     }
 
-    /// **Test-only:** sign a cleartext message directly (`m ↦ mᵈ mod n`), for comparing the
-    /// blind path against the direct path. Named to make clear this is *not* part of the blind
-    /// protocol — it exists to demonstrate the two paths are byte-identical.
+    /// Sign a cleartext message directly (`m ↦ mᵈ mod n`), for comparing the blind path against
+    /// the direct path. **Not part of the blind protocol** — a `pub` test aid (named and
+    /// `#[doc(hidden)]` to mark it out of protocol), it exists only to demonstrate the two paths
+    /// are byte-identical. A real signer would not expose it.
+    #[doc(hidden)]
     pub fn sign_unblinded_for_test(&self, message: u64) -> u64 {
         mod_exp(message % self.n, self.d, self.n)
     }
@@ -759,11 +767,12 @@ mod tests {
     }
 
     #[test]
-    fn the_signer_signs_without_an_api_that_sees_the_message() {
-        // Structural, not just statistical: the ONLY signing entry point takes a
-        // BlindedMessage. There is no method on `Signer` that a client can call with a
-        // cleartext message (sign_unblinded_for_test is a test aid, named as such). We assert
-        // the blinded value the signer receives differs from the message it ends up authorizing.
+    fn the_blind_protocol_signing_entry_point_sees_only_a_blinded_value() {
+        // The PROTOCOL's signing entry point (`sign_blinded`) takes a BlindedMessage, so a
+        // signer following the protocol never receives the cleartext. (This is a protocol
+        // property, not a compiler-enforced one — `sign_unblinded_for_test` is a pub test aid;
+        // unlinkability rests on the client never revealing `m`.) We assert the blinded value
+        // the signer receives via that entry point differs from the message it authorizes.
         let signer = Signer::toy_textbook_rsa();
         let pk = signer.public_key();
         let message = 500;
