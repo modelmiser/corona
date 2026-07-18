@@ -73,9 +73,10 @@
 //! commitments to forge one — see the banner. The *reduction to E0451* is about the
 //! checked-path seal, not the group's hardness.)
 //!
-//! So the vocabulary spent here is **E0382** (the nonce), **E0451** (the partial and
-//! signature seals), the **runtime k-of-n count** (leaf 1's residue), and the
-//! **coordination handoff** (leaf 9's boundary) — four familiar things, no fifth.
+//! So what is spent here is **two** of the garden's four primitives — **E0382** (the
+//! nonce) and **E0451** (the partial and signature seals) — plus two familiar
+//! *residues*, not primitives: the **runtime k-of-n count** (leaf 1's) and the
+//! **coordination handoff** (leaf 9's boundary). **No new primitive.**
 //!
 //! ## Two witness species again, split a new way
 //!

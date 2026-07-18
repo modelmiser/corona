@@ -432,8 +432,9 @@ only familiar vocabulary, **no new primitive**:
   *retention* ("keep the past") — but a new instance: the value consumed is an ephemeral,
   per-session nonce, yet reusing it leaks a *long-term* secret that outlives it.
 - **The k-of-n aggregation stays a runtime count (leaf 1's residue).** The partial sum
-  equals `k + c·s` exactly when the coalition carries `≥ k` consistent shares
-  (`Σ λᵢ·sᵢ = f(0) = s`). The interpolation runs over the prime field of `vss-types`
+  equals `k + c·s` exactly when *every* member of the (`≥ k`-sized) coalition responds
+  (`Σ λᵢ·sᵢ = f(0) = s` over that fixed coalition — `aggregate` requires exactly the
+  coalition, not merely `k` of it). The interpolation runs over the prime field of `vss-types`
   (leaf 2), *in the exponent* (`s` is never materialized); what it borrows from leaf 1 is
   narrower — the *residue* that the k-of-n **count** stays a runtime
   `corona_core::Threshold` check, never type-encoded (the runtime-count import parallels
@@ -468,7 +469,7 @@ The two witness species return, split through *time*: a long-term `SecretShare`
 ## Build
 
 ```sh
-cargo test --workspace          # 171 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 173 unit tests + 38 doctests (incl. compile-fails: sealed-ctor, no-clone, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
