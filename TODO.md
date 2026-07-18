@@ -650,6 +650,54 @@ work (complete tasks, add children, keep siblings).
       [[feedback_cold_review_no_concurrent_mutation]]. translog 18 unit + 3 doctests; workspace
       250 + 53, all gates green.
 
+## Now (leaf 19 — blindsig-types)
+
+- [x] **Seed leaf 19: Chaum blind signatures** (`blindsig-types`) — does **unlinkability**
+      (the signer cannot link a signed `(m,s)` to the signing session) reduce to the
+      vocabulary? → **it SPLITS three ways, and the residue is of a new kind.** (1) *Validity
+      reduces to E0451* — `PublicKey::verify` is the sole minter of a sealed `Signature`
+      (`sᵉ≡m mod n`); a blind-issued and a directly-issued signature are byte-identical, so the
+      seal can't see the session (∥ `pow`/`merkle`). (2) *The blinding factor's one-time-ness
+      reduces to E0382* — reuse one `r` across two messages and `m'₁/m'₂=m₁/m₂` is a ratio the
+      signer sees, linking them → `BlindingFactor` is linear, `blind(self,…)` consumes it, a
+      second `blind` is `error[E0382]` (verified vs rustc; the fifth E0382 leaf, a reuse-kind
+      catastrophe ∥ 5/9/12). (3) **Unlinkability *itself* reduces to no primitive** — E0382 buys
+      the *precondition* (a fresh factor), never the *property*: that the signer's *view* (`m'`)
+      is *statistically independent* of `m`. That is a property of the **observer's view across
+      a distribution** — an *indistinguishability* claim, not a fact about a value (`pow`'s
+      cost), a relation (`translog`'s order), or a domain law (`crdt`'s algebra). And the one
+      primitive it seems to call for is the E0308-class **brand**, whose guarantee is its exact
+      **opposite** — a brand makes *"this came from that"* a compile fact (it **relates**),
+      unlinkability demands a *guaranteed absence* of that relation → the brand is not "honestly
+      unused" but **structurally inapplicable**, and that impossibility is the thesis. Made
+      executable: `the_signer_view_is_information_theoretically_independent_of_the_message`
+      (every candidate message explains the same observed view under some factor). **The toy
+      INVERTS the usual break** — hiding is *information-theoretically perfect* at any modulus,
+      while the tiny `n=3233` breaks *unforgeability* (factors instantly → `d` recoverable →
+      forgeable, in `toy_modulus_factors_so_forgery_succeeds`). Compile-fails: E0382
+      blinding-factor-reuse + E0451 sealed-`Signature` forge, both verified vs rustc. Standalone;
+      E0451 + E0382, brand structurally inapplicable, E0080 unused; no new primitive. 17 unit + 3
+      doctests; workspace **283 unit + 60 doctests**, all gates green (clippy/fmt/rustdoc -D
+      warnings).
+- [x] `corona-core` promotion check (leaf-19 trigger): nothing to promote (standalone; toy RSA
+      = swap placeholder). Contribution is a **new residue category** (unlinkability — the first
+      about the *observer's view across a distribution*) and the first primitive that is not
+      merely unused but **structurally inapplicable** (the brand's guarantee is the negative of
+      what the domain needs). See CHARTER.
+- [ ] **Cold-review the leaf-19 surface to convergence** — PENDING (fires on the next "ready").
+
+## Garden state (2026-07-18h)
+
+- **ALL 18 leaves cold-reviewed; leaf 19 SEEDED, cold-review PENDING.** corona-core + **19
+  leaves**. Leaf 19 (`blindsig-types`, Chaum blind signatures — the first leaf whose residue is
+  a property of the *observer's view* (unlinkability, a statistical indistinguishability), and
+  the first where a primitive is *structurally inapplicable* rather than merely unused: the
+  E0308-class brand **relates**, but unlinkability demands a *guaranteed absence* of a relation).
+  Validity reduces to E0451, one-time-ness to E0382; the toy *inverts* the usual break (perfect
+  info-theoretic hiding, broken unforgeability). An *unscheduled* open-ended domain seeded after
+  the garden was again a finished thought (∥ leaves 16–18). Next: cold-review to convergence on
+  the next "ready". Nothing else auto-starts.
+
 ## Now (leaf 18 — pow-types)
 
 - [x] **Seed leaf 18: proof of work / hashcash** (`pow-types`) — does "computational work

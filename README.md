@@ -32,7 +32,8 @@ corona/
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
 ├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
-└── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
+├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
+└── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -748,10 +749,51 @@ the split adds a residue the garden did not yet have.
 > chain, or Sybil economics — work's purpose (making attacks expensive) is an economic
 > assumption downstream of the type discipline.
 
+## Leaf 19: `blindsig-types`
+
+**Chaum blind signatures** (Chaum, CRYPTO 1982) — a signer signs a message it never
+sees, and later cannot link a valid `(m, s)` pair to the signing session. The garden's
+standard question: *does **unlinkability** reduce to the vocabulary?* It **splits three
+ways**, and the residue is of a new kind.
+
+- **Validity reduces to E0451, the same seal.** `PublicKey::verify` is the sole minter
+  of a sealed `Signature` (checks `sᵉ ≡ m mod n`) — `pow-types`' `Puzzle::verify` again.
+  And, as in `pow`, it is silent about provenance: a blind-issued signature and a
+  directly-issued one are **byte-identical**, so a witness reveals nothing about the
+  session — the positive face of unlinkability.
+- **The blinding factor's one-time-ness reduces to E0382.** Reuse one factor `r` across
+  two messages and their blinded forms satisfy `m'₁/m'₂ = m₁/m₂` — a ratio the signer
+  can see, linking the sessions. So `BlindingFactor` is linear (not `Clone`/`Copy`) and
+  `blind(self, …)` consumes it: a second `blind` is a **compile error** (`error[E0382]`).
+  `lamport`/`frost` again — a secret whose catastrophe is reuse.
+- **But unlinkability *itself* reduces to no primitive — the newest residue.** E0382 buys
+  the *precondition* (a fresh factor), never the *property*: that the signer's **view**
+  (the blinded value `m'`) is *statistically independent* of `m`, so every output is
+  equally consistent with every session. That is not a fact about a value (`pow`'s cost),
+  a relation (`translog`'s order), or a domain law (`crdt`'s algebra) — it is a property
+  of the **observer's view across a distribution**, an *indistinguishability* claim. And
+  the one primitive it seems to call for has the exact **opposite** guarantee: the
+  E0308-class **brand** makes *"this came from that"* a compile fact — it **relates**;
+  unlinkability demands *"you cannot tell this came from that"*, a guaranteed **absence**
+  of a relation. A type can *bind* provenance; it structurally cannot *certify the
+  absence* of a binding. So the brand here is not "honestly unused" but **structurally
+  inapplicable** — and that impossibility is the thesis. (A distant cousin of `crdt`'s
+  Sol-obligation, leaf 15, but a different *kind* of external argument: a statistical
+  hiding reduction, not a deductive algebraic law.)
+
+> ⚠ **TOY — and the toy *inverts* the usual break.** Unlinkability is
+> **information-theoretically perfect** here (for `m` coprime to `n`, a uniform `r` makes
+> `m' = m·rᵉ` uniform and *exactly* independent of `m`) — it holds at *any* modulus size,
+> resting on no hardness assumption. What the toy breaks is **unforgeability**: `n = 3233`
+> (textbook RSA) factors instantly, `d` is recoverable, anyone can forge — so the sealed
+> `Signature` attests validity, **not** the signer's consent (the recurring split; leaves
+> 5, 18). Raw RSA (no full-domain hash) is also multiplicatively malleable. No
+> denominations/transfer/partially-blind variants.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 266 unit tests + 57 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall [static-config + pow difficulty])
+cargo test --workspace          # 283 unit tests + 60 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

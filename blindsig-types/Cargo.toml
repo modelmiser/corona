@@ -1,0 +1,11 @@
+[package]
+name = "blindsig-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TOY typestate crate: Chaum blind signatures — validity reduces to the E0451 seal, one-time blinding to E0382, but unlinkability reduces to NO primitive (Corona leaf 19)."
+publish = false
+
+# Leaf 19 of the Corona garden. Standalone: imports neither corona-core nor any
+# sibling leaf — a residue-drawing leaf (unlinkability) leans on nothing in the garden.
+[dependencies]
