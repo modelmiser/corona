@@ -580,15 +580,29 @@ work (complete tasks, add children, keep siblings).
       leaf 4 (hash-membership, neither core module applies; toy FNV = graduation-swap
       placeholder). Novelty is what the seal *carries*: the seal is not only substrate-
       agnostic (leaf 4) and axis-agnostic (leaf 3) but **direction-agnostic**. See CHARTER.
-- [ ] **Cold-review the leaf-16 surface to convergence** — PENDING, fires on next "ready".
+- [x] **Cold-review the leaf-16 surface to convergence — CONVERGED** (7 rounds, MOD arc
+      1→3→3→0→1→0→0; R6 & R7 two consecutive clean, 0 CRIT/0 MOD across all 3 lenses; commits
+      `81f37fc`→`31ea938`→`b8c51aa`→`1993201`→`24a0c3b`→`7ac6b78`, R4/R7 no-change). Thesis held
+      under ~2.6M/230k/35k adversarial vectors (0 false negatives / cleared bits / forged
+      witnesses). The mutation ratchet ran 4 rounds in the hash/probe family (probe count →
+      distinctness → the `i·h2` multiplier → the `!=`→`<` shape guard); closed with **exact
+      oracles + structural invariants** (a KM-formula oracle, FNV-1a-64 golden vectors, a
+      `union` word-count `debug_assert`) rather than more one-off property tests. Two doc
+      lessons recurred: the "path *equals* the domain claim" imprecision and a fabricated
+      `Gerbet–Cachin–Minier` citation each survived in other files after the first fix — a
+      qualifier must reach every doc site at once. bloom 21 unit + 4 doctests; workspace 232 +
+      50; all gates green.
 
-## Garden state (2026-07-18b)
+## Garden state (2026-07-18c)
 
-- **Leaf 16 (`bloom-types`) SEEDED; cold-review pending.** corona-core + **16 leaves**. Leaf
-  16 is the garden's second probabilistic leaf and the first where the E0451 seal's soundness
-  *inverts* (non-membership sound, presence one-sided). Seeded after the garden was already a
-  finished thought — an unscheduled open-ended domain, exactly the "never done" model. **15 of
-  16 leaves cold-reviewed; leaf 16 is the only review debt.** Nothing else auto-starts.
+- **ALL 16 leaves cold-reviewed. No review debt.** corona-core + **16 leaves**. Leaf 16
+  (`bloom-types`, the Bloom filter — the first leaf where the E0451 seal's soundness *inverts*:
+  sound non-membership, one-sided presence) CONVERGED this session (7 rounds). It was the
+  garden's second probabilistic leaf (∥ 13) and an unscheduled open-ended domain seeded after
+  the garden was already a finished thought — the "deliberately never done" model in action.
+  The garden is again a finished thought: any further leaf is a fresh open-ended domain, not
+  backlog; wind-down synthesis remains a valid close. Nothing auto-starts. (INSIGHTS.md
+  graduated to `INSIGHTS/INDEX.md` at leaf-16 convergence; DEVLOG rotated, leaves 1–8 archived.)
 
 ## Garden state (2026-07-18)
 
