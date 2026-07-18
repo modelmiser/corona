@@ -54,7 +54,9 @@ pub fn robust_soliton_cdf(k: usize) -> Vec<f64> {
                                                                                   // ideal soliton
     w[1] += 1.0 / kf;
     for (d, wd) in w.iter_mut().enumerate().skip(2) {
-        *wd += 1.0 / ((d * (d - 1)) as f64);
+        // Compute the product in f64 to avoid a usize overflow of `d*(d-1)` on
+        // 32-bit targets when k is large (harmless on 64-bit, but correct everywhere).
+        *wd += 1.0 / ((d as f64) * ((d - 1) as f64));
     }
     // robust correction tau
     for (d, wd) in w.iter_mut().enumerate().take(spike).skip(1) {

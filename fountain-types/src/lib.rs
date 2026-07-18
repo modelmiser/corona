@@ -58,9 +58,11 @@
 //!   band, exactly as leaf 3 takes the `corona_core::Threshold`. A
 //!   wrong `k'` derives *different* symbol plans (indices are drawn mod `k'`), so
 //!   decoding almost always stalls or yields wrong bytes. Nothing binds `k` to the
-//!   symbols. (An implausibly large `k` — near `usize::MAX`, i.e. a source no real
-//!   slice could hold — panics rather than allocating the impossible; a real caller
-//!   cannot reach it, since [`symbol`] takes `k` from an actual slice length.)
+//!   symbols. (An implausibly large `k` — near `usize::MAX`, a source no real slice
+//!   could hold — panics *cleanly* rather than silently wrapping; since [`decode`]'s
+//!   `k` is caller-asserted, this is a caller error caught loudly, not UB. A
+//!   well-formed caller derives `k` from real data, as [`symbol`] does from its
+//!   slice length.)
 //! - **Symbols are unverified, public, and forgeable.** A [`Symbol`] carries no
 //!   secret and no authentication; anyone can fabricate `(seed, value)` pairs.
 //!   [`Decoded`] is therefore a **typestate token** (it came from [`decode`]'s
