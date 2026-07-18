@@ -593,6 +593,52 @@ work (complete tasks, add children, keep siblings).
       qualifier must reach every doc site at once. bloom 21 unit + 4 doctests; workspace 232 +
       50; all gates green.
 
+## Now (leaf 17 — translog-types)
+
+- [x] **Seed leaf 17: Merkle consistency proofs (RFC 6962 / Certificate Transparency)** — the
+      first leaf whose witness spans **two** branded snapshots at once. Every prior brand
+      bound a witness to *one* scope (vss→commitment, merkle→root, accumulator→epoch); a
+      consistency proof attests one log is a **prefix** of another (append-only, no history
+      rewrite). Does witnessing a **relation between two branded snapshots** reduce? → **it
+      SPLITS** (∥ leaf 11, generalized from one point to a relation). (1) **Relating two
+      snapshots by instance-identity reduces to *two* brands + the E0451 seal** —
+      `Checkpoint::verify_consistency` mints a sealed `Consistent<'old,'new>` carrying *both*
+      generative brands; consumer `authenticated_relation` bites only when *both* the old and
+      new checkpoint presented match (the garden's first witness across two brand scopes at
+      once, no new primitive). (2) **The *direction* does NOT reduce** — two generative brands
+      are **unordered** (leaf 11, inherited), so `verify_consistency` type-checks in *either*
+      direction and only the runtime RFC 6962 fold (check `old.size ≤ new.size`, reconstruct
+      *both* roots) decides which is the prefix. **The brand relates but does not order.**
+      Leaf 11's instance-vs-freshness boundary for one point → which-two-vs-which-is-older for
+      a relation; same residue (a timeline fact stays runtime), now on a relation's
+      *direction*. The proof is unbranded wire data (∥ leaf 11's `Witness`) and is the very
+      object establishing the ordering the brand can't hold. Correctness on an **exact oracle**
+      (leaf-16 lesson): every `1 ≤ m ≤ n ≤ 33` proof verified vs independently-built roots,
+      every single-bit tamper rejected; the bottom-up promote-odd-node build reproduces RFC
+      6962's largest-power-of-two split (merkle/accumulator machinery serves consistency
+      proofs unchanged). Standalone; E0451 + brand (×2), E0382/E0080 unused. Compile-fails:
+      cross-consistency-scope brand (E0521) + sealed-ctor forge (bare `compile_fail`, uncoded
+      "cannot construct … due to private fields" — every relevant field incl. both brands is
+      private) — the latter verified vs rustc directly. TOY FNV hash; append-only, no
+      deletion/compaction/STH-signatures; cross-process equivocation (CT "gossip") stays
+      runtime. 17 unit + 3 doctests; workspace **249 unit + 53 doctests**, all gates green
+      (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-17 trigger): nothing to promote (∥ leaves 4/11 shape
+      — hash-membership, neither core module applies; toy FNV = swap placeholder). Contribution
+      is *primitive-coverage depth on the brand* of a new kind: not a wider *reading* (leaf 11
+      read it to its widest for one snapshot) but the brand's first use across **two** scopes.
+      See CHARTER.
+- [ ] **Cold-review the leaf-17 surface to convergence** — PENDING (fires on next "ready").
+
+## Garden state (2026-07-18d)
+
+- **Leaf 17 (`translog-types`, Merkle consistency proofs) SEEDED, cold-review PENDING.**
+  corona-core + **17 leaves**. The first witness spanning two branded snapshots: the brand
+  relates two snapshots (both bite) but does not order them (direction stays a runtime fold) —
+  the relational generalization of leaf 11's instance-vs-freshness boundary. An *unscheduled*
+  open-ended domain seeded after the garden was again a finished thought (∥ leaf 16). Leaves
+  1–16 remain cold-reviewed; leaf 17 is the only open review item. Nothing auto-starts.
+
 ## Garden state (2026-07-18c)
 
 - **ALL 16 leaves cold-reviewed. No review debt.** corona-core + **16 leaves**. Leaf 16

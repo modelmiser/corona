@@ -30,7 +30,8 @@ corona/
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
 ├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
-└── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
+├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
+└── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -658,10 +659,54 @@ unused.
 > inputs, not an adversarial guarantee. No optimal-`k` sizing, no counting/removal, no
 > scalable variant, no persistence. The seal-direction discipline is the subject.
 
+## Leaf 17: `translog-types`
+
+**Merkle consistency proofs** (RFC 6962 / Certificate Transparency) — the first leaf
+whose witness spans **two** branded snapshots at once. Every prior use of the
+E0308-class **brand** bound a witness to *one* thing: `vss-types` / `merkle-types` /
+`mss-types` to *which commitment or root* minted it, and `accumulator-types` (leaf 11)
+to *which immutable snapshot* it was drawn against. This leaf takes the step leaf 11
+explicitly deferred — *"a real Merkle Mountain Range / Certificate-Transparency log adds
+consistency proofs"* — and asks whether a witness of a **relation between two snapshots**
+(that an older log is a **prefix** of a newer one — the log only appended, never rewrote
+history) reduces to the vocabulary.
+
+It **splits**, generalizing leaf 11 from a single point to a relation:
+
+- **Relating two snapshots by instance-identity reduces — to *two* brands plus the
+  seal.** `Checkpoint::verify_consistency` is the sole minter of a sealed
+  `Consistent<'old, 'new>` (E0451), carrying *both* snapshots' generative brands, and its
+  consumer (`Checkpoint::authenticated_relation`) accepts it only when **both** the old and
+  new checkpoint presented carry the matching brands. This is the garden's first witness
+  carried across two brand scopes simultaneously — and it needs no new primitive, just the
+  E0451 seal and the E0308-class brand, twice.
+- **The *direction* of the relation does *not* reduce — it is a runtime fold.** Which
+  snapshot is the prefix (the older one) is not a type fact: two generative brands are
+  **unordered** (leaf 11's finding, inherited), so the type system does not know `'old`
+  precedes `'new`. Both are ordinary `Checkpoint`s, so `verify_consistency` type-checks in
+  *either* direction, and only the runtime RFC 6962 fold — checking `old.size ≤ new.size`
+  and that the proof reconstructs **both** roots — decides which way the prefix relation
+  holds. **The brand relates but does not order.**
+
+So leaf 11's *instance-identity-vs-timeline-freshness* boundary for **one** snapshot
+becomes *which-two-vs-which-is-older* for a **relation**: the same residue (a timeline fact
+stays runtime), now on a relation's **direction**. And the consistency proof — the object
+that actually establishes the ordering — is unbranded wire data (all-public
+`ConsistencyProof`), exactly as leaf 11's `Witness` is: you cannot brand serialized bytes,
+and what they carry is precisely the timeline fact the brand cannot hold. (The bottom-up
+"promote a lone node" Merkle build reproduces RFC 6962's recursive largest-power-of-two
+split, so `merkle` / `accumulator` machinery serves consistency proofs unchanged.)
+
+> ⚠ **TOY.** FNV-1a hash (domain-separated leaf/node tags) — a real adversary forges a
+> false consistency proof. Append-only, no deletion or compaction, no signed-tree-head
+> signatures, no inclusion-proof surface. Cross-process equivocation detection (comparing
+> retained tree heads out of band — CT's "gossip" problem) stays a runtime check; the
+> relational brand is the subject, not transparency-log engineering.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 232 unit tests + 50 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 249 unit tests + 53 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

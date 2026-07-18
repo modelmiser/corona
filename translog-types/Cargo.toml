@@ -1,0 +1,16 @@
+[package]
+name = "translog-types"
+version = "0.1.0"
+edition = "2021"
+description = "Corona leaf 17 — Merkle consistency proofs (RFC 6962 / Certificate Transparency) as typestate: a two-snapshot RELATIONAL witness — the brand relates two branded snapshots but does not order them. TOY, not production crypto."
+license = "MIT"
+
+# Deliberately depends on nothing — not even `corona-core`. Like `merkle-types`,
+# `accumulator-types`, and the other hash-membership leaves, this leaf shares the
+# garden's *vocabulary* (here the E0308-class brand and the E0451 seal), not any of
+# the core's shared *modules*: a log's consistency is a yes/no prefix fact (no k-of-n
+# `Threshold`) and a hash tree is not field arithmetic (no `gf256`). It reuses
+# `accumulator-types`' *discipline* (a fresh generative-lifetime brand + a scoped
+# closure), not its *code* — the two-snapshot *relation* is the subject, and importing
+# the accumulator's per-epoch brand would tangle it with this leaf's paired brands.
+[dependencies]
