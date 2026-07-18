@@ -17,13 +17,15 @@
 //!
 //! **Cost does NOT reduce — and this is the garden's newest residue.** The seal witnesses
 //! that `H(challenge ‖ nonce)` clears the target, and **nothing about how the nonce was
-//! found**. A `Solution` discovered on the *first guess* is **byte-identical** to one
-//! discovered after `2^BITS` hashes: same nonce-shaped field, same digest, same leading-zero
-//! count. Effort is a property of the **search that produced** a value, not of the value —
-//! two identical values can have had arbitrarily different production costs — so **no type,
-//! and no compile-time fact, can witness it.** [`Puzzle::solve`] hands the attempt count back
-//! as a *return value of the search*, deliberately **not** a field of the witness; that
-//! placement is the finding made mechanical.
+//! found**. The *same* winning nonce reached on the first guess or after `2^BITS` hashes mints
+//! the **byte-identical** witness; and no `Solution` — cheaply found or dearly found — carries
+//! any field distinguishing the two: it exposes only the nonce, the digest, the difficulty,
+//! and the leading-zero count, none of which is a measure of search. Effort is a property of
+//! the **search that produced** a value, not of the value — two identical values can have had
+//! arbitrarily different production costs — so **no type, and no compile-time fact, can
+//! witness it.** [`Puzzle::solve`] hands the attempt count back as a *return value of the
+//! search*, deliberately **not** a field of the witness; that placement is the finding made
+//! mechanical.
 //!
 //! This is a residue of a kind the garden did not yet have. The prior irreducible residues
 //! are all facts *about a value or its relations*: the k-of-n **count** (`threshold-types`
@@ -61,19 +63,29 @@
 //!
 //! - **TOY hash — so validity does NOT imply work here.** The backend is a non-cryptographic
 //!   FNV-1a. A real proof of work needs a **preimage-resistant** hash, so that brute-force
-//!   search is the *only* way to clear the target. FNV is invertible/structured, so an
-//!   adversary can compute a clearing nonce **algebraically, with zero search**, and
-//!   [`Puzzle::verify`] will mint a fully genuine [`Solution`] for it (see
-//!   [`a_free_nonce_mints_a_genuine_solution`](self#tests) in the tests). This is the
-//!   recurring garden split (`lamport-types` leaf 5, `frost-types` leaf 12): **the type seals
-//!   validity; only a one-way hash makes validity imply effort.** And even a real hash makes
-//!   validity imply effort only *probabilistically*, only for the *finder*, and **never
-//!   verifiably from the witness** — which is the whole point of the residue.
+//!   search is the *only* way to clear the target. [`Puzzle::verify`] does not care *how* a
+//!   nonce was obtained — it mints a fully genuine [`Solution`] for **any** clearing nonce,
+//!   earned or handed over for free (this is what
+//!   [`a_free_nonce_mints_a_genuine_solution`](self#tests) makes executable: it feeds `verify`
+//!   a nonce from a *trivial scan* that stands in for any zero-work source, and the witness is
+//!   indistinguishable from a "worked-for" one). And because FNV is invertible rather than
+//!   one-way, a real adversary need not even scan — a clearing nonce is computable
+//!   *algebraically* — but that is a weakness of the toy hash, never something a type could
+//!   prevent. This is the recurring garden split (`lamport-types` leaf 5, `frost-types` leaf
+//!   12): **the type seals validity; only a one-way hash makes validity imply effort.** And
+//!   even a real hash makes validity imply effort only *probabilistically*, only for the
+//!   *finder*, and **never verifiably from the witness** — which is the whole point of the
+//!   residue.
 //! - **The witness is unbranded.** A [`Solution`] records the *challenge digest* it was minted
 //!   against (so misuse against a different puzzle is *detectable* via [`Puzzle::owns`], the
 //!   leaf-7 full-anchor posture) but is `Clone` and carries no lifetime brand. A per-puzzle
 //!   brand (à la `accumulator-types` leaf 11) would *bind* it; this leaf leaves it disclosed,
 //!   since its subject is the **cost residue**, not provenance (∥ `bloom-types` leaf 16).
+//!   Note [`Puzzle::owns`] is a *tag* comparison (`challenge_digest == fnv1a(challenge)`), so
+//!   its detection is only as strong as the hash's collision resistance — which the toy FNV
+//!   does *not* provide; a real hash (or a brand) makes it robust. Even a tag collision would
+//!   only let a foreign solution be *presented* as owned, never make it clear the other
+//!   puzzle's actual work target.
 //! - **No real PoW protocol.** No difficulty retargeting, no chain/accumulated work, no
 //!   double-spend/Sybil economics. The security purpose of work — making attacks *expensive* —
 //!   is an **economic** assumption about an adversary's budget, downstream of and out of scope
@@ -331,6 +343,60 @@ mod tests {
         // Independent re-verification: cheap to check.
         let reverified = p.verify(sol.nonce()).expect("the nonce re-verifies");
         assert_eq!(reverified, sol, "verify is deterministic on the same nonce");
+    }
+
+    #[test]
+    fn solve_scans_from_nonce_zero_and_reports_the_exact_attempt_count() {
+        // Pins the WHOLE `solve`-loop boundary class at once (anti-ratchet): the search starts
+        // at nonce 0, counts attempts as first-clearing-nonce + 1, and treats `max_attempts` as
+        // an EXCLUSIVE bound. Kills three otherwise-surviving mutants together:
+        //   * `0..max` -> `1..max`   (skipping nonce 0)
+        //   * `nonce + 1` -> `nonce` (off-by-one in the attempt count)
+        //   * `0..max` -> `0..=max`  (inclusive bound, so `solve(0)` would try nonce 0)
+
+        // (a) A challenge whose nonce-0 digest already clears a 1-bit target (top bit unset).
+        // At BITS=1 nonce 0 is the answer, so it exercises the degenerate low boundary.
+        let nonce0 = (0u32..)
+            .map(|i| format!("nonce0-{i}").into_bytes())
+            .find(|c| work_digest(c, 0).leading_zeros() >= 1)
+            .expect("some challenge is solved by nonce 0 at BITS=1");
+        let p0 = Puzzle::<1>::new(&nonce0);
+        let (sol0, attempts0) = p0.solve(1 << 20).expect("nonce 0 solves a 1-bit target");
+        assert_eq!(
+            sol0.nonce(),
+            0,
+            "solve starts at nonce 0 (kills the `1..` skip)"
+        );
+        assert_eq!(
+            attempts0, 1,
+            "one attempt was made (kills the `nonce`/`nonce+1` off-by-one)"
+        );
+        // (b) `max_attempts == 0` makes ZERO attempts and returns None — even though this very
+        // puzzle's nonce 0 WOULD clear, so an inclusive `0..=0` mutant would wrongly return it.
+        assert_eq!(
+            p0.solve(0),
+            None,
+            "solve(0) tries nothing (kills the `0..=max` bound)"
+        );
+
+        // (c) A non-degenerate challenge (solution well past nonce 0): the attempt count equals
+        // an independently-recomputed first-clearing-nonce + 1 — pins `nonce + 1` off the
+        // degenerate point too, and that `solve` returns the FIRST solution.
+        let p = Puzzle::<4>::new(b"exact-count-probe");
+        let (sol, attempts) = p.solve(1 << 20).expect("a 4-bit puzzle solves");
+        let first_clearing = (0u64..)
+            .find(|&n| p.verify(n).is_some())
+            .expect("some nonce clears a 4-bit target");
+        assert_eq!(
+            sol.nonce(),
+            first_clearing,
+            "solve returns the first clearing nonce"
+        );
+        assert_eq!(
+            attempts,
+            first_clearing + 1,
+            "attempts == first-clearing-nonce + 1 (nonces 0..=first were tried)"
+        );
     }
 
     #[test]
