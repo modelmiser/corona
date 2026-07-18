@@ -559,7 +559,9 @@ fn verify_consistency_hashes(m: usize, n: usize, root1: u64, root2: u64, proof: 
         // in the odd-node case, which cannot fire once `node == 0`, so the final
         // `hash1 == root1` check is *vacuous* here. Soundness still holds: `hash2` folds
         // *from* `root1` up to the new root, so a wrong old root fails `hash2 == root2`.
-        // (Confirmed by the power-of-two adversarial fuzz — 0 wrong-old-root acceptances.)
+        // (Pinned by the exhaustive oracle test `every_prefix_is_consistent_with_every_extension`,
+        // which flips the old root for all `1 <= m <= n <= 33` — including the power-of-two
+        // `m` that reach this branch — and asserts each is rejected.)
         (root1, root1)
     };
 
