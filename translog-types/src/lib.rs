@@ -793,6 +793,55 @@ mod tests {
     }
 
     #[test]
+    fn malformed_proofs_are_rejected_through_the_typestate() {
+        // Pin the WHOLE malformed-proof guard class in `verify_consistency_hashes` against
+        // reachable inputs fed through the public API — empty, over-length, under-length —
+        // for both power-of-two and non-power-of-two old sizes. Each must return an `Err`,
+        // never panic and never a false `Ok`. This guards two load-bearing lines at once:
+        // the empty-proof early return (line ~534, which prevents the unguarded seed read
+        // `proof[idx]` from panicking on `[]` at non-power-of-two m) and the
+        // `idx >= proof.len()` bounds checks (which catch the power-of-two empty case).
+        let log = built(&[b"a", b"b", b"c", b"d", b"e", b"f"]); // size 6
+        for old_size in [
+            2usize, /* power of two */
+            3,      /* non-power-of-two */
+            5,
+        ] {
+            log.consistency_scoped(old_size, |old, new, proof| {
+                assert!(new.verify_consistency(&old, proof).is_ok());
+                // Empty hashes where a genuine proof is non-empty → Inconsistent, NOT a panic.
+                let empty = ConsistencyProof {
+                    hashes: vec![],
+                    old_size,
+                    new_size: 6,
+                };
+                assert_eq!(
+                    new.verify_consistency(&old, &empty),
+                    Err(ConsistencyError::Inconsistent),
+                    "empty proof at old_size={old_size} must be Inconsistent, not panic"
+                );
+                // Over-length: a spurious trailing node is rejected (slack).
+                let mut long = proof.clone();
+                long.hashes.push(0xdead_beef);
+                assert_eq!(
+                    new.verify_consistency(&old, &long),
+                    Err(ConsistencyError::Inconsistent),
+                    "over-length proof at old_size={old_size} must be Inconsistent"
+                );
+                // Under-length: dropping a node is rejected.
+                let mut short = proof.clone();
+                short.hashes.pop();
+                assert_eq!(
+                    new.verify_consistency(&old, &short),
+                    Err(ConsistencyError::Inconsistent),
+                    "under-length proof at old_size={old_size} must be Inconsistent"
+                );
+            })
+            .unwrap();
+        }
+    }
+
+    #[test]
     fn equal_size_is_a_clean_empty_proof_edge() {
         // old_size == current: the prefix is the whole tree, the proof is empty, and the
         // relation holds by root equality.
