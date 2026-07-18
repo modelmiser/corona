@@ -628,16 +628,38 @@ work (complete tasks, add children, keep siblings).
       is *primitive-coverage depth on the brand* of a new kind: not a wider *reading* (leaf 11
       read it to its widest for one snapshot) but the brand's first use across **two** scopes.
       See CHARTER.
-- [ ] **Cold-review the leaf-17 surface to convergence** — PENDING (fires on next "ready").
+- [x] **Cold-review the leaf-17 surface to convergence — CONVERGED** (effective arc R1→R4,
+      MOD 1→[R2 invalidated]→1→0→0; R3 & R4 two consecutive clean, 0 CRIT/0 MOD across all 3
+      lenses; commits `02aebc2`→`1c79ccc`→`65a4f7e`, R3/R4 no-change). Shipped code CLEAN and
+      adversarial NO BREAK throughout — the RFC 6962 prove/verify engine was cross-checked
+      against THREE independent from-scratch oracles (byte-exact for all `1≤m≤n` up to 40–80;
+      tree-equivalence to RFC's recursive split reproduced independently for n≤300), and the
+      seal/brands held under ~900k fuzz + dozens of safe-code forge/laundering vectors (all
+      rejected E0451/E0521/E0277; both compile-fails fail for the right reason). Every real
+      finding was a **test-coverage gap on the malformed-proof guard class**: R1 pinned the
+      `m==n` slack (non-empty proof at equal size); R2(redo) pinned the `m<n` empty-proof guard
+      (an unpinned line whose removal caused a reachable OOB panic) — closed the WHOLE class at
+      once with one test driving empty/short/long proofs through the public API for both
+      power-of-two and non-power-of-two old sizes (anti-ratchet, leaf-16 lesson). Residual LOWs
+      (the `NotAPrefix` variant relabel — soundness-irrelevant, redundant guard; 5 defensible
+      claims wording nits) LEFT per converge-then-stop. ⚠ PROCESS: R2 was invalidated by an
+      orchestration error — the mutation-testing correctness lens ran concurrently with the
+      adversarial fuzz lens on the SAME working tree, so the adversarial lens caught an
+      in-flight `while node % 2 == 0` mutation and reported a spurious CRITICAL (HEAD was always
+      correct). Fixed by re-running with per-lens crate copies; recorded as
+      [[feedback_cold_review_no_concurrent_mutation]]. translog 18 unit + 3 doctests; workspace
+      250 + 53, all gates green.
 
-## Garden state (2026-07-18d)
+## Garden state (2026-07-18e)
 
-- **Leaf 17 (`translog-types`, Merkle consistency proofs) SEEDED, cold-review PENDING.**
-  corona-core + **17 leaves**. The first witness spanning two branded snapshots: the brand
-  relates two snapshots (both bite) but does not order them (direction stays a runtime fold) —
-  the relational generalization of leaf 11's instance-vs-freshness boundary. An *unscheduled*
-  open-ended domain seeded after the garden was again a finished thought (∥ leaf 16). Leaves
-  1–16 remain cold-reviewed; leaf 17 is the only open review item. Nothing auto-starts.
+- **ALL 17 leaves cold-reviewed. No review debt.** corona-core + **17 leaves**. Leaf 17
+  (`translog-types`, Merkle consistency proofs — the first witness spanning two branded
+  snapshots: the brand relates two snapshots but does not order them; the relational
+  generalization of leaf 11's instance-vs-freshness boundary) CONVERGED this session (effective
+  4 rounds after an orchestration-error re-run). It was an *unscheduled* open-ended domain
+  seeded after the garden was again a finished thought (∥ leaf 16). The garden is again a
+  finished thought: any further leaf is a fresh open-ended domain, not backlog; wind-down
+  synthesis remains a valid close. Nothing auto-starts.
 
 ## Garden state (2026-07-18c)
 
