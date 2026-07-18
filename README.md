@@ -775,11 +775,14 @@ ways**, and the residue is of a new kind.
   the one primitive it seems to call for has the exact **opposite** guarantee: the
   E0308-class **brand** makes *"this came from that"* a compile fact — it **relates**;
   unlinkability demands *"you cannot tell this came from that"*, a guaranteed **absence**
-  of a relation. A type can *bind* provenance; it structurally cannot *certify the
-  absence* of a binding. So the brand here is not "honestly unused" but **structurally
-  inapplicable** — and that impossibility is the thesis. (A distant cousin of `crdt`'s
-  Sol-obligation, leaf 15, but a different *kind* of external argument: a statistical
-  hiding reduction, not a deductive algebraic law.)
+  of a relation. A provenance **brand** can *bind* provenance but cannot *certify its
+  absence* (a claim about the brand, not type systems in general — information-flow
+  typing can certify a *possibilistic* absence of flow; what escapes it too is
+  unlinkability's *statistical* indistinguishability between two distributions, which
+  lives in a distribution the compiler never sees). So the brand here is not "honestly
+  unused" but **structurally inapplicable** — and that impossibility is the thesis. (A
+  distant cousin of `crdt`'s Sol-obligation, leaf 15, but a different *kind* of external
+  argument: a statistical hiding reduction, not a deductive algebraic law.)
 
 > ⚠ **TOY — and the toy *inverts* the usual break.** Unlinkability is
 > **information-theoretically perfect** here (for `m` coprime to `n`, a uniform `r` makes
@@ -793,7 +796,7 @@ ways**, and the residue is of a new kind.
 ## Build
 
 ```sh
-cargo test --workspace          # 283 unit tests + 60 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty])
+cargo test --workspace          # 286 unit tests + 60 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

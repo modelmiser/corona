@@ -39,10 +39,13 @@
 //!
 //! > The E0308-class **brand** exists to make *"this value came from that scope"* a
 //! > compile-time fact — it **relates**. Unlinkability demands *"you cannot tell this came
-//! > from that"* — a guaranteed **absence** of a relation. A type can *bind* provenance; it
-//! > structurally cannot *certify the absence* of a binding, because absence-of-information is
-//! > not a property of any value or pair of values — it lives in the shape of a *distribution*
-//! > the compiler never sees.
+//! > from that"* — a guaranteed **absence** of a relation. A provenance **brand** can *bind*
+//! > provenance but cannot *certify its absence*. (This is a claim about the brand, not about
+//! > type systems in general: information-flow type systems — Jif, FlowCaml — *do* certify a
+//! > *possibilistic* absence of information flow. What escapes them too is unlinkability's
+//! > actual content — a *statistical* indistinguishability between two distributions, a
+//! > probabilistic hyperproperty that lives in the shape of a distribution the compiler never
+//! > sees.)
 //!
 //! So the brand here is not merely "honestly unused" (as in many leaves) but **structurally
 //! inapplicable**: the leaf whose subject is a non-relation is precisely the one that cannot
@@ -114,14 +117,15 @@
 //! let message: u64 = 1234;
 //!
 //! // 1. The user blinds the message with a fresh one-time factor (E0382: linear).
+//! //    The factor is bound to `pk`, so `blind`/`unblind` need no key argument.
 //! let factor = BlindingFactor::generate(&pk, 0xC0FFEE);
-//! let (blinded, unblinder) = factor.blind(&pk, message);
+//! let (blinded, unblinder) = factor.blind(message);
 //!
 //! // 2. The signer signs the BLINDED value — it never learns `message`.
 //! let blind_sig = signer.sign_blinded(blinded);
 //!
 //! // 3. The user unblinds into an ordinary signature on `message`.
-//! let sig_value = unblinder.unblind(&pk, blind_sig);
+//! let sig_value = unblinder.unblind(blind_sig);
 //!
 //! // 4. Anyone can verify it against the public key — the E0451 checked path mints the seal.
 //! let verified = pk.verify(message, sig_value).expect("a valid blind-issued signature");
@@ -139,9 +143,9 @@
 //! use blindsig_types::{Signer, BlindingFactor};
 //! let pk = Signer::toy_textbook_rsa().public_key();
 //! let factor = BlindingFactor::generate(&pk, 1);
-//! let (_b1, _u1) = factor.blind(&pk, 111);
+//! let (_b1, _u1) = factor.blind(111);
 //! // error[E0382]: use of moved value: `factor`
-//! let (_b2, _u2) = factor.blind(&pk, 222);
+//! let (_b2, _u2) = factor.blind(222);
 //! ```
 //!
 //! You cannot forge the sealed witness from safe code (the private fields are the seal, E0451):
@@ -261,8 +265,16 @@ impl Signer {
     }
 
     /// Build a toy signer from primes `p`, `q` and public exponent `e`, computing
-    /// `d = e⁻¹ mod φ(n)`. Returns `None` if `e` is not invertible mod `φ(n)`.
+    /// `d = e⁻¹ mod φ(n)`. Returns `None` if `p < 2` or `q < 2` (so `φ(n) > 0` and the
+    /// subtractions below cannot underflow), or if `e` is not invertible mod `φ(n)`.
+    ///
+    /// **Note:** this does not check `p`, `q` are actually *prime* — a toy convenience. Passing
+    /// non-primes yields a `Signer` whose `φ` is wrong, so signing/verification will be
+    /// inconsistent; but it will not panic or build an unusable (`n ≤ 1`) key.
     pub fn from_primes(p: u64, q: u64, e: u64) -> Option<Self> {
+        if p < 2 || q < 2 {
+            return None;
+        }
         let n = p.checked_mul(q)?;
         let phi = (p - 1) * (q - 1);
         let d = mod_inv(e, phi)?;
@@ -347,12 +359,18 @@ impl PublicKey {
 /// unlinkability itself — that is the residue; see the crate docs.)
 ///
 /// **Why hiding is perfect:** for `r` uniform over the units of `ℤ/n` and a message `m`
-/// coprime to `n`, `rᵉ` is uniform over the units (since `x ↦ xᵉ` is a bijection there), so
-/// `m' = m·rᵉ` is uniform and *statistically independent of `m`*. The signer's view therefore
-/// carries zero information about the message — information-theoretically, at any modulus size.
+/// coprime to `n`, `rᵉ` is uniform over the units (since `gcd(e, φ(n)) = 1` — a precondition
+/// of any RSA key — makes `x ↦ xᵉ` a bijection there), so `m' = m·rᵉ` is uniform and
+/// *statistically independent of `m`*. The signer's view therefore carries zero information
+/// about the message — information-theoretically, at any modulus size.
+///
+/// A factor is **bound to the public key it was built for** (it stores that key's `n` and `e`),
+/// so [`blind`](BlindingFactor::blind) needs no key argument and there is no way to blind under
+/// a *different* key than the one the factor was validated against.
 pub struct BlindingFactor {
     r: u64,
     n: u64,
+    e: u64,
 }
 
 impl std::fmt::Debug for BlindingFactor {
@@ -372,7 +390,11 @@ impl BlindingFactor {
     pub fn from_scalar(pk: &PublicKey, r: u64) -> Option<Self> {
         let r = r % pk.n;
         if r != 0 && gcd(r, pk.n) == 1 {
-            Some(BlindingFactor { r, n: pk.n })
+            Some(BlindingFactor {
+                r,
+                n: pk.n,
+                e: pk.e,
+            })
         } else {
             None
         }
@@ -389,6 +411,7 @@ impl BlindingFactor {
                 return BlindingFactor {
                     r: candidate,
                     n: pk.n,
+                    e: pk.e,
                 };
             }
         }
@@ -404,14 +427,19 @@ impl BlindingFactor {
     /// Returns the [`BlindedMessage`] to send to the signer and the [`Unblinder`] (carrying
     /// `r⁻¹`) needed to recover the final signature.
     ///
+    /// Uses the `n` and `e` the factor was **built with** (no key argument): the factor is bound
+    /// to its key, so it can never be blinded under a modulus its `r` was not validated against
+    /// — which is why the inverse below is always defined.
+    ///
     /// Takes `self` **by value**: the factor cannot be used again, so two messages can never
     /// share a blinding factor (which would link them). This move *is* the one-time discipline.
-    pub fn blind(self, pk: &PublicKey, message: u64) -> (BlindedMessage, Unblinder) {
-        let r_e = mod_exp(self.r, pk.e, pk.n);
-        let blinded = mod_mul(message % pk.n, r_e, pk.n);
-        // `r` is a unit (checked at construction), so this inverse always exists.
-        let r_inv = mod_inv(self.r, pk.n).expect("a BlindingFactor's r is a unit by construction");
-        (BlindedMessage(blinded), Unblinder { r_inv, n: pk.n })
+    pub fn blind(self, message: u64) -> (BlindedMessage, Unblinder) {
+        let r_e = mod_exp(self.r, self.e, self.n);
+        let blinded = mod_mul(message % self.n, r_e, self.n);
+        // `r` is a unit mod `self.n` (checked at construction, and `self.n` is the only modulus
+        // this factor is ever used with), so this inverse always exists.
+        let r_inv = mod_inv(self.r, self.n).expect("a BlindingFactor's r is a unit mod its own n");
+        (BlindedMessage(blinded), Unblinder { r_inv, n: self.n })
     }
 }
 
@@ -457,8 +485,9 @@ impl std::fmt::Debug for Unblinder {
 
 impl Unblinder {
     /// **Unblind:** `s = blind_sig · r⁻¹ mod n = mᵈ mod n` — an ordinary signature on the
-    /// original message. Consumes `self` (one unblind per session).
-    pub fn unblind(self, _pk: &PublicKey, blind_sig: BlindSignature) -> u64 {
+    /// original message. Uses the `n` the parent factor was built with; consumes `self` (one
+    /// unblind per session).
+    pub fn unblind(self, blind_sig: BlindSignature) -> u64 {
         mod_mul(blind_sig.0, self.r_inv, self.n)
     }
 }
@@ -513,6 +542,10 @@ mod tests {
                 "mod_exp({base},{exp}) mod {n}"
             );
         }
+        // The n == 1 guard: everything is ≡ 0 mod 1 (without the guard, the identity accumulator
+        // would wrongly return 1). Pins the otherwise-uncovered special case.
+        assert_eq!(mod_exp(5, 3, 1), 0, "mod_exp(_, _, 1) is 0");
+        assert_eq!(mod_exp(0, 0, 1), 0);
     }
 
     #[test]
@@ -554,6 +587,28 @@ mod tests {
     }
 
     #[test]
+    fn from_primes_rejects_degenerate_parameters_without_panicking() {
+        // Guards the input-validation surface: p < 2 or q < 2 would otherwise underflow
+        // (p-1) or make phi == 0 (division by zero in mod_inv). All must return None, none panic.
+        assert!(Signer::from_primes(0, 53, 17).is_none(), "p = 0");
+        assert!(Signer::from_primes(61, 0, 17).is_none(), "q = 0");
+        assert!(
+            Signer::from_primes(1, 53, 1).is_none(),
+            "p = 1 (phi would be 0)"
+        );
+        assert!(Signer::from_primes(61, 1, 1).is_none(), "q = 1");
+        assert!(Signer::from_primes(1, 1, 1).is_none(), "both degenerate");
+        // A non-invertible e (shares a factor with phi) is still rejected cleanly.
+        assert!(
+            Signer::from_primes(61, 53, 2).is_none(),
+            "e = 2 shares a factor with phi=3120"
+        );
+        // The smallest sane keys build.
+        assert!(Signer::from_primes(2, 3, 5).is_some());
+        assert!(Signer::from_primes(3, 5, 7).is_some());
+    }
+
+    #[test]
     fn verify_is_the_sole_minter_and_rejects_a_bad_signature() {
         let signer = Signer::toy_textbook_rsa();
         let pk = signer.public_key();
@@ -569,6 +624,53 @@ mod tests {
         assert!(pk.verify(m + 1, s).is_none());
     }
 
+    #[test]
+    fn verify_reduces_message_and_signature_mod_n() {
+        // Pin the documented contract that `verify` reduces both inputs mod n (so callers may
+        // pass un-reduced values). Without this, the three `% self.n` reductions in `verify` are
+        // untested — a mutant dropping any of them survives, and the `== message` (unreduced)
+        // mutant would wrongly REJECT a valid signature whose message is given as `m + n`.
+        let signer = Signer::toy_textbook_rsa();
+        let pk = signer.public_key();
+        let n = pk.modulus();
+        let m = 777;
+        let s = signer.sign_unblinded_for_test(m);
+
+        // Genuine pair verifies, and the sealed values are reduced.
+        let base = pk.verify(m, s).expect("valid");
+        // The SAME pair with each input shifted by +n must behave identically (reduced first).
+        let shifted_msg = pk
+            .verify(m + n, s)
+            .expect("message + n verifies (reduced first)");
+        let shifted_sig = pk
+            .verify(m, s + n)
+            .expect("signature + n verifies (reduced first)");
+        let shifted_both = pk.verify(m + n, s + n).expect("both + n verify");
+        for v in [&shifted_msg, &shifted_sig, &shifted_both] {
+            assert_eq!(v.message(), base.message(), "message() is reduced mod n");
+            assert_eq!(v.value(), base.value(), "value() is reduced mod n");
+        }
+    }
+
+    #[test]
+    fn a_factor_is_bound_to_its_key_and_blinds_without_a_key_argument() {
+        // The factor carries the (n, e) it was built with, so `blind`/`unblind` need no key.
+        // This is a full round-trip under a NON-default key, proving the bound (n, e) are used
+        // (not some ambient default) and that there is no cross-key surface to mismatch.
+        let signer = Signer::from_primes(101, 103, 7).expect("a valid toy key");
+        let pk = signer.public_key();
+        let message = 5000 % pk.modulus();
+        let factor = BlindingFactor::generate(&pk, 0xFEED);
+        let (blinded, unblinder) = factor.blind(message);
+        let s = unblinder.unblind(signer.sign_blinded(blinded));
+        assert_eq!(
+            s,
+            signer.sign_unblinded_for_test(message),
+            "blind path under a bound non-default key recovers the true signature"
+        );
+        assert!(pk.verify(message, s).is_some());
+    }
+
     // ---- The blind protocol: the positive face of unlinkability. ----
 
     #[test]
@@ -581,9 +683,9 @@ mod tests {
         let message = 2024 % pk.modulus();
 
         let factor = BlindingFactor::generate(&pk, 0xABCD_1234);
-        let (blinded, unblinder) = factor.blind(&pk, message);
+        let (blinded, unblinder) = factor.blind(message);
         let blind_sig = signer.sign_blinded(blinded);
-        let s_blind = unblinder.unblind(&pk, blind_sig);
+        let s_blind = unblinder.unblind(blind_sig);
 
         let s_direct = signer.sign_unblinded_for_test(message);
         assert_eq!(
@@ -604,8 +706,8 @@ mod tests {
 
         for seed in 0..64u64 {
             let factor = BlindingFactor::generate(&pk, seed);
-            let (blinded, unblinder) = factor.blind(&pk, message);
-            let s = unblinder.unblind(&pk, signer.sign_blinded(blinded));
+            let (blinded, unblinder) = factor.blind(message);
+            let s = unblinder.unblind(signer.sign_blinded(blinded));
             assert_eq!(s, truth, "session {seed} recovers the one true signature");
         }
     }
@@ -641,7 +743,7 @@ mod tests {
             // Feeding THAT factor and THAT message to the honest blind step reproduces B exactly.
             let factor =
                 BlindingFactor::from_scalar(&pk, r).expect("explaining r is a valid factor");
-            let (blinded, _u) = factor.blind(&pk, m);
+            let (blinded, _u) = factor.blind(m);
             assert_eq!(
                 blinded.value(),
                 observed_blinded,
@@ -663,7 +765,7 @@ mod tests {
         let pk = signer.public_key();
         let message = 500;
         let factor = BlindingFactor::generate(&pk, 77);
-        let (blinded, _u) = factor.blind(&pk, message);
+        let (blinded, _u) = factor.blind(message);
         assert_ne!(
             blinded.value(),
             message % pk.modulus(),
@@ -687,8 +789,8 @@ mod tests {
 
         let f1 = BlindingFactor::from_scalar(&pk, r).unwrap();
         let f2 = BlindingFactor::from_scalar(&pk, r).unwrap(); // the reuse the compiler forbids
-        let (b1, _u1) = f1.blind(&pk, m1);
-        let (b2, _u2) = f2.blind(&pk, m2);
+        let (b1, _u1) = f1.blind(m1);
+        let (b2, _u2) = f2.blind(m2);
 
         // Signer-side: ratio of the two blinded views equals the ratio of the messages.
         let view_ratio = mod_mul(b1.value(), mod_inv(b2.value(), n).unwrap(), n);
