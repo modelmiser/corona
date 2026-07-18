@@ -31,13 +31,14 @@
 //! unlinkability (a one-time factor), never unlinkability *the property*. That property is the
 //! guarantee that the signer's **view** — the blinded value `m'` it saw — is *statistically
 //! independent* of the message `m`, so that every `(m, s)` output is equally consistent with
-//! every session. This is not a fact about a value (leaf 1/12's count), nor a *production
-//! history* of a value (`pow`'s cost, leaf 18 — which leaf 18 stresses is pointedly *not* a fact
-//! about the value), nor a relation between values (`translog`'s ordering, leaf 17), nor a domain
-//! law (`crdt`'s merge algebra, leaf 15). It is a property of the **adversary's view across a
-//! distribution** — an
-//! *indistinguishability* claim. And the one primitive it seems to call for is the one whose
-//! guarantee is its exact **opposite**:
+//! every session. Every prior residue in the garden is a fact about the *values or structure a
+//! program manipulates* — among them the k-of-n *count* (leaf 1/12), a value's production *cost*
+//! (leaf 18, pointedly *not* a fact about the value but about its history), the *ordering* of two
+//! snapshots (leaf 17), a snapshot's *freshness* (leaf 11), and whether a merge obeys its *law*
+//! (leaf 15). Unlinkability is the first that is *not* a fact about any value in the program at
+//! all: it is a property of an outside **observer's view** — a statistical *indistinguishability*
+//! over a distribution the program never names. And the one primitive it seems to call for is the
+//! one whose guarantee is its exact **opposite**:
 //!
 //! > The E0308-class **brand** exists to make *"this value came from that scope"* a
 //! > compile-time fact — it **relates**. Unlinkability demands *"you cannot tell this came
@@ -52,8 +53,8 @@
 //! So the brand here is not merely "honestly unused" (as in many leaves) but **structurally
 //! inapplicable**: the leaf whose subject is a non-relation is precisely the one that cannot
 //! use the relation primitive, and that impossibility *is* the thesis. Unlinkability is the
-//! garden's newest residue — the first that is a property of the *observer's view* rather than
-//! of a value, a relation, a history, or a law. It is a distant cousin of `crdt-types`'
+//! garden's newest residue — the first that is a property of an outside *observer's view* rather
+//! than of any value the program manipulates. It is a distant cousin of `crdt-types`'
 //! proof-obligation (leaf 15) — both are discharged *outside* the type — but of a different
 //! **kind** of external argument: leaf 15 hands off a universally-quantified *algebraic law*
 //! (a deductive identity, Sol's territory); leaf 19 hands off a *statistical
@@ -234,9 +235,11 @@ fn splitmix64(state: &mut u64) -> u64 {
 ///
 /// Its defining capability, [`sign_blinded`](Signer::sign_blinded), signs a
 /// [`BlindedMessage`] — a value from which the underlying message is information-theoretically
-/// hidden. The signer therefore **cannot** learn what it signs, which is unlinkability's
-/// structural root: it is not a discipline the signer chooses to follow, it is the shape of
-/// the only signing API it has.
+/// hidden. A signer *following the blind protocol* therefore never learns what it signs — the
+/// root of unlinkability. This is a **protocol** discipline, not a compiler-enforced one: a
+/// `#[doc(hidden)]` cleartext [`sign_unblinded_for_test`](Signer::sign_unblinded_for_test) also
+/// exists as a test aid, so unlinkability rests on the client never revealing `m`, not on the
+/// absence of any cleartext-signing method.
 pub struct Signer {
     n: u64,
     e: u64,
@@ -614,9 +617,22 @@ mod tests {
             Signer::from_primes(61, 53, 2).is_none(),
             "e = 2 shares a factor with phi=3120"
         );
-        // The smallest sane keys build.
-        assert!(Signer::from_primes(2, 3, 5).is_some());
+        // The smallest sane keys build — pins BOTH lower bounds (p=2 and q=2 accepted).
+        assert!(
+            Signer::from_primes(2, 3, 5).is_some(),
+            "p = 2 (smallest prime) accepted"
+        );
+        assert!(
+            Signer::from_primes(3, 2, 5).is_some(),
+            "q = 2 (smallest prime) accepted"
+        );
         assert!(Signer::from_primes(3, 5, 7).is_some());
+        // Overflow of n = p*q is caught by checked_mul -> None (never panics, never builds an
+        // n > u64::MAX key). Both factors are >= 2 so they pass the lower-bound guard first.
+        assert!(
+            Signer::from_primes(1u64 << 33, 1u64 << 33, 3).is_none(),
+            "p*q overflows u64 -> None via checked_mul, no panic"
+        );
     }
 
     #[test]

@@ -769,10 +769,13 @@ ways**, and the residue is of a new kind.
 - **But unlinkability *itself* reduces to no primitive — the newest residue.** E0382 buys
   the *precondition* (a fresh factor), never the *property*: that the signer's **view**
   (the blinded value `m'`) is *statistically independent* of `m`, so every output is
-  equally consistent with every session. That is not a fact about a value (leaf 1/12's
-  count), a *production history* (`pow`'s cost — itself not a fact about the value), a
-  relation (`translog`'s order), or a domain law (`crdt`'s algebra) — it is a property
-  of the **observer's view across a distribution**, an *indistinguishability* claim. And
+  equally consistent with every session. Every prior residue is a fact about the *values
+  or structure a program manipulates* — among them the k-of-n *count* (leaf 1/12), a
+  value's production *cost* (leaf 18), the *ordering* of two snapshots (leaf 17), a
+  snapshot's *freshness* (leaf 11), and whether a merge obeys its *law* (leaf 15).
+  Unlinkability is the first that is *not* a fact about any value in the program at all —
+  it is a property of an outside **observer's view**, a statistical *indistinguishability*
+  over a distribution the program never names. And
   the one primitive it seems to call for has the exact **opposite** guarantee: the
   E0308-class **brand** makes *"this came from that"* a compile fact — it **relates**;
   unlinkability demands *"you cannot tell this came from that"*, a guaranteed **absence**
