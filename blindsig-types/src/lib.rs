@@ -274,10 +274,11 @@ impl Signer {
     /// subtractions below cannot underflow), or if `e` is not invertible mod `φ(n)`.
     ///
     /// **Note:** this does not check `p`, `q` are actually *prime*, nor that `e` is a sane
-    /// public exponent (`e = 0` or `e = 1` build degenerate but self-consistent keys) — a toy
-    /// convenience. Passing non-primes yields a `Signer` whose `φ` is wrong, so
-    /// signing/verification will be inconsistent; but it will not panic or build an unusable
-    /// (`n ≤ 1`) key, and `verify` stays sound relative to whatever `(n, e)` the key carries.
+    /// public exponent — a toy convenience. A non-invertible `e` (including `e = 0`, since
+    /// `gcd(0, φ) = φ > 1`) is rejected as `None`; `e = 1` builds a degenerate identity key.
+    /// Passing non-primes yields a `Signer` whose `φ` may be wrong, so signing/verification can
+    /// be inconsistent; but it will not panic or build an unusable (`n ≤ 1`) key, and `verify`
+    /// stays sound relative to whatever `(n, e)` the key carries.
     pub fn from_primes(p: u64, q: u64, e: u64) -> Option<Self> {
         if p < 2 || q < 2 {
             return None;
