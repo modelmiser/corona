@@ -451,13 +451,19 @@ The two witness species return, split through *time*: a long-term `SecretShare`
 (reusable, `Clone`-able, redacted) meets the per-session linear `Nonce` at
 `Nonce::respond`.
 
-> ⚠ **TOY.** Breakable group (discrete log is trivial, so the published `Yᵢ` leak `sᵢ`);
-> a *deterministic* nonce, so a retained seed re-mints it and reopens the reuse hole the
-> linear type closes within a program (the `nonce_reuse_recovers_the_master_secret` test
-> does exactly this — the guarantee is conditional on a freshly-random, discarded nonce,
-> leaf 5's seed caveat). Single nonce, **no binding factors** — real FROST uses two nonces
-> to resist the Drijvers concurrent-session (ROS) attack; this naive version is clean for
-> the typestate but concurrently insecure. Trusted dealer, no DKG or abort/retry.
+> ⚠ **TOY.** Breakable group (discrete log is trivial, so the published `Yᵢ` leak `sᵢ`).
+> The challenge lives in `Z_q` (`q = 257`), so it is only **8 bits** — Fiat–Shamir is
+> defeated: a party holding *no shares* can craft nonce commitments to hit a predicted
+> challenge and forge a signature from the public key alone (the
+> `toy_challenge_forgery_from_public_key` test does exactly this). Both are the *group's*
+> weakness, not the type discipline's — E0382/E0451 hold regardless; a real large-order
+> group with a cryptographic hash closes them. The nonce is *deterministic*, so a retained
+> seed re-mints it and reopens the reuse hole the linear type closes within a program (the
+> `nonce_reuse_recovers_the_master_secret` test — the guarantee is conditional on a
+> freshly-random, discarded nonce, leaf 5's seed caveat). Single nonce, **no binding
+> factors** — real FROST uses two nonces to resist the Drijvers concurrent-session (ROS)
+> attack; this naive version is clean for the typestate but concurrently insecure. Trusted
+> dealer, no DKG or abort/retry.
 
 ## Build
 

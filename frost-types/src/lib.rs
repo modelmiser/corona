@@ -30,15 +30,18 @@
 //! *was* the secret; here a throwaway nonce guards a share that survives the session.
 //!
 //! **2. The k-of-n aggregation is a count → stays a runtime check (leaf 1's
-//! residue).** The coordinator sums the partial responses; the sum equals
-//! `k + c·s` **iff** the coalition carries `≥ k` consistent shares, because
-//! `Σ λᵢ·sᵢ = f(0) = s` is Lagrange interpolation. Two prior leaves are in play, and
-//! which matters: the interpolation runs over the *prime field* `Z_q` of `vss-types`
-//! (leaf 2) — **not** the char-2 GF(256) of `threshold-types` (leaf 1) — and it
-//! happens *in the exponent* (`s` is never materialized; summing the `zᵢ`
-//! reconstructs `g^s`). What this layer borrows from **leaf 1** is narrower and
-//! exact: its *residue* — that the k-of-n **count** stays a runtime check, not a
-//! type-level fact. [`SigningPackage::new`] and [`aggregate`] check the coalition
+//! residue).** The coordinator sums the partial responses into `z = Σ zᵢ`; writing
+//! the aggregate nonce `k = Σ kᵢ`, this equals `k + c·s` **iff** *every* member of the
+//! (`≥ k`-sized) coalition responds — because `Σ λᵢ·sᵢ = f(0) = s` is Lagrange
+//! interpolation over *that specific* coalition, so a missing member breaks the sum
+//! ([`aggregate`] requires exactly the coalition, not merely `k` of it). Two prior
+//! leaves are in play, and which matters: the interpolation runs over the *prime
+//! field* `Z_q` of `vss-types` (leaf 2) — **not** the char-2 GF(256) of
+//! `threshold-types` (leaf 1) — and it happens *in the exponent*: `s` is never
+//! materialized as a value; it lives only inside the aggregate scalar `z`, meeting
+//! `Y = g^s` at verification (`g^z = R·Y^c`). What this layer borrows from **leaf 1**
+//! is narrower and exact: its *residue* — that the k-of-n **count** stays a runtime
+//! check, not a type-level fact. [`SigningPackage::new`] and [`aggregate`] check the coalition
 //! against a runtime [`corona_core::Threshold`] — imported because the subject *is*
 //! k-of-n (∥ leaves 6 and 8; the *runtime-count* parallel is leaf 8's specifically,
 //! leaf 6 moves its count to compile time). A type cannot hold "these are `k`
@@ -62,7 +65,13 @@
 //! and — when a partial fails — excluding the cheater and re-running with **fresh
 //! nonces** (you cannot reuse them; see split 1). That is coordination over a
 //! partially-honest, partially-online set: `quorum-types`' territory, exactly the
-//! handoff `ecash-types` (leaf 9) drew from corona's side.
+//! handoff `ecash-types` (leaf 9) drew from corona's side. (One honest scoping: what
+//! the seal *itself* delivers is **type**-unforgeability — you cannot fabricate a
+//! `VerifiedPartial`. That the witness *means* honest share-knowledge, rather than a
+//! merely-satisfied public equation, rests on a real discrete-log-hard group, as every
+//! garden seal rests on its backend; the toy's 8-bit challenge lets a party craft
+//! commitments to forge one — see the banner. The *reduction to E0451* is about the
+//! checked-path seal, not the group's hardness.)
 //!
 //! So the vocabulary spent here is **E0382** (the nonce), **E0451** (the partial and
 //! signature seals), the **runtime k-of-n count** (leaf 1's residue), and the
@@ -82,6 +91,17 @@
 //! - **Breakable group ([`schnorr`]).** Tiny parameters; discrete log is trivial, so
 //!   the signature secures nothing and the published `Yᵢ` leak `sᵢ`. A real leaf
 //!   swaps in a prime-order group behind these types.
+//! - **8-bit challenge → forgeable (Fiat–Shamir defeated).** The challenge lives in
+//!   `Z_q` (`q = 257`), so it is only 8 bits. A party holding *no shares* can predict a
+//!   challenge and then *craft* nonce commitments `Rᵢ = g^{zᵢ}·Yᵢ^{-λᵢ·c}` (public
+//!   group ops only) that satisfy [`SigningPackage::verify_partial`] and aggregate to a
+//!   signature [`GroupKey::verify`] accepts — an outright forgery from the public key, needing
+//!   neither the broken dlog above nor nonce reuse (the
+//!   `toy_challenge_forgery_from_public_key` test does exactly this). The same tiny
+//!   space lets two messages share a challenge, transferring a signature between them.
+//!   A real large-order group with a cryptographic hash makes the fixed-point and
+//!   collision searches infeasible and closes both — this is the *group's* job, not
+//!   the type discipline's (which stays intact: E0382 and E0451 hold regardless).
 //! - **Deterministic nonce.** [`Nonce::generate`] is a toy PRG of `(index, seed)`, so
 //!   a retained seed **re-mints** the nonce and reopens the reuse hole the linear type
 //!   closes *within a program* — the `nonce_reuse_recovers_the_master_secret` test
@@ -292,9 +312,16 @@ pub struct PartialResponse {
 ///
 /// Private fields, no public constructor: a `VerifiedPartial` can *only* be minted
 /// by the local check `g^{zᵢ} = Rᵢ · Yᵢ^{λᵢ·c}` — where `Rᵢ` is the nonce the signer
-/// *committed into this package*, not one the response reports — so holding one is
-/// proof the signer computed `zᵢ` honestly from its committed share **and committed
-/// nonce**. It also records the `challenge` it answered, binding it to this session:
+/// *committed into this package*, not one the response reports. In a real
+/// discrete-log-hard group with a large challenge space, holding one is evidence the
+/// signer knew its committed share and nonce — the satisfying `zᵢ` is otherwise
+/// uncomputable, and a committed `Rᵢ` cannot be chosen to fit a target challenge
+/// (Fiat–Shamir). **In this toy neither holds** (breakable dlog + an 8-bit challenge —
+/// see the crate banner): the E0451 *type*-unforgeability is real (you cannot fabricate
+/// the struct), but the *cryptographic* content rests on the backend, not the type,
+/// exactly as in every garden seal (∥ `lamport-types`: the type stops key *reuse*, the
+/// hash stops *forgery*). It also records the `challenge` it answered, binding it to
+/// this session:
 /// [`aggregate`] accepts only `VerifiedPartial`s whose challenge matches the package,
 /// so a partial cannot be replayed into a different session. (This is a *value-level*
 /// session binding — a recorded fact, like `mss-types`' `minted_by`, not the
@@ -358,6 +385,12 @@ pub enum PackageError {
     BelowThreshold { have: usize, need: usize },
     /// Two commitments share a participant index.
     DuplicateParticipant { index: u16 },
+    /// A participant index is outside `1..q` — not a canonical scalar-field element.
+    /// Because indices are compared as `u16` but used as `Z_q` evaluation points, an
+    /// out-of-range index (`0`, or `≥ q`) could alias another mod `q` and make a
+    /// Lagrange denominator vanish; the sole session constructor rejects it here
+    /// ("canonicalize at the seal", as `vss-types` does for share indices).
+    InvalidParticipant { index: u16 },
 }
 
 /// Why a partial response could not be produced.
@@ -540,6 +573,11 @@ impl SigningPackage {
         let mut coalition = Vec::with_capacity(commitments.len());
         let mut r = 1u32;
         for c in commitments {
+            // Indices must be canonical Z_q elements (1..q): a u16 ≥ q or 0 could
+            // alias another mod q, collapsing a Lagrange denominator to f_inv(0).
+            if c.index == 0 || c.index as u32 >= schnorr::Q {
+                return Err(PackageError::InvalidParticipant { index: c.index });
+            }
             if coalition.contains(&c.index) {
                 return Err(PackageError::DuplicateParticipant { index: c.index });
             }
@@ -968,6 +1006,97 @@ mod tests {
         assert_eq!(
             schnorr::g_pow(schnorr::G, recovered),
             gk.public_key() as u32
+        );
+    }
+
+    #[test]
+    fn toy_challenge_forgery_from_public_key() {
+        // DOCUMENTED TOY-PARAMETER BREAK (see the crate banner): with an 8-bit
+        // challenge, a party holding NO shares forges a signature from the public key
+        // alone — Fiat–Shamir defeated by the tiny challenge space. It picks z₁=z₂=0,
+        // so `verify_partial`'s check `g^0 = Rᵢ·Yᵢ^{λᵢc}` forces `Rᵢ = Yᵢ^{-λᵢc}`; then
+        // it finds a challenge `c` that is a fixed point of `c = H(ΠRᵢ, Y, m)` and the
+        // crafted commitments reproduce it. The crafted partials pass the local check
+        // and aggregate to a signature `GroupKey::verify` accepts. A real large-order
+        // group + cryptographic hash closes this; the TYPE discipline (E0382/E0451) is
+        // untouched — this is the group's weakness, the analogue of the broken-dlog
+        // forgery, not a typestate escape.
+        let thr = t(2, 3);
+        let (gk, _shares) = deal(0x2a, thr, &[7]).unwrap(); // attacker discards the shares
+        let xs = [1u32, 2];
+        let y1 = gk.verification_share(1).unwrap() as u32;
+        let y2 = gk.verification_share(2).unwrap() as u32;
+        let lam1 = schnorr::lagrange_at_zero(&xs, 1);
+        let lam2 = schnorr::lagrange_at_zero(&xs, 2);
+        // Rᵢ = Yᵢ^{-λᵢc}; the aggregate is Y^{-c}. Search a message whose fixed-point
+        // challenge exists (each message has one with prob ≈ 1 − 1/e).
+        let craft = |c: u32| -> (u32, u32) {
+            let r1 = schnorr::g_pow(y1, schnorr::f_sub(0, schnorr::f_mul(lam1, c)));
+            let r2 = schnorr::g_pow(y2, schnorr::f_sub(0, schnorr::f_mul(lam2, c)));
+            (r1, r2)
+        };
+        let mut forged = None;
+        'search: for n in 0u32..10_000 {
+            let msg = format!("FORGED-{n}");
+            for c in 0..schnorr::Q {
+                let (r1, r2) = craft(c);
+                let r_agg = schnorr::g_mul(r1, r2);
+                if schnorr::challenge(r_agg, gk.public_key() as u32, msg.as_bytes()) == c {
+                    forged = Some((msg, c, r1 as u16, r2 as u16));
+                    break 'search;
+                }
+            }
+        }
+        let (msg, c, r1, r2) = forged.expect("some message has a fixed-point challenge");
+        let commitments = [
+            NonceCommitment { index: 1, r: r1 },
+            NonceCommitment { index: 2, r: r2 },
+        ];
+        let package = SigningPackage::new(&gk, msg.as_bytes(), &commitments, thr).unwrap();
+        assert_eq!(
+            package.challenge() as u32,
+            c,
+            "fixed-point challenge reproduced"
+        );
+        // The crafted partials (z = 0) pass the LOCAL check — the toy break.
+        let v1 = package
+            .verify_partial(&gk, &PartialResponse { index: 1, z: 0 })
+            .expect("crafted partial passes verify_partial in the toy");
+        let v2 = package
+            .verify_partial(&gk, &PartialResponse { index: 2, z: 0 })
+            .expect("crafted partial passes verify_partial in the toy");
+        let sig = aggregate(&gk, &package, &[v1, v2], thr).unwrap();
+        // ... and the signature VERIFIES — a forgery from the public key, no shares.
+        assert!(
+            gk.verify(msg.as_bytes(), &sig).is_some(),
+            "documented toy forgery is accepted"
+        );
+    }
+
+    #[test]
+    fn congruent_mod_q_indices_are_refused_at_package() {
+        // Regression: indices distinct as u16 but congruent mod q (differ by 257) must
+        // be rejected by the sole session constructor — else a Lagrange denominator
+        // vanishes and respond/verify_partial would panic in f_inv(0).
+        let (gk, _shares) = deal(0x2a, t(2, 3), &[7]).unwrap();
+        let c1 = NonceCommitment {
+            index: 1,
+            r: gk.public_key(),
+        };
+        let c258 = NonceCommitment {
+            index: 258,
+            r: gk.public_key(),
+        };
+        let err = SigningPackage::new(&gk, b"m", &[c1, c258], t(2, 3)).unwrap_err();
+        assert_eq!(err, PackageError::InvalidParticipant { index: 258 });
+        // Index 0 (the secret's own evaluation point) is refused too.
+        let c0 = NonceCommitment {
+            index: 0,
+            r: gk.public_key(),
+        };
+        assert_eq!(
+            SigningPackage::new(&gk, b"m", &[c0, c1], t(2, 3)).unwrap_err(),
+            PackageError::InvalidParticipant { index: 0 }
         );
     }
 
