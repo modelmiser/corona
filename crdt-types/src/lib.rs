@@ -391,6 +391,18 @@ mod tests {
     // ---- for the Sol lemmas; the code below them shows the compiler enforces none.
 
     #[test]
+    fn merge_preserves_a_zero_crossing_replica() {
+        // Pins `merge`'s `or_insert(0)` fill: a replica present in `other` at count 0 but
+        // absent in `self` must stay 0, not become nonzero. Kills an `or_insert(0)` ->
+        // `or_insert(k>0)` mutant (which would read the absent-side default as k, so
+        // `max(k, 0) = k`). Reachable through the fully public API — the tests stand in
+        // for the Sol lemmas, so this merge behavior is pinned too.
+        let joined = GCounter::new(ReplicaId(1)).merge(&GCounter::new(ReplicaId(2)));
+        assert_eq!(joined.value(), 0);
+        assert_eq!(joined.count_for(ReplicaId(2)), 0);
+    }
+
+    #[test]
     fn merge_is_idempotent() {
         // The defining CvRDT safety property: re-delivering a state changes nothing.
         let a = state(1, &[(1, 3), (2, 7)]);

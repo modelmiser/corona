@@ -512,9 +512,17 @@ work (complete tasks, add children, keep siblings).
       LOWs fixed:** `value` saturation now pinned by a test (killed a `wrapping_add` mutant
       + made the "pinned by tests" claim true); "maps exactly"→"mirrors"; linear-posture
       list +leaf 7; "three sole minters"→precise (new/merge produce, increment advances,
-      Clone duplicates). Watch next round: verify the reframed E0080/bounded claim is now
-      accurate (not under- or over-corrected), and that the convergence-vs-correctness split
-      reads true. crdt 16 unit + 3 doctests; workspace 208 + 46, gates green.
+      Clone duplicates). crdt 16 unit + 3 doctests; workspace 208 + 46, gates green.
+      **R2 = FIRST CLEAN ROUND (0 CRITICAL + 0 MODERATE across all 3 lenses).** Correctness
+      CLEAN (all R1 mutants confirmed killed) + 1 real LOW (merge `or_insert(0)` zero-crossing
+      unpinned → surviving mutant) → FIXED with a focused test (verified: passes on correct
+      code, FAILS on the `or_insert(1)` mutant). Adversarial NO BREAK + **calibration
+      CONFIRMED** — an independent rebuild of the bounded const-eval got `max` compiling,
+      `+`/`min` → E0080 with the EXACT doc messages, and found the "doesn't scale to u64"
+      is if anything *understated* (const-eval trips `long_running_const_eval` at ~40-count
+      u16). Claims CLEAN — 0 genuine defects, claim 2 empirically validated vs live rustc; 5
+      defensible-wording nits LEFT per converge-then-stop. crdt 17 unit + 3 doctests;
+      workspace 209 + 46. NEED R3 (confirmation) for 2 consecutive clean → convergence.
 
 ## Garden state (2026-07-18)
 
