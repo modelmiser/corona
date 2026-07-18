@@ -661,4 +661,26 @@ mod tests {
         assert_ne!(work_digest(b"chal", 1), work_digest(b"chal", 2));
         assert_ne!(work_digest(b"chal-a", 7), work_digest(b"chal-b", 7));
     }
+
+    #[test]
+    fn work_digest_follows_the_documented_wire_format_exactly() {
+        // Pin the documented wire contract H(challenge ‖ nonce_le) against an INDEPENDENT
+        // golden value (computed off-crate: FNV-1a-64 over the bytes b"abc" ++ 1u64.to_le).
+        // Because `work_digest` is the sole producer AND consumer of the digest, the whole
+        // closed API stays self-consistent under a mis-ordered concatenation or a big-endian
+        // nonce — so nothing but an external oracle catches those mutants. This one literal
+        // kills BOTH the concat-swap (`nonce_le ‖ challenge`) and the byte-order
+        // (`to_be_bytes`) mutations, which otherwise survive the entire suite; an external
+        // re-verifier follows exactly this contract.
+        assert_eq!(
+            work_digest(b"abc", 1),
+            0x23ea_2dc1_f2bd_a48a,
+            "digest must be FNV-1a over challenge THEN the little-endian nonce"
+        );
+        // Spelled-out cross-check: the same bytes, concatenated in the documented order,
+        // hashed by the (separately golden-vector-pinned) fnv1a.
+        let mut expected = b"abc".to_vec();
+        expected.extend_from_slice(&1u64.to_le_bytes());
+        assert_eq!(work_digest(b"abc", 1), fnv1a(&expected));
+    }
 }
