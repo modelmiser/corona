@@ -356,21 +356,34 @@ work (complete tasks, add children, keep siblings).
       on the brand* — the brand widened from provenance to snapshot-version identity,
       and its first intra-primitive boundary drawn (the symmetric partner to leaf 10's
       on E0382). See CHARTER.
-- [ ] Cold-review the leaf-11 surface to convergence (awaits a "ready"). Watch the
-      highest-risk class (leaf-9/10 lesson): the cross-leaf comparison sentences —
-      the "∥ leaf 9 / ∥ leaf 10 / symmetric partner" claims assert facts about code
-      no one is looking at. And the epoch==count / staleness-by-root==staleness-by-epoch
-      simplification is a likely precision target.
+- [x] Cold-review the leaf-11 surface to convergence — CONVERGED at round 3 (2
+      consecutive clean rounds; commits f6a061c→1f5a707→<this>). Arc: LOW 6→1→0, MOD
+      0→0→0 — **the code carried ZERO findings in all three rounds** (correctness fully
+      clean; adversarial NO BREAK, ~90+ exploit crates rejected with exact codes
+      E0451/E0521/E0277; the staleness "no security weight" claim confirmed empirically
+      each round; the cross-size count-coincidence forgery — old_size=3/idx=0 vs
+      new_size=4/idx=0 — correctly rejected at the root comparison). Every finding was
+      doc precision; **every claims finding was a cross-leaf comparison** (the
+      predicted highest-risk class). R1: 6 LOWs (3-vs-2 split flattening; "unbranded by
+      necessity" led with the weaker reason → now scope-escape; leaf-1 over-unified
+      into the freshness reason → "runtime by nature, a count"; Stale verdict's
+      no-security-weight made explicit; test-comment overclaim). R2: 1 LOW —
+      self-inflicted by R1's "its old root differs" (imprecise: append-only ⇒ a stale
+      witness usually carries the wrong sibling COUNT, caught at the count guard, not
+      the root comparison) → reworded to the precise count-based dichotomy; R3 proved
+      it airtight (append-only growth only converts a promotion into a pairing, so
+      equal count forces the old root exactly). R3: 0 findings. Leaf-9/10
+      prose-mutation-ratchet observed once (R1 fix → R2 finding) and closed.
 
 ## Garden state (2026-07-17)
 
-- **Leaf 11 (`accumulator-types`) SEEDED, not yet cold-reviewed.** corona-core + 11
-  leaves; 10 fully cold-reviewed. Vocabulary complete (leaf 6), composition
-  demonstrated (7) + repeated (8), outer edge drawn (9), and **both value primitives
-  read to their widest with a matched pair of intra-primitive boundaries** — E0382
-  (leaf 10, logical vs memory-level) and the E0308-class brand (leaf 11,
-  instance-identity vs timeline-freshness). Next: a "ready" to cold-review leaf 11,
-  another breadth leaf (FROST, fountain/LT, XMSS), or wind-down synthesis.
+- **All 11 leaves cold-reviewed.** corona-core + 11 leaves; vocabulary complete
+  (leaf 6), composition demonstrated (7) + repeated (8), outer edge drawn (9), and
+  **both value primitives read to their widest with a matched pair of intra-primitive
+  boundaries** — E0382 (leaf 10, logical vs memory-level) and the E0308-class brand
+  (leaf 11, instance-identity vs timeline-freshness). No open thesis direction. Next
+  is the user's call: wind-down synthesis (the natural close), or the CHARTER's
+  remaining breadth (FROST, fountain/LT, XMSS).
 
 ## Parking lot (garden, not scheduled)
 
