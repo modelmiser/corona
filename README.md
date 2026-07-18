@@ -771,8 +771,9 @@ ways**, and the residue is of a new kind.
   (the blinded value `m'`) is *statistically independent* of `m`, so every output is
   equally consistent with every session. Every prior residue is a fact about the *values
   or structure a program manipulates* — among them the k-of-n *count* (leaf 1/12), a
-  value's production *cost* (leaf 18), the *ordering* of two snapshots (leaf 17), a
-  snapshot's *freshness* (leaf 11), and whether a merge obeys its *law* (leaf 15).
+  value's production *cost* (leaf 18 — *not* a fact about the value but about its
+  history), the *ordering* of two snapshots (leaf 17), a snapshot's *freshness* (leaf
+  11), and whether a merge obeys its *law* (leaf 15).
   Unlinkability is the first that is *not* a fact about any value in the program at all —
   it is a property of an outside **observer's view**, a statistical *indistinguishability*
   over a distribution the program never names. And
