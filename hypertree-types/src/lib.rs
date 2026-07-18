@@ -25,17 +25,20 @@
 //! reused verbatim. The nesting demands no private access and no new vocabulary — so
 //! composition is not merely *repeatable* (leaf 8) but *self-nesting*.
 //!
-//! **(2) Composing *stateful* leaves needs *coordinated* linear state — the new
-//! datum.** Leaves 7 and 8 composed **stateless verification** (`merkle`/`erasure`
-//! verify are pure functions of their inputs). Here **both** composed instances are
-//! *stateful*: each `MssKeychain` carries a linear one-time-use counter (leaf 7's
-//! `sign_next(self)`). A hypertree must advance **two** such counters *in lockstep* —
-//! the bottom once per signature, the top once per subtree exhaustion — and never let
-//! them desync. [`HyperKeychain::sign_next`] does this by taking **`self` by value**:
-//! the entire nested state is one linear object, so a single move consumes both
-//! counters together and a stale hypertree state is a **compile error** (E0382). The
-//! composition of stateful leaves is *strictly harder* than of stateless ones, and
-//! E0382 is exactly the tool for it — no new primitive.
+//! **(2) Composing *two* stateful leaves needs *coordinated* linear state — the new
+//! datum.** Leaf 8 composed two **stateless** verifications (`erasure`/`merkle` decode
+//! and verify are pure functions of their inputs). Leaf 7 composed **one** stateful
+//! operand — lamport's linear signing key (leaf 5's `sign(self)`, E0382) — with
+//! stateless merkle membership, so it already carried a **single** linear counter (its
+//! headline was "E0382 lifted from key to keychain"). A hypertree is the first to
+//! compose **two** stateful operands: *both* the top and bottom `MssKeychain`s carry a
+//! linear one-time-use counter, and they must advance *in lockstep* — the bottom once
+//! per signature, the top once per subtree exhaustion — with no desync. So the genuinely
+//! new datum is **not** statefulness (leaf 7 had it) but the **coordination of two**
+//! linear counters. [`HyperKeychain::sign_next`] achieves it by taking **`self` by
+//! value**: the entire nested state is one linear object, so a single move advances both
+//! counters together and a stale hypertree state is a **compile error** (E0382) — no new
+//! primitive.
 //!
 //! **(3) The catastrophe lives at the *persistence boundary*** — a boundary datum
 //! that re-lands on leaves 9 and 11. Stateful hash-based signatures are notoriously

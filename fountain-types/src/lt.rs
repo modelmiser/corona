@@ -47,8 +47,11 @@ pub fn robust_soliton_cdf(k: usize) -> Vec<f64> {
     let r = (c * (kf / delta).ln().max(1.0) * kf.sqrt()).max(1.0);
     let spike = ((kf / r).round() as usize).clamp(1, k);
 
-    let mut w = vec![0.0_f64; k + 1]; // w[d] for d in 1..=k
-                                      // ideal soliton
+    // `k + 1` slots for the 1-indexed weights `w[1..=k]`. `checked_add` turns the
+    // degenerate `k == usize::MAX` (an impossible source length) into a clear panic
+    // instead of a silent wrap-to-empty-vec and later out-of-bounds index.
+    let mut w = vec![0.0_f64; k.checked_add(1).expect("k must be < usize::MAX")]; // w[d] for d in 1..=k
+                                                                                  // ideal soliton
     w[1] += 1.0 / kf;
     for (d, wd) in w.iter_mut().enumerate().skip(2) {
         *wd += 1.0 / ((d * (d - 1)) as f64);

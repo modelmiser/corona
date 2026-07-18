@@ -58,7 +58,9 @@
 //!   band, exactly as leaf 3 takes the `corona_core::Threshold`. A
 //!   wrong `k'` derives *different* symbol plans (indices are drawn mod `k'`), so
 //!   decoding almost always stalls or yields wrong bytes. Nothing binds `k` to the
-//!   symbols.
+//!   symbols. (An implausibly large `k` — near `usize::MAX`, i.e. a source no real
+//!   slice could hold — panics rather than allocating the impossible; a real caller
+//!   cannot reach it, since [`symbol`] takes `k` from an actual slice length.)
 //! - **Symbols are unverified, public, and forgeable.** A [`Symbol`] carries no
 //!   secret and no authentication; anyone can fabricate `(seed, value)` pairs.
 //!   [`Decoded`] is therefore a **typestate token** (it came from [`decode`]'s
@@ -103,7 +105,11 @@
 
 #![forbid(unsafe_code)]
 
-pub mod lt;
+// The LT machinery is *below* the crate's sealed boundary. The public surface is the
+// typestate: `symbol` / `decode` / `Symbol` / `Decoded`. Keeping `lt` private means the
+// helpers' preconditions (`k >= 1`, in-range plan indices) — upheld by every internal
+// caller — cannot be violated by an external one calling a low-level function directly.
+mod lt;
 
 /// One encoded symbol of a rateless stream: `(seed, value)`.
 ///

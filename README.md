@@ -532,14 +532,17 @@ primitive** and (∥ leaf 8) **zero new rungs** into leaf 7: it builds entirely 
 
 - **Composition self-nests.** Not merely *repeatable* (leaf 8) but recursive — a leaf
   composed with itself, working through the same sealed public API with no private access.
-- **Composing *stateful* leaves needs *coordinated* linear state — the new datum.** Leaves
-  7/8 composed *stateless verification* (merkle/erasure `verify` are pure functions). Here
-  **both** composed instances are stateful — each `MssKeychain` carries a linear
-  one-time-use counter — and `HyperKeychain::sign_next(self)` threads **two** counters *in
-  lockstep* (the bottom once per signature, the top once per subtree exhaustion) inside one
-  move. The whole nested state is a single linear object, so a stale hypertree is a compile
-  error (E0382) and no counter can desync. Composing stateful leaves is strictly harder
-  than stateless, and E0382 is exactly the tool — no new primitive.
+- **Composing *two* stateful leaves needs *coordinated* linear state — the new datum.** Leaf
+  8 composed two *stateless* verifications (erasure/merkle decode and verify are pure). Leaf
+  7 composed *one* stateful operand — lamport's linear signing key — with stateless merkle,
+  so it already had a single linear counter ("E0382 lifted from key to keychain"). A
+  hypertree is the first to compose **two** stateful operands: both the top and bottom
+  `MssKeychain`s carry a linear one-time-use counter, and `HyperKeychain::sign_next(self)`
+  threads **two** counters *in lockstep* (the bottom once per signature, the top once per
+  subtree exhaustion) inside one move — the whole nested state is a single linear object, so
+  a stale hypertree is a compile error (E0382) and no counter can desync. The new datum is
+  the *coordination of two* counters (leaf 7 already had one), and E0382 is exactly the tool
+  — no new primitive.
 - **The catastrophe lives at the persistence boundary.** Stateful hash-based signatures'
   real-world break is one-time-index reuse across process restarts, VM clones, and
   backup-restores. E0382 guards the *in-memory* state value; it cannot guard a serialized
