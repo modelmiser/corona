@@ -376,12 +376,22 @@ impl BloomFilter {
         if self.m_bits != other.m_bits || self.k != other.k {
             return None;
         }
-        let bits = self
+        let bits: Vec<u64> = self
             .bits
             .iter()
             .zip(&other.bits)
             .map(|(a, b)| a | b)
             .collect();
+        // Structural invariant: a filter's word count is a function of `m_bits` alone. The
+        // shape guard above makes the two `bits` vecs equal length, so the `zip` cannot
+        // truncate; this backstops that — any weakening of the guard (e.g. `!=` -> `<`, which
+        // would let a larger filter union a smaller one and silently drop words) trips here in
+        // debug/test builds instead of producing a malformed filter that panics at `get_bit`.
+        debug_assert_eq!(
+            bits.len(),
+            self.m_bits.div_ceil(64),
+            "union must preserve the word-count invariant (shape guard failed)"
+        );
         Some(BloomFilter {
             bits,
             m_bits: self.m_bits,
@@ -565,12 +575,30 @@ mod tests {
 
     #[test]
     fn union_requires_matching_shape() {
+        // Pin the WHOLE shape guard, BOTH directions of each mismatch — a guard weakened to an
+        // asymmetric comparison (`!=` -> `<` or `>`) would let one ordering through, truncate
+        // the `zip`, and build a malformed filter that panics at `get_bit`. So test smaller
+        // *and* larger on each axis, not just one.
         let a = BloomFilter::new(128, 3);
+        // m_bits mismatch, both orderings.
         assert!(
             a.union(&BloomFilter::new(256, 3)).is_none(),
-            "different m_bits"
+            "smaller m_bits union larger"
         );
-        assert!(a.union(&BloomFilter::new(128, 4)).is_none(), "different k");
+        assert!(
+            BloomFilter::new(256, 3).union(&a).is_none(),
+            "larger m_bits union smaller (the asymmetric-guard mutant)"
+        );
+        // k mismatch, both orderings.
+        assert!(
+            a.union(&BloomFilter::new(128, 5)).is_none(),
+            "smaller k union larger"
+        );
+        assert!(
+            BloomFilter::new(128, 5).union(&a).is_none(),
+            "larger k union smaller"
+        );
+        // Only an exact shape match unions.
         assert!(
             a.union(&BloomFilter::new(128, 3)).is_some(),
             "same shape unions"
@@ -717,6 +745,39 @@ mod tests {
         assert!(matches!(f.query(b"x"), Membership::PossiblyPresent(_)));
         // No false negative even in the degenerate case.
         assert!(is_present(&f, b"x"));
+    }
+
+    #[test]
+    fn a_non_multiple_of_64_bit_count_addresses_its_top_word() {
+        // Pins the `div_ceil(64)` word sizing at a bit count just past a word boundary. With
+        // m_bits = 65 the array needs 2 words; an UNDER-allocating mutant (`div_ceil(64)` ->
+        // `div_ceil(65)`, one word) makes any probe landing at bit index >= 64 panic out of
+        // bounds. The crate's other tests all use multiples of 64 (or sizes where div_ceil
+        // doesn't differ), so this edge was unpinned. Deterministic: pick an item whose probes
+        // reach the top word.
+        let f = BloomFilter::new(65, 4);
+        let item = (0u32..)
+            .map(|i| format!("top-word-{i}").into_bytes())
+            .find(|it| f.probe_positions(it).any(|p| p >= 64))
+            .expect("some item probes the second word of a 65-bit filter");
+        let mut g = BloomFilter::new(65, 4);
+        g.insert(&item); // must not panic — the top word must exist
+        assert!(
+            is_present(&g, &item),
+            "no false negative and no OOB at a non-multiple-of-64 size"
+        );
+        assert_eq!(g.m_bits(), 65);
+    }
+
+    #[test]
+    fn the_backend_is_genuine_fnv_1a_64() {
+        // Pins the documented hash pedigree ("FNV-1a") with the standard 64-bit test vectors,
+        // so mutating the mixing step (`* prime` -> `+ prime`) or the constants is caught and
+        // the "FNV-1a" claim in the docs is itself tested. Empty input yields the offset basis;
+        // "a" and "foobar" are canonical FNV-1a-64 vectors.
+        assert_eq!(fnv1a(FNV_OFFSET_A, b""), 0xcbf2_9ce4_8422_2325);
+        assert_eq!(fnv1a(FNV_OFFSET_A, b"a"), 0xaf63_dc4c_8601_ec8c);
+        assert_eq!(fnv1a(FNV_OFFSET_A, b"foobar"), 0x8594_4171_f739_67e8);
     }
 
     // ---- State posture: sealed, monotone, public (non-secret) Debug. ----
