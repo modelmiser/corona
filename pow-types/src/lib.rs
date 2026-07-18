@@ -65,10 +65,10 @@
 //!   FNV-1a. A real proof of work needs a **preimage-resistant** hash, so that brute-force
 //!   search is the *only* way to clear the target. [`Puzzle::verify`] does not care *how* a
 //!   nonce was obtained — it mints a fully genuine [`Solution`] for **any** clearing nonce,
-//!   earned or handed over for free (this is what
-//!   [`a_free_nonce_mints_a_genuine_solution`](self#tests) makes executable: it feeds `verify`
-//!   a nonce from a *trivial scan* that stands in for any zero-work source, and the witness is
-//!   indistinguishable from a "worked-for" one). And because FNV is invertible rather than
+//!   earned or handed over for free (this is what the
+//!   `a_free_nonce_mints_a_genuine_solution_the_wrong_thing_succeeds` test makes executable: it
+//!   feeds `verify` a nonce from a *trivial scan* that stands in for any zero-work source, and
+//!   the witness is indistinguishable from a "worked-for" one). And because FNV is invertible rather than
 //!   one-way, a real adversary need not even scan — a clearing nonce is computable
 //!   *algebraically* — but that is a weakness of the toy hash, never something a type could
 //!   prevent. This is the recurring garden split (`lamport-types` leaf 5, `frost-types` leaf
