@@ -500,7 +500,14 @@ work (complete tasks, add children, keep siblings).
       and the point is *what* discharges the second half: nothing in the garden at all, but
       a **proof in another repo** (Sol). The check names a fourth thing the garden leans on
       beyond discipline/code/surfaces — Sol's lemma library. See CHARTER.
-- [ ] **Cold-review the leaf-15 surface to convergence** (IN PROGRESS). **R1 done** (3
+- [x] **Cold-review the leaf-15 surface to convergence — CONVERGED** (5 rounds, MOD arc
+      2→0→2→0→0; R4 & R5 two consecutive clean, 0 CRIT/0 MOD across all 3 lenses; commits
+      `7161521`→`74ac610`→`7311889`→`b635c6b`→convergence). Seal held vs every vector (incl.
+      bare `{..base}` FRU → E0451); negative claim independently rebuilt by 4 adversaries
+      (`max` compiles, `+`/`min` → E0080 exact messages; `SemilatticeJoin` marker trait
+      vacuous → no law-as-type); exhaustive mutation sweeps R4/R5 all-killed bar 2 documented
+      equivalent mutants; 20k-op fuzz never decreased a value. Detail below.
+- [x] **Cold-review the leaf-15 surface to convergence** (IN PROGRESS). **R1 done** (3
       blind lenses): seal proven (NO BREAK — ~7 construction/mutation probes rejected at
       exact codes E0451/E0277/E0616/E0608). **2 MODERATE, both fixed:** (M-const, adversarial
       +claims CROSS-CONFIRMED) the "no primitive expresses the laws / E0080 unused" absolute
@@ -543,8 +550,11 @@ work (complete tasks, add children, keep siblings).
 
 ## Garden state (2026-07-18)
 
-- **Leaf 15 (`crdt-types`) SEEDED; cold-review PENDING** (fires on next "ready"). All 14
-  prior leaves remain cold-reviewed. corona-core + **15 leaves**.
+- **ALL 15 leaves cold-reviewed. No review debt.** corona-core + **15 leaves**. Leaf 15
+  (`crdt-types`, the CvRDT grow-only counter) CONVERGED this session (5 rounds). Both
+  negative-space seams are now drawn — leaf 9 → `quorum-types` (coordination), leaf 15 →
+  **Sol** (proof) — completing the CALM pair. The garden is again a finished thought: any
+  further leaf is an open-ended new domain, not backlog. Nothing auto-starts.
 
 ## Garden state (2026-07-17)
 
