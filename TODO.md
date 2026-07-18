@@ -424,6 +424,29 @@ work (complete tasks, add children, keep siblings).
       probes across the two rounds all rejected; 20,000 randomized honest sessions
       verified, 0 corrupted partials accepted). 25 unit + 3 doctests; workspace 173 + 38.
 
+## Now (leaf 14 — hypertree-types)
+
+- [x] **Seed leaf 14: XMSS^MT hypertree = `mss ∘ mss`** (`95a2261`, pushed). The garden's
+      first RECURSIVE composition — `mss-types` (leaf 7) composed with itself. Top keychain
+      signs a bottom keychain's root; bottom signs the message; one long-term key certifies
+      a `top×bottom` virtual keyspace. Findings (no new primitive; zero new rungs into
+      leaf 7): (1) composition **self-nests** (not just repeats — leaf 8); (2) **THE NEW
+      DATUM** — composing **stateful** leaves needs **coordinated** linear state:
+      `sign_next(self)` threads two linear counters in lockstep inside one move (E0382,
+      verified — borrow checker rejects a stale chain); (3) the index-reuse catastrophe
+      lives at the **persistence boundary** (restart/VM-clone/restore) = leaf 9 wire + leaf
+      11 unbranded-wire, for signature state, why stateless SPHINCS+ exists; (bonus)
+      composition can **discharge** an obligation (leaf 7's adopt capacity-lie closed —
+      the top signs the child anchor). E0382 + E0451; brand inherited internally; E0080
+      unused. 9 unit + 3 doctests; workspace 192 + 43; clippy/fmt/rustdoc -D warnings clean.
+      See CHARTER + README.
+- [ ] **Cold-review the leaf-14 surface to convergence** — fresh blind subagents, 2
+      consecutive clean rounds. Adversarial angles: the nested verify chain (can a
+      cross-subtree or cross-hypertree sig be made to verify? — foreign-key / lied-anchor
+      tests exist, probe harder), the two-counter state machine (off-by-one at the subtree
+      rotation, exhaustion boundary), the capacity-discharge claim, the persistence-boundary
+      framing precision, and the E0451/E0382 seals.
+
 ## Now (leaf 13 — fountain-types)
 
 - [x] **Seed leaf 13: LT rateless erasure coding** (`fe664f9`, pushed). Leaf 3's
@@ -449,14 +472,16 @@ work (complete tasks, add children, keep siblings).
 
 ## Garden state (2026-07-17)
 
-- **All 12 leaves cold-reviewed; leaf 13 seeded (review pending).** corona-core + 13
-  leaves; vocabulary complete (leaf 6), composition demonstrated (7) + repeated (8),
-  outer edge drawn (9), **both value primitives read to their widest with a matched pair
-  of intra-primitive boundaries** — E0382 (leaf 10) and the E0308-class brand (leaf 11)
-  — the **first synthesis leaf** (12 — FROST), and now a **third intra-primitive
-  boundary** *inside the runtime count residue* (13 — LT fountain: exact-count vs
-  emergent-completion). One breadth candidate remains (XMSS hypertree). After leaf 13's
-  review converges, wind-down synthesis is the natural close.
+- **12 leaves cold-reviewed; leaves 13 & 14 seeded (both review-pending).** corona-core +
+  **14 leaves**; vocabulary complete (leaf 6), composition demonstrated (7) + repeated (8)
+  + **self-nested (14)**, outer edge drawn (9), **both value primitives read to their
+  widest with a matched pair of intra-primitive boundaries** — E0382 (leaf 10) and the
+  E0308-class brand (leaf 11) — the **first synthesis leaf** (12 — FROST), a **third
+  intra-primitive boundary** inside the runtime count residue (13 — LT fountain), and the
+  first **recursive composition of stateful leaves** (14 — XMSS^MT hypertree). **Every
+  named CHARTER breadth candidate is now built.** Review debt: 2 leaves (13, 14). After
+  they converge, wind-down synthesis is the natural close — the garden is a finished
+  thought (any further leaf would be an open-ended new domain, not a backlog item).
 
 ## Parking lot (garden, not scheduled)
 
