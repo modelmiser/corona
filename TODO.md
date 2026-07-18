@@ -687,7 +687,36 @@ work (complete tasks, add children, keep siblings).
       = swap placeholder). Contribution is a **new residue category** (cost/effort — the first
       about a value's *production history*) and the second E0451+E0080 pairing, recurring
       leaf 6's parameter-vs-quantity split on a new domain. See CHARTER.
-- [ ] **Cold-review the leaf-18 surface to convergence** — fires on the next "ready".
+- [x] **Cold-review the leaf-18 surface to convergence — CONVERGED** (6 rounds, MOD arc
+      "3+1"→2→0→1→0→0; R5 & R6 two consecutive clean, 0 CRIT/0 MOD across all 3 lenses; commits
+      `f1e8fe6` R1 → `40b2c6a` R2 → `3b88699` R3 → `8b150dc` R4, R5/R6 no-change). **Shipped code
+      CORRECT and adversarial NO BREAK in all six rounds** — the E0451 seal + E0080 wall held under
+      ~60 exploit crates and ~5.3M cumulative fuzz trials (0 forges/panics/false-negatives), and
+      the cost residue was confirmed irrecoverable from a `Solution` every round. **Every real
+      finding was a test-coverage gap of one recurring species — a "sole producer + consumer stays
+      self-consistent" internal-consistency class** the closed API otherwise hides: R1 the `solve`
+      loop boundaries (nonce-0 start / attempt count / exclusive bound), R2 the `Solution` accessor
+      surface (`leading_zeros`/`bits` returns), R4 the `work_digest` wire format (concat + byte
+      order). Each closed by pinning the WHOLE class at once (anti-ratchet, leaf-9/16 lesson) —
+      the last two with **independent off-crate golden literals** (FNV vectors + `work_digest(b"abc",1)
+      == 0x23ea2dc1f2bda48a`), since only an external oracle catches an internally-consistent
+      mis-order. Doc fixes: decoupled the "algebraic zero-search" claim from the scan-based test
+      citation (R1); corrected a false `owns`-collision mechanism after the red-team CONSTRUCTED a
+      real FNV collision showing a colliding challenge is the *same* puzzle, not a laundering (R2);
+      propagated the "byte-identical" tightening to the README (R2); fixed a truncated/dead doc
+      link (R3). Residual LOWs (the defensible "algebraically" diction — 4 lenses agreed defensible;
+      the "exposes only" accessor enumeration) LEFT per converge-then-stop. pow 16 unit + 4
+      doctests; workspace 266 + 57, all gates green.
+
+## Garden state (2026-07-18g)
+
+- **ALL 18 leaves cold-reviewed. No review debt.** corona-core + **18 leaves**. Leaf 18
+  (`pow-types`, proof of work — validity reduces to the E0451 seal, cost does not; the garden's
+  first *cost/effort* residue, about a value's production history, and the second E0451+E0080
+  pairing ∥ leaf 6) CONVERGED this session (6 rounds). It was an *unscheduled* open-ended domain
+  seeded after the garden was again a finished thought (∥ leaves 16, 17). The garden is again a
+  finished thought: any further leaf is a fresh open-ended domain, not backlog; wind-down synthesis
+  remains a valid close. Nothing auto-starts.
 
 ## Garden state (2026-07-18f)
 

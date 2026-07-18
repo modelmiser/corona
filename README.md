@@ -751,7 +751,7 @@ the split adds a residue the garden did not yet have.
 ## Build
 
 ```sh
-cargo test --workspace          # 263 unit tests + 57 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall [static-config + pow difficulty])
+cargo test --workspace          # 266 unit tests + 57 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall [static-config + pow difficulty])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
