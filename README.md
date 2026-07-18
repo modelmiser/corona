@@ -31,7 +31,8 @@ corona/
 ├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
-└── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
+├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
+└── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -703,10 +704,53 @@ split, so `merkle` / `accumulator` machinery serves consistency proofs unchanged
 > retained tree heads out of band — CT's "gossip" problem) stays a runtime check; the
 > relational brand is the subject, not transparency-log engineering.
 
+## Leaf 18: `pow-types`
+
+**Proof of work** (Dwork–Naor 1992; Back's *hashcash* 1997; Nakamoto 2008) — a nonce
+whose hash clears a difficulty target. The garden's standard question of the domain:
+*does "computational work was expended" reduce to the vocabulary?* It **splits**, and
+the split adds a residue the garden did not yet have.
+
+- **Validity reduces to E0451, the same seal.** `Puzzle::verify(nonce)` is the sole
+  minter of a sealed `Solution`: it hashes `challenge ‖ nonce` and mints the witness
+  exactly when the digest clears the target — `merkle-types`' `Root::verify` /
+  `bloom-types`' `query` again, a checked path that is the only door to the witness.
+- **Cost does *not* reduce — the effort residue.** The seal witnesses that the digest
+  clears the target and **nothing about how the nonce was found**. A solution found on
+  the first guess is **byte-identical** to one found after `2^BITS` hashes: effort is a
+  property of the *search that produced* a value, not of the value — two identical
+  values can have had arbitrarily different costs — so no type, and no compile-time
+  fact, can witness it. `Puzzle::solve` hands the attempt count back as a *return value
+  of the search*, deliberately **not** a field of the witness. This is the garden's
+  first residue about a value's **production history** rather than the value itself
+  (the prior residues are all facts *about* a value or its relations — the k-of-n
+  count, freshness, coordination, a proof obligation, emergent completion). It sharpens
+  *the seal witnesses the checked path and nothing more* (leaves 4, 16) onto a new
+  axis: those asked what the seal is silent about the *math* of; this asks what it is
+  silent about the *history* of.
+
+- **∥ leaf 6, the difficulty *parameter* still reduces (E0080).** `Puzzle<const BITS>`
+  is walled by `1 ≤ BITS ≤ 64`: requiring 65 leading zero bits from a 64-bit digest is
+  unsatisfiable, so `Puzzle::<65>::new(…)` does **not build** (`error[E0080]`) — the
+  same "a resource cannot be over-demanded" shape as leaf 6's `K ≤ N`. The *hardness
+  parameter* moves to compile time even though the *work* cannot; leaf 18 is the second
+  leaf to pair **E0451 + E0080**, but where leaf 6's finding was the wall, here the wall
+  is the easy half and the cost residue is the finding.
+
+> ⚠ **TOY.** Non-cryptographic FNV-1a — so validity does **not** imply work here: an
+> adversary can compute a clearing nonce *algebraically, with zero search*, and `verify`
+> mints a fully genuine `Solution` (the recurring split — the type seals validity, only
+> a one-way hash makes validity imply effort; leaves 5, 12). Even a real hash makes
+> validity imply effort only probabilistically, only for the finder, and never verifiably
+> from the witness. The witness is unbranded (challenge-digest-*detectable* via
+> `Puzzle::owns`, not brand-*enforced*). No difficulty retargeting, accumulated-work
+> chain, or Sybil economics — work's purpose (making attacks expensive) is an economic
+> assumption downstream of the type discipline.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 250 unit tests + 53 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall)
+cargo test --workspace          # 263 unit tests + 57 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, const-eval-wall [static-config + pow difficulty])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

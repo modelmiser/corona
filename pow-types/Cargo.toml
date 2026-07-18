@@ -1,0 +1,11 @@
+[package]
+name = "pow-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TOY typestate crate: proof of work (hashcash) — validity reduces to the E0451 seal, cost does not (Corona leaf 18)."
+publish = false
+
+# Leaf 18 of the Corona garden. Standalone: imports neither corona-core nor any
+# sibling leaf — a residue-drawing leaf (cost/effort) leans on nothing in the garden.
+[dependencies]

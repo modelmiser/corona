@@ -650,6 +650,54 @@ work (complete tasks, add children, keep siblings).
       [[feedback_cold_review_no_concurrent_mutation]]. translog 18 unit + 3 doctests; workspace
       250 + 53, all gates green.
 
+## Now (leaf 18 — pow-types)
+
+- [x] **Seed leaf 18: proof of work / hashcash** (`pow-types`) — does "computational work
+      was expended" reduce to the vocabulary? → **it SPLITS, adding the garden's newest
+      residue: cost/effort.** (1) *Validity reduces to E0451* — `Puzzle::verify(nonce)` is the
+      sole minter of a sealed `Solution` (hash `challenge‖nonce`, mint iff the digest clears
+      the target; `merkle`/`bloom` verify again, no new primitive). (2) *Cost does NOT reduce*
+      — the seal witnesses that the digest clears the target and **nothing about how the nonce
+      was found**: a first-guess solution is byte-identical to a `2^BITS`-hash one, because
+      effort is a property of the *search that produced* a value, not of the value (two
+      identical values can have had arbitrarily different costs) → no type/compile-time fact
+      can witness it. `Puzzle::solve` hands the attempt count back as a *return value of the
+      search*, deliberately not a field of the witness. The **first residue about a value's
+      production HISTORY** (prior residues are all facts about a value or its relations: count
+      leaf 1/12, freshness leaf 11, coordination leaf 9, proof-obligation leaf 15,
+      emergent-completion leaf 13) — sharpening *the seal witnesses the checked path and
+      nothing more* (leaves 4/16) from *what math it's silent about* to *what history*.
+      (3) **∥ leaf 6:** the difficulty *parameter* still reduces — `Puzzle<const BITS>` walls
+      `1≤BITS≤64` (65 leading zero bits unsatisfiable from a 64-bit digest → `Puzzle::<65>`
+      does not build; verified vs rustc `error[E0080]: evaluation panicked: … BITS must be
+      <= 64`, and `Puzzle::<0>` → `… must be >= 1`), the same "resource cannot be
+      over-demanded" shape as `K≤N`; the *hardness parameter* moves to compile time even
+      though the *work* cannot. **Second leaf to pair E0451 + E0080** (leaf 6's finding was the
+      wall; here the wall is the easy half, the cost residue is the finding); brand/E0382
+      honestly unused. Standalone (imports nothing — a residue-drawing leaf leans on nothing in
+      the garden). TOY FNV-1a (invertible → a clearing nonce computable algebraically with zero
+      search → `verify` mints a genuine `Solution`; the type seals validity, only a one-way
+      hash makes validity imply effort — leaves 5/12; made executable in
+      `a_free_nonce_mints_a_genuine_solution_the_wrong_thing_succeeds`). Witness unbranded
+      (challenge-digest-detectable via `owns`, not brand-enforced ∥ leaf 16). Compile-fails:
+      two E0080 difficulty walls (`<65>`, `<0>`) + one E0451 sealed-`Solution` forge, all
+      verified vs rustc directly. 13 unit + 4 doctests; workspace **263 unit + 57 doctests**,
+      all gates green (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-18 trigger): nothing to promote (standalone; toy FNV
+      = swap placeholder). Contribution is a **new residue category** (cost/effort — the first
+      about a value's *production history*) and the second E0451+E0080 pairing, recurring
+      leaf 6's parameter-vs-quantity split on a new domain. See CHARTER.
+- [ ] **Cold-review the leaf-18 surface to convergence** — fires on the next "ready".
+
+## Garden state (2026-07-18f)
+
+- **ALL 17 leaves cold-reviewed; leaf 18 SEEDED, cold-review PENDING.** corona-core + **18
+  leaves**. Leaf 18 (`pow-types`, proof of work — validity reduces to the E0451 seal, cost does
+  not; the garden's first *cost/effort* residue, about a value's production history, and the
+  second E0451+E0080 pairing ∥ leaf 6) was seeded this session as an *unscheduled* open-ended
+  domain (∥ leaves 16, 17). Per the garden rhythm, the seed is the unit of finishing; cold
+  review waits for a separate "ready". Nothing else auto-starts.
+
 ## Garden state (2026-07-18e)
 
 - **ALL 17 leaves cold-reviewed. No review debt.** corona-core + **17 leaves**. Leaf 17
