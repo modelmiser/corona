@@ -424,16 +424,39 @@ work (complete tasks, add children, keep siblings).
       probes across the two rounds all rejected; 20,000 randomized honest sessions
       verified, 0 corrupted partials accepted). 25 unit + 3 doctests; workspace 173 + 38.
 
+## Now (leaf 13 — fountain-types)
+
+- [x] **Seed leaf 13: LT rateless erasure coding** (`fe664f9`, pushed). Leaf 3's
+      availability-axis sibling; stress-tests the runtime k-of-n count residue and finds
+      it **splits**. Finding (no new primitive): (1) a rateless code has **no `n`** →
+      `corona_core::Threshold` can't be built → the only availability leaf importing
+      nothing from corona-core (a *new* shape of "nothing to promote": a shared
+      abstraction that doesn't fit the domain); (2) acceptance is **not a count** —
+      peeling can stall even with ≥k symbols → success is an *emergent-completion*
+      predicate (measured toy k=24: exactly-k stalls 200/200, 1.5× 37%, 2× 7%, 3× 0% —
+      the peeling cliff vs RS's step function). So the count residue splits into
+      exact-count (Shamir/RS) vs emergent-completion (fountain) — the **third
+      intra-primitive boundary** (∥ leaf 10 in E0382, leaf 11 in the brand), inside the
+      count residue itself. E0451 seal untouched (`Decoded` from a completed peel).
+      One primitive (E0451); standalone. 10 unit + 2 doctests; workspace 183 + 40;
+      clippy/fmt/rustdoc -D warnings clean. See CHARTER + README.
+- [ ] **Cold-review the leaf-13 surface to convergence** — 2 consecutive clean rounds
+      (0 CRITICAL + 0 MODERATE across correctness/claims/adversarial), fresh blind
+      subagents. Fires on the next "ready". Adversarial angles to expect: peeling
+      decoder soundness (can a crafted symbol set make `peel` return *wrong* bytes
+      rather than stall?), the finding's empirical claims (stall-rate numbers), the
+      "no `n`/not-a-count" framing precision, and the `Decoded` seal.
+
 ## Garden state (2026-07-17)
 
-- **All 12 leaves cold-reviewed.** corona-core + 12 leaves; vocabulary complete (leaf
-  6), composition demonstrated (7) + repeated (8), outer edge drawn (9), **both value
-  primitives read to their widest with a matched pair of intra-primitive boundaries** —
-  E0382 (leaf 10) and the E0308-class brand (leaf 11) — and the **first synthesis leaf**
-  (12 — FROST threshold Schnorr: three prior findings meeting in one scheme, no new
-  primitive). No open thesis direction. Next is the user's call: wind-down synthesis
-  (the natural close), or the CHARTER's remaining breadth (fountain/LT, XMSS — both
-  likely re-instantiations of leaves 3 / 7).
+- **All 12 leaves cold-reviewed; leaf 13 seeded (review pending).** corona-core + 13
+  leaves; vocabulary complete (leaf 6), composition demonstrated (7) + repeated (8),
+  outer edge drawn (9), **both value primitives read to their widest with a matched pair
+  of intra-primitive boundaries** — E0382 (leaf 10) and the E0308-class brand (leaf 11)
+  — the **first synthesis leaf** (12 — FROST), and now a **third intra-primitive
+  boundary** *inside the runtime count residue* (13 — LT fountain: exact-count vs
+  emergent-completion). One breadth candidate remains (XMSS hypertree). After leaf 13's
+  review converges, wind-down synthesis is the natural close.
 
 ## Parking lot (garden, not scheduled)
 
