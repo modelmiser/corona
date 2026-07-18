@@ -67,10 +67,14 @@
 //!
 //! This toy is **append-only** (no deletion), so the accumulator's version *is* its
 //! element count: `epoch == len`. A consequence worth stating plainly: staleness by
-//! *epoch* and staleness by *root* coincide — any `add` changes the root, so under an
-//! honest hash [`Commit::verify`]'s fold would *already* reject a stale witness (its
-//! old root differs from the new one). The explicit epoch check is not there to catch
-//! something the fold misses; it is there to make staleness a **named, total,
+//! *epoch* and staleness by *root* coincide — any `add` changes the commitment, so
+//! [`Commit::verify`]'s fold would *already* reject a stale witness on its own: its
+//! authentication path no longer matches the new snapshot, either because it carries
+//! the wrong *number* of siblings for the new size (caught at the sibling-count check)
+//! or, where that count happens to match, because it folds to the old root rather than
+//! the new one (caught at the final root comparison). The explicit epoch check is not
+//! there to
+//! catch something the fold misses; it is there to make staleness a **named, total,
 //! hash-independent** runtime verdict — the executable locus of the freshness
 //! residue. The two notions only come *apart* with deletions (a dynamic accumulator,
 //! where a witness can survive some updates and be *updated* across others); this toy
@@ -348,11 +352,12 @@ pub enum VerifyError {
     /// caught it, because the [`Witness`] is unbranded wire data.
     ///
     /// This verdict carries **no security weight** in this append-only toy: any `add`
-    /// changes the root, so the fold in [`Commit::verify`] would reject a stale witness
-    /// on its own (its old root no longer matches), and membership soundness rests
-    /// entirely on that root comparison — never on the `pub epoch` field, which a
-    /// caller can freely edit. The explicit check only turns "the fold happens to
-    /// fail" into a *named, total, hash-independent* verdict; do not read `Stale` vs
+    /// changes the commitment, so the fold in [`Commit::verify`] would reject a stale
+    /// witness on its own (its path no longer matches the new snapshot — wrong sibling
+    /// count, or folding to the old root), and membership soundness rests entirely on
+    /// that fold — never on the `pub epoch` field, which a caller can freely edit. The
+    /// explicit check only turns "the fold happens to fail" into a *named, total,
+    /// hash-independent* verdict; do not read `Stale` vs
     /// [`NotAMember`](VerifyError::NotAMember) as a trust boundary.
     Stale {
         /// The epoch the witness was drawn at.
@@ -410,10 +415,11 @@ impl<'epoch> Commit<'epoch> {
     /// one is proof it passed *this* check, and its `'epoch` brand proves it passed
     /// *this snapshot's* check specifically.
     pub fn verify(&self, data: &[u8], witness: &Witness) -> Result<Included<'epoch>, VerifyError> {
-        // Freshness first: a stale witness is refused before any hashing. Under an
-        // honest hash the fold below would reject it anyway (its old root differs),
-        // but the explicit check makes staleness a named, total, hash-independent
-        // verdict — the executable locus of the freshness residue.
+        // Freshness first: a stale witness is refused before any hashing. The fold
+        // below would reject it anyway (its path no longer matches this snapshot —
+        // wrong sibling count, or folding to the old root), but the explicit check makes
+        // staleness a named, total, hash-independent verdict — the executable locus of
+        // the freshness residue.
         if witness.epoch != self.epoch {
             return Err(VerifyError::Stale {
                 witness_epoch: witness.epoch,
