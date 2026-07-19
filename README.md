@@ -904,7 +904,7 @@ leaf; brand/E0382 honestly unused.
 ## Build
 
 ```sh
-cargo test --workspace          # 321 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
+cargo test --workspace          # 322 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

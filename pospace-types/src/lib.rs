@@ -96,7 +96,9 @@
 //!   prover stores *nothing* and regenerates the table transiently per challenge (the classic
 //!   **space-time tradeoff**), paying `O(2^K)` recomputation time instead of `O(2^K)` resident
 //!   storage. A real proof of space makes the table generation **depth-robust / memory-hard** (a
-//!   pebbling-hard DAG, e.g. Chia's plots) so that recomputation is prohibitively slow and fast
+//!   pebbling-hard graph in Dziembowski–Faust–Kolmogorov–Pietrzak 2015; Chia's plots instead use a
+//!   hardened *Hellman-table* construction, Abusalah–Alwen–Cohen–Khilko–Pietrzak–Reyzin 2017 — a
+//!   distinct line, both memory-hard) so that recomputation is prohibitively slow and fast
 //!   answers really do imply resident storage. The
 //!   `a_seed_only_prover_mints_the_identical_witness_the_wrong_thing_succeeds` test makes this
 //!   executable: a prover with one `u64` of resident state produces a witness indistinguishable from
@@ -682,13 +684,54 @@ mod tests {
 
     #[test]
     fn verify_rejects_a_response_with_the_wrong_number_of_openings() {
+        // Pins the count guard in BOTH directions (a `!= QUERIES` → `< QUERIES` mutant silently
+        // ignores openings beyond QUERIES, since the verify loop zips against the QUERIES-long
+        // challenge list — so a "too many" case must reject too, not just "too few").
         let space = Space::<8>::new(9);
         let table = space.materialize();
-        let mut response = respond(&table.leaves, 8);
-        response.openings.pop();
+
+        // Too few: drop an opening.
+        let mut short = respond(&table.leaves, 8);
+        short.openings.pop();
         assert!(
-            space.verify(&response).is_none(),
+            space.verify(&short).is_none(),
             "a short response (fewer than QUERIES openings) mints nothing"
+        );
+
+        // Too many: append a duplicate honest opening. All QUERIES real openings are still valid,
+        // so only the count guard rejects this — a `< QUERIES` mutant would mint.
+        let mut long = respond(&table.leaves, 8);
+        let extra = long.openings[0].clone();
+        long.openings.push(extra);
+        assert!(
+            space.verify(&long).is_none(),
+            "a padded response (more than QUERIES openings) mints nothing"
+        );
+    }
+
+    #[test]
+    fn verify_rejects_a_self_consistent_response_over_a_foreign_seed_table() {
+        // The crate's CENTRAL guarantee: openings must carry SEED-DERIVED entries, not just entries
+        // that are internally consistent with some root. A prover that commits a Merkle root over a
+        // DIFFERENT seed's table, derives the challenges from THAT root, and opens honestly against
+        // it produces a response where every path folds to its own root and every index answers its
+        // own challenge — passing guards (a) and (c) — yet the values are `t[i]=H(foreign_seed,i)`,
+        // not this Space's. Only the seed-correctness guard (b) `value == table_entry(self.seed, i)`
+        // rejects it; without that guard the E0451 seal would attest a table unrelated to the seed.
+        // (The existing `verify_rejects_a_tampered_value` XORs one value but leaves its path, so the
+        // FOLD check masks guard (b) — this case is what actually pins it.)
+        let space = Space::<8>::new(100);
+        let foreign: Vec<u64> = (0..space.capacity()).map(|i| table_entry(999, i)).collect();
+        let foreign_response = respond(&foreign, 8);
+        // Sanity: the foreign response is self-consistent (it verifies against ITS OWN seed).
+        assert!(
+            Space::<8>::new(999).verify(&foreign_response).is_some(),
+            "the foreign response is honestly built for seed 999"
+        );
+        // ...but this Space (seed 100) must reject it — the values are not its seed's entries.
+        assert!(
+            space.verify(&foreign_response).is_none(),
+            "a self-consistent response over a foreign seed's table mints nothing here"
         );
     }
 

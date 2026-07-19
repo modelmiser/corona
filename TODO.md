@@ -847,8 +847,28 @@ work (complete tasks, add children, keep siblings).
       (occupied storage — the first *spatial* residue, completing the cost/delay/space triad, and the
       first residue whose *shape* is a tradeoff so a pure bound is ill-posed) and the fourth
       E0451+E0080 pairing. See CHARTER.
-- [ ] **Cold-review the leaf-21 surface to convergence** — PENDING (waits for a separate "ready",
-      per the garden rhythm; the seed is the unit of finishing).
+- [ ] **Cold-review the leaf-21 surface to convergence** — IN PROGRESS. **R1 done** (3 fresh blind
+      lenses on isolated per-lens copies). **Code CORRECT + adversarial NO BREAK** — forge blocked
+      (E0451/E0277/E0616), E0080 wall unbypassable (incl. generic wrapper / const ctx), 0 false
+      accepts across exhaustive small-K tamper sweeps + ~62k fuzz (incl. K=20/1M-leaf), 0 panics,
+      owns solid; both disclosed limits reproduced (byte-identical seed-only vs materialized witness;
+      the toy break — an external seed-only attacker rebuilds the identical witness). **2 MODERATE
+      test-coverage gaps (correctness) + 1 MODERATE (claims), all fixed:** (M-1) the seed-correctness
+      guard `value == table_entry(self.seed, i)` was unpinned — the old tamper test left the path
+      intact so the fold check masked it → added `verify_rejects_a_self_consistent_response_over_a_
+      foreign_seed_table` (a response over a DIFFERENT seed's self-consistent table: passes guards
+      a+c, only the seed guard rejects it); (M-2) the count guard `!= QUERIES` → `< QUERIES` survived
+      (the verify loop zips against the QUERIES-long challenge list, ignoring extras) → extended the
+      count test with a too-many-openings case. Both new tests verified to FAIL under their mutants.
+      (claims-M) the docs called Chia's plots "a pebbling-hard DAG" — wrong: Chia's Chiapos uses a
+      hardened Hellman-table construction (Abusalah et al. 2017), a distinct line from DFKP 2015's
+      depth-robust-graph/pebbling → corrected to attribute pebbling to DFKP and the Hellman table to
+      Chia. Residual LOWs LEFT (defensible/equivalent): two dead/subsumed verify guards (out-of-range
+      index unreachable after the challenge-binding guard; wrong-length path subsumed by the fold),
+      the "temporal" framing of pow's cost (defensible complexity-theoretic time-vs-space reading),
+      the disclosed `resident_entries()==1` (persistent not peak; `Space::prove` transiently allocates
+      2^K, disclosed in the prove doc). R1 not clean (3 MOD) → need R2 + R3 both clean. pospace 17
+      unit + 4 doctests; workspace 322 + 68, all gates green.
 
 ## Garden state (2026-07-18l)
 
