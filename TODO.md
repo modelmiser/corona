@@ -1271,3 +1271,31 @@ work (complete tasks, add children, keep siblings).
 - Lean formalization of a graduated leaf → contribute to Sol (the garden↔Sol wiring)
 - Further domains off the polynomial substrate: threshold signatures (FROST), a
   fountain/LT code, XMSS tiering — each a fresh test of the vocabulary.
+
+### Depth pass — PARKED 2026-07-19 (user: "do this, but not right away"; after ~leaf 25)
+
+*Sequencing (user-decided): continue the normal seed-then-stop breadth rhythm to ~leaf 25 first,
+THEN take up the two depth items below as a deliberate batch — not interleaved with seeding. Seed
+24/25 with the audit's question in mind (below) so we don't add more prose-only residue cores.*
+
+1. **Leaf 22 rewinding rung — make the residue executable, not asserted.** `extract` currently gets
+   its two transcripts from *two same-seed nonces* (`ProverNonce::commit(0xA1)` twice) — that is the
+   disclosed **nonce-reuse** hole, a *proxy* for rewinding, not rewinding itself. The thesis ("the
+   prover as an algorithm across two counterfactual runs") is therefore prose-only. Rung: a
+   `Clone`-able post-commitment / pre-challenge `RewoundState` whose very clone-ability **is the
+   anti-linearity E0382 denies the honest `ProverNonce`** — so the extractor provably lives in a
+   strictly more powerful capability model than the type enforces, which is *why* knowledge-soundness
+   is not a compile-time fact. Keep the seed-reuse test as the "prover's mistake" case; ADD the rewind
+   construct as the distinct "extractor's power" case. ~40–70 lines + tests + a doc pass; then its own
+   short cold-review pass. This is leaf 22's literal ultimate end (distinct from graduation).
+
+2. **Cross-leaf "residue-executability" audit (completeness-critic pass).** Extend the leaf-22 question
+   to every leaf: *is the central residue **demonstrated in code**, or asserted in prose / shown via a
+   disclosed proxy?* Prior (from memory, to be confirmed by the pass): most leaves DO exhibit the gap
+   executably — impostor values that type-check (leaf 15 `+`/`min` merges), byte-identical
+   witnesses (leaf 18/20/21 cost/delay/space), a measured probabilistic cliff (leaf 13 peeling),
+   a type-checking double-cross (leaf 23). **Leaf 22 is the sharpest offender** (core mechanism =
+   a proxy). Check next: leaf 15 (proof-obligation → tests, though it does exhibit impostors + bounded
+   E0080), leaf 23 (Cleve *impossibility* → one exhibited failure; could exhibit commit-reveal/timeout
+   failures too), leaf 9 (coordination → handoff, deliberately out of scope). Output = per-leaf verdict
+   + a rung list for any 22-like cases. A synthesis pass, NOT a re-open of any convergence.
