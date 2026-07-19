@@ -963,11 +963,35 @@ work (complete tasks, add children, keep siblings).
       `Token`/`SettledSwap` (E0451), both verified vs rustc directly. 12 unit + 5 doctests; workspace
       **356 unit + 76 doctests**, all gates green (clippy/fmt/rustdoc -D warnings). CHARTER row +
       promotion check + lineage + candidates refreshed; README leaf-23 section.
-- [ ] `corona-core` promotion check (leaf-23 trigger): nothing to promote (standalone; no crypto
+- [x] `corona-core` promotion check (leaf-23 trigger): nothing to promote (standalone; no crypto
       backend, so not even a toy hash to consider). Contribution is a *new residue category*
       (joint-multi-party-outcome atomicity) + the *third seam* (a trust assumption — the first residue
       closed only by trust). See CHARTER.
-- [ ] **Cold-review the leaf-23 surface to convergence** — PENDING (fires on next "ready").
+- [x] **Cold-review the leaf-23 surface to convergence — CONVERGED** (3 rounds; R2 & R3 two
+      consecutive clean, 0 CRIT/0 MOD across correctness/claims/adversarial; commits `2d27e97`→`0f6f23d`).
+      **The code carried ZERO correctness/adversarial findings in all 3 rounds** — every safe-Rust forge
+      (struct-literal/FRU/`Default`/`mem::take`/`clone`/`.into()`/`&mut`-field/cast, ~11-13 per round)
+      rejected at the exact documented codes (E0451/E0382/E0277/E0599/E0616/E0605); a positive control
+      confirmed the harness genuinely links; the mutation sweep killed every high-value mutant (both
+      crossing directions pinned). **The only real finding was a MODERATE citation error (R1):** the 1998
+      optimistic-fair-exchange paper is Asokan–**Shoup**–Waidner (EUROCRYPT 1998), not the Asokan–Schunter–
+      Waidner trio (that paper is ACM CCS 1997) — corrected in lib.rs + README. Other fixes were doc
+      precision: the id-exhaustion comment mislabeled which `issue()` call panics (LOW, R1), and the
+      Cleve claim dropped its "in general" hedge in CHARTER/TODO where lib.rs/README kept it (LOW, R2 —
+      the qualifier-reaches-every-site lesson). Cleve 1986 / Even–Yacobi 1980 / Asokan–Shoup–Waidner 1998
+      / Blum / Boneh–Naor all verified real, correctly attributed, correctly characterized; the "no
+      runtime check the two parties run recovers complete fairness" thesis verified well-founded. One
+      defensible-wording LOW (an Even–Yacobi phrasing) LEFT per converge-then-stop. 12 unit + 5 doctests.
+
+## Garden state (2026-07-19d)
+
+- **Leaf 23 `swap-types` CONVERGED; leaf 22 `sigma-types` still SEEDED/cold-review PENDING.**
+  corona-core + **23 leaves**. On the user's "ready", cold review of leaf 23 (fair exchange / atomic
+  swap — the first residue about a *joint multi-party outcome*, closed only by a trust assumption)
+  converged in 3 rounds (R2 & R3 clean). The code carried zero correctness/adversarial findings
+  throughout; the only real finding was a MODERATE citation fix (Asokan–Shoup–Waidner 1998, not
+  Schunter). **Leaf 22 (`sigma-types`) remains review-pending — its cold review is the next task this
+  same "ready" covers.** Nothing else auto-starts.
 
 ## Garden state (2026-07-19c)
 
