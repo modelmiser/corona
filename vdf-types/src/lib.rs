@@ -114,11 +114,12 @@
 //!   exhaustive sweep finds a passing proof for almost every *wrong* output, not merely "in
 //!   principle" one. The break also extends **across delays**: because `ℓ = H(x, y, T)` folds in
 //!   `T` but the proof is unsound, an honest `(y, π)` computed at one delay *also* verifies at a
-//!   *different* delay for a fraction of inputs (~1.67% at `T=16 → T=17`), minting a witness that
-//!   records the new `T` with a wrong output — the same break on the delay axis, **not** a
-//!   delay-binding failure of the type discipline (`verify` still only stamps the `T` it ran at,
-//!   which `owns` checks). The leaf's subject is the **delay residue**, not proof soundness — a
-//!   real group of unknown order closes all of this.
+//!   *different* delay for a fraction of inputs (54/3233 ≈ 1.67% at `T=16 → T=17`; 47 of those
+//!   carry a *strictly wrong* output, the other 7 a coincidentally-correct one), each minting a
+//!   witness that records the new `T` — the same break on the delay axis, **not** a delay-binding
+//!   failure of the type discipline (`verify` still only stamps the `T` it ran at, which `owns`
+//!   checks). The leaf's subject is the **delay residue**, not proof soundness — a real group of
+//!   unknown order closes all of this.
 //! - **The Fiat–Shamir challenge uses a toy hash.** `ℓ = H(x, y, T)` is derived with a
 //!   non-cryptographic FNV-1a mapped to a small prime — legible, not collision-resistant. It fixes
 //!   the challenge deterministically for the demonstration; a real VDF hashes into a large prime.
@@ -557,9 +558,10 @@ mod tests {
         // Wesolowski proof is SOUND a witness for one delay would not satisfy another delay's
         // identity. In this TOY the proof-soundness break is near-total (see Honest limits) and it
         // extends to the T axis: an honest `(y, pi)` computed at one delay ALSO verifies at a
-        // DIFFERENT delay for a fraction of inputs (~1.67% at T=16 -> T=17), minting a witness that
-        // records the NEW delay while carrying an output that is not `x^(2^T')` — a forged
-        // wrong-output witness, the SAME disclosed break, on the delay axis. This is NOT a
+        // DIFFERENT delay for a fraction of inputs (54/3233 ≈ 1.67% verify at T=16 -> T=17; 47 of
+        // those with a strictly wrong output), minting a witness that records the NEW delay while
+        // carrying an output that is not `x^(2^T')` — a forged wrong-output witness, the SAME
+        // disclosed break, on the delay axis. This is NOT a
         // delay-binding guarantee of the type discipline: `verify` only stamps the T it ran at
         // (`owns` checks that recorded T), it does not bind `(y, pi)` to a unique T. Made executable
         // (the wrong thing succeeds): find a genuine wrong-output cross-delay transfer.

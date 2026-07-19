@@ -771,6 +771,16 @@ work (complete tasks, add children, keep siblings).
       note said WALL is "referenced from new and the methods" (only `new`) → corrected; README
       recurring-break peer list made consistent with lib.rs/CHARTER (+frost). R3 not clean (1 MOD) →
       streak stays reset; need R4 + R5 both clean. 19 unit + 4 doctests; workspace 305 + 64.
+      **R4 = CLEAN round** (0 CRIT/0 MOD all three lenses): correctness CLEAN (rewritten cross-delay
+      test confirmed sound, not over-fit; only non-defect LOWs — challenge-window mutants are
+      behaviorally invisible on the arbitrary toy mapping, `is_prime(1)` unreachable — left per
+      converge-then-stop), adversarial NO BREAK (seal/wall hold; all 4 disclosures reproduced
+      quantitatively — 54/3233 transfer, 98% same-delay forgeability; the 3 probed undisclosed
+      hazards do not occur), claims 0 MOD (1 LOW). Fixed the 1 claims LOW: the "~1.67% … with a
+      wrong output" coupling — 1.67% (54/3233) is the cross-delay *verify* rate but only 47 carry a
+      strictly-wrong output → decoupled the two figures at both doc sites. Code otherwise frozen.
+      Since a (minor) doc fix landed after R4, the rigorous 2-clean bar is now **R5 + R6 on frozen
+      code**. 19 unit + 4 doctests; workspace 305 + 64.
 
 ## Garden state (2026-07-18j)
 
