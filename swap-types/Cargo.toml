@@ -1,0 +1,14 @@
+[package]
+name = "swap-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Corona leaf 23 — fair exchange / atomic swap as typestate: inside one program atomicity reduces to E0382, but across the wire between two mutually-distrusting parties it reduces to no primitive — and, unlike leaf 9, no runtime check the two parties run recovers it (Cleve 1986: complete fairness needs a trusted third party or an honest majority). The first residue about a JOINT multi-party outcome, discharged only by an assumption of trust. TOY, not production."
+
+# swap-types is STANDALONE (imports nothing in the garden): a leaf whose subject
+# is *where a residue stops reducing* must not lean on sibling surfaces, and its
+# subject (cross-party atomicity) is unrelated to corona-core's k-of-n Threshold.
+# It needs no crypto backend at all — the residue is about interaction structure,
+# not the unforgeability of items (a real cross-chain swap binds items with
+# hash-timelock contracts; that binding is orthogonal to the atomicity gap).
+[dependencies]

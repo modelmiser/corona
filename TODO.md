@@ -929,6 +929,58 @@ work (complete tasks, add children, keep siblings).
       Test-only change → 2-clean clock RESETS: **need R6 + R7 both clean.** pospace 18 unit + 4
       doctests; workspace 323 + 68, all gates green.
 
+## Now (leaf 23 — swap-types)
+
+- [x] **Seed leaf 23: fair exchange / atomic swap** — the garden's **third negative-space leaf**
+      (∥ 9, 15) and the first whose residue is a property of a **joint multi-party outcome**. Two
+      mutually-distrusting parties swap items all-or-nothing; does it reduce? → **it SPLITS three
+      layers, each executable.** (L1) *Inside one program* atomicity reduces to **E0382**:
+      `atomic_swap(a,b)` takes both `Token`s by value → the crossed pair as one move (no partial
+      extraction; a panic drops both); `Token` not `Clone`/`Copy`, `send(self)` consumes it —
+      double-send verified `error[E0382]: use of moved value` against rustc directly (∥ leaf 9's coin,
+      both sides at once). (L2) *Across the wire it does NOT reduce, and — unlike leaf 9 — no runtime
+      check the two parties run recovers it*: `send` in Alice's program and Bob's are two independent
+      moves in two programs, `WireToken` is `Copy`/all-public (doorway ∥ ecash `WireCoin`), so the
+      **second mover takes the first item and never sends its own** — the double-cross type-checks
+      (`the_second_mover_can_take_both`). Leaf 9's wire residue (double-spend) is a *copy to detect*,
+      closed by an online mint's spent set; leaf 23's is a **legitimate non-action** no two-party
+      cleverness forecloses — **Cleve 1986** (complete fairness impossible in 2-party MPC) /
+      **Even–Yacobi 1980** (no deterministic fair exchange). (L3) *Restoring atomicity relocates trust*:
+      a trusted `Escrow` releases both-or-neither (sole minter of sealed `SettledSwap`), but is a party
+      the types **describe not compel** — its `Copy` deposits a dishonest operator keeps
+      (`nothing_compels_the_escrow_to_be_honest`), and the seal witnesses *that a settlement ran, never
+      that it was fair* (`the_seal_witnesses_settlement_not_fairness` — checked path trusts the escrow,
+      the witness-trap theme). Closed only by **importing trust** (a TTP / honest majority) — **first
+      residue whose resolution is trust, not computation/coordination/proof**; the **third seam** (leaf
+      9→quorum/coordination, leaf 15→Sol/proof, leaf 23→a trust assumption). The L1/L2/L3 shape is
+      *deliberately* leaf 9's — the **wire is the garden's recurring outer edge** — but the residue
+      past it is stronger: leaf 9's contingently closable, leaf 23's *provably not*. Two primitives
+      (E0451 + E0382), brand/E0080 unused, no new one. Standalone (∥ ecash — needs no crypto backend
+      at all; the atomicity residue is about interaction structure, not item unforgeability). TOY:
+      items uncryptographically bound (forgeable `WireToken`, orthogonal — a real swap uses HTLCs);
+      escrow modeled not implemented; gradual/timed release drops the TTP but only *approximates*
+      fairness (Cleve, constructively). Compile-fails: token-double-send (E0382) + sealed-ctor forge on
+      `Token`/`SettledSwap` (E0451), both verified vs rustc directly. 12 unit + 5 doctests; workspace
+      **356 unit + 76 doctests**, all gates green (clippy/fmt/rustdoc -D warnings). CHARTER row +
+      promotion check + lineage + candidates refreshed; README leaf-23 section.
+- [ ] `corona-core` promotion check (leaf-23 trigger): nothing to promote (standalone; no crypto
+      backend, so not even a toy hash to consider). Contribution is a *new residue category*
+      (joint-multi-party-outcome atomicity) + the *third seam* (a trust assumption — the first residue
+      closed only by trust). See CHARTER.
+- [ ] **Cold-review the leaf-23 surface to convergence** — PENDING (fires on next "ready").
+
+## Garden state (2026-07-19c)
+
+- **ALL 22 leaves cold-reviewed through leaf 21; leaves 22 & 23 SEEDED, cold-review PENDING.**
+  corona-core + **23 leaves**. Leaf 23 (`swap-types`, fair exchange / atomic swap — inside one program
+  atomicity reduces to E0382, but across the wire between two mutually-distrusting parties it reduces to
+  no primitive *and* no runtime check they run recovers it: Cleve's impossibility, closed only by
+  trusting a third party) was seeded this session as an *unscheduled* open-ended domain (∥ leaves
+  16–22). It is the garden's **first residue about a joint multi-party outcome** and the **first closed
+  only by a trust assumption** (the third seam — leaf 9→coordination, leaf 15→proof, leaf 23→trust).
+  Per the garden rhythm, the seed is the unit of finishing; cold review waits for a separate "ready".
+  Nothing else auto-starts.
+
 ## Now (leaf 22 — sigma-types)
 
 - [x] **Seed leaf 22: a Schnorr Σ-protocol (proof of knowledge of a discrete log)** — the garden's

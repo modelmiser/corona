@@ -91,6 +91,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "swap-types"
+version = "0.1.0"
+
+[[package]]
 name = "threshold-types"
 version = "0.1.0"
 dependencies = [

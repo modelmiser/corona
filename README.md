@@ -36,7 +36,8 @@ corona/
 ├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
 ├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
 ├── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
-└── sigma-types/      # leaf 22 — Schnorr proof of knowledge (Σ-protocol): completeness reduces to the seal, but knowledge-soundness is a counterfactual-execution property no type can hold — the dual of leaf 19 (TOY)
+├── sigma-types/      # leaf 22 — Schnorr proof of knowledge (Σ-protocol): completeness reduces to the seal, but knowledge-soundness is a counterfactual-execution property no type can hold — the dual of leaf 19 (TOY)
+└── swap-types/       # leaf 23 — fair exchange / atomic swap: inside one program atomicity reduces to E0382, but across the wire between two distrusting parties no primitive (and no runtime check they run) holds it — Cleve's impossibility, closed only by trusting a third party (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -957,10 +958,78 @@ E0382), brand/E0080 honestly unused, no new primitive. Standalone.
 > caveat). Fiat–Shamir with a toy hash (not a random oracle — the *interactive* mode is
 > what the residue is about).
 
+## Leaf 23: `swap-types`
+
+**Fair exchange** — two mutually-distrusting parties, Alice and Bob, each holding
+an item, want to **swap**: Alice ends with Bob's item and Bob with Alice's, *or
+neither moves* — never one party with both. The garden's standard question —
+*does this "all-or-nothing across the two parties" invariant reduce to the
+vocabulary?* — **splits into three layers**, and the residue is of a **new
+kind**: the first the vocabulary cannot hold that is a property of a **joint
+outcome between two parties**, not of any one value, prover, or observer.
+
+- **Layer 1 — inside one program, atomicity reduces to E0382.** When one owner
+  holds both items, `atomic_swap(a, b)` takes both `Token`s by value and
+  returns the crossed pair: you cannot obtain one returned item without the
+  other (the move system yields the pair as a unit; a panic drops both), so the
+  swap is atomic by construction. Move-linearity, doing for a two-sided exchange
+  what leaf 5 did for a one-time key and leaf 9 for a single coin.
+- **Layer 2 — across the wire, atomicity dies, and no runtime check the two
+  parties run brings it back.** Swapping between two *separate* programs needs a
+  token serialized (`Token::send`, consuming it) and transmitted; `Token::send`
+  in Alice's program and in Bob's are **two independent moves in two programs**,
+  and no type fuses them. Someone moves first, and the **second mover — holding
+  the first item (a `Copy`, all-public `WireToken`, the doorway type exactly as
+  `ecash-types`' `WireCoin`) — can simply not send its own**: the double-cross
+  *type-checks*. This is where leaf 23 departs from leaf 9. Leaf 9's wire residue
+  is *double-spend*, which an online mint's spent set (a runtime check) closes —
+  the problem there is *detecting a copy*. Here the second mover's abort is not a
+  copy to detect but a **legitimate non-action**, and no runtime cleverness by
+  the *two parties* forecloses it — a theorem: **Cleve (1986)** (complete
+  fairness in two-party computation is impossible in general) and, directly,
+  **Even–Yacobi (1980)** (no deterministic fair-exchange protocol).
+- **Layer 3 — restoring atomicity relocates trust; it does not eliminate it.** A
+  trusted third party (the `Escrow`) holds both items and releases
+  both-or-neither — the sole minter of the sealed `SettledSwap`. But the escrow
+  is a party the types **describe**, not **compel**: its deposits are `Copy` wire
+  bytes a dishonest operator can keep, and — sharper — the sealed `SettledSwap`
+  witnesses *that a settlement ran, never that it crossed the items fairly* (its
+  checked path trusts the escrow — the garden's recurring witness-trap theme). So
+  atomicity is bought only by an **assumption of trust** (a third party, or an
+  honest majority running an MPC) — provably the only options for classical,
+  copyable items.
+
+**The new residue, and the new seam.** Every prior residue is a fact about a
+*single* thing — a count, a freshness, a cost, a delay, a space, a relation's
+order, a soundness direction, an observer's view, knowledge across one prover's
+two runs, coordination over an absence, a proof obligation, an emergent
+completion. Atomicity-across-two-parties is the first about a **joint outcome of
+an interaction**, invisible to a type because a discipline binds the *one program
+it type-checks* and atomicity spans two programs, two trust domains, and the
+*order* they move in. And it draws a **third seam**: leaf 9 handed its residue to
+`quorum-types` (*coordination* closes it), leaf 15 to **Sol** (a *proof* closes
+it); leaf 23's is closed by **neither** (no coordination reaches move-order —
+Cleve; no honest party can prove the *other* honest) but only by importing a
+**trust assumption**. The L1/L2/L3 shape is deliberately leaf 9's — the **wire is
+the garden's recurring outer edge** — but the residue past the edge is different
+and its character is stronger: leaf 9's is *contingently* closable, leaf 23's
+*provably not*. Two primitives (E0451 + E0382), brand/E0080 unused, no new one.
+
+> ⚠ **TOY.** Items are not cryptographically bound — a `WireToken` is forgeable,
+> where a real cross-chain swap binds items with **hash-timelock contracts**
+> (HTLCs); this is *orthogonal* (assume every wire token authentic and the
+> atomicity gap is unchanged). The escrow is modeled, not implemented (real
+> optimistic fair exchange, Asokan–Schunter–Waidner 1998, invokes the trusted
+> party only on dispute; a cross-chain swap replaces it with two hash-locked
+> contracts) — both still rest on a trust or synchrony assumption the two parties
+> alone cannot discharge. The one family that drops the trusted party — **gradual
+> / timed release** (Blum; Boneh–Naor) — only *approximates* fairness, which is
+> Cleve's theorem from the constructive side.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 344 unit tests + 71 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
+cargo test --workspace          # 356 unit tests + 76 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
