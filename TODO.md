@@ -1002,14 +1002,17 @@ work (complete tasks, add children, keep siblings).
       a runtime check can" (leaf 9/11), but *nothing observable in finite time can*. **The fourth seam:**
       discharged only by an **environment-fairness assumption** (`□◇carries`) + **temporal reasoning
       over infinite runs** (`□◇carries ⟹ ◇delivered`) — leaf 9→coordination, 15→proof/Sol, 23→trust,
-      **24→a fairness assumption** (the single-channel sibling of the **FLP impossibility**,
-      Fischer–Lynch–Paterson 1985). Crucially *no proof about our code* discharges it (under a dead
-      channel the code never delivers → the goal is false of the code alone — the sharp contrast with
-      leaf 15, whose obligation IS a code law). **Doorway polarity INVERTS:** a `Frame` is `Copy` like
-      ecash's `WireCoin`/swap's `WireToken`, but copyability is the **cure** (retransmit copies to beat
-      loss) not the catastrophe → **E0382 structurally contra-indicated** (a linear frame forbids the
-      remedy); the threat model flipped from *duplication* to *loss*. One primitive (E0451);
-      brand/E0080 unused, E0382 contra-indicated; no new one. Standalone (imports nothing ∥ ecash/swap,
+      **24→a fairness assumption** (an *analogue*, not an instance, of the **FLP impossibility**,
+      Fischer–Lynch–Paterson 1985 — FLP is deterministic consensus over a *reliable* channel + one crash,
+      circumventable by randomization; shared core = finite-prefix indistinguishability of failure from
+      slowness). Crucially *no proof about our code* discharges it (under a dead channel the code never
+      delivers → the goal is false of the code alone — the sharp contrast with leaf 15, whose obligation
+      IS a code law). **Doorway polarity INVERTS:** a `Frame` is `Copy` like ecash's `WireCoin`/swap's
+      `WireToken`, but the cure is **reproducibility** not `Copy` per se (retransmission *re-creates* the
+      frame; `Sender::frame` reconstructs fresh from retained fields each round, so `Copy` is convenient,
+      not load-bearing) → the **E0382 capability posture** (a sealed, consumable, non-reproducible value
+      ∥ leaf 5/9/10) is contra-indicated; the threat flipped from *duplication* to *loss*. One primitive
+      (E0451); brand/E0080 unused, the E0382 posture contra-indicated; no new one. Standalone (imports nothing ∥ ecash/swap,
       no crypto backend). Compile-fail: sealed-ctor forge on `Delivered` (E0451), verified vs rustc.
       **11 unit + 4 doctests; workspace 370 unit + 79 doctests**, all gates green (clippy/fmt/rustdoc
       -D warnings). CHARTER row + promotion check + lineage + candidates refreshed; README leaf-24
@@ -1018,15 +1021,22 @@ work (complete tasks, add children, keep siblings).
       backend ∥ leaf 23). Contribution is a *new residue **axis*** — the first leaf to cross the
       safety/liveness line — and the *fourth seam* (an environment-fairness assumption + temporal
       reasoning, distinct from coordination/proof/trust). See CHARTER.
-- [ ] **Cold-review the leaf-24 surface to convergence** — PENDING (fires on the next "ready"). Watch
-      list for reviewers: (a) citation accuracy (Alpern–Schneider "Defining Liveness" IPL 21(4) 1985;
-      Lamport 1977 "Proving the Correctness of Multiprocess Programs"; ABP = Bartlett–Scantlebury–
-      Wilkinson CACM 1969; FLP = Fischer–Lynch–Paterson JACM 1985) — the recurring fabricated/mis-cited
-      class; (b) the safety/liveness characterization (is "no finite bad prefix" stated precisely? is the
-      indistinguishability test a faithful witness of it?); (c) the "E0382 contra-indicated not just
-      unused" claim (does retransmission genuinely *require* `Copy`?); (d) the fourth-seam distinction
-      from leaf 15 (proof-about-code vs axiom-about-environment) — the highest-risk cross-leaf sentence;
-      (e) mutation on `accept`/`on_ack` dedup + `run` loop bounds. Nothing auto-starts.
+- [ ] **Cold-review the leaf-24 surface to convergence** — IN PROGRESS (fires on "ready"). **R1 done**
+      (3 blind lenses). Adversarial: **NO BREAK** — seal airtight in safe Rust (canonical forge → genuine
+      E0451, verified vs rustc), at-most-once/in-order survives 1000× duplicate hammering, finite-prefix
+      indistinguishability has no public counterexample (even `Receiver::expected()` leaks nothing).
+      Correctness: no CRIT; 6 guarantee-mutants killed; **1 MODERATE** — `max_rounds` boundary untested
+      (M7 `0..=max_rounds` survived, non-equivalent) → **FIXED** with `run_bound_is_the_exact_number_of_carry_attempts`
+      (verified it kills the mutant). Claims: all 4 citations REAL + correctly attributed (Alpern–Schneider
+      IPL 21:181-185 1985; Lamport SE-3(2) 1977 — crate correctly only *cites*, doesn't claim "coined"; ABP
+      CACM 12(5) 1969; FLP JACM 32(2) 1985); **2 MODERATE fixed** — (M1) "E0382 contra-indicated / a linear
+      frame forbids retransmission" was OVERSTATED and falsified by the crate's own code (retransmission is
+      *reconstruction* via `Sender::frame`, not reuse; `Copy` not load-bearing) → reframed onto
+      *reproducibility* + the *E0382 capability posture* across lib.rs/README/CHARTER/TODO; (M2) FLP
+      "unattainable without exactly such" overstated (ignores randomization; FLP = reliable-channel + crash)
+      → reworded to an explicit *analogue*. Plus L1 (scoped "no finite check" to pure-fairness vs partial
+      synchrony). **R1 NOT clean (3 MOD) → need R2 + R3 both clean.** LOWs L2/L3 left per converge-then-stop.
+      12 unit + 4 doctests. Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 

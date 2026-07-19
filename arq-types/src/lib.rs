@@ -52,7 +52,12 @@
 //!    finite check; **liveness is neither**, so it escapes the vocabulary at a
 //!    deeper level than any prior residue — not "the type can't hold it but a
 //!    runtime check can" (leaf 9's coordination, leaf 11's freshness compare),
-//!    but *nothing observable in finite time can hold it at all*.
+//!    but *nothing observable in finite time can hold it at all*. (This is under
+//!    the pure-fairness model assumed here — `□◇carries`, no bound on delay.
+//!    Adding a *bounded-delay* / partial-synchrony assumption `□(delay ≤ Δ)` does
+//!    let a timeout finitely refute "delivered *within Δ*" — but that is a
+//!    stronger, different property; the pure "eventually delivered" of an
+//!    asynchronous fair channel still has no finite witness.)
 //!
 //! ## The residue, and the fourth seam
 //!
@@ -76,10 +81,14 @@
 //!   not touch** (channel fairness) and reason *temporally* from it. The prior
 //!   seams add machinery *inside* the system (a protocol, a proof, a party);
 //!   this one adds an *assumption about the environment* and a mode of reasoning
-//!   (temporal/infinitary) the vocabulary has no counterpart for. It is the
-//!   sibling, at the level of a single channel, of the **FLP impossibility**
-//!   (Fischer–Lynch–Paterson 1985): asynchronous progress is unattainable
-//!   without exactly such a timing/fairness assumption.
+//!   (temporal/infinitary) the vocabulary has no counterpart for. It is an
+//!   **analogue** — not an instance — of the **FLP impossibility**
+//!   (Fischer–Lynch–Paterson 1985): FLP is about *deterministic consensus* over a
+//!   *reliable* channel with one crash (and is circumventable by randomization,
+//!   Ben-Or 1983), whereas here a single channel simply drops; what the two share
+//!   is the structural core — permanent failure is indistinguishable from
+//!   slowness over any finite prefix, so progress needs a liveness/timing
+//!   assumption that finite observation cannot supply.
 //!
 //! ## A polarity inversion at the doorway
 //!
@@ -88,13 +97,23 @@
 //! `WireCoin` and `swap-types`' `WireToken`. But its polarity is **inverted**.
 //! In leaf 9 (double-spend) and leaf 23 (double-cross), the wire value being
 //! `Copy` is the **catastrophe** — the adversary *duplicates* it. Here the frame
-//! being `Copy` is the **cure**: reliable delivery is *built on retransmitting
-//! copies* to overcome loss, so a linear (E0382) frame would forbid the very
-//! mechanism that beats the channel. Same idiom, opposite sign — because the
-//! threat model flipped from *duplication* (an adversary copies) to *loss* (the
-//! environment drops), and against loss, copying is the remedy. This is why
-//! **E0382 is not merely unused here but structurally contra-indicated**, a
-//! sharper statement than the usual "honestly unused."
+//! being `Copy` is the **cure** — but the sharper reading is that it is not
+//! `Copy`-ness itself that matters, it is **reproducibility**. Reliable delivery
+//! is *built on re-creating the frame* to overcome loss (retransmission), and the
+//! frame is reproducible here in two independent ways: it is `Copy`, and — even
+//! without that — [`Sender::frame`] reconstructs a fresh one from retained fields
+//! each round, so the driver never reuses a single [`Frame`] value. A non-`Copy`
+//! frame with a public constructor would retransmit equally well; `Copy` is
+//! *convenient, not load-bearing*. What **is** contra-indicated is the **E0382
+//! capability posture** the garden's other affine leaves rely on — a *sealed,
+//! consumable, non-reproducible* value (leaf 5's key, leaf 9's coin, leaf 10's
+//! chain key) whose whole purpose is to forbid the reproduction reliable delivery
+//! needs. Same idiom as ecash/swap, opposite sign: there the discipline wants the
+//! wire value **irreproducible** (linearity defeats duplication), here it must be
+//! **reproducible** (reproduction defeats loss) — the threat model flipped from
+//! *duplication* to *loss*. So E0382-the-primitive is not "forbidden"; its
+//! *capability posture* is simply the wrong tool here — a sharper statement than
+//! the usual "honestly unused," but about the posture, not about `Copy`.
 //!
 //! ## ⚠ TOY — not production
 //!
@@ -138,8 +157,10 @@
 //! ## Primitives used
 //!
 //! **E0451** (the sealed [`Delivered`] witness) — and nothing else. The brand and
-//! E0080 are honestly unused; **E0382 is structurally contra-indicated** (a
-//! linear frame would forbid retransmission — see the polarity inversion above).
+//! E0080 are honestly unused; the **E0382 *capability posture*** (a sealed,
+//! consumable, non-reproducible value) is **contra-indicated** — its purpose is
+//! to forbid the reproduction retransmission needs (see the polarity inversion
+//! above; `Copy` itself is convenient, not load-bearing).
 //! The point of the leaf is what is *not* on this list: the liveness half is not
 //! a fifth compile primitive and not a runtime guard — it is a property with no
 //! finite witness, dischargeable only by an assumption about the environment's
@@ -179,8 +200,12 @@
 /// `WireToken`) — all fields public, `Copy`, freely constructible, witnessing
 /// nothing, because a value crossing a channel is bytes outside every
 /// type-checked program. **Here that is a feature, not the catastrophe it is in
-/// leaves 9 and 23:** reliable delivery *retransmits copies* to beat loss, so the
-/// frame must copy. A linear (E0382) frame would forbid the remedy.
+/// leaves 9 and 23:** reliable delivery *retransmits* to beat loss, so the frame
+/// must be **reproducible** — here both `Copy` and reconstructible from the
+/// sender's retained fields (`Copy` is convenient, not load-bearing; a non-`Copy`
+/// frame with a public constructor would retransmit equally well). What is the
+/// wrong tool is the sealed, consumable *E0382 capability posture*, whose point
+/// is to forbid exactly that reproduction.
 ///
 /// Constructing one from thin air compiles — that is the point:
 ///
@@ -471,6 +496,32 @@ mod tests {
         let delivered =
             run(Sender::new(0, 7), Receiver::new(), &mut ch, 100).expect("fair channel delivers");
         assert_eq!(delivered.payload(), 7);
+    }
+
+    /// `max_rounds` is an **exact** budget of carry attempts, not a loose upper
+    /// guard: a `FairChannel::new(N)` drops the first `N` carries and delivers on
+    /// the `(N+1)`-th, so it delivers at bound `N+1` but **not** at bound `N`.
+    /// Pins the loop-bound semantics (an off-by-one `0..=max_rounds` would let
+    /// bound `N` spuriously deliver).
+    #[test]
+    fn run_bound_is_the_exact_number_of_carry_attempts() {
+        const N: u32 = 6;
+        // Bound N: only N carries, all dropped → nothing delivered.
+        let at_n = run(
+            Sender::new(0, 1),
+            Receiver::new(),
+            &mut FairChannel::new(N),
+            N,
+        );
+        assert!(at_n.is_none(), "bound N gives N carries, all dropped");
+        // Bound N+1: the (N+1)-th carry succeeds → delivered.
+        let at_n_plus_1 = run(
+            Sender::new(0, 1),
+            Receiver::new(),
+            &mut FairChannel::new(N),
+            N + 1,
+        );
+        assert!(at_n_plus_1.is_some(), "the (N+1)-th carry delivers");
     }
 
     /// Liveness FAILS under an unfair environment: a channel that drops forever

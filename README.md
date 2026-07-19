@@ -1073,15 +1073,22 @@ a deductive argument about our own code), leaf 23 to a *trust assumption* (an
 honest party). Leaf 24's is closed by none of those — no proof *about the code*
 yields "eventually delivered" (under `DeadChannel` the identical code never does,
 so the goal is simply **false** of the code alone), only an *axiom about the
-world the types do not touch* plus temporal reasoning. It is the single-channel
-sibling of the **FLP impossibility** (Fischer–Lynch–Paterson 1985): asynchronous
-progress is unattainable without exactly such a fairness assumption. And the
-**doorway type inverts polarity**: a `Frame` is `Copy` like `ecash`'s `WireCoin`
-and `swap`'s `WireToken`, but here copyability is the **cure**, not the
-catastrophe — reliable delivery is *built on retransmitting copies* to beat loss,
-so **E0382 is structurally contra-indicated** (a linear frame would forbid the
-remedy), the threat model having flipped from *duplication* to *loss*. One
-primitive (E0451); brand/E0080 unused, E0382 contra-indicated; no new one.
+world the types do not touch* plus temporal reasoning. It is an **analogue** — not
+an instance — of the **FLP impossibility** (Fischer–Lynch–Paterson 1985): FLP is
+about *deterministic consensus* over a *reliable* channel with one crash
+(circumventable by randomization, Ben-Or 1983), while here the channel itself
+drops; what the two share is the structural core — permanent failure is
+indistinguishable from slowness over any finite prefix, so progress needs a
+liveness/timing assumption. And the **doorway type inverts polarity**: a `Frame`
+is `Copy` like `ecash`'s `WireCoin` and `swap`'s `WireToken`, but here the cure is
+**reproducibility** — reliable delivery *re-creates the frame* to beat loss (both
+`Copy` *and* reconstructed fresh from the sender's retained fields each round, so
+`Copy` is convenient, not load-bearing). What is contra-indicated is the **E0382
+capability posture** the other affine leaves rely on — a *sealed, consumable,
+non-reproducible* value (leaf 5's key, leaf 9's coin, leaf 10's chain key) whose
+purpose is to forbid the reproduction reliable delivery needs; the threat model
+flipped from *duplication* to *loss*. One primitive (E0451); brand/E0080 unused,
+the E0382 posture contra-indicated; no new one.
 
 > ⚠ **TOY.** Frames are not authenticated (a real protocol MACs/sequences under a
 > session key — orthogonal: a dead channel still never delivers). The ack path is
