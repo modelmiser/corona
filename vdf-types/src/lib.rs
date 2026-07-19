@@ -41,7 +41,7 @@
 //! | | `pow-types` (leaf 18) — **cost** | `vdf-types` (leaf 20) — **sequential delay** |
 //! |---|---|---|
 //! | what it measures | total work of a *search* | *depth* of a computation (latency lower bound) |
-//! | is there a shortcut? | a lucky first guess is cheap | **none** without the trapdoor — no luck |
+//! | is there a shortcut? | a lucky first guess is cheap | **none known** without the trapdoor (the sequentiality conjecture) — no luck |
 //! | the value | *many* nonces clear the target | *one* output, a deterministic function |
 //! | unconditional? | yes (a fact about a search history) | **no** — rests on hidden order (`φ(N)` secret) *and* the sequentiality assumption |
 //! | quantifier | "*this* search cost N steps" | "*every* algorithm is conjectured to need ≥ T sequential steps" |
@@ -66,12 +66,13 @@
 //!   map (`y = x`), not a delay function; a degenerate config rejected exactly as leaf 18 rejects
 //!   `BITS = 0` and leaf 6 rejects `K = 0`.
 //! - **The upper wall `T ≤ 63` is honestly a *toy* representational bound** — the toy forms `2^T`
-//!   in a `u128` and derives the Wesolowski quotient `⌊2^T/ℓ⌋` into a `u64`; `T ≤ 63` keeps that
-//!   quotient safely in `u64` range for every challenge prime `ℓ`. It is a *conservative* bound,
-//!   *not* a domain impossibility the way leaf 18's `BITS ≤ 64` is (there, 65 leading zero bits
-//!   from a 64-bit digest is genuinely unsatisfiable); a real VDF runs `T` in the millions. The
-//!   two walls having *different* justifications — one a domain invariant, one a toy limit — is
-//!   itself the honest nuance.
+//!   in a `u128` and casts the Wesolowski quotient `⌊2^T/ℓ⌋` to a `u64`; `63` is the *conservative*
+//!   point where `2^T` itself still fits a `u64` (`2^63 < 2^64`), which comfortably keeps that
+//!   quotient — smaller by a factor of `ℓ ≥ 3` — in `u64` range (the quotient alone would not
+//!   overflow until `T ≥ 66`). It is *not* a domain impossibility the way leaf 18's `BITS ≤ 64` is
+//!   (there, 65 leading zero bits from a 64-bit digest is genuinely unsatisfiable); a real VDF runs
+//!   `T` in the millions. The two walls having *different* justifications — one a domain invariant,
+//!   one a toy limit — is itself the honest nuance.
 //!
 //! (Naming the type `Vdf<0>` *compiles* — the wall is referenced only from [`new`](Vdf::new) and
 //! the methods — but `Vdf<0>` is **uninhabitable**: `new` is the sole constructor and it fires the
@@ -735,6 +736,27 @@ mod tests {
                 "challenge is deterministic"
             );
         }
+    }
+
+    #[test]
+    fn challenge_prime_matches_an_independent_golden_value_and_binds_all_three_fields() {
+        // Pin the challenge derivation `l = H(input, output, delay)` against an OFF-CRATE golden
+        // value (computed independently: FNV-1a-64 over `input_le ‖ output_le ‖ delay_le ‖ N_le`,
+        // then walk to the next odd prime `>= 3 + h%250`). Because `challenge_prime` is BOTH
+        // produced (eval) and consumed (verify) inside this crate, a mutated window/shape stays
+        // self-consistent and is invisible to every accept/reject test (the leaf-18
+        // sole-producer-and-consumer class) — only an external literal catches it. Also pins that
+        // `l` depends on ALL of (input, output, delay), so the documented `l = H(x, y, T)` contract
+        // is self-testing.
+        assert_eq!(
+            challenge_prime(5, 100, 16),
+            109,
+            "challenge prime for (input=5, output=100, delay=16) is the golden value"
+        );
+        // Changing any single field changes the derived prime (binds all three).
+        assert_ne!(challenge_prime(6, 100, 16), 109, "l depends on input");
+        assert_ne!(challenge_prime(5, 101, 16), 109, "l depends on output");
+        assert_ne!(challenge_prime(5, 100, 17), 109, "l depends on delay");
     }
 
     #[test]

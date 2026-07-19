@@ -852,7 +852,7 @@ pair **E0451 + E0080**; the brand and E0382 are honestly unused.
 ## Build
 
 ```sh
-cargo test --workspace          # 303 unit tests + 64 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay])
+cargo test --workspace          # 305 unit tests + 64 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

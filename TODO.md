@@ -748,17 +748,27 @@ work (complete tasks, add children, keep siblings).
       code uses `1u128<<T` → reworded to the real reason (quotient fits u64); (M3) the sequential
       lower bound was stated as fact → flagged as the CONJECTURED sequentiality assumption. Fixes
       propagated to lib.rs + README + CHARTER + records (doc-site propagation). 18 unit + 4
-      doctests; workspace 304 + 64. Need 2 consecutive clean rounds → R2 next.
+      doctests; workspace 304 + 64. **R2**: correctness CLEAN (all mutants killed/equivalent; the
+      R1 `% N` test confirmed to kill both mutants) + adversarial NO BREAK (full 3233² soundness
+      sweep + 16k fuzz, 0 panics; disclosures confirmed accurate, not understated). Claims: **1
+      MODERATE** (README workspace count stale 303 → 305 after the R1 test) + 2 LOW (the `T≤63`
+      number-vs-reason pairing tightened — 63 = the point where 2^T itself fits u64; one unhedged
+      table cell → "none known … (sequentiality conjecture)"). Also added an **independent golden
+      pin for `challenge_prime`** (leaf-18 sole-producer/consumer class — closes the R2 correctness
+      LOW cluster; the `ℓ = H(x,y,T)` contract is now self-testing). R2 not clean (1 MOD) → streak
+      resets; need R3 + R4 both clean. 19 unit + 4 doctests; workspace 305 + 64.
 
 ## Garden state (2026-07-18j)
 
-- **ALL 19 leaves cold-reviewed; leaf 20 SEEDED + cold-review IN PROGRESS (R1 done).** corona-core
-  + **20 leaves**. Leaf 20 (`vdf-types`, a verifiable delay function — validity reduces to the
-  E0451 seal, the sequential delay does not; the garden's first *complexity-lower-bound* residue
-  and a sibling axis to leaf 18's cost) was seeded this session as an *unscheduled* open-ended
-  domain (∥ leaves 16–19). Cold review R1: code CLEAN + adversarial NO BREAK; 3 real claims
-  MODERATEs (all framing — the leaf-19 inversion parallel was backwards, the wall justification was
-  wrong, the lower bound is a conjecture) fixed and propagated. Need 2 consecutive clean rounds.
+- **ALL 19 leaves cold-reviewed; leaf 20 SEEDED + cold-review IN PROGRESS (R1–R2 done).**
+  corona-core + **20 leaves**. Leaf 20 (`vdf-types`, a verifiable delay function — validity reduces
+  to the E0451 seal, the sequential delay does not; the garden's first *complexity-lower-bound*
+  residue and a sibling axis to leaf 18's cost) was seeded this session as an *unscheduled*
+  open-ended domain (∥ leaves 16–19). The CODE has been CLEAN + adversarial NO BREAK in both rounds;
+  every finding has been documentation (R1: 3 framing MODERATEs — the leaf-19 inversion parallel was
+  backwards, the wall justification wrong, the lower bound a conjecture; R2: 1 MODERATE stale test
+  count + doc-precision LOWs + a golden `challenge_prime` pin). R2 not clean → need R3 + R4 both
+  clean for convergence.
 
 ## Garden state (2026-07-18i)
 
