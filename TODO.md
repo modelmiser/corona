@@ -848,7 +848,26 @@ work (complete tasks, add children, keep siblings).
       (occupied storage — the first *spatial* residue, completing the cost/delay/space triad, and the
       first residue whose *shape* is a tradeoff so a pure bound is ill-posed) and the fourth
       E0451+E0080 pairing. See CHARTER.
-- [ ] **Cold-review the leaf-21 surface to convergence** — IN PROGRESS. **R1 done** (3 fresh blind
+- [x] **Cold-review the leaf-21 surface to convergence — CONVERGED** (7 rounds; R6 & R7 two
+      consecutive clean on frozen code `8ec80f3`; arc MOD R1(3)→R2(0)→R3(1)→R4(0)→R5(1)→R6(0)→R7(0);
+      commits `d66d6c2` R1 → `8a7c878` R3 → `8ec80f3` R5, R6/R7 no-change). **The shipped LIBRARY LOGIC
+      was CORRECT + adversarial NO BREAK in ALL 7 rounds** — the E0451 seal + E0080 wall held under
+      every safe-code forge/wall vector (rejected E0451/E0277/E0616/E0599/E0080) and ~370k+ cumulative
+      fuzz cases across 21 blind agents (0 forges, 0 false accepts, 0 panics; both disclosed limits —
+      byte-identical seed-only vs materialized witness, and the seed-only external-attacker rebuild —
+      reproduced every round). **Every finding was a TEST-COVERAGE GAP or a DOC imprecision, never a
+      code defect**, and every MODERATE was one species: a **sole-producer-and-consumer** constant/
+      layout that rescales self-consistently and hides from accept/reject tests (R1 the seed guard
+      masked by the fold check; R3 the `QUERIES` constant; R5 the `challenge_index` `root↔j` byte
+      transposition masked by the `% 2^K` reduction — the very layout oracle meant to catch it pinned
+      the *post-mod* index). Each closed with an EXTERNAL witness at a projection the internal
+      transforms don't erase (a foreign-seed table; a golden literal; asymmetric wide-modulus vectors).
+      The recurring "on demand" doc LOW (flagged by all 3 R1–R3 claims lenses) was fixed at R3. R6 & R7
+      converged: all three lenses clean, only equivalent-mutant LOWs (the two dead/subsumed verify
+      guards + `respond().first()`≡`.last()` on a 1-element root level) and defensible-taste claims
+      LOWs (the "temporal" grouping of pow's cost) left per converge-then-stop. **All 21 leaves now
+      cold-reviewed. No review debt.** pospace 18 unit + 4 doctests; workspace 323 + 68, all gates green.
+  **Per-round detail (historical):** **R1 done** (3 fresh blind
       lenses on isolated per-lens copies). **Code CORRECT + adversarial NO BREAK** — forge blocked
       (E0451/E0277/E0616), E0080 wall unbypassable (incl. generic wrapper / const ctx), 0 false
       accepts across exhaustive small-K tamper sweeps + ~62k fuzz (incl. K=20/1M-leaf), 0 panics,
@@ -909,6 +928,21 @@ work (complete tasks, add children, keep siblings).
       strengthening. 3 LOWs left (the two equivalent verify-guard mutants; `idx&1==0`→`<=0` equivalent).
       Test-only change → 2-clean clock RESETS: **need R6 + R7 both clean.** pospace 18 unit + 4
       doctests; workspace 323 + 68, all gates green.
+
+## Garden state (2026-07-19)
+
+- **ALL 21 leaves cold-reviewed. No review debt.** corona-core + **21 leaves**. Leaf 21
+  (`pospace-types`, a proof of space — validity reduces to the E0451 seal, occupied storage does not;
+  the garden's first *spatial* residue, completing a resource triad with leaf 18's cost and leaf 20's
+  delay, and the first residue whose shape is a *tradeoff* — a pure space bound is ill-posed because
+  storage is always convertible to recomputation time) CONVERGED this session (7 rounds; R6 & R7 two
+  consecutive clean on frozen code). The shipped library logic was CORRECT + adversarial NO BREAK in
+  all seven rounds; every finding was a test-coverage gap or a doc imprecision — every MODERATE the
+  same *sole-producer-and-consumer* species (the seed-guard masked by the fold check, the `QUERIES`
+  constant, the `challenge_index` byte transposition masked by the modulus), each closed with an
+  external witness. An *unscheduled* open-ended domain ∥ leaves 16–20. The garden is again a finished
+  thought: any further leaf is a fresh open-ended domain, not backlog; wind-down synthesis remains a
+  valid close. Nothing auto-starts.
 
 ## Garden state (2026-07-18l)
 
