@@ -438,8 +438,9 @@ Per the thin-core rule, each new leaf asks what is *proven* shared.
   **liveness** → no primitive **and no finite check**: the identical code delivers over a fair channel and
   never over a dead one (difference entirely in the environment's *infinite* behaviour), and no finite
   observation separates a slow-but-fair channel from a dead one — Alpern–Schneider's *no finite bad prefix*,
-  made an executable test. This escapes deeper than any prior residue: not "a type can't hold it but a
-  runtime check can" (leaf 9/11), but *nothing observable in finite time can*. The distinction the check
+  made an executable test. This escapes at a different level than the *runtime-closable* residues: not "a
+  type can't hold it but a runtime check can" (leaf 9/11, which a finite check recovers), but *nothing
+  observable in finite time can* (a contrast, not a total ranking). The distinction the check
   records is the **fourth seam**: leaf 9 → coordination (`quorum-types`), leaf 15 → proof (**Sol**, about
   our *own code*), leaf 23 → trust; **leaf 24 → an assumption about the *environment* (channel fairness,
   `□◇carries`) plus temporal reasoning over infinite runs** (`□◇carries ⟹ ◇delivered`) — an **analogue**

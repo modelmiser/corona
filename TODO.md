@@ -1045,9 +1045,17 @@ work (complete tasks, add children, keep siblings).
       residue is *liveness*" across lib.rs/README/CHARTER; (m2) a residual "copyability is the cure" in the
       `frames_copy_freely` test doc contradicted the R1 rework → reworded to reproducibility (+L1 TOY Copy
       note, +L2 "deeper than any"→"different level than runtime-closable", both flagged twice). **R2 NOT
-      clean (3 MOD) → need R3 + R4 both clean.** Recurring theme = cross-leaf universal claims overreach
-      (the predicted highest-risk class); code carried ZERO correctness/adversarial breaks in both rounds.
-      13 unit + 4 doctests. Nothing auto-starts.
+      clean (3 MOD).** **R3 done** (fresh blind lenses): correctness CLEAN (all 18 non-equivalent mutants
+      killed incl. all 5 `on_ack` directions — the R2 class-pin works; 4 survivors provably equivalent),
+      adversarial CLEAN (NO BREAK — seal genuine E0451, indistinguishability held, "Copy not load-bearing"
+      re-verified by prototype), claims **1 MODERATE** — a residual "deeper than any prior residue" survived
+      in the CHARTER *promotion bullet* (I fixed 3 sites in R2 but missed the 4th; it contradicted lib.rs,
+      README, AND the CHARTER table row) → FIXED + grepped the WHOLE repo, zero live residuals of any flagged
+      phrase remain. All else verified TRUE (hyperproperty reframe defensible, reproducibility accurate, FLP
+      correct, all 5 citations real, leaf-15 contrast + partial-synchrony clause precise). **R3 NOT clean
+      (1 claims MOD) → need R4 + R5 both clean.** Code CLEAN all 3 rounds; every finding doc-precision, and
+      the recurring one is "qualifier must reach every site" (now closed by a repo-wide sweep). 13 unit + 4
+      doctests. Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 
