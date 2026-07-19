@@ -94,6 +94,10 @@ name = "translog-types"
 version = "0.1.0"
 
 [[package]]
+name = "vdf-types"
+version = "0.1.0"
+
+[[package]]
 name = "vid-types"
 version = "0.1.0"
 dependencies = [

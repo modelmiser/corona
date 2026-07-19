@@ -1,0 +1,13 @@
+[package]
+name = "vdf-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TOY typestate crate: verifiable delay function (RSW + Wesolowski) — validity reduces to the E0451 seal, sequential delay does not (Corona leaf 20)."
+publish = false
+
+# Leaf 20 of the Corona garden. Standalone: imports neither corona-core nor any
+# sibling leaf — a residue-drawing leaf (the sequential-delay lower bound) leans on
+# nothing in the garden. Sibling to leaf 18 (pow): the physical-process residue,
+# a different axis (depth, not cost).
+[dependencies]

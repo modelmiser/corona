@@ -33,7 +33,8 @@ corona/
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (TOY)
 ├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
 ├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
-└── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
+├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
+└── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -798,10 +799,53 @@ ways**, and the residue is of a new kind.
 > 5, 18). Raw RSA (no full-domain hash) is also multiplicatively malleable. No
 > denominations/transfer/partially-blind variants.
 
+## Leaf 20: `vdf-types`
+
+A **verifiable delay function** (Boneh–Bonneau–Bünz–Fisch 2018; RSW time-lock puzzles 1996;
+Wesolowski 2019) — from an input `x` it computes a unique output `y = x^(2^T) mod N` that takes
+`T` **sequential** squarings to produce (squaring cannot be parallelised, so the delay is a lower
+bound on wall-clock latency), yet is cheap to verify from a short proof. The garden's standard
+question: *does "`T` sequential steps of work elapsed" reduce to the vocabulary?* It **splits**,
+and the residue is of a kind the garden did not have.
+
+- **Validity reduces to E0451, the same seal.** `Vdf::verify(output, proof)` is the sole minter
+  of a sealed `Evaluated`: it derives the Fiat–Shamir challenge prime `ℓ = H(x, y, T)`, computes
+  `r = 2^T mod ℓ`, and mints the witness exactly when `π^ℓ · x^r ≡ y (mod N)` — which (since
+  `2^T = ⌊2^T/ℓ⌋·ℓ + r` and `π = x^{⌊2^T/ℓ⌋}`) holds precisely when `y = x^(2^T)`. This is
+  `pow-types`' `Puzzle::verify` again — a checked path is the only door to the witness — and
+  verification is *exponentially cheaper* than evaluation.
+- **The delay does NOT reduce — a residue of a new kind: a complexity lower bound.** The seal
+  witnesses that `y = x^(2^T)` and **nothing about how long the producer took**. The *same* output
+  reached by `T` honest sequential squarings, or in one step by a party who knows the group order
+  `φ(N)` (reduce the exponent: `y = x^{2^T mod φ(N)}`), mints the **byte-identical** witness — the
+  delay is not a property of the value. `Vdf::eval` hands the squaring count back as a *return
+  value of the computation*, deliberately **not** a field of the witness (the placement `pow-types`
+  uses for its attempt count).
+
+It is a **sibling to `pow-types` (leaf 18) on a different axis, and the contrast is the leaf**:
+pow's residue is *cost* — a fact about a value's **production history** (a lucky first guess is
+cheap; unconditional). vdf's is a **sequential-depth lower bound** — a fact about what *no*
+computation can do faster (no lucky shortcut; the output is a deterministic function; the bound is
+quantified over *all* algorithms and rests on the group's order being hidden). So the seal is
+silent about the *math* of a checked path (leaves 3/4), the *direction* of its soundness (leaf 16),
+the *history* of reaching it (leaf 18 — cost), and now the **sequential depth** any reaching of it
+must have. And ∥ leaf 6 / leaf 18, the delay *parameter* still reduces: `Vdf<const T>` is walled by
+`1 ≤ T ≤ 63` (E0080) — `T = 0` is the identity map (a domain invariant), `T = 64` overflows the
+toy's `u64` proof arithmetic (an honestly-disclosed toy limit, not a domain one). Leaf 20 is the
+*third* leaf to pair **E0451 + E0080**; the brand and E0382 are honestly unused.
+
+> ⚠ **TOY — and the toy *inverts* the usual break** (∥ `blindsig-types` leaf 19). The Wesolowski
+> *verification* is faithful, but `N = 3233` (= 61·53) factors instantly, so `φ(N) = 3120` is known
+> and the output is one short exponentiation — **the delay is broken, not the verification.** A real
+> VDF needs a group of **unknown order** (an RSA modulus whose factorisation is discarded at a
+> trusted setup, or a class group). Wesolowski proof soundness also rests on a hardness assumption
+> absent in a small group, and the challenge is derived with a toy FNV hash. The witness is
+> unbranded (input/delay-detectable via `Vdf::owns`, not brand-enforced ∥ leaf 18).
+
 ## Build
 
 ```sh
-cargo test --workspace          # 286 unit tests + 60 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty])
+cargo test --workspace          # 303 unit tests + 64 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
