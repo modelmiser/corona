@@ -324,6 +324,11 @@ impl<const N: usize> Secret<N> {
     /// Touches every byte of both inputs regardless of `choice` — the address
     /// stream and the operation count do not depend on the secret bit.
     pub fn ct_select(a: &Secret<N>, b: &Secret<N>, choice: Choice) -> Secret<N> {
+        // LOAD-BEARING: this mask (0x00/0xFF) is correct only because a `Choice`'s
+        // bit is always 0 or 1 — an invariant that rests on `Choice::from_bit` (its
+        // sole minter) being private and masking with `& 1`. A public `Choice`
+        // constructor admitting other values (e.g. `Choice(2)`) would silently break
+        // both the select's obliviousness AND its correctness. Keep `from_bit` private.
         let mask = 0u8.wrapping_sub(choice.0); // 0xFF if choice==1 else 0x00
         let mut out = [0u8; N];
         for ((o, x), y) in out.iter_mut().zip(a.bytes.iter()).zip(b.bytes.iter()) {
@@ -524,19 +529,29 @@ mod tests {
 
     /// Masked choices compose without branching: `and` and `negate` behave as
     /// boolean conjunction / negation on the underlying bit, and only the final
-    /// `declassify` turns the result into a `bool`.
+    /// `declassify` turns the result into a `bool`. The combinators are pinned over
+    /// their **full truth table** — each is a 1- or 2-bit function, so exhausting
+    /// every row closes the whole class of "operator under-tested on some operand
+    /// combination" mutants at once (e.g. `and`→`other.0` slips through if the
+    /// `false`-left rows are untested; `negate`→`|1` if only `false`→`true` is).
     #[test]
     fn choices_compose_obliviously() {
-        let a = Secret::new([1u8, 2]);
-        let b = Secret::new([1u8, 2]);
-        let c = Secret::new([9u8, 9]);
-        // (a == b) AND (a == b)  → true;   (a == b) AND (a == c) → false.
-        assert!(a.ct_eq(&b).and(a.ct_eq(&b)).declassify());
-        assert!(!a.ct_eq(&b).and(a.ct_eq(&c)).declassify());
-        // `negate` pinned in BOTH directions (a `^1`→`|1` mutant that always yields
-        // true survives if only the false→true case is tested):
-        assert!(a.ct_eq(&c).negate().declassify(), "NOT(false) == true");
-        assert!(!a.ct_eq(&b).negate().declassify(), "NOT(true) == false");
+        let eq = Secret::new([1u8, 2]);
+        let same = Secret::new([1u8, 2]);
+        let diff = Secret::new([9u8, 9]);
+        let t = eq.ct_eq(&same); // a true masked Choice (Copy)
+        let f = eq.ct_eq(&diff); // a false masked Choice
+
+        // `negate` — full 1-bit table:
+        assert!(!t.negate().declassify(), "NOT(true) == false");
+        assert!(f.negate().declassify(), "NOT(false) == true");
+
+        // `and` — full 2-bit table (pins BOTH operands; a mutant returning either
+        // operand alone, or a constant, fails at least one row):
+        assert!(t.and(t).declassify(), "T & T = T");
+        assert!(!t.and(f).declassify(), "T & F = F");
+        assert!(!f.and(t).declassify(), "F & T = F");
+        assert!(!f.and(f).declassify(), "F & F = F");
     }
 
     /// `declassify` is a faithful round-trip: it returns exactly the bytes wrapped.
