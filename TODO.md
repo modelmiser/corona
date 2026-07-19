@@ -893,6 +893,22 @@ work (complete tasks, add children, keep siblings).
       on the new frozen code.** Residual LOWs LEFT (the two equivalent verify-guard mutants; the
       "temporal" grouping of pow's cost — defensible complexity-theoretic time-vs-space reading).
       pospace 18 unit + 4 doctests; workspace 323 + 68, all gates green.
+      **R4 = CLEAN** (fresh blind lenses on frozen `8a7c878`): correctness CLEAN (0 CRIT/0 MOD; QUERIES
+      pin confirmed to kill its mutant, all constants/guards pinned; only 2 equivalent-mutant LOWs),
+      adversarial NO BREAK (118,924 fuzz, 0 false accepts/panics), claims CLEAN (the "on demand" fix
+      confirmed accurate + non-misleading). **R5 = NOT clean**: adversarial NO BREAK (200k fuzz),
+      claims CLEAN, but **correctness found 1 MODERATE** — the `challenge_index` `root_le ↔ j_le` byte
+      transposition SURVIVED: the layout-oracle pinned it at one vector `(99,5,10)` whose two orderings
+      *coincidentally collide mod 1024* (both ≡148), and every other test uses `challenge_index` on
+      both producer (`respond`) and consumer (`verify`) → self-consistent → invisible (the SAME
+      sole-producer/consumer class as R3's QUERIES, now biting the very oracle meant to defend against
+      it — because it pinned the *post-mod* index and the mod collapsed the swap). FIXED by
+      strengthening the oracle to several vectors incl. asymmetric `(root,j)` pairs at k=20 that do NOT
+      collide under the modulus; verified the strengthened test FAILS under the transposition mutant
+      (at root=7,j=3,k=20). Shipped library logic BYTE-IDENTICAL and correct throughout — a test-only
+      strengthening. 3 LOWs left (the two equivalent verify-guard mutants; `idx&1==0`→`<=0` equivalent).
+      Test-only change → 2-clean clock RESETS: **need R6 + R7 both clean.** pospace 18 unit + 4
+      doctests; workspace 323 + 68, all gates green.
 
 ## Garden state (2026-07-18l)
 

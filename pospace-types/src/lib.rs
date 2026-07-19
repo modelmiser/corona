@@ -902,14 +902,23 @@ mod tests {
             ref_fnv1a(&node_bytes),
             "hash_node byte layout = NODE_TAG ‖ left_le ‖ right_le"
         );
-        let mut ch_bytes = vec![0x03u8];
-        ch_bytes.extend_from_slice(&99u64.to_le_bytes());
-        ch_bytes.extend_from_slice(&5u64.to_le_bytes());
-        assert_eq!(
-            challenge_index(99, 5, 10),
-            ref_fnv1a(&ch_bytes) % (1u64 << 10),
-            "challenge_index byte layout = CHALLENGE_TAG ‖ root_le ‖ j_le, mod 2^K"
-        );
+        // Pin the challenge layout at SEVERAL vectors, including asymmetric `(root, j)` pairs at a
+        // WIDE modulus. `challenge_index` returns a value already reduced `mod 2^K`, so a single
+        // narrow-`K` vector can miss a `root_le ↔ j_le` transposition when the two orderings happen
+        // to collide under the modulus (e.g. `(99, 5, 10)`: the full hashes differ but both are
+        // `≡ 148 mod 1024`). The `k = 20` asymmetric vectors below do NOT collide, so they observe
+        // the byte order itself — closing the transposition gap the single narrow vector left open.
+        for &(root, j, k) in &[(99u64, 5u64, 10u32), (7, 3, 20), (1, 2, 20), (256, 255, 20)] {
+            let mut ch_bytes = vec![0x03u8];
+            ch_bytes.extend_from_slice(&root.to_le_bytes());
+            ch_bytes.extend_from_slice(&j.to_le_bytes());
+            assert_eq!(
+                challenge_index(root, j, k),
+                ref_fnv1a(&ch_bytes) % (1u64 << k),
+                "challenge_index byte layout = CHALLENGE_TAG ‖ root_le ‖ j_le, mod 2^K \
+                 (root={root}, j={j}, k={k})"
+            );
+        }
         // The three tags separate the domains: the same (a, b) hashes differently as a leaf, a node,
         // and a challenge (a mutant collapsing two tags would be caught here).
         assert_ne!(
