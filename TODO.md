@@ -1064,7 +1064,16 @@ work (complete tasks, add children, keep siblings).
       (FairChannel ◇□ vs □◇ label) left as pedantic non-error. **Same ratchet as R3** (one qualifier truncated
       in summaries per round); now broken by syncing summaries + "e.g.". **R4 NOT clean (1 claims MOD) → need
       R5 + R6 both clean.** Code CLEAN all 4 rounds. Discipline now: STOP adding claims, let R5/R6 confirm.
-      Nothing auto-starts.
+      **R5 done** (fresh blind lenses): correctness CLEAN (19 non-equiv mutants killed, 2 equivalent) +
+      adversarial CLEAN (NO BREAK; reproducibility re-verified), claims **1 MODERATE** — a *pre-existing*
+      mislabel (since seed): lib.rs cited "leaf 9's **coordination**" as a runtime-closable residue "a finite
+      check recovers," but coordination is leaf 9's NON-closable L3 seam (→quorum) — and it collided with the
+      file's own fourth-seam para. The runtime-closable residue is leaf 9's **spent-set check** (L2) → fixed
+      (3 words); the 3 summary sites already said just "leaf 9/11" (correct). All else verified TRUE +
+      consistent (leaf-20 e.g., leaf-15 disarm, 4 "different level" sites, reproducibility, FLP, 5 citations).
+      Findings trajectory R1..R5: 3→3→1→1→1, all singletons since R3 DISTINCT genuine doc-precision (not one
+      issue recurring); CODE clean since R3. **R5 NOT clean (1 claims MOD) → need R6 + R7 both clean.** If R6
+      surfaces only defensible LOWs → practical convergence per leaf-9/10/11 precedent. Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 

@@ -59,7 +59,7 @@
 //!    program. A type discipline is a compile-time fact; a runtime guard is a
 //!    finite check; **liveness is neither**, so it escapes at a different level
 //!    than the garden's *runtime-closable* residues — not "the type can't hold it
-//!    but a runtime check can" (leaf 9's coordination, leaf 11's freshness
+//!    but a runtime check can" (leaf 9's spent-set check, leaf 11's freshness
 //!    compare, which a finite check recovers), but *nothing observable in finite
 //!    time can hold it at all* (a distinction from the runtime-closable residues,
 //!    not a total ranking over all prior leaves). (This is under
