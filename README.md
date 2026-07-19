@@ -1040,9 +1040,10 @@ crossed: the line between safety and liveness** (Lamport 1977; Alpern–Schneide
 (*nothing bad ever happens*); **liveness** if a violation is an **infinite** run
 in which the good thing never arrives, so **no finite prefix witnesses it**
 (*something good eventually happens*). **No prior residue is a *liveness*
-property** — most are safety facts (finite witness), and a few (leaf 19
-unlinkability, leaf 22 knowledge-soundness) are *hyperproperties*, not trace
-properties at all — but none says *something good eventually happens*. Reliable
+property** — most are safety facts (finite witness), and several others are not
+safety trace properties at all (e.g. leaf 19 unlinkability and leaf 22
+knowledge-soundness are *hyperproperties*, leaf 20 delay a conjectured
+complexity bound) — but none says *something good eventually happens*. Reliable
 delivery is the first domain landing on the safety/**liveness** line.
 
 - **The safety half reduces to the E0451 seal.** *At-most-once, in-order

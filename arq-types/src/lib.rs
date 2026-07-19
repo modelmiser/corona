@@ -19,13 +19,17 @@
 //! prefix witnesses it**. **No prior residue in the garden is a *liveness*
 //! property.** Most are safety facts — a count (leaves 1, 12), a freshness
 //! comparison (leaf 11), a soundness direction (leaf 16), an atomicity across
-//! parties (leaf 23) — each with a finite witness; a few are not trace
-//! properties at all — leaf 19's *unlinkability* and leaf 22's
-//! *knowledge-soundness* are **hyperproperties** over several runs, and leaf 20's
-//! *delay* is a conjectured complexity lower bound — but none of these says
-//! *something good eventually happens*. Reliable delivery is the first domain
-//! whose invariant lands on the safety/**liveness** line, and the two halves
-//! reduce completely differently.
+//! parties (leaf 23) — each with a finite witness; several others are not
+//! safety trace properties at all — e.g. leaf 19's *unlinkability* and leaf
+//! 22's *knowledge-soundness* are **hyperproperties** over several runs, leaf
+//! 20's *delay* a conjectured complexity lower bound — but none of these says
+//! *something good eventually happens*. (The nearest miss is leaf 15: a CvRDT's
+//! *convergence* — replicas eventually agree — is itself liveness-shaped, but
+//! leaf 15's irreducible *residue* is the algebraic merge-law, a
+//! universally-quantified equational obligation, **not** convergence; so no
+//! prior *residue* is liveness.) Reliable delivery is the first domain whose
+//! invariant lands on the safety/**liveness** line, and the two halves reduce
+//! completely differently.
 //!
 //! 1. **The safety half reduces to the E0451 seal.** *At-most-once, in-order
 //!    delivery* — the application must never be handed a payload twice, nor out

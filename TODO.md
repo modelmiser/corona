@@ -1055,7 +1055,16 @@ work (complete tasks, add children, keep siblings).
       correct, all 5 citations real, leaf-15 contrast + partial-synchrony clause precise). **R3 NOT clean
       (1 claims MOD) → need R4 + R5 both clean.** Code CLEAN all 3 rounds; every finding doc-precision, and
       the recurring one is "qualifier must reach every site" (now closed by a repo-wide sweep). 13 unit + 4
-      doctests. Nothing auto-starts.
+      doctests. **R4 done** (fresh blind lenses): correctness CLEAN (19 non-equiv mutants killed, 2 equivalent
+      survivors) + adversarial CLEAN (NO BREAK; "Copy not load-bearing" re-verified with a Vec-payload
+      non-Copy/non-Clone prototype), claims **1 MODERATE** — the leaf-20-delay carve-out was in lib.rs only;
+      README/CHARTER named only leaf 19/22 as non-safety, reading as exhaustive (implying leaf 20 ∈ safety) →
+      FIXED by adding leaf 20 + a non-exhaustive "e.g." across all sites; also added an L2 headline-hardening
+      clause disarming leaf 15's convergence-is-liveness near-miss (residue = merge-law, not convergence). L3
+      (FairChannel ◇□ vs □◇ label) left as pedantic non-error. **Same ratchet as R3** (one qualifier truncated
+      in summaries per round); now broken by syncing summaries + "e.g.". **R4 NOT clean (1 claims MOD) → need
+      R5 + R6 both clean.** Code CLEAN all 4 rounds. Discipline now: STOP adding claims, let R5/R6 confirm.
+      Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 
