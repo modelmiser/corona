@@ -1,0 +1,13 @@
+[package]
+name = "consttime-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Corona leaf 25 — constant-time secret comparison (data-obliviousness / timing side-channels) as typestate. The SOURCE-level data-oblivious discipline (no secret-dependent branch or index) reduces to the E0451 seal used in a NEW mode — an 'oblivious seal' that makes a value opaque to control flow (no PartialEq/Ord/Index/Deref). But whether the combinators are ACTUALLY constant-time, and whether the compiler and microarchitecture preserve it, are residues no value-level type can reach — the operational/physical layer BENEATH the value abstraction (a fifth residue home; generalizing leaf 10's memory-residue hint). The timing axis of leaves 18/20/21 inverted: not how much time one run takes, but whether the time LEAKS the secret across runs. TOY, not production."
+
+# consttime-types is STANDALONE (imports nothing in the garden): a leaf whose subject
+# is *where a residue stops reducing* must not lean on sibling surfaces, and its
+# subject (data-oblivious secret comparison) is unrelated to corona-core's k-of-n
+# Threshold. It needs no crypto backend — the residue is about the operational
+# behaviour of the compiled program, not the unforgeability of any value.
+[dependencies]

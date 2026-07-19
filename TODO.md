@@ -1090,6 +1090,65 @@ work (complete tasks, add children, keep siblings).
       issue recurring); CODE clean since R3. **R5 NOT clean (1 claims MOD) → need R6 + R7 both clean.** If R6
       surfaces only defensible LOWs → practical convergence per leaf-9/10/11 precedent. Nothing auto-starts.
 
+## Now (leaf 25 — consttime-types)
+
+- [x] Seed consttime-types: **constant-time secret comparison** (data-obliviousness /
+      timing side channels) — the last breadth seed before the parked depth batch. The
+      garden's standard question **splits along a seam no prior leaf drew: between the
+      *values* a program manipulates and the *operational behaviour* of the program
+      manipulating them.** (1) The **source-level data-oblivious discipline reduces to
+      E0451 in a fourth, OBLIVIOUS mode** — a `Secret<N>` has private bytes AND withholds
+      every trait that forks control flow (`PartialEq`/`Ord`/`Deref`/`Index`), so
+      `secret == guess` does not compile (verified vs rustc `error[E0369]`; the sealed-field
+      forge is `error[E0451]`); the only observations are data-oblivious combinators
+      (`ct_eq`→masked `Choice`, `ct_select`) + one greppable `declassify`. The seal that
+      always guarded *construction* here guards *observation*. (2) **Whether the code is
+      actually constant-time reduces to no primitive AND no runtime check the program can
+      run on itself** — full-scan vs early-exit are type-identical at raw bytes, diverging
+      only in *timing* (`the_type_system_cannot_tell_constant_time_from_leaky`, op-count a
+      proxy); lowering (optimiser / CPU / cache / speculation) leaks below every type. The
+      residue's home is the **fifth seam: a platform/implementation assumption** — the
+      operational/physical layer beneath the value abstraction (leaf 10's memory-residue
+      hint generalized to a class). **Inverts the timing axis** of leaves 18/20/21 (not *how
+      much* time one run takes but whether time *leaks the secret across* runs); precisely
+      **not leaf 19** (unlinkability hides a *value*; here the value hides perfectly yet the
+      *computation* leaks it). One primitive (E0451, oblivious mode); brand/E0080/E0382
+      honestly unused; no new one. Standalone. Held the depth-audit's residue-executability
+      question at seed time: BOTH halves are executable (the reduction = compile-fail seal +
+      withheld traits; the residue = the op-count leak test + the witness-trap `Choice`).
+      13 unit + 4 doctests; workspace **384 unit + 84 doctests**, all gates green
+      (clippy/fmt/rustdoc -D warnings). Commit `<seed>`, pushed.
+- [ ] **Cold-review the leaf-25 surface to convergence** — PENDING, fires on the next
+      "ready" (seed-then-stop; review deferred to a separate trigger). Watch the predicted
+      highest-risk class: cross-leaf universal claims (the leaf-19/24 "not leaf 19" contrast,
+      the "fifth seam" / "fourth mode" / "first to draw this seam" absolutes) and
+      qualifiers reaching every doc site (README/CHARTER/lib.rs). Verify any asserted
+      compiler code vs rustc.
+- [x] `corona-core` promotion check (leaf-25 trigger): nothing to promote (standalone). The
+      datum is the seal's **fourth mode** (observation, not construction) + the fifth seam.
+      See CHARTER.
+
+## Garden state (2026-07-19h)
+
+- **Leaf 25 `consttime-types` SEEDED; cold-review PENDING.** corona-core + **25 leaves**.
+  On the user's "open leaf 25", seeded the **last breadth leaf before the parked depth
+  batch** (constant-time secret comparison / timing side channels) as an *unscheduled*
+  open-ended domain. It draws a **seam no prior leaf drew — between the *values* a program
+  manipulates and the *operational behaviour* of the program manipulating them**: the
+  source-level data-oblivious discipline reduces to the **E0451 seal in a fourth,
+  observation-guarding (OBLIVIOUS) mode**, but whether the code is *actually* constant-time
+  reduces to no primitive **and no runtime check the program can run on itself** — the
+  **operational/physical layer beneath the value abstraction**, closed only by a
+  **platform/implementation assumption** (the **fifth seam**; leaf 10's memory-residue hint
+  generalized to a class — constant-time / zeroization / power-analysis). Inverts the timing
+  axis of the resource triad (18/20/21) and is precisely *not* leaf 19. BOTH halves
+  executable (compile-fail seal + the op-count leak test + witness-trap `Choice`) — the
+  depth-audit's residue-executability question held at seed time. Per the garden rhythm the
+  seed is the unit of finishing; cold review waits for a separate "ready". **Sequencing
+  (user-set):** breadth has now reached leaf 25 (the planned last breadth seed); the **parked
+  depth batch is next** (audit first — see the 2026-07-19 depth-pass block below). Nothing
+  auto-starts.
+
 ## Garden state (2026-07-19g)
 
 - **ALL 24 leaves cold-reviewed. No review debt.** corona-core + **24 leaves**. On the user's "ready",

@@ -38,7 +38,8 @@ corona/
 ├── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
 ├── sigma-types/      # leaf 22 — Schnorr proof of knowledge (Σ-protocol): completeness reduces to the seal, but knowledge-soundness is a counterfactual-execution property no type can hold — the dual of leaf 19 (TOY)
 ├── swap-types/       # leaf 23 — fair exchange / atomic swap: inside one program atomicity reduces to E0382, but across the wire between two distrusting parties no primitive (and no runtime check they run) holds it — Cleve's impossibility, closed only by trusting a third party (TOY)
-└── arq-types/        # leaf 24 — reliable delivery (stop-and-wait ARQ): at-most-once/in-order delivery is SAFETY and reduces to the E0451 seal, but "eventually delivered" is LIVENESS and reduces to no primitive AND no finite check (Alpern–Schneider: no finite bad prefix) — closed only by a fairness assumption on the environment (TOY)
+├── arq-types/        # leaf 24 — reliable delivery (stop-and-wait ARQ): at-most-once/in-order delivery is SAFETY and reduces to the E0451 seal, but "eventually delivered" is LIVENESS and reduces to no primitive AND no finite check (Alpern–Schneider: no finite bad prefix) — closed only by a fairness assumption on the environment (TOY)
+└── consttime-types/  # leaf 25 — constant-time secret comparison (data-obliviousness / timing side channels): the SOURCE-level "no secret-dependent branch/index" discipline reduces to the E0451 seal in an OBLIVIOUS mode (a value opaque to control flow — no PartialEq/Ord/Index/Deref), but whether the code is ACTUALLY constant-time reduces to no primitive and no runtime check the program can run on itself — the operational/physical layer beneath the value abstraction, closed only by a platform assumption (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -1104,10 +1105,70 @@ the E0382 posture contra-indicated; no new one.
 > payloads are single bytes, which keeps the frame `Copy` (a convenience, not a
 > requirement — reproducibility, not `Copy`, is what enables retransmission).
 
+## Leaf 25: `consttime-types`
+
+**Constant-time secret comparison** — a program compares a secret (key, MAC tag,
+password hash) against an attacker-supplied guess. The naive byte loop that
+**returns early on the first mismatch** is correct on *values* but leaks the
+secret through its **running time** (a longer shared prefix takes longer; time
+the check, recover the secret byte by byte — Kocher 1996; the `memcmp`/HMAC class;
+Lucky-13, 2013). The garden's standard question — *does constant-time security
+reduce to the vocabulary?* — **splits along a seam no prior leaf drew: between the
+*values* a program manipulates and the *operational behaviour* of the program
+manipulating them.**
+
+- **The source-level data-oblivious discipline reduces to the E0451 seal — in a
+  fourth *mode*.** A `Secret<N>` has **private** bytes (the seal) and implements
+  **none** of the traits that let control flow fork on its value — no
+  `PartialEq`/`Eq` (`secret == guess` does not compile, verified `error[E0369]`),
+  no `PartialOrd`/`Ord`, no `Deref`, no `Index`. The only observations are the
+  **data-oblivious combinators** `ct_eq` (full-scan equality → a masked `Choice`,
+  never a branchable `bool`) and `ct_select` (branchless choose), plus one
+  explicit greppable escape, `declassify`. This is the seal wearing a new hat:
+  not "you cannot *forge* this witness" (the construction seal, leaves 1–24) but
+  "you cannot *branch on* this value" — the same private-field mechanism guarding
+  *observation* instead of *construction*.
+- **Whether the code is *actually* constant-time reduces to no primitive, and to
+  no runtime check the program can run on itself.** This is the leaf. The seal
+  guarantees you *went through* `ct_eq`; it cannot guarantee `ct_eq` *is*
+  constant-time. A full-scan and an early-exit compare are **type-identical** once
+  at raw bytes (both `fn(&[u8],&[u8]) -> bool`); the compiler type-checks both, and
+  only their *timing* differs (`the_type_system_cannot_tell_constant_time_from_leaky`
+  makes this a running test, op-count a proxy for time). And it runs deeper: even a
+  source-oblivious `ct_eq` can leak once **lowered** — the optimiser may re-introduce
+  a branch, some CPUs have data-dependent instruction timing, cache & speculation
+  leak (Spectre). **No Rust type sees any of it** — types reason about *values*;
+  timing lives a layer beneath.
+
+**The residue, and the fifth seam.** "Really constant-time" is discharged by
+**none** of the prior seams — not coordination (leaf 9), not a Sol proof (leaf 15),
+not a trust assumption (leaf 23), not an environment-fairness axiom (leaf 24). It
+is closed only by a **platform/implementation assumption** — the combinators are
+audited branchless *and* the ISA + compiler + microarchitecture **preserve**
+data-obliviousness to the emitted instructions. That is the **operational/physical
+layer beneath the value abstraction**: leaf 10 hinted at one instance (E0382 gives
+*logical* forward secrecy but not *memory-level* — moved-from bytes unscrubbed);
+leaf 25 names the whole class (constant-time, zeroization, power-analysis). It
+**inverts the timing axis** of the resource triad (18 cost / 20 delay / 21 space):
+not *how much* time one run takes but whether the time **leaks the secret across**
+runs — a 2-safety hyperproperty. And it is precisely **not leaf 19**: unlinkability
+hides a *value* (the type can't certify the statistical non-relation); here the
+value hides *perfectly* yet the *computation* leaks it through a channel types
+abstract away. One primitive (E0451, oblivious mode); brand/E0080/E0382 unused; no
+new one. The witness-trap recurs on a new axis — a `Choice` witnesses *that a
+combinator ran*, never *that it was oblivious*.
+
+> ⚠ **TOY.** The combinators are *source*-oblivious only — the crate makes **no
+> claim** the compiler preserves that to the assembly (that is the whole point: no
+> *type* can). Fixed-width byte secrets, no constant-time modular arithmetic. Only
+> the control-flow / early-exit channel is modelled (cache/memory/power are named,
+> not exercised); "time" in every test is an **operation count**, a portable proxy.
+> Use `subtle` / HACL\* / Jasmin / FaCT for real constant-time code.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 370 unit tests + 79 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check)
+cargo test --workspace          # 384 unit tests + 84 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check; leaf 25 consttime adds the OBLIVIOUS-mode seal — no-== on a Secret [E0369] — and the timing residue, beneath every type)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

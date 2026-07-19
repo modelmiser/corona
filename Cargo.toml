@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["corona-core", "threshold-types", "vss-types", "erasure-types", "merkle-types", "lamport-types", "static-config-types", "mss-types", "vid-types", "ecash-types", "ratchet-types", "accumulator-types", "frost-types", "fountain-types", "hypertree-types", "crdt-types", "bloom-types", "translog-types", "pow-types", "blindsig-types", "vdf-types", "pospace-types", "sigma-types", "swap-types", "arq-types"]
+members = ["corona-core", "threshold-types", "vss-types", "erasure-types", "merkle-types", "lamport-types", "static-config-types", "mss-types", "vid-types", "ecash-types", "ratchet-types", "accumulator-types", "frost-types", "fountain-types", "hypertree-types", "crdt-types", "bloom-types", "translog-types", "pow-types", "blindsig-types", "vdf-types", "pospace-types", "sigma-types", "swap-types", "arq-types", "consttime-types"]
 
 # Corona — a garden of typestate crates that encode a domain's invariants through
 # the same small vocabulary of compile-time primitives. See CHARTER.md.
