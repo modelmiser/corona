@@ -737,7 +737,25 @@ work (complete tasks, add children, keep siblings).
       sequential-delay lower bound — the first residue that is a *complexity lower bound*, a
       conjectured claim about what no computation can do faster) and the third E0451+E0080 pairing,
       a sibling axis to leaf 18's cost residue. See CHARTER.
-- [ ] **Cold-review the leaf-20 surface to convergence** — IN PROGRESS. **R1 done** (3 fresh blind
+- [x] **Cold-review the leaf-20 surface to convergence** — **CONVERGED** (R5 & R6 two consecutive
+      fully-clean rounds on byte-identical frozen code `0345023`; arc MOD R1(3)→R2(1)→R3(1)→R4(0)→
+      R5(0)→R6(0); commits `017fcd8` R1 → `fb7a093` R2 → `310eea6` R3 → `0345023` R4, R5/R6 no-change).
+      **The CODE was CORRECT + adversarial NO BREAK in ALL SIX rounds** — the E0451 seal + E0080 wall
+      held under every safe-code forge/wall vector (rejected E0451/E0277/E0616/E0599/E0070/E0080) and
+      full 3233² soundness sweeps + tens of thousands of fuzz cases (0 panics, 0 owns-misattributions
+      in a full 10⁷-pair sweep); all four disclosures reproduced to the unit (54 cross-delay
+      transfers / 47 wrong-output, ~98.5% same-delay forgeability, byte-identical trapdoor). Every
+      real finding was DOCUMENTATION or a MISLEADING TEST: R1's 3 framing MODERATEs (the leaf-19
+      inversion parallel backwards; the wall justification wrong; the lower bound a conjecture);
+      R2's stale count; **R3's adversarial MODERATE — the standout: a passing test
+      (`a_proof_does_not_transfer_to_a_different_delay`) asserted a NON-transfer guarantee that is
+      false in the toy, and passed only because its vector dodged the break** (the disclosed
+      soundness break propagates to the very axis you assert a guarantee on — recorded in INSIGHTS).
+      R4/R5/R6 converged (R4 a minor figure-decoupling, then two clean rounds on frozen code). One
+      R6 adversarial agent stalled mid-run (watchdog) → re-ran a fresh one to completion (a stalled
+      agent = failed review, not a pass). 19 unit + 4 doctests; workspace 305 + 64; clippy/fmt/rustdoc
+      -D warnings clean.
+  **Per-round detail (historical):** **R1** (3 fresh blind
       lenses on isolated copies): correctness CLEAN (18 mutants — 15 killed, 3 equivalent; 2 LOW
       untested `% N` reductions → pinned with a test), adversarial NO BREAK (12 forge/wall vectors
       compiler-rejected E0451/E0277/E0616/E0599/E0080; whole-group enumeration + 5000-round fuzz, 0
@@ -780,7 +798,26 @@ work (complete tasks, add children, keep siblings).
       wrong output" coupling — 1.67% (54/3233) is the cross-delay *verify* rate but only 47 carry a
       strictly-wrong output → decoupled the two figures at both doc sites. Code otherwise frozen.
       Since a (minor) doc fix landed after R4, the rigorous 2-clean bar is now **R5 + R6 on frozen
-      code**. 19 unit + 4 doctests; workspace 305 + 64.
+      code**. 19 unit + 4 doctests; workspace 305 + 64. **R5** (frozen code): correctness CLEAN (2
+      unreachable-guard equivalent survivors; golden triples kill the challenge-window/step mutants),
+      adversarial NO BREAK (all disclosures exact — 54/47/7; cross-input forgery subsumed + caught by
+      owns), claims CLEAN (1 defensible self-disclosed LOW, left). **R6** (byte-identical, the
+      confirmation): correctness CLEAN, adversarial NO BREAK (full 10⁷-pair owns sweep 0
+      misattributions), claims CONVERGENCE CONFIRMED (0 findings, all numerics reproduced). One R6
+      adversarial agent stalled → fresh re-run to completion. R5 & R6 both fully clean → CONVERGED.
+
+## Garden state (2026-07-18k)
+
+- **ALL 20 leaves cold-reviewed. No review debt.** corona-core + **20 leaves**. Leaf 20
+  (`vdf-types`, a verifiable delay function — validity reduces to the E0451 seal, the sequential
+  delay does not; the garden's first *complexity-lower-bound* residue and a sibling axis to leaf
+  18's cost) CONVERGED this session (6 rounds; R5 & R6 two consecutive clean on frozen code). The
+  code was CORRECT + adversarial NO BREAK in all six rounds; every finding was documentation or a
+  misleading test — the standout being R3's: a passing test asserted a cross-delay *non-transfer*
+  guarantee that is false in the toy (the disclosed soundness break propagates to the axis you
+  assert a guarantee on). An *unscheduled* open-ended domain ∥ leaves 16–19. The garden is again a
+  finished thought: any further leaf is a fresh open-ended domain, not backlog; wind-down synthesis
+  remains a valid close. Nothing auto-starts.
 
 ## Garden state (2026-07-18j)
 
