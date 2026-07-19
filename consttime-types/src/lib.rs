@@ -163,9 +163,14 @@
 //!
 //! ## Primitives used
 //!
-//! **E0451** (the private-field seal, in its *oblivious* mode — a value opaque to
-//! control flow) — and nothing else. The brand, E0080, and the **E0382**
-//! move-linearity are honestly unused: copying a secret is *not* the leak here
+//! **E0451** (the private-field seal, here in its *oblivious* mode) — complemented
+//! by the deliberate **withholding** of the comparison/index traits: it is the
+//! *absence* of `PartialEq`/`Ord`/`Index`/`Deref` that makes `==`/`<`/`[]`/`*` fail
+//! to compile (surfacing as E0369/E0608/E0614, none of them garden primitives), and
+//! the seal is what makes that absence unroutable-around (no reaching past the
+//! private field to forge a comparison). Together they make the value opaque to
+//! control flow. No other garden primitive is used: the brand, E0080, and the
+//! **E0382** move-linearity are honestly unused — copying a secret is *not* the leak here
 //! (branching on it is), so [`Secret`] is deliberately `Clone`, and
 //! [`Secret::declassify`] takes `&self` (disclosure is not a one-time capability —
 //! disclosing twice is no worse than once). The point of the leaf is what is *not*
