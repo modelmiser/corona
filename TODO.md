@@ -1094,10 +1094,12 @@ work (complete tasks, add children, keep siblings).
 
 - [x] Seed consttime-types: **constant-time secret comparison** (data-obliviousness /
       timing side channels) — the last breadth seed before the parked depth batch. The
-      garden's standard question **splits along a seam no prior leaf drew: between the
-      *values* a program manipulates and the *operational behaviour* of the program
-      manipulating them.** (1) The **source-level data-oblivious discipline reduces to
-      E0451 in a fourth, OBLIVIOUS mode** — a `Secret<N>` has private bytes AND withholds
+      garden's standard question **crosses a fault line the garden had only approached: not
+      the *values* a program manipulates, and not even *how much* of a resource one run
+      consumes (the 18/20/21 triad already sits on the operational layer), but whether
+      *operational behaviour* leaks the secret across *two* runs — a 2-safety relation.** (1)
+      The **source-level data-oblivious discipline reduces to E0451 in a new/dual (OBLIVIOUS)
+      mode** (construction→observation) — a `Secret<N>` has private bytes AND withholds
       every trait that forks control flow (`PartialEq`/`Ord`/`Deref`/`Index`), so
       `secret == guess` does not compile (verified vs rustc `error[E0369]`; the sealed-field
       forge is `error[E0451]`); the only observations are data-oblivious combinators
@@ -1109,8 +1111,8 @@ work (complete tasks, add children, keep siblings).
       proxy); lowering (optimiser / CPU / cache / speculation) leaks below every type. The
       residue's home is the **fifth seam: a platform/implementation assumption** — the
       operational/physical layer beneath the value abstraction (leaf 10's memory-residue
-      hint generalized to a class). **Inverts the timing axis** of leaves 18/20/21 (not *how
-      much* time one run takes but whether time *leaks the secret across* runs); precisely
+      hint generalized to a class). **Inverts leaf 20's time axis** (within the 18/20/21 triad;
+      not *how much* time one run takes but whether time *leaks the secret across* runs); precisely
       **not leaf 19** (unlinkability hides a *value*; here the value hides perfectly yet the
       *computation* leaks it). One primitive (E0451, oblivious mode); brand/E0080/E0382
       honestly unused; no new one. Standalone. Held the depth-audit's residue-executability
@@ -1118,30 +1120,50 @@ work (complete tasks, add children, keep siblings).
       withheld traits; the residue = the op-count leak test + the witness-trap `Choice`).
       14 unit + 4 doctests; workspace **385 unit + 84 doctests**, all gates green
       (clippy/fmt/rustdoc -D warnings). Commit `1a9a51b`, pushed.
-- [ ] **Cold-review the leaf-25 surface to convergence** — PENDING, fires on the next
-      "ready" (seed-then-stop; review deferred to a separate trigger). Watch the predicted
-      highest-risk class: cross-leaf universal claims (the leaf-19/24 "not leaf 19" contrast,
-      the "fifth seam" / "fourth mode" / "first to draw this seam" absolutes) and
-      qualifiers reaching every doc site (README/CHARTER/lib.rs). Verify any asserted
-      compiler code vs rustc.
+- [x] **Cold-review the leaf-25 surface to convergence — CONVERGED 2026-07-19** (6 rounds,
+      MOD arc 2→3→1→1→0→0; R5 & R6 two consecutive clean, 0 CRIT/0 MOD across all three lenses;
+      commits `bdae8bb`→`a7d521b`→`3402d2e`→`14e7aef`, R5/R6 no-change). **CODE clean throughout**
+      — adversarial **NO BREAK all 6 rounds** (~90+ safe-code exploits rejected with exact codes
+      E0369/E0451/E0608/E0614/E0616/E0423/E0624/E0277/E0382/E0599/E0308; `Choice` 0/1 invariant
+      sound), correctness *logic* clean from R1. All findings were **two parallel ratchets**:
+      (1) doc-precision on cross-leaf universal claims — "fourth mode" ordinal (R1), self-inflicted
+      "covert channel" over-correction (R2), "seam no prior leaf drew" overreach vs the operational
+      triad (R2), `Cargo.toml` "timing axis" straggler (R3); closed by an EXHAUSTIVE phrase-class
+      grep across every site incl `Cargo.toml`. (2) a test-strength mutation ratchet on the `Choice`
+      combinators — negate (R2), OR-vs-XOR fold (R2, the one real-CT-semantics finding), and (R4);
+      closed by pinning the WHOLE truth table exhaustively. See INSIGHTS/leaf-25 + DEVLOG.
 - [x] `corona-core` promotion check (leaf-25 trigger): nothing to promote (standalone). The
-      datum is the seal's **fourth mode** (observation, not construction) + the fifth seam.
+      datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
+
+## Garden state (2026-07-19i)
+
+- **ALL 25 leaves cold-reviewed. No review debt.** corona-core + **25 leaves**. On the user's
+  "convergence", **leaf 25 `consttime-types` CONVERGED** — 6 rounds, MOD arc 2→3→1→1→0→0, two
+  consecutive fully-clean (R5/R6). The code carried ZERO correctness-logic / adversarial findings
+  throughout (adversarial NO BREAK all 6 rounds); every finding was **two parallel ratchets** —
+  doc-precision on cross-leaf universal claims (closed by an exhaustive phrase-class grep across
+  EVERY site incl `Cargo.toml`, the recurring blind spot) and a test-strength mutation ratchet on
+  the `Choice` combinators (closed by pinning the WHOLE truth table, not one operator/round). The
+  garden is again a finished thought: any further leaf is a fresh open-ended domain, not backlog.
+  **Sequencing (user-set):** breadth has reached leaf 25 (the planned last breadth seed); the
+  **parked depth batch is next** (audit first — leaf-22 rewind rung + the cross-leaf
+  residue-executability audit; see the depth-pass block below). Nothing auto-starts.
 
 ## Garden state (2026-07-19h)
 
 - **Leaf 25 `consttime-types` SEEDED; cold-review PENDING.** corona-core + **25 leaves**.
   On the user's "open leaf 25", seeded the **last breadth leaf before the parked depth
   batch** (constant-time secret comparison / timing side channels) as an *unscheduled*
-  open-ended domain. It draws a **seam no prior leaf drew — between the *values* a program
-  manipulates and the *operational behaviour* of the program manipulating them**: the
-  source-level data-oblivious discipline reduces to the **E0451 seal in a fourth,
-  observation-guarding (OBLIVIOUS) mode**, but whether the code is *actually* constant-time
+  open-ended domain. It crosses a **fault line the garden had only approached — the operational
+  layer already held the 18/20/21 residues; the novelty is a *2-safety leaking relation* across
+  two runs**: the source-level data-oblivious discipline reduces to the **E0451 seal in a
+  new/dual (OBLIVIOUS) mode**, but whether the code is *actually* constant-time
   reduces to no primitive **and no runtime check the program can run on itself** — the
   **operational/physical layer beneath the value abstraction**, closed only by a
   **platform/implementation assumption** (the **fifth seam**; leaf 10's memory-residue hint
-  generalized to a class — constant-time / zeroization / power-analysis). Inverts the timing
-  axis of the resource triad (18/20/21) and is precisely *not* leaf 19. BOTH halves
+  generalized to a class — constant-time / zeroization / power-analysis). Inverts leaf 20's time
+  axis (within the 18/20/21 triad) and is precisely *not* leaf 19. BOTH halves
   executable (compile-fail seal + the op-count leak test + witness-trap `Choice`) — the
   depth-audit's residue-executability question held at seed time. Per the garden rhythm the
   seed is the unit of finishing; cold review waits for a separate "ready". **Sequencing
