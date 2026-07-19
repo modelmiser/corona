@@ -929,6 +929,57 @@ work (complete tasks, add children, keep siblings).
       Test-only change → 2-clean clock RESETS: **need R6 + R7 both clean.** pospace 18 unit + 4
       doctests; workspace 323 + 68, all gates green.
 
+## Now (leaf 22 — sigma-types)
+
+- [x] **Seed leaf 22: a Schnorr Σ-protocol (proof of knowledge of a discrete log)** — the garden's
+      first leaf whose residue is **knowledge-soundness**, defined over *two counterfactual executions*
+      of the prover rather than any value. Does "the prover *knows* the witness `x` behind `Y = g^x`"
+      reduce? → **it SPLITS three ways.** (1) *Completeness* → E0451 (`Statement::verify` is the sole
+      minter of a sealed `AcceptedTranscript`, checks `g^z = R·Y^c`; `merkle`/`pow`'s verify again).
+      (2) *The one-time nonce* → E0382 (`ProverNonce` not `Clone`/`Copy`, `respond(self,…)` consumes
+      it; a second response is a compile error — verified `error[E0382]: use of moved value: nonce`
+      against a standalone crate — ∥ frost's nonce / blindsig's blinding factor; buys the *fresh nonce*
+      precondition, not the property, ∥ leaf 19). (3) *Knowledge-soundness (extractability)* → **NO
+      primitive, the new residue**: a *single* accepting transcript proves nothing about knowledge —
+      `simulate` mints one with no witness (pick `z`, set `R = g^z·Y^{-c}`; verifies — honest-verifier
+      zero-knowledge); knowledge is defined only by an **extractor**, `extract` recovering
+      `x = (z₁−z₂)·(c₁−c₂)⁻¹` from two accepting transcripts sharing `R` under different challenges
+      (confirmed `g^x=Y`). That is a property of the prover *as an algorithm across two counterfactual
+      runs* — no type quantifies over a rewound re-execution of an external prover. **The dual of leaf
+      19, closing a pair:** a ZK proof of knowledge's two security properties — soundness
+      (counterfactual-execution) and zero-knowledge (statistical-view, leaf 19's residue, re-exhibited
+      by `simulate`) — **both escape the vocabulary for two different reasons**; only their shared
+      *acceptance* reduces. **The leaf-12 inversion:** `extract`'s algebra IS frost's
+      `nonce_reuse_recovers_the_master_secret` break — a catastrophe for the honest prover (E0382
+      prevents it) turned into the protocol's soundness proof (the extractor rewinds a *cheating*
+      prover). Two primitives (E0451 + E0382), brand/E0080 honestly unused, no new one. Standalone
+      (a residue-boundary leaf must not lean on sibling surfaces; subject unrelated to k-of-n).
+      Two witness species again (reusable `Witness` vs one-time `ProverNonce`, meeting at `respond`).
+      TOY: breakable group (`x` recoverable from `Y`), tiny challenge `Z_q` q=257 → soundness error
+      `1/q` (guessed-challenge cheat = `simulate` dishonestly; extraction needs *two* challenges),
+      deterministic nonce (seed re-mint → `a_reused_nonce_leaks_the_witness` extracts `x`), Fiat–Shamir
+      with a toy hash (interactive mode is what the residue is about). 21 unit + 3 doctests (happy path
+      + nonce-reuse `compile_fail` E0382 + sealed-`AcceptedTranscript` `compile_fail` E0451); workspace
+      **344 unit + 71 doctests**, all gates green (clippy/fmt/rustdoc -D warnings). CHARTER row +
+      promotion check + lineage + candidates refreshed; README leaf-22 section.
+- [ ] `corona-core` promotion check (leaf-22 trigger): nothing to promote (standalone; toy prime-order
+      group is a graduation-swap placeholder ∥ vss/frost — the settled leaf-9/10/11/12 finding).
+      Contribution is a *new residue shape* (counterfactual-execution) + the *closing of the ZK pair*
+      with leaf 19. See CHARTER.
+- [ ] **Cold-review the leaf-22 surface to convergence** — PENDING (fires on next "ready").
+
+## Garden state (2026-07-19b)
+
+- **ALL 21 leaves cold-reviewed; leaf 22 SEEDED, cold-review PENDING.** corona-core + **22 leaves**.
+  Leaf 22 (`sigma-types`, a Schnorr Σ-protocol / proof of knowledge — completeness reduces to the
+  E0451 seal and the one-time nonce to E0382, but **knowledge-soundness (extractability) reduces to no
+  primitive**: it is a property of the prover across *two counterfactual executions*, not of any value,
+  so no type can hold it. The **dual of leaf 19** — a ZK proof's two security properties, soundness and
+  zero-knowledge, both escape the vocabulary; and the extractor is *literally* leaf 12's nonce-reuse
+  break, a catastrophe turned into the soundness proof) was seeded this session as an *unscheduled*
+  open-ended domain (∥ leaves 16–21). Per the garden rhythm, the seed is the unit of finishing; cold
+  review waits for a separate "ready". Nothing else auto-starts.
+
 ## Garden state (2026-07-19)
 
 - **ALL 21 leaves cold-reviewed. No review debt.** corona-core + **21 leaves**. Leaf 21

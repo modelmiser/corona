@@ -35,7 +35,8 @@ corona/
 ├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
 ├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
 ├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
-└── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
+├── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
+└── sigma-types/      # leaf 22 — Schnorr proof of knowledge (Σ-protocol): completeness reduces to the seal, but knowledge-soundness is a counterfactual-execution property no type can hold — the dual of leaf 19 (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -902,10 +903,64 @@ leaf; brand/E0382 honestly unused.
 > leaf/node/challenge tags), a small fixed `QUERIES` count (no spot-checking soundness
 > analysis), witness unbranded (`Space::owns`-detectable ∥ leaf 18/20).
 
+## Leaf 22: `sigma-types`
+
+A **Schnorr Σ-protocol** — the canonical **proof of knowledge** of a discrete
+logarithm. A prover convinces a verifier it *knows* the witness `x` behind a public
+statement `Y = g^x` (commit `R = g^r`, challenge `c`, respond `z = r + c·x`; accept
+iff `g^z = R·Y^c`), without revealing `x`. The garden's standard question — *does
+"the prover **knows** the witness" reduce to the vocabulary?* — **splits**, and the
+residue is of a new kind: one defined not over any value in the program, but over
+**two counterfactual executions** of the prover.
+
+- **Completeness reduces to E0451, the same seal.** `Statement::verify` is the sole
+  minter of a sealed `AcceptedTranscript` — `merkle`/`pow`'s `verify` again, a checked
+  path that is the only door to the witness.
+- **The one-time nonce reduces to E0382 — buying the *precondition*.** Answering two
+  challenges on one commitment leaks the witness (`x = (z₁−z₂)·(c₁−c₂)⁻¹`), so a
+  `ProverNonce` is a linear capability: not `Clone`/`Copy`, `respond(self, …)` consumes
+  it, a second response is a compile error (E0382, verified). This is `frost`'s (leaf
+  12) nonce and `blindsig`'s (leaf 19) blinding factor — and, as in leaf 19, E0382 buys
+  the *fresh nonce*, never the property below it.
+- **Knowledge-soundness (extractability) reduces to NO primitive — the new residue.** A
+  *single* accepting transcript proves nothing about knowledge: `simulate` produces one
+  with **no witness at all** (pick `z`, set `R = g^z·Y^{-c}`; it verifies) — the
+  protocol's honest-verifier zero-knowledge. Knowledge is defined by an **extractor**:
+  a prover that answers **two** challenges on one commitment has its witness fall out of
+  the pair (`extract`: two accepting transcripts → `x`, confirmed `g^x = Y`). That is a
+  property of the **prover as an algorithm across two counterfactual runs**, not a fact
+  about any value in any one execution — so no type, which constrains the execution the
+  compiler sees, can quantify over a *rewound* re-execution of an external prover.
+
+**The dual of leaf 19, closing a pair.** A zero-knowledge proof of knowledge has three
+properties: completeness, knowledge-soundness, and zero-knowledge. Completeness reduces
+to the seal; the **two security properties both escape the vocabulary, for two different
+reasons** — soundness because it lives across counterfactual runs (this leaf),
+zero-knowledge because it lives in a distribution the compiler never sees (leaf 19's
+statistical-view residue, shown again here by `simulate`). Leaf 19 took the *hiding*
+half of a blind signature; leaf 22 takes the *soundness* half of a Σ-protocol.
+
+**The leaf-12 inversion.** The extractor's `(z₁−z₂)·(c₁−c₂)⁻¹` is *identical* to
+`frost`'s `nonce_reuse_recovers_the_master_secret` break. There the two-transcript
+algebra is the catastrophe E0382 prevents; here it is the soundness argument the
+protocol *rests on*. The type keeps the honest prover safe; the same power to rewind a
+*cheating* prover is what makes the protocol mean something. Two primitives (E0451 +
+E0382), brand/E0080 honestly unused, no new primitive. Standalone.
+
+> ⚠ **TOY.** Breakable group (tiny params — `x` is recoverable from the public `Y`, so
+> the "proof" secures nothing; the type discipline and the residue argument hold
+> regardless). Tiny challenge space `Z_q` (`q = 257`) → soundness error `1/q` (a
+> guessed-challenge cheat is exactly `simulate` used dishonestly; a real Σ-protocol
+> needs a large challenge, and the *extractor* needs *two*). Deterministic nonce (a
+> retained seed re-mints it and reopens the reuse hole the linear type closes within a
+> program — the `a_reused_nonce_leaks_the_witness` test extracts `x`; leaf 12/5's seed
+> caveat). Fiat–Shamir with a toy hash (not a random oracle — the *interactive* mode is
+> what the residue is about).
+
 ## Build
 
 ```sh
-cargo test --workspace          # 323 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
+cargo test --workspace          # 344 unit tests + 71 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

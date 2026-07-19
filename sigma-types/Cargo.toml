@@ -1,0 +1,15 @@
+[package]
+name = "sigma-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Corona leaf 22 — a Schnorr Σ-protocol (proof of knowledge of a discrete log) as typestate: completeness reduces to the E0451 seal and the one-time nonce to E0382, but knowledge-soundness (extractability) reduces to no primitive — it is a property of the prover across two counterfactual executions, not of any transcript. The dual of leaf 19 (blindsig): a ZK proof's two security properties both escape the vocabulary. TOY, not production crypto."
+
+# sigma-types is STANDALONE (imports nothing in the garden): a leaf whose subject
+# is *where a residue stops reducing* must not lean on sibling surfaces, and its
+# subject (knowledge-soundness) is unrelated to corona-core's k-of-n Threshold.
+# Its toy prime-order group lives in a standalone `group` module — it textually
+# overlaps vss-types'/frost-types' parameters (q=257, p=1543, g=64) but is a
+# *graduation swap-point* (→ a real prime-order EC group), not permanent shared
+# math like `gf256`, so it is not promoted (the settled leaf-9/10/11/12 finding).
+[dependencies]
