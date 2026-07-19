@@ -37,7 +37,8 @@ corona/
 ├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
 ├── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
 ├── sigma-types/      # leaf 22 — Schnorr proof of knowledge (Σ-protocol): completeness reduces to the seal, but knowledge-soundness is a counterfactual-execution property no type can hold — the dual of leaf 19 (TOY)
-└── swap-types/       # leaf 23 — fair exchange / atomic swap: inside one program atomicity reduces to E0382, but across the wire between two distrusting parties no primitive (and no runtime check they run) holds it — Cleve's impossibility, closed only by trusting a third party (TOY)
+├── swap-types/       # leaf 23 — fair exchange / atomic swap: inside one program atomicity reduces to E0382, but across the wire between two distrusting parties no primitive (and no runtime check they run) holds it — Cleve's impossibility, closed only by trusting a third party (TOY)
+└── arq-types/        # leaf 24 — reliable delivery (stop-and-wait ARQ): at-most-once/in-order delivery is SAFETY and reduces to the E0451 seal, but "eventually delivered" is LIVENESS and reduces to no primitive AND no finite check (Alpern–Schneider: no finite bad prefix) — closed only by a fairness assumption on the environment (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -1026,10 +1027,73 @@ and its character is stronger: leaf 9's is *contingently* closable, leaf 23's
 > / timed release** (Blum; Boneh–Naor) — only *approximates* fairness, which is
 > Cleve's theorem from the constructive side.
 
+## Leaf 24: `arq-types`
+
+**Reliable delivery** — a sender wants a payload to reach a receiver across a
+**lossy channel** (one that may drop frames); the classical answer is **ARQ**
+(Automatic Repeat reQuest, here the simplest *stop-and-wait* form — the shape of
+the Alternating Bit Protocol, Bartlett–Scantlebury–Wilkinson 1969): *retransmit
+until acknowledged*. The garden's standard question — *does reliable delivery
+reduce to the vocabulary?* — **splits along a fault line no prior leaf has
+crossed: the line between safety and liveness** (Lamport 1977; Alpern–Schneider
+1985). A property is **safety** if every violation has a **finite** witness
+(*nothing bad ever happens*); **liveness** if a violation is an **infinite** run
+in which the good thing never arrives, so **no finite prefix witnesses it**
+(*something good eventually happens*). All twenty-three prior residues are safety
+facts; reliable delivery is the first domain landing on **both sides at once**.
+
+- **The safety half reduces to the E0451 seal.** *At-most-once, in-order
+  delivery* — never hand the application a payload twice or out of order, however
+  many duplicate retransmissions arrive — is safety (a duplicate delivery is a
+  finite, pointable bad event). `Receiver::accept` is the **sole minter** of the
+  sealed `Delivered` witness, minting one only for the single in-order frame and
+  re-acking every duplicate while minting nothing. The dedup is an ordinary
+  runtime sequence check (leaf 1's *counting* residue again); the **witness that
+  a delivery happened** is the seal.
+- **The liveness half — *the payload is EVENTUALLY delivered* — reduces to no
+  primitive, and to no finite check either.** This is the leaf. Run the
+  *identical* protocol code over a `FairChannel` (drops a while, then carries →
+  `run` returns `Some`) and a `DeadChannel` (drops forever → `None` for any
+  bound): **no fact about the code distinguishes them** — sender, receiver, and
+  driver are byte-identical; only the environment's *infinite* behaviour differs.
+  And **no finite observation distinguishes them either** — a channel that will
+  finally carry at round `N` is indistinguishable from one that never will over
+  the first `N−1` rounds (both drop), Alpern–Schneider's *no finite bad prefix*
+  made a running test. A type is a compile-time fact, a runtime guard a finite
+  check; **liveness is neither**, so it escapes deeper than any prior residue —
+  not "a type can't hold it but a runtime check can" (leaf 9, leaf 11), but
+  *nothing observable in finite time can hold it at all*.
+
+**The residue, and the fourth seam.** "Eventually delivered" is discharged only
+by an **assumption about the environment** — the channel is *fair*, `□◇carries` —
+plus a **temporal argument over infinite runs** (`□◇carries ⟹ ◇delivered`). This
+is a genuinely **fourth kind of seam**: leaf 9 handed its residue to
+*coordination* (`quorum-types`, a finite protocol), leaf 15 to a *proof* (**Sol**,
+a deductive argument about our own code), leaf 23 to a *trust assumption* (an
+honest party). Leaf 24's is closed by none of those — no proof *about the code*
+yields "eventually delivered" (under `DeadChannel` the identical code never does,
+so the goal is simply **false** of the code alone), only an *axiom about the
+world the types do not touch* plus temporal reasoning. It is the single-channel
+sibling of the **FLP impossibility** (Fischer–Lynch–Paterson 1985): asynchronous
+progress is unattainable without exactly such a fairness assumption. And the
+**doorway type inverts polarity**: a `Frame` is `Copy` like `ecash`'s `WireCoin`
+and `swap`'s `WireToken`, but here copyability is the **cure**, not the
+catastrophe — reliable delivery is *built on retransmitting copies* to beat loss,
+so **E0382 is structurally contra-indicated** (a linear frame would forbid the
+remedy), the threat model having flipped from *duplication* to *loss*. One
+primitive (E0451); brand/E0080 unused, E0382 contra-indicated; no new one.
+
+> ⚠ **TOY.** Frames are not authenticated (a real protocol MACs/sequences under a
+> session key — orthogonal: a dead channel still never delivers). The ack path is
+> lossless (only the forward path drops; loss on either has the same structure).
+> One payload, stop-and-wait — no windows, flow control, in-flight reordering, or
+> sequence wraparound (the ABP's 1-bit sequence is here a never-wrapping `u64`);
+> payloads are single bytes so the frame stays `Copy`.
+
 ## Build
 
 ```sh
-cargo test --workspace          # 356 unit tests + 76 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
+cargo test --workspace          # 370 unit tests + 79 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

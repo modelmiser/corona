@@ -983,6 +983,65 @@ work (complete tasks, add children, keep siblings).
       runtime check the two parties run recovers complete fairness" thesis verified well-founded. One
       defensible-wording LOW (an Even–Yacobi phrasing) LEFT per converge-then-stop. 12 unit + 5 doctests.
 
+## Now (leaf 24 — arq-types)
+
+- [x] **Seed leaf 24: reliable delivery (stop-and-wait ARQ)** — the garden's **first liveness leaf**,
+      the first to cross the **safety/liveness line** (Lamport 1977; Alpern–Schneider 1985). Q: does
+      reliable delivery over a lossy channel reduce? → **it SPLITS along safety vs liveness** — every
+      prior residue (all 23) is a *safety* fact (a violation has a *finite* witness); reliable delivery
+      lands on **both sides at once**. **(1) The safety half — at-most-once/in-order delivery — reduces
+      to E0451**: `Receiver::accept` is the sole minter of the sealed `Delivered`, minting one only for
+      the in-order frame and re-acking every duplicate (dedup a runtime sequence count ∥ leaf 1; the
+      *witness a delivery happened* the seal). **(2) The liveness half — "EVENTUALLY delivered" —
+      reduces to no primitive AND no finite check**: the *identical* protocol code delivers over a
+      `FairChannel` (`Some`) and never over a `DeadChannel` (`None`, any bound), so no fact about the
+      code distinguishes them (only the environment's *infinite* behaviour differs) — and no finite
+      observation does either (a channel carrying at round `N` is indistinguishable from one that never
+      carries over the first `N−1` rounds — Alpern–Schneider's *no finite bad prefix*, made an
+      executable test). Liveness escapes *deeper* than any prior residue: not "a type can't hold it but
+      a runtime check can" (leaf 9/11), but *nothing observable in finite time can*. **The fourth seam:**
+      discharged only by an **environment-fairness assumption** (`□◇carries`) + **temporal reasoning
+      over infinite runs** (`□◇carries ⟹ ◇delivered`) — leaf 9→coordination, 15→proof/Sol, 23→trust,
+      **24→a fairness assumption** (the single-channel sibling of the **FLP impossibility**,
+      Fischer–Lynch–Paterson 1985). Crucially *no proof about our code* discharges it (under a dead
+      channel the code never delivers → the goal is false of the code alone — the sharp contrast with
+      leaf 15, whose obligation IS a code law). **Doorway polarity INVERTS:** a `Frame` is `Copy` like
+      ecash's `WireCoin`/swap's `WireToken`, but copyability is the **cure** (retransmit copies to beat
+      loss) not the catastrophe → **E0382 structurally contra-indicated** (a linear frame forbids the
+      remedy); the threat model flipped from *duplication* to *loss*. One primitive (E0451);
+      brand/E0080 unused, E0382 contra-indicated; no new one. Standalone (imports nothing ∥ ecash/swap,
+      no crypto backend). Compile-fail: sealed-ctor forge on `Delivered` (E0451), verified vs rustc.
+      **11 unit + 4 doctests; workspace 370 unit + 79 doctests**, all gates green (clippy/fmt/rustdoc
+      -D warnings). CHARTER row + promotion check + lineage + candidates refreshed; README leaf-24
+      section + layout + build line.
+- [x] `corona-core` promotion check (leaf-24 trigger): nothing to promote (standalone; no crypto
+      backend ∥ leaf 23). Contribution is a *new residue **axis*** — the first leaf to cross the
+      safety/liveness line — and the *fourth seam* (an environment-fairness assumption + temporal
+      reasoning, distinct from coordination/proof/trust). See CHARTER.
+- [ ] **Cold-review the leaf-24 surface to convergence** — PENDING (fires on the next "ready"). Watch
+      list for reviewers: (a) citation accuracy (Alpern–Schneider "Defining Liveness" IPL 21(4) 1985;
+      Lamport 1977 "Proving the Correctness of Multiprocess Programs"; ABP = Bartlett–Scantlebury–
+      Wilkinson CACM 1969; FLP = Fischer–Lynch–Paterson JACM 1985) — the recurring fabricated/mis-cited
+      class; (b) the safety/liveness characterization (is "no finite bad prefix" stated precisely? is the
+      indistinguishability test a faithful witness of it?); (c) the "E0382 contra-indicated not just
+      unused" claim (does retransmission genuinely *require* `Copy`?); (d) the fourth-seam distinction
+      from leaf 15 (proof-about-code vs axiom-about-environment) — the highest-risk cross-leaf sentence;
+      (e) mutation on `accept`/`on_ack` dedup + `run` loop bounds. Nothing auto-starts.
+
+## Garden state (2026-07-19f)
+
+- **Leaf 24 `arq-types` SEEDED; cold-review PENDING.** corona-core + **24 leaves**. On the user's
+  "ready for the usual breadth (continuation to ~25)", seeded leaf 24 (reliable delivery / stop-and-wait
+  ARQ) as an *unscheduled* open-ended domain — the garden's **first liveness leaf** and first crossing
+  of the **safety/liveness line**: at-most-once/in-order delivery reduces to the E0451 seal, but
+  *"eventually delivered"* reduces to no primitive **and no finite check** (Alpern–Schneider's *no
+  finite bad prefix*, made executable). The **fourth seam** (a fairness assumption on the environment +
+  temporal reasoning, the single-channel sibling of FLP). Per the garden rhythm, the seed is the unit
+  of finishing; cold review waits for a separate "ready". **Sequencing (user-set):** continue breadth to
+  ~leaf 25, THEN take the parked depth batch (audit first — see 2026-07-19 depth-pass block below);
+  hold the audit's residue-executability question while seeding 25 so we don't add prose-only cores.
+  Nothing else auto-starts.
+
 ## Garden state (2026-07-19e)
 
 - **ALL 23 leaves cold-reviewed. No review debt.** corona-core + **23 leaves**. On the user's "ready",
