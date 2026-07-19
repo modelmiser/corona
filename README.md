@@ -1019,7 +1019,7 @@ and its character is stronger: leaf 9's is *contingently* closable, leaf 23's
 > where a real cross-chain swap binds items with **hash-timelock contracts**
 > (HTLCs); this is *orthogonal* (assume every wire token authentic and the
 > atomicity gap is unchanged). The escrow is modeled, not implemented (real
-> optimistic fair exchange, Asokan–Schunter–Waidner 1998, invokes the trusted
+> optimistic fair exchange, Asokan–Shoup–Waidner 1998, invokes the trusted
 > party only on dispute; a cross-chain swap replaces it with two hash-locked
 > contracts) — both still rest on a trust or synchrony assumption the two parties
 > alone cannot discharge. The one family that drops the trusted party — **gradual

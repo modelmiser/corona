@@ -109,7 +109,7 @@
 //!   ledger + a hash lock, not of the type discipline; graduation would add it
 //!   behind the same [`send`](Token::send)/[`receive`](Token::receive) seam.)
 //! - **The escrow is modeled, not implemented.** A real optimistic fair
-//!   exchange (Asokan–Schunter–Waidner, 1998) invokes the trusted party only on
+//!   exchange (Asokan–Shoup–Waidner, 1998) invokes the trusted party only on
 //!   *dispute*; a real cross-chain swap replaces the human escrow with two HTLCs
 //!   whose shared hash preimage enforces both-or-neither. Both still rest on a
 //!   trust or synchrony assumption the two parties alone cannot discharge — the
@@ -297,9 +297,10 @@ impl Issuer {
     ///
     /// # Panics
     ///
-    /// On `u64` id-space exhaustion — the call after 2⁶⁴ − 1 issues panics
-    /// rather than wrap to a duplicate id (unreachable in any real execution;
-    /// pinned by a test so a silent wrap cannot slip in).
+    /// On `u64` id-space exhaustion: the call after 2⁶⁴ − 2 successful issues
+    /// panics, because the checked increment overflows *before* id `u64::MAX`
+    /// could be handed out — unreachable in any real execution. Pinned by a test
+    /// so a wrap (which would go on to duplicate ids) cannot slip in silently.
     pub fn issue(&mut self) -> Token {
         let id = self.next;
         self.next = self
@@ -621,9 +622,12 @@ mod tests {
     #[test]
     #[should_panic(expected = "u64 id space")]
     fn issue_panics_rather_than_wraps_at_id_exhaustion() {
+        // With next == u64::MAX, `issue` reads id = MAX, then `checked_add(1)`
+        // is None → it panics *before* handing out MAX (the last id ever issued
+        // is MAX-1). A wrapping mutant would instead hand out MAX, then id 0,
+        // then duplicates of 1, 2, … — this pins the panic that forecloses it.
         let mut issuer = Issuer { next: u64::MAX };
-        let _ = issuer.issue(); // hands out u64::MAX
-        let _never = issuer.issue(); // panics rather than wrap to 0
+        let _never_returned = issuer.issue();
     }
 
     /// Wire tokens are the doorway: freely constructible and `Copy`, so a "held"
