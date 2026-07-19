@@ -944,7 +944,7 @@ work (complete tasks, add children, keep siblings).
       **second mover takes the first item and never sends its own** — the double-cross type-checks
       (`the_second_mover_can_take_both`). Leaf 9's wire residue (double-spend) is a *copy to detect*,
       closed by an online mint's spent set; leaf 23's is a **legitimate non-action** no two-party
-      cleverness forecloses — **Cleve 1986** (complete fairness impossible in 2-party MPC) /
+      cleverness forecloses — **Cleve 1986** (complete fairness impossible in general in 2-party MPC) /
       **Even–Yacobi 1980** (no deterministic fair exchange). (L3) *Restoring atomicity relocates trust*:
       a trusted `Escrow` releases both-or-neither (sole minter of sealed `SettledSwap`), but is a party
       the types **describe not compel** — its `Copy` deposits a dishonest operator keeps
