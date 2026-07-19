@@ -34,7 +34,8 @@ corona/
 ├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
 ├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
 ├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
-└── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
+├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
+└── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
 ```
 
 The core stays **thin**: it holds only what ≥ 2 leaves genuinely share, and grows
@@ -849,10 +850,61 @@ pair **E0451 + E0080**; the brand and E0382 are honestly unused.
 > target, so a wrong output is forgeable — and the challenge is derived with a toy FNV hash. The
 > witness is unbranded (input/delay-detectable via `Vdf::owns`, not brand-enforced ∥ leaf 18).
 
+## Leaf 21: `pospace-types`
+
+A **proof of space** (Dziembowski–Faust–Kolmogorov–Pietrzak, CRYPTO 2015; Chia's
+*proof of space and time*) — a prover fills a `2^K`-entry table `t[i] = H(seed ‖ i)`,
+commits to it under a Merkle root, and answers a few Fiat–Shamir-chosen index
+challenges with the values and their authentication paths. The intended guarantee is
+the **spatial** analogue of proof of work's temporal one: answering quickly is
+(conjecturally) possible only if the whole table is *resident*, so a passing response
+is evidence of `~2^K` occupied storage. The garden's standard question: *does "`S` bytes
+of storage are occupied" reduce to the vocabulary?* It **splits**, and the residue
+completes a **resource triad** with leaves 18 and 20.
+
+- **Validity reduces to E0451, the same seal.** `Space::verify` is the sole minter of
+  a sealed `SpaceProof`: it re-derives the challenged indices from the committed root,
+  recomputes each challenged entry, folds each Merkle path, and mints the witness iff
+  every path reconstructs the root at a genuinely-challenged, seed-correct leaf —
+  `merkle`/`pow`'s `verify` again, and *light* (it touches only the `Q` challenged
+  entries, never the whole `2^K` table).
+- **The occupancy does NOT reduce — the first *spatial* residue.** The seal witnesses
+  that the openings are consistent with the root and **nothing about how much storage
+  the prover kept resident**. A prover holding the whole `2^K`-entry table
+  (`MaterializedTable`, `resident_entries() == 2^K`) and one holding **only the seed**
+  (`Space`, recomputing every value and sibling on demand, `resident_entries() == 1`)
+  build the **byte-identical** `Response` and mint the **byte-identical** `SpaceProof`,
+  because occupancy is a property of the prover's *physical state*, not of the value.
+  `Space::prove` hands the resident-entry count back as a *return value* of the
+  computation, deliberately **not** a field of the witness (∥ pow's attempts, vdf's
+  squarings).
+
+Leaves 18 (**cost**) and 20 (**delay**) are both **temporal** residues — a value's
+production history, and a lower bound on a run's duration. Leaf 21 (**space**) is the
+first **spatial** one: how much of the substrate is occupied *right now*. And it has a
+*shape* no prior residue has — a **tradeoff**. Delay resists shortcuts (the whole
+sequentiality conjecture); storage never does — you can **always** trade it for time by
+recomputing `H(seed ‖ i)`, storing nothing. So a *pure* space lower bound is
+**impossible**: a proof of space really bounds a space×time *product*. ∥ leaf 6 / 18 /
+20 the size *parameter* still reduces — `Space<const K>` is walled `1 ≤ K ≤ 20` (E0080;
+`K = 0` is a one-entry table with no space, a domain invariant; `K ≤ 20` a conservative
+toy feasibility bound so `2^K` entries are materializable) — the **fourth E0451 + E0080**
+leaf; brand/E0382 honestly unused.
+
+> ⚠ **TOY — the recurring garden break, the *opposite* of leaf 19's inversion.** The toy
+> breaks the domain's hard guarantee (here the **occupancy**) while the type discipline
+> holds, as in `pow`/`vdf`/`lamport`: the table entry `t[i] = H(seed ‖ i)` is trivially
+> recomputable, so a prover stores *nothing* and regenerates on demand (the space-time
+> tradeoff) — the `a_seed_only_prover_mints_the_identical_witness` test makes it
+> executable. A real proof of space uses a **memory-hard / depth-robust** generator so
+> recomputation is prohibitive. Non-cryptographic FNV-1a hash (domain-separated
+> leaf/node/challenge tags), a small fixed `QUERIES` count (no spot-checking soundness
+> analysis), witness unbranded (`Space::owns`-detectable ∥ leaf 18/20).
+
 ## Build
 
 ```sh
-cargo test --workspace          # 305 unit tests + 64 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay])
+cargo test --workspace          # 321 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

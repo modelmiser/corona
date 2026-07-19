@@ -806,6 +806,60 @@ work (complete tasks, add children, keep siblings).
       misattributions), claims CONVERGENCE CONFIRMED (0 findings, all numerics reproduced). One R6
       adversarial agent stalled → fresh re-run to completion. R5 & R6 both fully clean → CONVERGED.
 
+## Now (leaf 21 — pospace-types)
+
+- [x] **Seed leaf 21: proof of space (DFKP 2015 / Chia)** (`pospace-types`) — does "S bytes of
+      storage are occupied" reduce to the vocabulary? → **it SPLITS, adding the first *spatial*
+      residue and the first residue with a *tradeoff* shape.** (1) *Validity reduces to E0451* —
+      `Space::verify` is the sole minter of a sealed `SpaceProof`: re-derive the Fiat–Shamir
+      challenged indices from the committed Merkle root, recompute each challenged entry
+      `t[i]=H(seed‖i)`, fold each opening's path, mint iff every path reconstructs the root at a
+      genuinely-challenged seed-correct leaf (`merkle`/`pow` verify again; *light* — touches only the
+      Q challenged entries, not the whole 2^K table). (2) *The occupancy does NOT reduce* — the seal
+      witnesses the openings are root-consistent and **nothing about resident storage**: a prover
+      holding the whole 2^K-entry table (`MaterializedTable`, `resident_entries()==2^K`) and one
+      holding **only the seed** (`Space`, recomputing every value+sibling on demand,
+      `resident_entries()==1`) build the BYTE-IDENTICAL `Response` and mint the BYTE-IDENTICAL
+      `SpaceProof`, because occupancy is a property of the prover's PHYSICAL STATE, not the value.
+      `Space::prove` hands the resident-entry count back as a return value, deliberately not a field
+      of the witness (∥ pow's attempts / vdf's squarings; executable in
+      `a_seed_only_prover_mints_the_identical_witness_the_wrong_thing_succeeds`). **Completes a
+      RESOURCE TRIAD:** leaf 18 (cost — production HISTORY) and leaf 20 (delay — a TEMPORAL lower
+      bound) are both temporal; leaf 21 (space) is the first SPATIAL residue — what is occupied NOW —
+      and the first with a **tradeoff** shape: storage is always convertible to recomputation time, so
+      a *pure* space bound is ill-posed (a proof of space bounds a space×time PRODUCT), where delay
+      resists shortcuts (the sequentiality conjecture). (3) **∥ leaf 6/18/20:** the size *parameter*
+      reduces — `Space<const K>` walls `1≤K≤20` (E0080; `<0>` = a one-entry table with no space, a
+      domain invariant ∥ vdf `T≥1`; `<21>` exceeds a CONSERVATIVE toy feasibility bound — 2^K entries
+      must be materializable, a toy limit ∥ vdf `T≤63`). **Fourth leaf to pair E0451 + E0080**;
+      brand/E0382 honestly unused. Standalone. **The toy break is the RECURRING one, the OPPOSITE of
+      leaf 19's inversion:** it breaks the domain's hard guarantee (the *occupancy*: `t[i]=H(seed‖i)`
+      is trivially recomputable → store nothing, regenerate on demand → the space-time tradeoff) while
+      the type discipline holds, as pow/vdf/lamport; a real proof of space uses a memory-hard /
+      depth-robust generator. Correctness on an INDEPENDENT oracle (leaf-16 lesson): the iterative
+      Merkle build cross-checked against a from-scratch recursive root for all 1≤K≤12; the
+      table/node/challenge byte layout pinned against an independent FNV reassembly (leaf-18
+      sole-producer/consumer class). Compile-fails: two E0080 size walls (`<0>`, `<21>`) + one E0451
+      sealed-`SpaceProof` forge, all verified vs rustc. 16 unit + 4 doctests; workspace **321 unit +
+      68 doctests**, all gates green (clippy/fmt/rustdoc -D warnings).
+- [x] `corona-core` promotion check (leaf-21 trigger): nothing to promote (standalone; toy FNV hash
+      + non-memory-hard generator are swap placeholders). Contribution is a **new residue category**
+      (occupied storage — the first *spatial* residue, completing the cost/delay/space triad, and the
+      first residue whose *shape* is a tradeoff so a pure bound is ill-posed) and the fourth
+      E0451+E0080 pairing. See CHARTER.
+- [ ] **Cold-review the leaf-21 surface to convergence** — PENDING (waits for a separate "ready",
+      per the garden rhythm; the seed is the unit of finishing).
+
+## Garden state (2026-07-18l)
+
+- **ALL 20 leaves cold-reviewed; leaf 21 SEEDED, cold-review PENDING.** corona-core + **21 leaves**.
+  Leaf 21 (`pospace-types`, a proof of space — validity reduces to the E0451 seal, occupied storage
+  does not; the garden's first *spatial* residue, completing a resource triad with leaf 18's cost and
+  leaf 20's delay, and the first residue whose shape is a *tradeoff* — a pure space bound is ill-posed
+  because storage is always convertible to recomputation time) was seeded this session as an
+  *unscheduled* open-ended domain (∥ leaves 16–20). Per the garden rhythm, the seed is the unit of
+  finishing; cold review waits for a separate "ready". Nothing else auto-starts.
+
 ## Garden state (2026-07-18k)
 
 - **ALL 20 leaves cold-reviewed. No review debt.** corona-core + **20 leaves**. Leaf 20

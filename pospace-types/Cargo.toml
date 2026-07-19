@@ -1,0 +1,13 @@
+[package]
+name = "pospace-types"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "TOY typestate crate: proof of space — validity reduces to the E0451 seal, occupied storage does not; the first spatial residue and a space-time tradeoff (Corona leaf 21)."
+publish = false
+
+# Leaf 21 of the Corona garden. Standalone: imports neither corona-core nor any
+# sibling leaf — a residue-drawing leaf (the storage-occupancy lower bound) leans on
+# nothing in the garden. Completes the resource triad with leaves 18 (pow, cost) and
+# 20 (vdf, sequential delay): the SPATIAL axis, and the first residue with a tradeoff.
+[dependencies]
