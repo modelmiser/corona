@@ -1136,6 +1136,19 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Garden state (2026-07-19j)
+
+- **Depth-batch AUDIT complete (read-only); rung builds await go-ahead.** corona-core + **25 leaves**,
+  all cold-reviewed. On the user's "parked depth batch (audit first)", ran the cross-leaf
+  residue-executability audit (5 blind auditors, 2-axis verdict per leaf). **The reduction is
+  executable in all 25; the residue itself is a GAP in six (leaves 2/3/5/10/14/15C)** — "residue
+  prose-only" splits into COMPLETE (unexecutable in principle: leaf 9/12 seam, 23/24 impossibility
+  theorems, 25 lowering) vs a rung (not written yet). The **leaf-22 rewind rung is confirmed real and
+  has siblings** — the sequencing bet paid out. Full rung backlog (Tier 1 headline gaps / Tier 2
+  deeper facets / Tier 3 CHARTER doc fixes) in the "Depth pass" block below; insight in
+  `INSIGHTS/residue-executability-audit.md`; DEVLOG 2026-07-19. **Nothing started — building any rung
+  is a separate go-ahead.** No code touched; no convergence reopened.
+
 ## Garden state (2026-07-19i)
 
 - **ALL 25 leaves cold-reviewed. No review debt.** corona-core + **25 leaves**. On the user's
@@ -1486,11 +1499,74 @@ work (complete tasks, add children, keep siblings).
 - Further domains off the polynomial substrate: threshold signatures (FROST), a
   fountain/LT code, XMSS tiering — each a fresh test of the vocabulary.
 
-### Depth pass — PARKED 2026-07-19 (user: "do this, but not right away"; after ~leaf 25)
+### Depth pass — audit DONE 2026-07-19; rung builds await go-ahead
 
 *Sequencing (user-decided): continue the normal seed-then-stop breadth rhythm to ~leaf 25 first,
 THEN take up the two depth items below as a deliberate batch — not interleaved with seeding. Seed
 24/25 with the audit's question in mind (below) so we don't add more prose-only residue cores.*
+
+**AUDIT COMPLETE (item 2, 2026-07-19).** Read-only, 5 blind auditors (slices 1–5 / 6–10 / … / 21–25),
+each verdict on two axes (residue exercised at all: EXECUTABLE/PROXIED/PROSE-ONLY; and any deeper
+prose-only facet a rung would close). Insight → `INSIGHTS/residue-executability-audit.md`; DEVLOG
+2026-07-19. **Key result: "residue prose-only" splits into COMPLETE (unexecutable in principle) vs a
+GAP (not written yet).** All 25 leaves' *reductions* are executable; six leaves leave the *residue*
+itself a GAP. The leaf-22 rung (item 1) is CONFIRMED real and NOT alone — the sequencing bet paid out.
+
+**Rung backlog (surfaced by the audit; each ~40–70 lines + tests + a short cold-review pass; NONE
+started — await an explicit go-ahead on which batch to build):**
+
+*Tier 1 — genuine PROSE-ONLY headline residues (the residue the leaf is ABOUT is unexercised):*
+- [ ] **Leaf 22 `sigma-types` — `RewoundState: Clone` rung** (item 1 below; the batch's anchor).
+- [ ] **Leaf 15C `crdt-types` — a real `const` block** exhausting a small finite model so `+`/`min`
+      fail with `error[E0080]` and `max` passes. The MOST LITERAL sibling of 22's rung: both convert a
+      prose "the type COULD" into a demonstrated compile fact. (Also fixes CHARTER over-claim #3.)
+- [ ] **Leaf 10 `ratchet-types` — memory-level-FS witness.** A test (behind a scoped `unsafe`, or a
+      `zeroize`-on-`Drop` variant) showing a moved-from `ChainKey`'s 32 bytes still linger non-zero,
+      contrasted with a scrubbing variant. Closes the leaf's self-described unique contribution.
+- [ ] **Leaf 14 `hypertree-types` — restore-twice reuse test.** A test-only private-field reconstructor
+      (∥ leaf 15's `state` helper) that "restores" one keychain into two, signs two messages, shows both
+      reuse the same `(subtree,leaf)` index — the reuse E0382 cannot reach across persistence. (Fixes
+      CHARTER over-claim #2.)
+- [ ] **Leaf 2 `vss-types` — confidentiality leak test.** From the `Commitment` alone (C₀ = g^secret),
+      brute-force the toy dlog with ZERO shares and recover the secret — "even a zero-share holder gets
+      it," now prose.
+- [ ] **Leaf 3 `erasure-types` — property-agnostic-seal + silent-misdecode tests.** (a) mint a
+      `RecoveredData` from k hand-built never-encoded fragments (seal is a token, not availability);
+      (b) `decode_correcting` with >t corruptions crafted to land near a neighbour codeword → a
+      `CorrectedData` of WRONG bytes; (c) the `m==k ⇒ t=0` silent case.
+- [ ] **Leaf 5 `lamport-types` — seed re-mint forgery test.** Two keys from one seed, sign two
+      different messages, assemble a `Signature` for a THIRD digest from the union of revealed
+      preimages and assert `verify` accepts — the classic Lamport multi-sig forgery, now prose.
+
+*Tier 2 — deeper-facet rungs on already-EXECUTABLE leaves (lower priority; not the leaf's headline):*
+- [ ] Leaf 1 `threshold-types` — fully-fabricated (never-dealt) k shares mint a `Secret` (pure
+      authenticity residue; current test uses the milder wrong-threshold variant).
+- [ ] Leaf 4 `merkle-types` — `understated_size_misattributes_to_a_real_committed_slot` (only the
+      overstated/phantom direction is tested).
+- [ ] Leaf 7/8 `mss`/`vid` — an optional brand-scoped `MssPublicKey` / `DispersalAnchor` mode making
+      the value-level-vs-brand provenance trade a red/green compile contrast (costs `Copy`/distributability).
+- [ ] Leaf 16 `bloom-types` — a cross-filter `DefinitelyAbsent` misuse test (witness's `unset_bit` is
+      meaningless against a different item/filter).
+- [ ] Leaf 17 `translog-types` — a wire-equivocation/gossip test (two same-size different-root
+      checkpoints; out-of-band compare flags the lie the brand cannot hold).
+- [ ] Leaf 19 `blindsig-types` — a perfect-uniform-hiding bijection test (for fixed m, r over all units
+      permutes m' — upgrades the coverage test to the distributional claim).
+- [ ] Leaf 21 `pospace-types` — a hash-recomputation op-counter on the two `prove()` paths (leaf-25's
+      op-count technique) making the space×TIME tradeoff executable (seed-only pays ~2^K, materialized ~0).
+
+*Tier 3 — CHARTER doc corrections (audit-verified over-claims; doc hygiene, not code):*
+- [ ] Leaf 13 `fountain` CHARTER row: the "200/200, 1.5× 37%, 2× 7%, 3× 0%" figures are dev-time
+      measurements; the test only pins `stalls > trials/4` and no intermediate-rate test exists. Soften to
+      what is pinned, or add the rate tests.
+- [ ] Leaf 14 CHARTER row: mark finding-3 (persistence reuse) as prose-only until its Tier-1 rung lands.
+- [ ] Leaf 15C CHARTER row (line ~102): "E0080 CAN const-execute … rejects `+`/`min` at compile time"
+      reads as implemented; lib.rs says "E0080 is unused here." Reconcile (either build the Tier-1 rung,
+      or reword to hypothetical).
+
+*Leaves confirmed COMPLETE by the audit (residue unexecutable in principle — do NOT write a rung):*
+6 (near-complete scope-limit), 9 & 12 (deliberate cross-crate coordination seam), 18 & 20 & 25 (gap
+shown + magnitude honestly PROXIED; deeper facets = the residue itself), 23 & 24 (impossibility
+theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-only toy).
 
 1. **Leaf 22 rewinding rung — make the residue executable, not asserted.** `extract` currently gets
    its two transcripts from *two same-seed nonces* (`ProverNonce::commit(0xA1)` twice) — that is the
@@ -1503,13 +1579,12 @@ THEN take up the two depth items below as a deliberate batch — not interleaved
    construct as the distinct "extractor's power" case. ~40–70 lines + tests + a doc pass; then its own
    short cold-review pass. This is leaf 22's literal ultimate end (distinct from graduation).
 
-2. **Cross-leaf "residue-executability" audit (completeness-critic pass).** Extend the leaf-22 question
-   to every leaf: *is the central residue **demonstrated in code**, or asserted in prose / shown via a
-   disclosed proxy?* Prior (from memory, to be confirmed by the pass): most leaves DO exhibit the gap
-   executably — impostor values that type-check (leaf 15 `+`/`min` merges), byte-identical
-   witnesses (leaf 18/20/21 cost/delay/space), a measured probabilistic cliff (leaf 13 peeling),
-   a type-checking double-cross (leaf 23). **Leaf 22 is the sharpest offender** (core mechanism =
-   a proxy). Check next: leaf 15 (proof-obligation → tests, though it does exhibit impostors + bounded
-   E0080), leaf 23 (Cleve *impossibility* → one exhibited failure; could exhibit commit-reveal/timeout
-   failures too), leaf 9 (coordination → handoff, deliberately out of scope). Output = per-leaf verdict
-   + a rung list for any 22-like cases. A synthesis pass, NOT a re-open of any convergence.
+2. [x] **Cross-leaf "residue-executability" audit (completeness-critic pass) — DONE 2026-07-19.** Extended
+   the leaf-22 question to every leaf. The prior guess ("most leaves DO exhibit the gap executably;
+   leaf 22 is the sharpest offender") was **partly wrong**: the reduction is executable everywhere, but
+   SIX leaves leave the *residue itself* prose-only (2/3/5/10/14/15C), not one. Result recorded above
+   (backlog) + `INSIGHTS/residue-executability-audit.md` + DEVLOG 2026-07-19. Was a read-only synthesis
+   pass; no convergence reopened, no code touched. The three "check next" leaves resolved: leaf 15
+   multi-facet (A executable / B proxied / C prose-only-GAP / D Sol-obligation), leaf 23 COMPLETE
+   (impossibility theorem — one exhibited failure is all a theorem admits), leaf 9 COMPLETE (deliberate
+   out-of-scope coordination seam, as expected).
