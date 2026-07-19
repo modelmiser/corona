@@ -1039,8 +1039,11 @@ crossed: the line between safety and liveness** (Lamport 1977; Alpern–Schneide
 1985). A property is **safety** if every violation has a **finite** witness
 (*nothing bad ever happens*); **liveness** if a violation is an **infinite** run
 in which the good thing never arrives, so **no finite prefix witnesses it**
-(*something good eventually happens*). All twenty-three prior residues are safety
-facts; reliable delivery is the first domain landing on **both sides at once**.
+(*something good eventually happens*). **No prior residue is a *liveness*
+property** — most are safety facts (finite witness), and a few (leaf 19
+unlinkability, leaf 22 knowledge-soundness) are *hyperproperties*, not trace
+properties at all — but none says *something good eventually happens*. Reliable
+delivery is the first domain landing on the safety/**liveness** line.
 
 - **The safety half reduces to the E0451 seal.** *At-most-once, in-order
   delivery* — never hand the application a payload twice or out of order, however
@@ -1060,9 +1063,11 @@ facts; reliable delivery is the first domain landing on **both sides at once**.
   finally carry at round `N` is indistinguishable from one that never will over
   the first `N−1` rounds (both drop), Alpern–Schneider's *no finite bad prefix*
   made a running test. A type is a compile-time fact, a runtime guard a finite
-  check; **liveness is neither**, so it escapes deeper than any prior residue —
-  not "a type can't hold it but a runtime check can" (leaf 9, leaf 11), but
-  *nothing observable in finite time can hold it at all*.
+  check; **liveness is neither**, so it escapes at a different level than the
+  garden's *runtime-closable* residues — not "a type can't hold it but a runtime
+  check can" (leaf 9, leaf 11, which a finite check recovers), but *nothing
+  observable in finite time can hold it at all* (a contrast with the
+  runtime-closable residues, not a total ranking over all prior leaves).
 
 **The residue, and the fourth seam.** "Eventually delivered" is discharged only
 by an **assumption about the environment** — the channel is *fair*, `□◇carries` —
@@ -1095,7 +1100,8 @@ the E0382 posture contra-indicated; no new one.
 > lossless (only the forward path drops; loss on either has the same structure).
 > One payload, stop-and-wait — no windows, flow control, in-flight reordering, or
 > sequence wraparound (the ABP's 1-bit sequence is here a never-wrapping `u64`);
-> payloads are single bytes so the frame stays `Copy`.
+> payloads are single bytes, which keeps the frame `Copy` (a convenience, not a
+> requirement — reproducibility, not `Copy`, is what enables retransmission).
 
 ## Build
 

@@ -16,12 +16,16 @@
 //! violation has a **finite** witness (a prefix of the run you can point to). It
 //! is **liveness** if it says *something good eventually happens* — a violation
 //! is an **infinite** run in which the good thing never arrives, so **no finite
-//! prefix witnesses it**. Every one of the garden's twenty-three prior residues
-//! is a *safety* fact: a count (leaves 1, 12), a freshness comparison (leaf 11),
-//! a soundness direction (leaf 16), a cost/delay/space a value did or did not
-//! incur (leaves 18, 20, 21), an atomicity across parties (leaf 23). Reliable
-//! delivery is the first domain whose invariant lands on **both sides of this
-//! line at once**, and the two halves reduce completely differently.
+//! prefix witnesses it**. **No prior residue in the garden is a *liveness*
+//! property.** Most are safety facts — a count (leaves 1, 12), a freshness
+//! comparison (leaf 11), a soundness direction (leaf 16), an atomicity across
+//! parties (leaf 23) — each with a finite witness; a few are not trace
+//! properties at all — leaf 19's *unlinkability* and leaf 22's
+//! *knowledge-soundness* are **hyperproperties** over several runs, and leaf 20's
+//! *delay* is a conjectured complexity lower bound — but none of these says
+//! *something good eventually happens*. Reliable delivery is the first domain
+//! whose invariant lands on the safety/**liveness** line, and the two halves
+//! reduce completely differently.
 //!
 //! 1. **The safety half reduces to the E0451 seal.** *At-most-once, in-order
 //!    delivery* — the application must never be handed a payload twice, nor out
@@ -49,10 +53,12 @@
 //!    `a_dead_channel_is_indistinguishable_from_a_slow_one` test makes this
 //!    executable). This is Alpern–Schneider's *no finite bad prefix* as a running
 //!    program. A type discipline is a compile-time fact; a runtime guard is a
-//!    finite check; **liveness is neither**, so it escapes the vocabulary at a
-//!    deeper level than any prior residue — not "the type can't hold it but a
-//!    runtime check can" (leaf 9's coordination, leaf 11's freshness compare),
-//!    but *nothing observable in finite time can hold it at all*. (This is under
+//!    finite check; **liveness is neither**, so it escapes at a different level
+//!    than the garden's *runtime-closable* residues — not "the type can't hold it
+//!    but a runtime check can" (leaf 9's coordination, leaf 11's freshness
+//!    compare, which a finite check recovers), but *nothing observable in finite
+//!    time can hold it at all* (a distinction from the runtime-closable residues,
+//!    not a total ranking over all prior leaves). (This is under
 //!    the pure-fairness model assumed here — `□◇carries`, no bound on delay.
 //!    Adding a *bounded-delay* / partial-synchrony assumption `□(delay ≤ Δ)` does
 //!    let a timeout finitely refute "delivered *within Δ*" — but that is a
@@ -130,8 +136,10 @@
 //! - **One payload, stop-and-wait.** No windows, no flow control, no
 //!   reordering-in-flight, no sequence-number wraparound (the Alternating Bit
 //!   Protocol's 1-bit sequence is here a full `u64` that never wraps in a toy
-//!   run). Payloads are single bytes so the frame stays `Copy` (the point of the
-//!   polarity inversion).
+//!   run). Payloads are single bytes, which keeps the frame `Copy` — a
+//!   convenience for the demonstration, not a design requirement (reproducibility,
+//!   not `Copy`, is the point of the polarity inversion; a larger reconstructible
+//!   payload would serve equally).
 //!
 //! ## What the types do and do not witness
 //!
@@ -628,20 +636,41 @@ mod tests {
         assert!(sender.frame().is_none(), "nothing left to send once acked");
     }
 
-    /// A stale ack (for a sequence at or below what is outstanding) does not
-    /// falsely complete the sender — only an ack that advances past `seq` does.
+    /// A stale ack — for a sequence at or *below* what is outstanding — does not
+    /// falsely complete the sender; only an ack that advances *past* `seq` does.
+    /// Pins the whole `on_ack` comparison class (every `next_expected` from 0 up
+    /// to `seq` must leave `!is_done()`, and `seq+1` upward must complete it), so
+    /// a wrong guard in either direction — `>`→`>=` (upper), `>`→`!=`/`<`/`<=`
+    /// (lower) — is caught.
     #[test]
     fn a_stale_ack_does_not_complete_the_sender() {
-        let mut sender = Sender::new(4, 1);
-        sender.on_ack(Ack { next_expected: 4 }); // "next expected is 4" ⇒ 4 NOT yet in
-        assert!(!sender.is_done(), "ack must advance PAST seq to confirm it");
-        sender.on_ack(Ack { next_expected: 5 }); // now 4 is confirmed delivered
-        assert!(sender.is_done());
+        // Lower + boundary: next_expected in {0, 1, 2, 3, 4} must NOT complete a
+        // sender at seq 4 (the receiver hasn't yet accepted seq 4). Covers the
+        // `< seq` region a prior review found unpinned (the `>`→`!=` mutant).
+        for ne in 0..=4u64 {
+            let mut sender = Sender::new(4, 1);
+            sender.on_ack(Ack { next_expected: ne });
+            assert!(
+                !sender.is_done(),
+                "next_expected={ne} (≤ seq 4) must not complete — ack must advance PAST seq"
+            );
+        }
+        // Upper: next_expected in {5, 6, 100} (> seq) DOES complete.
+        for ne in [5u64, 6, 100] {
+            let mut sender = Sender::new(4, 1);
+            sender.on_ack(Ack { next_expected: ne });
+            assert!(
+                sender.is_done(),
+                "next_expected={ne} (> seq 4) confirms seq 4"
+            );
+        }
     }
 
-    /// Frames are the doorway: `Copy` and freely constructible, which is what
-    /// *enables* retransmission (the polarity inversion — copyability is the cure
-    /// here, not the catastrophe it is in leaves 9/23).
+    /// Frames are the doorway: freely constructible (and, conveniently, `Copy`).
+    /// It is this *reproducibility* that enables retransmission — the polarity
+    /// inversion from leaves 9/23, where a reproducible wire value is the
+    /// catastrophe; `Copy` here is one convenient form of it, not the crux (see
+    /// the polarity-inversion section — a non-`Copy` frame would retransmit too).
     #[test]
     fn frames_copy_freely_enabling_retransmission() {
         let f = Frame { seq: 0, payload: 7 };

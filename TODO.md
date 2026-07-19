@@ -1035,8 +1035,19 @@ work (complete tasks, add children, keep siblings).
       *reproducibility* + the *E0382 capability posture* across lib.rs/README/CHARTER/TODO; (M2) FLP
       "unattainable without exactly such" overstated (ignores randomization; FLP = reliable-channel + crash)
       → reworded to an explicit *analogue*. Plus L1 (scoped "no finite check" to pure-fairness vs partial
-      synchrony). **R1 NOT clean (3 MOD) → need R2 + R3 both clean.** LOWs L2/L3 left per converge-then-stop.
-      12 unit + 4 doctests. Nothing auto-starts.
+      synchrony). **R1 NOT clean (3 MOD).** **R2 done** (fresh blind lenses): adversarial again NO BREAK
+      (seal genuine E0451; reworded "non-`Copy` frame retransmits fine" claim VERIFIED by prototype);
+      correctness no CRIT, 1 MODERATE — `on_ack` `>`→`!=` mutant survived (stale-ack test only probed the
+      `==` boundary, not `< seq`) → FIXED by pinning the whole `on_ack` comparison class (0..=seq must not
+      complete, >seq must); claims all 5 citations REAL (added Ben-Or 1983), reworded reproducibility+FLP
+      claims verified CORRECT, but 2 MODERATE — (m1) "all 23 prior residues are safety" OVERSTATED (leaf
+      19/22 are hyperproperties, not trace properties; leaf 20 a complexity bound) → reframed to "no prior
+      residue is *liveness*" across lib.rs/README/CHARTER; (m2) a residual "copyability is the cure" in the
+      `frames_copy_freely` test doc contradicted the R1 rework → reworded to reproducibility (+L1 TOY Copy
+      note, +L2 "deeper than any"→"different level than runtime-closable", both flagged twice). **R2 NOT
+      clean (3 MOD) → need R3 + R4 both clean.** Recurring theme = cross-leaf universal claims overreach
+      (the predicted highest-risk class); code carried ZERO correctness/adversarial breaks in both rounds.
+      13 unit + 4 doctests. Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 
