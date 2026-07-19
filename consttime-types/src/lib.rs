@@ -31,12 +31,12 @@
 //!    [`Choice`], never a `bool` you can cheaply branch on) and
 //!    [`Secret::ct_select`] (a branchless choose) — plus one **explicit, greppable
 //!    escape**, [`Secret::declassify`], which is the single auditable point where a
-//!    value leaves the oblivious domain. This is the E0451 seal wearing a **fourth
-//!    hat**: not "you cannot *forge* this witness" (the usual construction seal —
-//!    leaves 1–24) but "you cannot *branch on* this value." The seal makes the
-//!    value **opaque to control flow** — a *dual* use of the same private-field
-//!    mechanism (it has always guarded *construction*; here it guards
-//!    *observation*).
+//!    value leaves the oblivious domain. This is the E0451 seal in a **new mode —
+//!    its *dual***: not "you cannot *forge* this witness" (the seal's only prior use,
+//!    across leaves 1–24 — guarding *construction*) but "you cannot *branch on* this
+//!    value" (guarding *observation*). The same private-field mechanism, opposite
+//!    face — construction vs observation — so this is the seal's second mode on that
+//!    axis, not a fifth primitive.
 //!
 //! 2. **Whether the code is *actually* constant-time reduces to no primitive, and
 //!    to no runtime check the program can run on itself.** This is the leaf. The
@@ -86,7 +86,7 @@
 //!   constant-time, secret zeroization, power-analysis resistance — that live on
 //!   the *operational/physical* layer, where **no value-level type can hold them**.
 //!
-//! ## The timing axis, inverted (leaves 18 / 20 / 21)
+//! ## The time axis, inverted (leaf 20's delay, within the 18 / 20 / 21 triad)
 //!
 //! The garden already has a **resource triad** on the operational layer: leaf 18
 //! (`pow`, **cost** — a value's production history), leaf 20 (`vdf`, **delay** — a
@@ -113,8 +113,10 @@
 //! program computes can hide **perfectly** while the *timing of computing them*
 //! leaks the secret entirely. Leaf 19: the value hides, but no brand can *certify*
 //! the statistical non-relation. Leaf 25: the value can hide, yet the *computation*
-//! leaks it through a channel the type abstraction **abstracts away**. It is the
-//! first residue about a channel that exists *because* types are silent about
+//! leaks it through a **side channel** the type abstraction **abstracts away**.
+//! Where the resource triad (18/20/21) exposes *how much* of a resource a
+//! computation consumed, this is the first residue about a **covert channel that
+//! *leaks the secret*** — a channel that exists only because types are silent about
 //! operational behaviour.
 //!
 //! ## ⚠ TOY — not production
@@ -129,8 +131,9 @@
 //!   claim** the compiler preserves that to the emitted assembly — indeed the whole
 //!   point of the leaf is that no *type* can make that claim. A real library audits
 //!   the generated code (and uses tricks like `core::hint::black_box`, itself only
-//!   a hint). The final `Choice`-to-`bool` fold in `ct_eq` uses one branchless
-//!   `is_zero`, but even that is a source-level courtesy, not a machine guarantee.
+//!   a hint). The final **diff-byte→bit** fold in `ct_eq` (the accumulated XOR
+//!   collapsed to the equality bit) uses one branchless `is_zero`, but even that is
+//!   a source-level courtesy, not a machine guarantee.
 //! - **Fixed-width byte secrets only.** [`Secret`] wraps `[u8; N]`; no big-integer
 //!   or field arithmetic (real constant-time crypto is dominated by constant-time
 //!   *modular* arithmetic — the same residue on a wider surface, out of scope).
@@ -493,8 +496,10 @@ mod tests {
         // (a == b) AND (a == b)  → true;   (a == b) AND (a == c) → false.
         assert!(a.ct_eq(&b).and(a.ct_eq(&b)).declassify());
         assert!(!a.ct_eq(&b).and(a.ct_eq(&c)).declassify());
-        // NOT (a == c) → true.
-        assert!(a.ct_eq(&c).negate().declassify());
+        // `negate` pinned in BOTH directions (a `^1`→`|1` mutant that always yields
+        // true survives if only the false→true case is tested):
+        assert!(a.ct_eq(&c).negate().declassify(), "NOT(false) == true");
+        assert!(!a.ct_eq(&b).negate().declassify(), "NOT(true) == false");
     }
 
     /// `declassify` is a faithful round-trip: it returns exactly the bytes wrapped.

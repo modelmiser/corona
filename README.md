@@ -1118,7 +1118,7 @@ reduce to the vocabulary?* — **splits along a seam no prior leaf drew: between
 manipulating them.**
 
 - **The source-level data-oblivious discipline reduces to the E0451 seal — in a
-  fourth *mode*.** A `Secret<N>` has **private** bytes (the seal) and implements
+  new *mode*, its *dual*.** A `Secret<N>` has **private** bytes (the seal) and implements
   **none** of the traits that let control flow fork on its value — no
   `PartialEq`/`Eq` (`secret == guess` does not compile, verified `error[E0369]`),
   no `PartialOrd`/`Ord`, no `Deref`, no `Index`. The only observations are the
@@ -1149,12 +1149,13 @@ data-obliviousness to the emitted instructions. That is the **operational/physic
 layer beneath the value abstraction**: leaf 10 hinted at one instance (E0382 gives
 *logical* forward secrecy but not *memory-level* — moved-from bytes unscrubbed);
 leaf 25 names the whole class (constant-time, zeroization, power-analysis). It
-**inverts the timing axis** of the resource triad (18 cost / 20 delay / 21 space):
-not *how much* time one run takes but whether the time **leaks the secret across**
-runs — a 2-safety hyperproperty. And it is precisely **not leaf 19**: unlinkability
-hides a *value* (the type can't certify the statistical non-relation); here the
-value hides *perfectly* yet the *computation* leaks it through a channel types
-abstract away. One primitive (E0451, oblivious mode); brand/E0080/E0382 unused; no
+**inverts the time axis** of the resource triad (18 cost / 20 delay / 21 space) —
+specifically inverting leaf 20's *delay*: not *how much* time one run takes but
+whether the time **leaks the secret across** runs (a 2-safety hyperproperty; leaf
+20 *wants* delay large, leaf 25 *wants* time invariant). And it is precisely **not
+leaf 19**: unlinkability hides a *value* (the type can't certify the statistical
+non-relation); here the value hides *perfectly* yet the *computation* leaks it
+through a side channel types abstract away. One primitive (E0451, oblivious mode); brand/E0080/E0382 unused; no
 new one. The witness-trap recurs on a new axis — a `Choice` witnesses *that a
 combinator ran*, never *that it was oblivious*.
 
