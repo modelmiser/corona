@@ -983,6 +983,17 @@ work (complete tasks, add children, keep siblings).
       runtime check the two parties run recovers complete fairness" thesis verified well-founded. One
       defensible-wording LOW (an Even–Yacobi phrasing) LEFT per converge-then-stop. 12 unit + 5 doctests.
 
+## Garden state (2026-07-19e)
+
+- **ALL 23 leaves cold-reviewed. No review debt.** corona-core + **23 leaves**. On the user's "ready",
+  both review-pending leaves converged this session: **leaf 23 `swap-types`** (3 rounds — the only real
+  finding a citation) and **leaf 22 `sigma-types`** (3 rounds — a real code MODERATE: the `extract`
+  panic on challenges congruent mod q, the garden's recurring "field narrower than its representation
+  type" bug ∥ vss/frost, plus an unpinned non-zero-nonce secrecy property found by mutation). Both are
+  *unscheduled* open-ended domains seeded after the garden was already a finished thought (∥ leaves
+  16–21). The garden is again a finished thought: any further leaf is a fresh open-ended domain, not
+  backlog; wind-down synthesis remains a valid close. Nothing auto-starts.
+
 ## Garden state (2026-07-19d)
 
 - **Leaf 23 `swap-types` CONVERGED; leaf 22 `sigma-types` still SEEDED/cold-review PENDING.**
@@ -1038,11 +1049,29 @@ work (complete tasks, add children, keep siblings).
       + nonce-reuse `compile_fail` E0382 + sealed-`AcceptedTranscript` `compile_fail` E0451); workspace
       **344 unit + 71 doctests**, all gates green (clippy/fmt/rustdoc -D warnings). CHARTER row +
       promotion check + lineage + candidates refreshed; README leaf-22 section.
-- [ ] `corona-core` promotion check (leaf-22 trigger): nothing to promote (standalone; toy prime-order
+- [x] `corona-core` promotion check (leaf-22 trigger): nothing to promote (standalone; toy prime-order
       group is a graduation-swap placeholder ∥ vss/frost — the settled leaf-9/10/11/12 finding).
       Contribution is a *new residue shape* (counterfactual-execution) + the *closing of the ZK pair*
       with leaf 19. See CHARTER.
-- [ ] **Cold-review the leaf-22 surface to convergence** — PENDING (fires on next "ready").
+- [x] **Cold-review the leaf-22 surface to convergence — CONVERGED** (3 rounds; R2 & R3 two consecutive
+      clean, 0 CRIT/0 MOD across correctness/claims/adversarial; commit `aac5ed5`). **The first
+      *arithmetic* leaf this session to carry a real CODE finding** (∥ leaf 12 frost; leaf 23 swap, a pure
+      typestate leaf, carried none): R1 found a **MODERATE reachable panic in `extract`** — the
+      distinct-challenge guard compared the *raw* `pub u16` `Challenge.c`, but the field arithmetic
+      reduces mod q, so two challenges congruent mod q (11 and 268) both verify (`Y^268=Y^11`), pass the
+      raw `!=`, then hit `dc=0` → `f_inv(0)` panic. **This is the garden's recurring "field narrower than
+      its representation type" bug** — `vss-types` (non-canonical share index) and `frost-types` (mod-q
+      index panic) both had it. Fixed by canonicalizing at the extract seam (compare the challenge
+      *difference* / `dc==0`, and the commitment mod p) + a regression test (verified: was panic, now
+      None). R1 also found a **MODERATE via mutation** — `commit`'s non-zero-nonce guarantee (a zero nonce
+      publishes R=1 and leaks z=c·x) was unpinned (a *secrecy* property with no completeness/extraction
+      consequence, so the suite missed dropping the `+1`) → regression test with seed 167 (verified it
+      kills the mutant). Plus 2 LOW (a raw commitment compare; a "confirmed g^x=Y" summary-line
+      over-attribution) fixed. R2 & R3 clean: seals held under ~9 forge/double-use attacks/round (E0451/
+      E0382/E0277/E0599), `f_inv(0)` proven unreachable via the protocol surface, 0 wrong-witness over
+      dozens of adversarial non-canonical pairs; all crypto claims (extractor, HVZK simulator, 1/q
+      soundness, Fiat–Shamir, dual-of-leaf-19, leaf-12 inversion — the identical frost formula
+      re-confirmed) verified sound. 24 unit + 3 doctests.
 
 ## Garden state (2026-07-19b)
 
