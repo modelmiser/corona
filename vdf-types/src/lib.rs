@@ -2,11 +2,13 @@
 //!
 //! Corona **leaf 20**. A *verifiable delay function* (Boneh–Bonneau–Bünz–Fisch 2018;
 //! Rivest–Shamir–Wagner *time-lock puzzles* 1996; Wesolowski 2019, Pietrzak 2019) computes,
-//! from an input `x`, a unique output `y = x^(2^T) mod N` that **requires `T` sequential
-//! squarings** to produce — squaring cannot be parallelised, so the delay is a lower bound
-//! on *wall-clock latency*, robust to any amount of hardware — yet is **cheap to verify**
-//! from a short proof. The leaf asks the garden's standard question of this domain: **does
-//! "`T` sequential steps of work elapsed" reduce to the four-primitive vocabulary?**
+//! from an input `x`, a unique output `y = x^(2^T) mod N` **conjectured to require `T`
+//! sequential squarings** to produce — under the *sequentiality assumption* (that repeated
+//! modular squaring cannot be meaningfully parallelised, a conjecture underlying every VDF, not
+//! a theorem), the delay is a lower bound on *wall-clock latency* robust to any amount of
+//! hardware — yet is **cheap to verify** from a short proof. The leaf asks the garden's standard
+//! question of this domain: **does "`T` sequential steps of work elapsed" reduce to the
+//! four-primitive vocabulary?**
 //!
 //! ## The finding: it SPLITS — validity reduces, the delay does not
 //!
@@ -21,16 +23,17 @@
 //!
 //! **The delay does NOT reduce — a residue of a new kind: a complexity lower bound.** The seal
 //! witnesses that `y = x^(2^T)` and **nothing about how long the producer took to get there**.
-//! The *same* output reached by `T` honest sequential squarings, or in one step by a party who
-//! knows the group order `φ(N)` (reduce the exponent: `y = x^{2^T mod φ(N)}`), mints the
-//! **byte-identical** witness — no [`Evaluated`] carries a field distinguishing them, because
-//! **the delay is not a property of the value.** `y` is a *deterministic function* of `x` and
-//! `T`; "it took `T` sequential steps" is a fact about the *computation that produced* it — and,
-//! more than that, a **lower bound quantified over all computations** (no algorithm without the
-//! trapdoor evaluates it in fewer than `T` sequential squarings). No type, and no compile-time
-//! fact, can witness such a bound. [`Vdf::eval`] hands the squaring count back as a *return
-//! value of the computation*, deliberately **not** a field of the witness — the same placement
-//! `pow-types` uses for its attempt count.
+//! The *same* output reached by `T` honest sequential squarings, or in one short exponentiation
+//! by a party who knows the group order `φ(N)` (for a unit `x`, reduce the exponent:
+//! `y = x^{2^T mod φ(N)}`), mints the **byte-identical** witness — no [`Evaluated`] carries a
+//! field distinguishing them, because **the delay is not a property of the value.** `y` is a
+//! *deterministic function* of `x` and `T`; "it took `T` sequential steps" is a fact about the
+//! *computation that produced* it — and, more than that, a **conjectured lower bound quantified
+//! over all computations** (under the sequentiality assumption, no algorithm without the trapdoor
+//! evaluates it in fewer than `T` sequential squarings). No type, and no compile-time fact, can
+//! witness such a bound. [`Vdf::eval`] hands the squaring count back as a *return value of the
+//! computation*, deliberately **not** a field of the witness — the same placement `pow-types`
+//! uses for its attempt count.
 //!
 //! This residue is a *sibling* to `pow-types`' (leaf 18) but a different **axis**, and the
 //! contrast is the leaf:
@@ -40,12 +43,14 @@
 //! | what it measures | total work of a *search* | *depth* of a computation (latency lower bound) |
 //! | is there a shortcut? | a lucky first guess is cheap | **none** without the trapdoor — no luck |
 //! | the value | *many* nonces clear the target | *one* output, a deterministic function |
-//! | unconditional? | yes (a fact about a search history) | **no** — rests on hidden order (`φ(N)` secret) |
-//! | quantifier | "*this* search cost N steps" | "*every* algorithm needs ≥ T sequential steps" |
+//! | unconditional? | yes (a fact about a search history) | **no** — rests on hidden order (`φ(N)` secret) *and* the sequentiality assumption |
+//! | quantifier | "*this* search cost N steps" | "*every* algorithm is conjectured to need ≥ T sequential steps" |
 //!
 //! So leaf 18's residue is a fact about a value's **production history** (how *this* nonce was
-//! found); leaf 20's is a **complexity lower bound** — a fact about what *no* computation can do
-//! faster. It sharpens the garden's most-repeated reading — *the seal witnesses the checked path
+//! found); leaf 20's is a **complexity lower bound** — a *claim* about what *no* computation can
+//! do faster (a **conjectured** one: the sequentiality assumption, not a theorem — but a claim of
+//! a shape no prior residue has, quantified over all algorithms rather than one history). It
+//! sharpens the garden's most-repeated reading — *the seal witnesses the checked path
 //! and nothing more* (`merkle-types` leaf 4, `bloom-types` leaf 16, `pow-types` leaf 18) — onto
 //! one more axis: the seal is silent about the *math* of the path (substrate, soundness
 //! direction), about the *history* of reaching it (cost), and now about the **sequential depth**
@@ -60,12 +65,19 @@
 //! - **The lower wall `T ≥ 1` is the domain half** — a delay of *zero* squarings is the identity
 //!   map (`y = x`), not a delay function; a degenerate config rejected exactly as leaf 18 rejects
 //!   `BITS = 0` and leaf 6 rejects `K = 0`.
-//! - **The upper wall `T ≤ 63` is honestly a *toy* representational bound** — the toy's Wesolowski
-//!   proof forms the integer `2^T` in a `u64` to take a quotient, which overflows at `T = 64`. It
-//!   is *not* a domain impossibility the way leaf 18's `BITS ≤ 64` is (there, 65 leading zero bits
+//! - **The upper wall `T ≤ 63` is honestly a *toy* representational bound** — the toy forms `2^T`
+//!   in a `u128` and derives the Wesolowski quotient `⌊2^T/ℓ⌋` into a `u64`; `T ≤ 63` keeps that
+//!   quotient safely in `u64` range for every challenge prime `ℓ`. It is a *conservative* bound,
+//!   *not* a domain impossibility the way leaf 18's `BITS ≤ 64` is (there, 65 leading zero bits
 //!   from a 64-bit digest is genuinely unsatisfiable); a real VDF runs `T` in the millions. The
 //!   two walls having *different* justifications — one a domain invariant, one a toy limit — is
 //!   itself the honest nuance.
+//!
+//! (Naming the type `Vdf<0>` *compiles* — the wall is referenced only from [`new`](Vdf::new) and
+//! the methods — but `Vdf<0>` is **uninhabitable**: `new` is the sole constructor and it fires the
+//! wall, there is no `Default`, and `Clone` needs an existing value, so no `Vdf<0>` can ever be
+//! obtained to `eval`. This is leaf 6's documented non-finding class — a bare, valueless type name
+//! is not an exploit; the `compile_fail` doctest targets `Vdf::<0>::new(…)`, which does fail.)
 //!
 //! So leaf 20 is the *third* leaf to pair **E0451 + E0080** (after leaf 6 and leaf 18); as in
 //! leaf 18 the wall is the easy half and the **delay residue** is the finding.
@@ -77,24 +89,30 @@
 //! [`Evaluated`] is `Clone` evidence of a fact, not a consumable capability, and it is
 //! deliberately *unbranded* — see the limits).
 //!
-//! ## Honest limits — and the toy *inverts* the usual break
+//! ## Honest limits — the toy break is the *recurring* one (the delay, not the seal)
 //!
-//! - **The delay is broken, not the verification** (∥ `blindsig-types` leaf 19, whose hiding is
-//!   perfect while unforgeability breaks). The Wesolowski *check* is faithful — it accepts `(y, π)`
-//!   exactly when `y = x^(2^T)`. What the toy destroys is the **delay**: `N = 3233` (= 61·53)
-//!   factors instantly, so `φ(N) = 3120` is known, and `y = x^{2^T mod φ(N)}` is one short
-//!   exponentiation — **no `T` sequential squarings.** A real VDF needs a group of **unknown
-//!   order** (an RSA modulus whose factorisation is discarded at a trusted setup, or a class group
-//!   of an imaginary quadratic field) so that reducing the exponent is impossible. The
+//! - **The delay is broken — the *recurring* garden pattern, and the *opposite* of leaf 19's
+//!   inversion.** The toy backend breaks the domain's hard guarantee (here the **delay**) while the
+//!   type discipline (the E0451 seal, the E0080 wall) holds — exactly as in `lamport-types`
+//!   (leaf 5), `pow-types` (leaf 18), `frost-types` (leaf 12): *the type seals validity; only a
+//!   hidden-order group makes validity imply delay*. `blindsig-types` (leaf 19) is the one that
+//!   *inverts* this pattern — there the hard guarantee (unlinkability) survives the toy *perfectly*
+//!   and a *different* property (unforgeability) breaks; **vdf does not invert it** — its hard
+//!   guarantee, the delay, is exactly what the toy destroys. Concretely: `N = 3233` (= 61·53)
+//!   factors instantly, so `φ(N) = 3120` is known and `y = x^{2^T mod φ(N)}` (for a unit `x`) is
+//!   one short exponentiation — **no `T` sequential squarings.** A real VDF needs a group of
+//!   **unknown order** (an RSA modulus whose factorisation is discarded at a trusted setup, or a
+//!   class group of an imaginary quadratic field) so that reducing the exponent is impossible. The
 //!   `a_trapdoor_shortcut_mints_the_identical_witness_the_wrong_thing_succeeds` test makes this
 //!   executable: it computes the output via the trapdoor and feeds it to the public `verify`,
-//!   which mints a witness indistinguishable from an honestly-delayed one. This is the recurring
-//!   garden split (`lamport-types` leaf 5, `pow-types` leaf 18): **the type seals validity; only a
-//!   hidden-order group makes validity imply delay.**
-//! - **Proof soundness is a hardness assumption, absent in the toy.** Wesolowski soundness rests
-//!   on the *low-order / adaptive-root* assumption in the group; a small `(Z/NZ)*` has low-order
-//!   elements, so a cheating prover could in principle pass the check for a wrong `y`. The leaf's
-//!   subject is the **delay residue**, not proof soundness — a real group closes this too.
+//!   which mints a witness indistinguishable from an honestly-delayed one.
+//! - **Proof soundness is a hardness assumption, absent in the toy — and its absence is near-total
+//!   here.** Wesolowski soundness rests on the *low-order / adaptive-root* assumption in the group;
+//!   in the tiny `(Z/NZ)*` the challenge `ℓ` is generically coprime to the known order `φ(N)`, so
+//!   `π ↦ π^ℓ` is a bijection and an `ℓ`-th root exists for **essentially any** target — an
+//!   exhaustive sweep finds a passing proof for almost every *wrong* output, not merely "in
+//!   principle" one. The leaf's subject is the **delay residue**, not proof soundness — a real
+//!   group of unknown order closes this too.
 //! - **The Fiat–Shamir challenge uses a toy hash.** `ℓ = H(x, y, T)` is derived with a
 //!   non-cryptographic FNV-1a mapped to a small prime — legible, not collision-resistant. It fixes
 //!   the challenge deterministically for the demonstration; a real VDF hashes into a large prime.
@@ -141,7 +159,7 @@
 //!
 //! ```compile_fail
 //! use vdf_types::Vdf;
-//! // T = 64 overflows the toy's u64 proof arithmetic — rejected at build time.
+//! // T = 64 exceeds the toy's conservative delay bound — rejected at build time.
 //! let bad = Vdf::<64>::new(42);
 //! ```
 //!
@@ -246,13 +264,14 @@ fn challenge_prime(input: u64, output: u64, delay: u32) -> u64 {
 }
 
 /// A **verifiable delay function** over input `x` with a compile-time delay of `T` sequential
-/// squarings: the output is `y = x^(2^T) mod N`, reachable (without the trapdoor) only by `T`
-/// squarings in sequence, and verifiable from a short Wesolowski proof.
+/// squarings: the output is `y = x^(2^T) mod N`, reachable (without the trapdoor, under the
+/// sequentiality assumption) only by `T` squarings in sequence, and verifiable from a short
+/// Wesolowski proof.
 ///
 /// `T` is a **const generic** walled by `1 ≤ T ≤ 63` (E0080). `T = 0` is the identity map (not a
-/// delay), and `T = 64` overflows the toy's `u64` proof arithmetic — both are compile errors.
-/// The lower wall is a domain invariant; the upper wall is a toy representational bound (see the
-/// crate docs).
+/// delay), and `T = 64` exceeds the toy's conservative delay bound — both are compile errors. The
+/// lower wall is a domain invariant; the upper wall is a toy representational bound (`T ≤ 63` keeps
+/// the Wesolowski quotient `⌊2^T/ℓ⌋` in the `u64` it is derived into — see the crate docs).
 ///
 /// Construction routes through [`new`](Vdf::new) (the `input` field is private, E0451), which
 /// references the wall and so forces it to evaluate for this `T`.
@@ -272,8 +291,8 @@ impl<const T: u32> Vdf<T> {
         );
         assert!(
             T <= 63,
-            "Vdf: T must be <= 63 (the toy's u64 proof arithmetic forms 2^T, which overflows at \
-             T = 64 — a toy limit, not a domain one)"
+            "Vdf: T must be <= 63 (a conservative toy bound so the Wesolowski quotient \
+             floor(2^T / l) fits the u64 it is derived into — a toy limit, not a domain one)"
         );
     };
 
@@ -305,8 +324,9 @@ impl<const T: u32> Vdf<T> {
     /// path the count is exactly `T`; a trapdoor holder reaching the *same* witness would return a
     /// far smaller count — see the crate limits.)
     pub fn eval(&self) -> (Evaluated, u64) {
-        // The delay: T sequential squarings, y = x^(2^T) mod N. Each step depends on the last,
-        // so the chain cannot be parallelised — the source of the sequential-depth lower bound.
+        // The delay: T sequential squarings, y = x^(2^T) mod N. Each step depends on the last, so
+        // the chain is conjectured unparallelisable (the sequentiality assumption) — the source of
+        // the (conjectured) sequential-depth lower bound.
         let mut y = self.input;
         let mut squarings = 0u64;
         for _ in 0..T {
@@ -537,6 +557,28 @@ mod tests {
         assert!(
             other.verify(ev.output(), ev.proof()).is_none(),
             "a T=16 witness does not verify as a T=17 evaluation"
+        );
+    }
+
+    #[test]
+    fn verify_reduces_out_of_range_output_and_proof_arguments() {
+        // `verify` reduces BOTH its `output` and `proof` arguments mod N before checking the
+        // Wesolowski identity, so an out-of-range (>= N) but congruent presentation of an honest
+        // (y, pi) still verifies and the minted witness carries the reduced values. Pins the whole
+        // reduction class at once — a mutant dropping `output % N` (lib.rs) otherwise survives,
+        // since no other test ever feeds verify an unreduced argument.
+        let v = Vdf::<12>::new(9);
+        let (ev, _) = v.eval();
+        let raised = v
+            .verify(ev.output() + N, ev.proof() + N)
+            .expect("an out-of-range but congruent (output, proof) still verifies");
+        assert_eq!(
+            raised, ev,
+            "the witness stores the reduced output and proof"
+        );
+        assert!(
+            raised.output() < N && raised.proof() < N,
+            "both fields are reduced into [0, N)"
         );
     }
 

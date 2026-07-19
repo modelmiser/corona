@@ -802,11 +802,12 @@ ways**, and the residue is of a new kind.
 ## Leaf 20: `vdf-types`
 
 A **verifiable delay function** (Boneh–Bonneau–Bünz–Fisch 2018; RSW time-lock puzzles 1996;
-Wesolowski 2019) — from an input `x` it computes a unique output `y = x^(2^T) mod N` that takes
-`T` **sequential** squarings to produce (squaring cannot be parallelised, so the delay is a lower
-bound on wall-clock latency), yet is cheap to verify from a short proof. The garden's standard
-question: *does "`T` sequential steps of work elapsed" reduce to the vocabulary?* It **splits**,
-and the residue is of a kind the garden did not have.
+Wesolowski 2019) — from an input `x` it computes a unique output `y = x^(2^T) mod N` conjectured to
+take `T` **sequential** squarings to produce (under the *sequentiality assumption* — that repeated
+modular squaring cannot be meaningfully parallelised, a conjecture underlying every VDF, not a
+theorem — the delay is a lower bound on wall-clock latency), yet is cheap to verify from a short
+proof. The garden's standard question: *does "`T` sequential steps of work elapsed" reduce to the
+vocabulary?* It **splits**, and the residue is of a kind the garden did not have.
 
 - **Validity reduces to E0451, the same seal.** `Vdf::verify(output, proof)` is the sole minter
   of a sealed `Evaluated`: it derives the Fiat–Shamir challenge prime `ℓ = H(x, y, T)`, computes
@@ -816,31 +817,37 @@ and the residue is of a kind the garden did not have.
   verification is *exponentially cheaper* than evaluation.
 - **The delay does NOT reduce — a residue of a new kind: a complexity lower bound.** The seal
   witnesses that `y = x^(2^T)` and **nothing about how long the producer took**. The *same* output
-  reached by `T` honest sequential squarings, or in one step by a party who knows the group order
-  `φ(N)` (reduce the exponent: `y = x^{2^T mod φ(N)}`), mints the **byte-identical** witness — the
-  delay is not a property of the value. `Vdf::eval` hands the squaring count back as a *return
-  value of the computation*, deliberately **not** a field of the witness (the placement `pow-types`
-  uses for its attempt count).
+  reached by `T` honest sequential squarings, or in one short exponentiation by a party who knows
+  the group order `φ(N)` (for a unit `x`, reduce the exponent: `y = x^{2^T mod φ(N)}`), mints the
+  **byte-identical** witness — the delay is not a property of the value. `Vdf::eval` hands the
+  squaring count back as a *return value of the computation*, deliberately **not** a field of the
+  witness (the placement `pow-types` uses for its attempt count).
 
 It is a **sibling to `pow-types` (leaf 18) on a different axis, and the contrast is the leaf**:
 pow's residue is *cost* — a fact about a value's **production history** (a lucky first guess is
-cheap; unconditional). vdf's is a **sequential-depth lower bound** — a fact about what *no*
-computation can do faster (no lucky shortcut; the output is a deterministic function; the bound is
-quantified over *all* algorithms and rests on the group's order being hidden). So the seal is
-silent about the *math* of a checked path (leaves 3/4), the *direction* of its soundness (leaf 16),
-the *history* of reaching it (leaf 18 — cost), and now the **sequential depth** any reaching of it
-must have. And ∥ leaf 6 / leaf 18, the delay *parameter* still reduces: `Vdf<const T>` is walled by
-`1 ≤ T ≤ 63` (E0080) — `T = 0` is the identity map (a domain invariant), `T = 64` overflows the
-toy's `u64` proof arithmetic (an honestly-disclosed toy limit, not a domain one). Leaf 20 is the
-*third* leaf to pair **E0451 + E0080**; the brand and E0382 are honestly unused.
+cheap; unconditional). vdf's is a **sequential-depth lower bound** — a *claim* about what *no*
+computation can do faster (a **conjectured** one, resting on the sequentiality assumption; no lucky
+shortcut; the output is a deterministic function; the bound is quantified over *all* algorithms).
+Its *shape* — a for-all-algorithms bound — is what no prior residue has. So the seal is silent about
+the *math* of a checked path (leaves 3/4), the *direction* of its soundness (leaf 16), the *history*
+of reaching it (leaf 18 — cost), and now the **sequential depth** any reaching of it must have. And
+∥ leaf 6 / leaf 18, the delay *parameter* still reduces: `Vdf<const T>` is walled by `1 ≤ T ≤ 63`
+(E0080) — `T = 0` is the identity map (a domain invariant), `T = 64` exceeds a conservative toy
+bound (`T ≤ 63` keeps the Wesolowski quotient `⌊2^T/ℓ⌋` in the `u64` it is derived into — a toy
+limit, not a domain impossibility the way leaf 18's `BITS ≤ 64` is). Leaf 20 is the *third* leaf to
+pair **E0451 + E0080**; the brand and E0382 are honestly unused.
 
-> ⚠ **TOY — and the toy *inverts* the usual break** (∥ `blindsig-types` leaf 19). The Wesolowski
-> *verification* is faithful, but `N = 3233` (= 61·53) factors instantly, so `φ(N) = 3120` is known
-> and the output is one short exponentiation — **the delay is broken, not the verification.** A real
-> VDF needs a group of **unknown order** (an RSA modulus whose factorisation is discarded at a
-> trusted setup, or a class group). Wesolowski proof soundness also rests on a hardness assumption
-> absent in a small group, and the challenge is derived with a toy FNV hash. The witness is
-> unbranded (input/delay-detectable via `Vdf::owns`, not brand-enforced ∥ leaf 18).
+> ⚠ **TOY — the recurring garden break, the *opposite* of leaf 19's inversion.** The toy backend
+> breaks the domain's hard guarantee (here the **delay**) while the type discipline holds — as in
+> `lamport-types` (leaf 5) and `pow-types` (leaf 18): *the type seals validity; only a hidden-order
+> group makes validity imply delay*. `blindsig-types` (leaf 19) is the one that *inverts* this — its
+> hard guarantee (unlinkability) survives the toy perfectly; **vdf's does not**. Concretely,
+> `N = 3233` (= 61·53) factors instantly, so `φ(N) = 3120` is known and the output is one short
+> exponentiation — the delay collapses. A real VDF needs a group of **unknown order** (an RSA
+> modulus whose factorisation is discarded at a trusted setup, or a class group). Wesolowski proof
+> soundness is *also* broken here — in the tiny group an `ℓ`-th root exists for essentially any
+> target, so a wrong output is forgeable — and the challenge is derived with a toy FNV hash. The
+> witness is unbranded (input/delay-detectable via `Vdf::owns`, not brand-enforced ∥ leaf 18).
 
 ## Build
 

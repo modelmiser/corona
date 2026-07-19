@@ -711,38 +711,54 @@ work (complete tasks, add children, keep siblings).
       identity `π^ℓ·x^r ≡ y (mod N)` (∥ `pow`/`merkle`), and verify is exponentially cheaper than
       eval. (2) *The delay does NOT reduce* — the seal witnesses `y = x^(2^T)` and nothing about
       how long the producer took: the same output reached by T honest sequential squarings, or in
-      ONE step by a party who knows `φ(N)` (reduce the exponent), mints the BYTE-IDENTICAL witness,
-      because the delay is not a property of the value. `Vdf::eval` hands the squaring count back
-      as a return value of the computation, deliberately not a field of the witness (∥ pow's
-      attempts). **Sibling to leaf 18 (pow), a different AXIS:** pow's residue is *cost* (a fact
-      about a value's production HISTORY — a lucky first guess is cheap, unconditional); vdf's is a
-      **sequential-depth lower bound** (a fact about what NO computation can do faster — no luck,
-      quantified over all algorithms, conditional on hidden order). (3) **∥ leaf 6/18:** the delay
-      *parameter* reduces — `Vdf<const T>` walls `1≤T≤63` (E0080; `<0>` = the identity map, `<64>`
-      overflows the toy's u64 proof arithmetic — the lower wall a domain invariant, the upper an
-      honestly-disclosed toy limit, a two-justification nuance). **Third leaf to pair E0451 +
-      E0080**; brand/E0382 honestly unused. Standalone. **The toy INVERTS the usual break ∥ leaf
-      19:** the Wesolowski *verification* is faithful, but the tiny `N=3233` factors → `φ(N)` known
-      → the *delay* is broken (executable in
-      `a_trapdoor_shortcut_mints_the_identical_witness_the_wrong_thing_succeeds`); a real VDF needs
-      a group of unknown order. Compile-fails: two E0080 delay walls (`<0>`, `<64>`) + one E0451
-      sealed-`Evaluated` forge, all verified vs rustc directly. 17 unit + 4 doctests; workspace
-      **303 unit + 64 doctests**, all gates green (clippy/fmt/rustdoc -D warnings).
+      ONE short exponentiation (for a unit x) by a party who knows `φ(N)`, mints the BYTE-IDENTICAL
+      witness, because the delay is not a property of the value. `Vdf::eval` hands the squaring
+      count back as a return value of the computation, deliberately not a field of the witness (∥
+      pow's attempts). **Sibling to leaf 18 (pow), a different AXIS:** pow's residue is *cost* (a
+      fact about a value's production HISTORY — a lucky first guess is cheap, unconditional); vdf's
+      is a **sequential-depth lower bound** (a CONJECTURED claim — the sequentiality assumption, not
+      a theorem — about what no computation can do faster, quantified over all algorithms,
+      conditional on hidden order AND the assumption). (3) **∥ leaf 6/18:** the delay *parameter*
+      reduces — `Vdf<const T>` walls `1≤T≤63` (E0080; `<0>` = the identity map, `<64>` exceeds a
+      CONSERVATIVE toy bound — `T≤63` keeps the Wesolowski quotient ⌊2^T/ℓ⌋ in the u64 it's derived
+      into; the lower wall a domain invariant, the upper a toy limit — a two-justification nuance).
+      **Third leaf to pair E0451 + E0080**; brand/E0382 honestly unused. Standalone. **The toy
+      break is the RECURRING one, the OPPOSITE of leaf 19's inversion:** it breaks the domain's hard
+      guarantee (the *delay*: `N=3233` factors → `φ(N)` known → a trapdoor shortcut mints the
+      identical witness, executable in
+      `a_trapdoor_shortcut_mints_the_identical_witness_the_wrong_thing_succeeds`) while the type
+      discipline holds, as pow/lamport/frost; leaf 19 *inverts* (its unlinkability survives), vdf
+      does not. Proof soundness is ALSO broken (near-total). A real VDF needs a group of unknown
+      order. Compile-fails: two E0080 delay walls (`<0>`, `<64>`) + one E0451 sealed-`Evaluated`
+      forge, all verified vs rustc directly. 17 unit + 4 doctests; workspace **303 unit + 64
+      doctests**, all gates green (clippy/fmt/rustdoc -D warnings).
 - [x] `corona-core` promotion check (leaf-20 trigger): nothing to promote (standalone; toy
       modulus/order are swap placeholders). Contribution is a **new residue category** (the
-      sequential-delay lower bound — the first residue that is a *complexity lower bound*, a fact
-      about what no computation can do faster) and the third E0451+E0080 pairing, a sibling axis to
-      leaf 18's cost residue. See CHARTER.
-- [ ] **Cold-review the leaf-20 surface to convergence** — PENDING (fires on the next "ready").
+      sequential-delay lower bound — the first residue that is a *complexity lower bound*, a
+      conjectured claim about what no computation can do faster) and the third E0451+E0080 pairing,
+      a sibling axis to leaf 18's cost residue. See CHARTER.
+- [ ] **Cold-review the leaf-20 surface to convergence** — IN PROGRESS. **R1 done** (3 fresh blind
+      lenses on isolated copies): correctness CLEAN (18 mutants — 15 killed, 3 equivalent; 2 LOW
+      untested `% N` reductions → pinned with a test), adversarial NO BREAK (12 forge/wall vectors
+      compiler-rejected E0451/E0277/E0616/E0599/E0080; whole-group enumeration + 5000-round fuzz, 0
+      panics; delay+proof-soundness breaks confirmed disclosed). **Claims: 3 MODERATE, all real,
+      all fixed** — (M1) the "toy INVERTS the break ∥ leaf 19" framing was BACKWARDS (vdf's subject
+      residue, the delay, is what the toy breaks → it's the RECURRING break ∥ pow/lamport, the
+      OPPOSITE of leaf 19); (M2) the `T≤63` wall justification said "u64 overflows at T=64" but the
+      code uses `1u128<<T` → reworded to the real reason (quotient fits u64); (M3) the sequential
+      lower bound was stated as fact → flagged as the CONJECTURED sequentiality assumption. Fixes
+      propagated to lib.rs + README + CHARTER + records (doc-site propagation). 18 unit + 4
+      doctests; workspace 304 + 64. Need 2 consecutive clean rounds → R2 next.
 
 ## Garden state (2026-07-18j)
 
-- **ALL 19 leaves cold-reviewed; leaf 20 SEEDED, cold-review PENDING.** corona-core + **20
-  leaves**. Leaf 20 (`vdf-types`, a verifiable delay function — validity reduces to the E0451
-  seal, the sequential delay does not; the garden's first *complexity-lower-bound* residue and a
-  sibling axis to leaf 18's cost) was seeded this session as an *unscheduled* open-ended domain
-  (∥ leaves 16–19). Per the garden rhythm, the seed is the unit of finishing; cold review waits
-  for a separate "ready". Nothing else auto-starts.
+- **ALL 19 leaves cold-reviewed; leaf 20 SEEDED + cold-review IN PROGRESS (R1 done).** corona-core
+  + **20 leaves**. Leaf 20 (`vdf-types`, a verifiable delay function — validity reduces to the
+  E0451 seal, the sequential delay does not; the garden's first *complexity-lower-bound* residue
+  and a sibling axis to leaf 18's cost) was seeded this session as an *unscheduled* open-ended
+  domain (∥ leaves 16–19). Cold review R1: code CLEAN + adversarial NO BREAK; 3 real claims
+  MODERATEs (all framing — the leaf-19 inversion parallel was backwards, the wall justification was
+  wrong, the lower bound is a conjecture) fixed and propagated. Need 2 consecutive clean rounds.
 
 ## Garden state (2026-07-18i)
 
