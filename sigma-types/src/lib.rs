@@ -53,8 +53,8 @@
 //! quantify over a *rewound* re-execution of an external, possibly-adversarial
 //! prover. So no type, and no compile-time fact, can witness extractability. It is
 //! made executable here in both directions: [`extract`] (two accepting transcripts
-//! sharing `R` → the witness, confirmed `g^x = Y`) and [`simulate`] (one accepting
-//! transcript → no witness at all).
+//! sharing `R` → the witness, which satisfies `g^x = Y`) and [`simulate`] (one
+//! accepting transcript → no witness at all).
 //!
 //! ## The dual of leaf 19, and the two escaping halves of a ZK proof
 //!
@@ -430,19 +430,33 @@ pub fn keygen(secret: u16) -> Result<(Statement, Witness), KeyError> {
 /// same `(z₁ − z₂)·(c₁ − c₂)⁻¹` that there recovers a signing share. There it is the
 /// catastrophe E0382 prevents; here it is the reason the protocol *means* something.
 ///
-/// Returns `None` unless both transcripts accept, the commitments are equal, and the
-/// challenges differ (the conditions under which extraction is defined).
+/// Returns `None` unless both transcripts accept, the commitments are equal **as
+/// group elements** (mod `p`), and the challenges differ **in `Z_q`** (the conditions
+/// under which extraction is defined). Non-canonical public-field values (a
+/// `Challenge.c ≥ q` or `Commitment.r ≥ p`) are canonicalized here, so a challenge
+/// pair congruent mod `q` returns `None` rather than reaching `f_inv(0)`.
 pub fn extract(statement: &Statement, t1: &Transcript, t2: &Transcript) -> Option<Witness> {
     statement.verify(t1)?;
     statement.verify(t2)?;
-    if t1.commitment.r != t2.commitment.r {
+    // Compare the first messages as *group elements*, not raw `u16`s: `Commitment.r`
+    // is a public field that may hold a non-canonical value ≥ p, and `verify` (via
+    // `g_mul`) reduces mod p, so two raw-unequal `r`s congruent mod p are the *same*
+    // R and a genuine rewinding pair.
+    if t1.commitment.r as u32 % group::P != t2.commitment.r as u32 % group::P {
         return None; // different first messages — not a rewinding of one commitment
     }
-    if t1.challenge.c == t2.challenge.c {
-        return None; // same challenge — one transcript, nothing to extract
+    // Compare the challenges as *field elements*, via their difference. `Challenge.c`
+    // is public and may be non-canonical (≥ q), and the extraction arithmetic reduces
+    // mod q — so two raw-unequal challenges congruent mod q (e.g. 11 and 11+q) are the
+    // *same* challenge in Z_q. `dc == 0` catches that *and* equal challenges, and it is
+    // exactly the guard `f_inv(dc)` needs: a raw `c1 != c2` check would let a congruent
+    // pair through to `f_inv(0)` and panic. This is the "field narrower than its
+    // representation" canonicalization `vss-types`/`frost-types` apply at their own seams.
+    let dc = group::f_sub(t1.challenge.c as u32, t2.challenge.c as u32);
+    if dc == 0 {
+        return None; // same challenge in Z_q — nothing to extract
     }
     let dz = group::f_sub(t1.response.z as u32, t2.response.z as u32);
-    let dc = group::f_sub(t1.challenge.c as u32, t2.challenge.c as u32);
     let x = group::f_mul(dz, group::f_inv(dc));
     Some(Witness { x: x as u16 })
 }
@@ -625,6 +639,99 @@ mod tests {
         };
         assert!(statement.verify(&bogus).is_none());
         assert!(extract(&statement, &good, &bogus).is_none());
+    }
+
+    /// The "field narrower than its representation" guard (∥ `vss-types`/`frost-types`).
+    /// `Challenge.c` is a public `u16` that may exceed `q`, and the extraction
+    /// arithmetic reduces mod `q`, so two challenges congruent mod `q` — `11` and
+    /// `11 + q` — are the *same* challenge in `Z_q` even though they differ as `u16`.
+    /// Both transcripts still verify (`Y^{11+q} = Y^{11}` since `ord(Y) = q`), so a raw
+    /// `c1 != c2` distinctness check would let them through to `f_inv(0)` and **panic**.
+    /// `extract` must return `None` instead.
+    #[test]
+    fn extract_returns_none_on_challenges_congruent_mod_q_without_panicking() {
+        let (statement, witness) = keygen(0x2a).unwrap();
+        let nonce = ProverNonce::commit(0xA1);
+        let commitment = nonce.commitment();
+        let c1 = Challenge::interactive(11);
+        let z1 = nonce.respond(&witness, c1);
+        let t1 = Transcript {
+            commitment,
+            challenge: c1,
+            response: z1,
+        };
+        // Same R, same z, challenge 11 + q = 268: non-canonical, congruent mod q.
+        let t2 = Transcript {
+            commitment,
+            challenge: Challenge {
+                c: 11 + group::Q as u16,
+            },
+            response: z1,
+        };
+        assert!(statement.verify(&t1).is_some());
+        assert!(
+            statement.verify(&t2).is_some(),
+            "a congruent-mod-q challenge still verifies"
+        );
+        assert!(
+            extract(&statement, &t1, &t2).is_none(),
+            "congruent-mod-q challenges are the same challenge in Z_q — None, not a panic"
+        );
+    }
+
+    /// Companion to the above on the commitment axis: two commitments congruent mod `p`
+    /// (`R` and `R + p`) are the *same* group element, so `extract` compares them mod `p`
+    /// and still treats the pair as one rewinding (a raw `u16` compare would spuriously
+    /// return `None`). A genuine extraction goes through.
+    #[test]
+    fn extract_canonicalizes_the_commitment_mod_p() {
+        let (statement, witness) = keygen(0x2a).unwrap();
+        let nonce1 = ProverNonce::commit(0xA1);
+        let nonce2 = ProverNonce::commit(0xA1); // same seed → same r
+        let r_raw = nonce1.commitment().r;
+        let c1 = Challenge::interactive(11);
+        let c2 = Challenge::interactive(99);
+        let t1 = Transcript {
+            commitment: Commitment { r: r_raw },
+            challenge: c1,
+            response: nonce1.respond(&witness, c1),
+        };
+        // t2's commitment is R + p — a non-canonical spelling of the SAME group element.
+        let t2 = Transcript {
+            commitment: Commitment {
+                r: r_raw + group::P as u16,
+            },
+            challenge: c2,
+            response: nonce2.respond(&witness, c2),
+        };
+        let extracted = extract(&statement, &t1, &t2)
+            .expect("congruent-mod-p commitments are one rewinding — extraction proceeds");
+        assert_eq!(extracted, witness);
+    }
+
+    /// Pins `commit`'s **non-zero-nonce** guarantee — the doc claims `r ∈ 1..=q-1`
+    /// because a zero nonce publishes `R = g^0 = 1` and leaks `z = c·x` (the witness).
+    /// This is a *secrecy* property with no effect on completeness or extraction, so
+    /// the other tests miss it: dropping the `+ 1` in `commit` (nonce `0..=q-2`) leaves
+    /// every honest proof still verifying. Seed `167` is one whose toy PRG hashes to
+    /// `h % (q-1) == 0`, so the `+ 1` is exactly what keeps its nonce off zero — under
+    /// the mutant its `R` would be `1`.
+    #[test]
+    fn commit_forces_a_non_zero_nonce() {
+        // `R == 1` iff the nonce scalar is `0`. The honest `commit` never allows it.
+        assert_ne!(
+            ProverNonce::commit(167).commitment().r,
+            1,
+            "seed 167 must not yield a zero nonce (R = 1) — the `+1` in commit is load-bearing"
+        );
+        // A broader sweep: no seed yields a zero nonce.
+        for seed in 0u64..1000 {
+            assert_ne!(
+                ProverNonce::commit(seed).commitment().r,
+                1,
+                "seed {seed} yielded R = 1 (zero nonce)"
+            );
+        }
     }
 
     // ---- the dual: a single accepting transcript is not knowledge (HVZK) ----

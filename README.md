@@ -928,7 +928,7 @@ residue is of a new kind: one defined not over any value in the program, but ove
   with **no witness at all** (pick `z`, set `R = g^z·Y^{-c}`; it verifies) — the
   protocol's honest-verifier zero-knowledge. Knowledge is defined by an **extractor**:
   a prover that answers **two** challenges on one commitment has its witness fall out of
-  the pair (`extract`: two accepting transcripts → `x`, confirmed `g^x = Y`). That is a
+  the pair (`extract`: two accepting transcripts → `x`, which satisfies `g^x = Y`). That is a
   property of the **prover as an algorithm across two counterfactual runs**, not a fact
   about any value in any one execution — so no type, which constrains the execution the
   compiler sees, can quantify over a *rewound* re-execution of an external prover.
