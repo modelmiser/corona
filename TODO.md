@@ -1021,7 +1021,22 @@ work (complete tasks, add children, keep siblings).
       backend ∥ leaf 23). Contribution is a *new residue **axis*** — the first leaf to cross the
       safety/liveness line — and the *fourth seam* (an environment-fairness assumption + temporal
       reasoning, distinct from coordination/proof/trust). See CHARTER.
-- [ ] **Cold-review the leaf-24 surface to convergence** — IN PROGRESS (fires on "ready"). **R1 done**
+- [x] **Cold-review the leaf-24 surface to convergence — CONVERGED at R6/R7** (2 consecutive fully-clean
+      rounds, 0 CRIT/0 MOD across correctness/claims/adversarial; commits `9cccdd4`→`2059efb`→`cacc9dd`→
+      `03b0e99`→`d53b49d`, R6/R7 no-change). MODERATE arc **3→3→1→1→1→0→0** (7 rounds). **The CODE carried
+      ZERO correctness/adversarial findings in all 7 rounds** — seal genuine E0451 (verified vs rustc every
+      round), at-most-once/in-order survived 1000× duplicate hammering, finite-prefix indistinguishability
+      never separable by any runtime observation, "Copy not load-bearing" re-verified by a non-Copy/non-Clone
+      Vec-payload prototype every adversarial round; ~19 non-equivalent mutants killed each correctness round
+      (2-4 provably-equivalent survivors). **Every one of the 9 MODERATEs was doc-precision, and the species
+      was the garden's predicted highest-risk class**: cross-leaf universal overreach ("all 23 priors are
+      safety" → leaf 19/22 are hyperproperties; "deeper than any residue" → "different level than the
+      runtime-closable ones"; the E0382-*posture* not the primitive; FLP *analogue* not instance; leaf-9
+      *spent-set* not coordination) + qualifiers not reaching every site. Convergence tool: repo-wide grep of
+      the whole phrase-class after each fix + a non-exhaustive "e.g." framing. All 5 citations real
+      (Alpern–Schneider, Lamport, ABP, FLP, Ben-Or). 13 unit + 4 doctests. **ALL 24 leaves now cold-reviewed.**
+      Below = the round-by-round detail.
+- [ ] ~~Cold-review the leaf-24 surface~~ (superseded by the CONVERGED line above). **R1 done**
       (3 blind lenses). Adversarial: **NO BREAK** — seal airtight in safe Rust (canonical forge → genuine
       E0451, verified vs rustc), at-most-once/in-order survives 1000× duplicate hammering, finite-prefix
       indistinguishability has no public counterexample (even `Receiver::expected()` leaks nothing).
@@ -1074,6 +1089,18 @@ work (complete tasks, add children, keep siblings).
       Findings trajectory R1..R5: 3→3→1→1→1, all singletons since R3 DISTINCT genuine doc-precision (not one
       issue recurring); CODE clean since R3. **R5 NOT clean (1 claims MOD) → need R6 + R7 both clean.** If R6
       surfaces only defensible LOWs → practical convergence per leaf-9/10/11 precedent. Nothing auto-starts.
+
+## Garden state (2026-07-19g)
+
+- **ALL 24 leaves cold-reviewed. No review debt.** corona-core + **24 leaves**. On the user's "ready",
+  **leaf 24 `arq-types` (the first liveness leaf) CONVERGED** — 7 rounds, MODERATE arc 3→3→1→1→1→0→0, two
+  consecutive fully-clean (R6/R7). The code carried ZERO correctness/adversarial findings throughout; all 9
+  MODERATEs were doc-precision, overwhelmingly the predicted highest-risk class (cross-leaf universal
+  overreach + qualifiers not reaching every site), closed by a repo-wide phrase-class grep after each fix.
+  The garden is again a finished thought: any further leaf is a fresh open-ended domain, not backlog.
+  **Sequencing (user-set):** breadth reached ~leaf 24; **leaf 25 is the last breadth seed before the parked
+  depth batch** (audit first — see the 2026-07-19 depth-pass block below). When seeding 25, hold the audit's
+  residue-executability question so we don't add prose-only cores. Nothing auto-starts.
 
 ## Garden state (2026-07-19f)
 
