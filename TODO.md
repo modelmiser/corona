@@ -756,7 +756,21 @@ work (complete tasks, add children, keep siblings).
       table cell → "none known … (sequentiality conjecture)"). Also added an **independent golden
       pin for `challenge_prime`** (leaf-18 sole-producer/consumer class — closes the R2 correctness
       LOW cluster; the `ℓ = H(x,y,T)` contract is now self-testing). R2 not clean (1 MOD) → streak
-      resets; need R3 + R4 both clean. 19 unit + 4 doctests; workspace 305 + 64.
+      resets; need R3 + R4 both clean. 19 unit + 4 doctests; workspace 305 + 64. **R3**: correctness
+      CLEAN + claims CLEAN, but **adversarial found 1 MODERATE** — a real one: the test
+      `a_proof_does_not_transfer_to_a_different_delay` and its comment claimed "the delay is bound
+      into the checked path," but that is FALSE in the toy — the near-total proof-soundness break
+      EXTENDS TO THE T AXIS: an honest T=16 `(y,π)` also verifies at T=17 for 1.67% of inputs
+      (54/3233, confirmed), and the passing test only held because its vector x=11 happened not to
+      transfer (leaf-12 cherry-picked-vector lesson). FIXED: replaced the misleading test with
+      `a_witness_can_cross_delays_a_face_of_the_disclosed_soundness_break` (searches for a genuine
+      wrong-output cross-delay transfer — the wrong thing succeeds — and shows `verify` only STAMPS
+      the recorded T, does not bind (y,π) to a unique T), and disclosed the T-axis break in Honest
+      limits. Also fixed the R3 LOWs: golden test under-pinned the prime-walk step (`c+=4` mutant
+      survived on the single triple) → added a 2nd golden `challenge_prime(0,4,1)==17`; the `Vdf<0>`
+      note said WALL is "referenced from new and the methods" (only `new`) → corrected; README
+      recurring-break peer list made consistent with lib.rs/CHARTER (+frost). R3 not clean (1 MOD) →
+      streak stays reset; need R4 + R5 both clean. 19 unit + 4 doctests; workspace 305 + 64.
 
 ## Garden state (2026-07-18j)
 

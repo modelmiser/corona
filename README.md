@@ -839,7 +839,7 @@ pair **E0451 + E0080**; the brand and E0382 are honestly unused.
 
 > ⚠ **TOY — the recurring garden break, the *opposite* of leaf 19's inversion.** The toy backend
 > breaks the domain's hard guarantee (here the **delay**) while the type discipline holds — as in
-> `lamport-types` (leaf 5) and `pow-types` (leaf 18): *the type seals validity; only a hidden-order
+> `lamport-types` (leaf 5), `pow-types` (leaf 18), and `frost-types` (leaf 12): *the type seals validity; only a hidden-order
 > group makes validity imply delay*. `blindsig-types` (leaf 19) is the one that *inverts* this — its
 > hard guarantee (unlinkability) survives the toy perfectly; **vdf's does not**. Concretely,
 > `N = 3233` (= 61·53) factors instantly, so `φ(N) = 3120` is known and the output is one short

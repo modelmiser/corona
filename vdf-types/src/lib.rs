@@ -74,8 +74,8 @@
 //!   `T` in the millions. The two walls having *different* justifications — one a domain invariant,
 //!   one a toy limit — is itself the honest nuance.
 //!
-//! (Naming the type `Vdf<0>` *compiles* — the wall is referenced only from [`new`](Vdf::new) and
-//! the methods — but `Vdf<0>` is **uninhabitable**: `new` is the sole constructor and it fires the
+//! (Naming the type `Vdf<0>` *compiles* — the wall is referenced only from [`new`](Vdf::new) (a fn
+//! body, not the type definition) — but `Vdf<0>` is **uninhabitable**: `new` is the sole constructor and it fires the
 //! wall, there is no `Default`, and `Clone` needs an existing value, so no `Vdf<0>` can ever be
 //! obtained to `eval`. This is leaf 6's documented non-finding class — a bare, valueless type name
 //! is not an exploit; the `compile_fail` doctest targets `Vdf::<0>::new(…)`, which does fail.)
@@ -112,8 +112,13 @@
 //!   in the tiny `(Z/NZ)*` the challenge `ℓ` is generically coprime to the known order `φ(N)`, so
 //!   `π ↦ π^ℓ` is a bijection and an `ℓ`-th root exists for **essentially any** target — an
 //!   exhaustive sweep finds a passing proof for almost every *wrong* output, not merely "in
-//!   principle" one. The leaf's subject is the **delay residue**, not proof soundness — a real
-//!   group of unknown order closes this too.
+//!   principle" one. The break also extends **across delays**: because `ℓ = H(x, y, T)` folds in
+//!   `T` but the proof is unsound, an honest `(y, π)` computed at one delay *also* verifies at a
+//!   *different* delay for a fraction of inputs (~1.67% at `T=16 → T=17`), minting a witness that
+//!   records the new `T` with a wrong output — the same break on the delay axis, **not** a
+//!   delay-binding failure of the type discipline (`verify` still only stamps the `T` it ran at,
+//!   which `owns` checks). The leaf's subject is the **delay residue**, not proof soundness — a
+//!   real group of unknown order closes all of this.
 //! - **The Fiat–Shamir challenge uses a toy hash.** `ℓ = H(x, y, T)` is derived with a
 //!   non-cryptographic FNV-1a mapped to a small prime — legible, not collision-resistant. It fixes
 //!   the challenge deterministically for the demonstration; a real VDF hashes into a large prime.
@@ -547,18 +552,49 @@ mod tests {
     }
 
     #[test]
-    fn a_proof_does_not_transfer_to_a_different_delay() {
-        // The challenge l folds in T, so a witness computed at one delay does not verify at
-        // another — the delay is bound into the checked path.
-        let x = 11u64;
-        let (ev, _) = Vdf::<16>::new(x).eval();
-        // Present the SAME (y, pi) to a VDF of a different delay: verify recomputes a different
-        // r = 2^T mod l (and a different l), so the identity fails.
-        let other = Vdf::<17>::new(x);
-        assert!(
-            other.verify(ev.output(), ev.proof()).is_none(),
-            "a T=16 witness does not verify as a T=17 evaluation"
+    fn a_witness_can_cross_delays_a_face_of_the_disclosed_soundness_break() {
+        // The challenge `l = H(x, y, T)` folds T into the derivation, so in a group where the
+        // Wesolowski proof is SOUND a witness for one delay would not satisfy another delay's
+        // identity. In this TOY the proof-soundness break is near-total (see Honest limits) and it
+        // extends to the T axis: an honest `(y, pi)` computed at one delay ALSO verifies at a
+        // DIFFERENT delay for a fraction of inputs (~1.67% at T=16 -> T=17), minting a witness that
+        // records the NEW delay while carrying an output that is not `x^(2^T')` — a forged
+        // wrong-output witness, the SAME disclosed break, on the delay axis. This is NOT a
+        // delay-binding guarantee of the type discipline: `verify` only stamps the T it ran at
+        // (`owns` checks that recorded T), it does not bind `(y, pi)` to a unique T. Made executable
+        // (the wrong thing succeeds): find a genuine wrong-output cross-delay transfer.
+        let mut crossed = None;
+        for x in 0..N {
+            let (ev16, _) = Vdf::<16>::new(x).eval();
+            if let Some(ev17) = Vdf::<17>::new(x).verify(ev16.output(), ev16.proof()) {
+                let true_y17 = mod_exp(x, 1u64 << 17, N);
+                if ev16.output() != true_y17 {
+                    crossed = Some((x, ev16, ev17, true_y17));
+                    break;
+                }
+            }
+        }
+        let (x, ev16, ev17, true_y17) = crossed.expect(
+            "some input's honest T=16 witness also verifies at T=17 with a wrong output \
+             (the disclosed toy soundness break, on the delay axis)",
         );
+        // Byte-identical (output, proof) to the T=16 witness, but stamped delay=17...
+        assert_eq!(
+            ev17.delay(),
+            17,
+            "verify stamps the T it ran at, not the T that produced (y,pi)"
+        );
+        assert_eq!((ev17.output(), ev17.proof()), (ev16.output(), ev16.proof()));
+        // ...and the output is NOT x^(2^17): a forged wrong-output witness at T=17.
+        assert_ne!(
+            ev17.output(),
+            true_y17,
+            "the crossed witness carries a wrong T=17 output"
+        );
+        // owns() checks only the RECORDED delay, so Vdf::<17> owns it — detection of the recorded
+        // T, NOT prevention of cross-delay forgery.
+        assert!(Vdf::<17>::new(x).owns(&ev17));
+        let _ = x;
     }
 
     #[test]
@@ -752,6 +788,15 @@ mod tests {
             challenge_prime(5, 100, 16),
             109,
             "challenge prime for (input=5, output=100, delay=16) is the golden value"
+        );
+        // A second golden triple whose prime walk actually STEPS (the base candidate is composite,
+        // so it advances by +2 to reach 17) — pins the prime-walk step size, which the first triple
+        // (invariant under a +4 step) does not: `challenge_prime(0, 4, 1) == 17`, and a `+4` walk
+        // would skip it to 19.
+        assert_eq!(
+            challenge_prime(0, 4, 1),
+            17,
+            "the prime walk steps by +2 (a +4 step would skip 17 to 19)"
         );
         // Changing any single field changes the derived prime (binds all three).
         assert_ne!(challenge_prime(6, 100, 16), 109, "l depends on input");
