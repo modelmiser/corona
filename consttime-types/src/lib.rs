@@ -11,9 +11,12 @@
 //! observable behaviour — time, and by extension branches, memory-access pattern,
 //! and power — must **not depend on the secret**. The garden's standard question
 //! of the domain — *does constant-time security reduce to the compile-primitive
-//! vocabulary?* — **splits along a seam no prior leaf has drawn: the seam between
-//! the *values* a program manipulates and the *operational behaviour* of the
-//! program that manipulates them.**
+//! vocabulary?* — **crosses a fault line the garden had only approached: not the
+//! *values* a program manipulates, and not even *how much* of a resource one run
+//! consumes (the cost/delay/space triad, leaves 18/20/21, already sit on the
+//! operational layer), but whether the program's *operational behaviour* **leaks
+//! the secret across two runs** — a 2-safety relation, invisible to a type that
+//! sees only the values of a single execution.**
 //!
 //! ## The source discipline reduces; the timing does not
 //!
@@ -32,8 +35,8 @@
 //!    [`Secret::ct_select`] (a branchless choose) — plus one **explicit, greppable
 //!    escape**, [`Secret::declassify`], which is the single auditable point where a
 //!    value leaves the oblivious domain. This is the E0451 seal in a **new mode —
-//!    its *dual***: not "you cannot *forge* this witness" (the seal's only prior use,
-//!    across leaves 1–24 — guarding *construction*) but "you cannot *branch on* this
+//!    its *dual***: not "you cannot *forge* this witness" (the seal's use throughout
+//!    the garden so far — guarding *construction*) but "you cannot *branch on* this
 //!    value" (guarding *observation*). The same private-field mechanism, opposite
 //!    face — construction vs observation — so this is the seal's second mode on that
 //!    axis, not a fifth primitive.
@@ -115,7 +118,7 @@
 //! the statistical non-relation. Leaf 25: the value can hide, yet the *computation*
 //! leaks it through a **side channel** the type abstraction **abstracts away**.
 //! Where the resource triad (18/20/21) exposes *how much* of a resource a
-//! computation consumed, this is the first residue about a **covert channel that
+//! computation consumed, this is the first residue about a **side channel that
 //! *leaks the secret*** — a channel that exists only because types are silent about
 //! operational behaviour.
 //!
@@ -360,6 +363,35 @@ mod tests {
         assert!(
             !a.ct_eq(&diff).declassify(),
             "unequal secrets compare unequal"
+        );
+    }
+
+    /// `ct_eq` must **OR-accumulate** the per-byte differences, never
+    /// XOR-accumulate: two secrets differing in ≥2 bytes with **equal XOR-deltas**
+    /// would *cancel to zero* under an XOR fold and be falsely reported equal — the
+    /// classic constant-time-compare bug. Single-byte-difference tests cannot see
+    /// this (any fold catches one differing byte); these multi-byte cancel cases
+    /// pin the `|=` fold (a `|=`→`^=` mutant is a real bug and must fail here).
+    #[test]
+    fn ct_eq_or_accumulates_it_does_not_xor_cancel() {
+        // [1,1] vs [2,2]: 1^2=3 twice; an XOR fold gives 3^3=0 ("equal"), OR keeps 3.
+        let s = Secret::new([1u8, 1]);
+        assert!(
+            !s.ct_eq(&Secret::new([2u8, 2])).declassify(),
+            "paired equal deltas must NOT cancel to 'equal'"
+        );
+        // 4-byte: [0,0,0,0] vs [5,5,0,0] — deltas 5,5 cancel under XOR.
+        let z = Secret::new([0u8, 0, 0, 0]);
+        assert!(
+            !z.ct_eq(&Secret::new([5u8, 5, 0, 0])).declassify(),
+            "paired equal deltas (4-byte) must NOT cancel"
+        );
+        // Genuinely-equal still compares equal (the fold is not just always-false).
+        assert!(s.ct_eq(&Secret::new([1u8, 1])).declassify());
+        // Pin the instrumented proxy's fold too (its own `|=`→`^=` otherwise survives).
+        assert!(
+            !ct_eq_ops(&z, &Secret::new([5u8, 5, 0, 0])).0,
+            "the op-count proxy folds the same way and must not XOR-cancel either"
         );
     }
 

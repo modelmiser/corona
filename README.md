@@ -1113,9 +1113,12 @@ password hash) against an attacker-supplied guess. The naive byte loop that
 secret through its **running time** (a longer shared prefix takes longer; time
 the check, recover the secret byte by byte — Kocher 1996; the `memcmp`/HMAC class;
 Lucky-13, 2013). The garden's standard question — *does constant-time security
-reduce to the vocabulary?* — **splits along a seam no prior leaf drew: between the
-*values* a program manipulates and the *operational behaviour* of the program
-manipulating them.**
+reduce to the vocabulary?* — **crosses a fault line the garden had only approached:
+not the *values* a program manipulates, and not even *how much* of a resource one
+run consumes (the cost/delay/space triad, leaves 18/20/21, already sit on the
+operational layer), but whether the program's *operational behaviour* leaks the
+secret across *two* runs — a 2-safety relation invisible to a type that sees only
+one execution's values.**
 
 - **The source-level data-oblivious discipline reduces to the E0451 seal — in a
   new *mode*, its *dual*.** A `Secret<N>` has **private** bytes (the seal) and implements
@@ -1169,7 +1172,7 @@ combinator ran*, never *that it was oblivious*.
 ## Build
 
 ```sh
-cargo test --workspace          # 384 unit tests + 84 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check; leaf 25 consttime adds the OBLIVIOUS-mode seal — no-== on a Secret [E0369] — and the timing residue, beneath every type)
+cargo test --workspace          # 385 unit tests + 84 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check; leaf 25 consttime adds the OBLIVIOUS-mode seal — no-== on a Secret [E0369] — and the timing residue, beneath every type)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

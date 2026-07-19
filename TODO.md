@@ -1116,7 +1116,7 @@ work (complete tasks, add children, keep siblings).
       honestly unused; no new one. Standalone. Held the depth-audit's residue-executability
       question at seed time: BOTH halves are executable (the reduction = compile-fail seal +
       withheld traits; the residue = the op-count leak test + the witness-trap `Choice`).
-      13 unit + 4 doctests; workspace **384 unit + 84 doctests**, all gates green
+      14 unit + 4 doctests; workspace **385 unit + 84 doctests**, all gates green
       (clippy/fmt/rustdoc -D warnings). Commit `1a9a51b`, pushed.
 - [ ] **Cold-review the leaf-25 surface to convergence** — PENDING, fires on the next
       "ready" (seed-then-stop; review deferred to a separate trigger). Watch the predicted
