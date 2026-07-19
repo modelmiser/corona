@@ -25,7 +25,8 @@
 //! witnesses that the openings are consistent with the committed root at the challenged indices —
 //! and **nothing about how much storage the prover kept resident to answer**. A prover holding the
 //! whole `2^K`-entry table in memory ([`MaterializedTable`]) and one holding **only the seed**
-//! ([`Space`], recomputing every needed value and sibling on demand) build the **byte-identical**
+//! ([`Space`], keeping only the seed *persistently* resident and regenerating the table transiently
+//! to answer) build the **byte-identical**
 //! [`Response`] and mint the **byte-identical** [`SpaceProof`] — because the occupancy is a property
 //! of the *prover's physical state*, not of the value. [`Space::prove`] hands the resident-entry
 //! count back as a *return value of the computation*, deliberately **not** a field of the witness —
@@ -93,9 +94,9 @@
 //!   *inverts* this pattern (its unlinkability survives the toy perfectly); **pospace does not
 //!   invert it** — its hard guarantee, the occupancy, is exactly what the toy destroys. Concretely:
 //!   `t[i] = H(seed ‖ i)` is **trivially recomputable** — any entry is one hash from the seed — so a
-//!   prover stores *nothing* and regenerates the table transiently per challenge (the classic
-//!   **space-time tradeoff**), paying `O(2^K)` recomputation time instead of `O(2^K)` resident
-//!   storage. A real proof of space makes the table generation **depth-robust / memory-hard** (a
+//!   prover stores *nothing* persistently and regenerates the whole table transiently at prove time
+//!   (the classic **space-time tradeoff**), paying `O(2^K)` recomputation time instead of `O(2^K)`
+//!   resident storage. A real proof of space makes the table generation **depth-robust / memory-hard** (a
 //!   pebbling-hard graph in Dziembowski–Faust–Kolmogorov–Pietrzak 2015; Chia's plots instead use a
 //!   hardened *Hellman-table* construction, Abusalah–Alwen–Cohen–Khilko–Pietrzak–Reyzin 2017 — a
 //!   distinct line, both memory-hard) so that recomputation is prohibitively slow and fast
@@ -130,9 +131,10 @@
 //! assert_eq!(table.resident_entries(), 1024);
 //! let (from_storage, _) = table.prove();
 //!
-//! // ...while the seed-only prover keeps ONE u64 resident and recomputes on demand.
+//! // ...while the seed-only prover keeps ONE u64 resident *persistently*, regenerating the table
+//! // transiently at prove time (its transient peak is O(2^K); only PERSISTENT residence is 1).
 //! let (from_seed, resident) = space.prove();
-//! assert_eq!(resident, 1, "the seed-only prover holds a single u64, not the table");
+//! assert_eq!(resident, 1, "the seed-only prover holds a single u64 persistently, not the table");
 //!
 //! // The two witnesses are byte-identical: the seal cannot see how much storage was kept.
 //! assert_eq!(from_storage, from_seed);
@@ -342,9 +344,11 @@ impl<const K: u32> Space<K> {
         1u64 << K
     }
 
-    /// The number of table entries this value keeps **resident**: **one** `u64` (the seed). Contrast
-    /// [`MaterializedTable::resident_entries`], which is `2^K`. Both mint the identical witness — the
-    /// gap between these two numbers is the residue the seal cannot see.
+    /// The number of table entries this value keeps **persistently resident**: **one** `u64` (the
+    /// seed). Contrast [`MaterializedTable::resident_entries`], which is `2^K`. Both mint the
+    /// identical witness — the gap between these two numbers is the residue the seal cannot see.
+    /// (This is *persistent* residence; [`prove`](Space::prove) still allocates the whole table
+    /// transiently to build the paths — the space-time tradeoff, paid in time per proof.)
     pub const fn resident_entries(&self) -> usize {
         1
     }
@@ -361,8 +365,9 @@ impl<const K: u32> Space<K> {
         }
     }
 
-    /// **Prove** by regenerating the table from the seed on demand, keeping only the seed resident,
-    /// and returning the sealed [`SpaceProof`] **and the number of entries kept resident** (`1`).
+    /// **Prove** by regenerating the table from the seed at prove time, keeping only the seed
+    /// *persistently* resident, and returning the sealed [`SpaceProof`] **and the number of entries
+    /// kept persistently resident** (`1`).
     ///
     /// The resident-entry count — the *occupancy* — is a return value of the **computation**, handed
     /// back beside the witness and deliberately **not** stored inside it. That placement is this
@@ -740,10 +745,11 @@ mod tests {
     #[test]
     fn a_seed_only_prover_mints_the_identical_witness_the_wrong_thing_succeeds() {
         // The heart of the leaf (leaf-18 / leaf-20 "the wrong thing succeeds" style). A prover that
-        // stores the WHOLE 2^K table and one that keeps ONLY the seed (recomputing every entry and
-        // path on demand — the space-time tradeoff) produce a byte-identical witness. The seal
-        // attests the openings are valid; it cannot attest that any storage was kept. In a real proof
-        // of space a memory-hard generator makes the recompute prohibitive, closing this shortcut.
+        // stores the WHOLE 2^K table PERSISTENTLY and one that keeps ONLY the seed persistently
+        // (regenerating the table transiently at prove time — the space-time tradeoff) produce a
+        // byte-identical witness. The seal attests the openings are valid; it cannot attest that any
+        // storage was kept. In a real proof of space a memory-hard generator makes the transient
+        // regeneration prohibitively slow, closing this shortcut.
         let space = Space::<12>::new(123);
 
         // Storage-consuming prover: 2^12 = 4096 entries resident.
@@ -751,11 +757,11 @@ mod tests {
         let (from_storage, stored) = table.prove();
         assert_eq!(stored, 4096, "the honest prover kept 2^K entries resident");
 
-        // Seed-only prover: one u64 resident, recomputes the rest.
+        // Seed-only prover: one u64 kept resident persistently (regenerates the table transiently).
         let (from_seed, resident) = space.prove();
         assert_eq!(
             resident, 1,
-            "the cheating prover kept a single u64 resident"
+            "the cheating prover kept a single u64 resident persistently"
         );
 
         // A factor-4096 difference in resident storage...
@@ -829,6 +835,22 @@ mod tests {
     }
 
     // ---- Challenge derivation and hashing pins. ----
+
+    #[test]
+    fn queries_count_is_pinned_to_an_external_literal() {
+        // `QUERIES` is a soundness-relevant parameter (the crate's Honest limits note that soundness
+        // rests on the NUMBER of challenges). Because every test references the SYMBOL `QUERIES`, a
+        // mutation to the constant rescales the whole crate self-consistently and is invisible to
+        // every accept/reject test (the sole-producer-and-consumer class, ∥ leaf 18) — so pin it
+        // against an EXTERNAL literal, and against its one observable consequence.
+        assert_eq!(QUERIES, 12, "the challenge count is fixed at 12");
+        let (proof, _) = Space::<8>::new(1).prove();
+        assert_eq!(
+            proof.challenges().len(),
+            12,
+            "a proof answers exactly 12 challenged openings"
+        );
+    }
 
     #[test]
     fn challenges_are_deterministic_in_the_root_and_within_range() {

@@ -872,7 +872,8 @@ completes a **resource triad** with leaves 18 and 20.
   that the openings are consistent with the root and **nothing about how much storage
   the prover kept resident**. A prover holding the whole `2^K`-entry table
   (`MaterializedTable`, `resident_entries() == 2^K`) and one holding **only the seed**
-  (`Space`, recomputing every value and sibling on demand, `resident_entries() == 1`)
+  (`Space`, keeping only the seed persistently and regenerating the table transiently at prove time,
+  `resident_entries() == 1`)
   build the **byte-identical** `Response` and mint the **byte-identical** `SpaceProof`,
   because occupancy is a property of the prover's *physical state*, not of the value.
   `Space::prove` hands the resident-entry count back as a *return value* of the
@@ -894,8 +895,8 @@ leaf; brand/E0382 honestly unused.
 > ⚠ **TOY — the recurring garden break, the *opposite* of leaf 19's inversion.** The toy
 > breaks the domain's hard guarantee (here the **occupancy**) while the type discipline
 > holds, as in `pow`/`vdf`/`lamport`: the table entry `t[i] = H(seed ‖ i)` is trivially
-> recomputable, so a prover stores *nothing* and regenerates on demand (the space-time
-> tradeoff) — the `a_seed_only_prover_mints_the_identical_witness` test makes it
+> recomputable, so a prover stores *nothing* persistently and regenerates the table transiently
+> (the space-time tradeoff) — the `a_seed_only_prover_mints_the_identical_witness` test makes it
 > executable. A real proof of space uses a **memory-hard / depth-robust** generator so
 > recomputation is prohibitive. Non-cryptographic FNV-1a hash (domain-separated
 > leaf/node/challenge tags), a small fixed `QUERIES` count (no spot-checking soundness
@@ -904,7 +905,7 @@ leaf; brand/E0382 honestly unused.
 ## Build
 
 ```sh
-cargo test --workspace          # 322 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
+cargo test --workspace          # 323 unit tests + 68 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse, blinding-factor-reuse, const-eval-wall [static-config + pow difficulty + vdf delay + pospace size])
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

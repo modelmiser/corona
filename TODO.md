@@ -818,8 +818,9 @@ work (complete tasks, add children, keep siblings).
       Q challenged entries, not the whole 2^K table). (2) *The occupancy does NOT reduce* — the seal
       witnesses the openings are root-consistent and **nothing about resident storage**: a prover
       holding the whole 2^K-entry table (`MaterializedTable`, `resident_entries()==2^K`) and one
-      holding **only the seed** (`Space`, recomputing every value+sibling on demand,
-      `resident_entries()==1`) build the BYTE-IDENTICAL `Response` and mint the BYTE-IDENTICAL
+      holding **only the seed** (`Space`, keeping only the seed persistently and regenerating the
+      table transiently at prove time, `resident_entries()==1`) build the BYTE-IDENTICAL `Response`
+      and mint the BYTE-IDENTICAL
       `SpaceProof`, because occupancy is a property of the prover's PHYSICAL STATE, not the value.
       `Space::prove` hands the resident-entry count back as a return value, deliberately not a field
       of the witness (∥ pow's attempts / vdf's squarings; executable in
@@ -869,6 +870,29 @@ work (complete tasks, add children, keep siblings).
       the disclosed `resident_entries()==1` (persistent not peak; `Space::prove` transiently allocates
       2^K, disclosed in the prove doc). R1 not clean (3 MOD) → need R2 + R3 both clean. pospace 17
       unit + 4 doctests; workspace 322 + 68, all gates green.
+      **R2 = CLEAN** (all 3 fresh blind lenses on frozen code `d66d6c2`): correctness CLEAN (0 CRIT/0
+      MOD; confirmed both R1 fixes kill their mutants; only 2 EQUIVALENT-mutant LOWs — the dead
+      out-of-range-index guard subsumed by the challenge-binding guard, the wrong-length-path guard
+      subsumed by the fold), adversarial NO BREAK (forge/wall/false-accept all held; ~62k fuzz + K=20
+      stress, 0 panics; both disclosed limits reproduced), claims CLEAN (all load-bearing claims
+      verified incl. the Chia fix; 2 defensible LOWs — the "on demand" framing + the "temporal"
+      grouping). **R3 = NOT clean** (fresh blind lenses, same frozen code): adversarial NO BREAK,
+      claims CLEAN, but **correctness found 1 MODERATE** — `pub const QUERIES: usize = 12` was
+      unpinned: mutating it (12→11, 12→1) SURVIVES because every test references the SYMBOL, so the
+      crate rescales self-consistently (the leaf-18 sole-producer/consumer class) and QUERIES is
+      soundness-relevant ("soundness rests on the number of challenges"). FIXED with
+      `queries_count_is_pinned_to_an_external_literal` (pins `QUERIES == 12` + a proof's opening count
+      == 12 against LITERALS, ∥ leaf-18 golden-literal; verified to FAIL under the 12→11 mutant). Also
+      fixed the **"on demand" LOW flagged by all THREE claims lenses** (R1/R2/R3): the headline/example
+      implied the seed-only `Space::prove` recomputes lazily per challenge, but it bulk-allocates the
+      whole 2^K table transiently (O(2^K) peak; only PERSISTENT residence is 1) — reworded to
+      "keeping only the seed persistently, regenerating the table transiently at prove time" at every
+      toy-prover doc site (lib.rs headline/example/honest-limits/`prove`/`resident_entries`/test +
+      README + CHARTER + records; the CONCEPTUAL "you can always trade space for time on demand" sites
+      left, correct in principle). A code change → the 2-clean clock RESETS: **need R4 + R5 both clean
+      on the new frozen code.** Residual LOWs LEFT (the two equivalent verify-guard mutants; the
+      "temporal" grouping of pow's cost — defensible complexity-theoretic time-vs-space reading).
+      pospace 18 unit + 4 doctests; workspace 323 + 68, all gates green.
 
 ## Garden state (2026-07-18l)
 
