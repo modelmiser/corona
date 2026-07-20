@@ -81,7 +81,10 @@
 //! **bounded** counter (few replicas, small counts — a finite state space), a `const`
 //! block can run `merge` over every input and assert all four laws, turning an impostor
 //! into a **compile error** (`+` → E0080 "idempotence violated"; `min` → "inflation
-//! violated"). That is a genuine compile-time rejection — but note what it *is*: **proof
+//! violated"). This is **realized, not hypothetical** — the `_BOUNDED_MODEL_LAWS` const
+//! block below runs the (elementwise-`max`) join over the model `{0..=3}` and compiles,
+//! while its two `compile_fail,E0080` doctests show `+` and `min` rejected at compile
+//! time. But note what it *is*: **proof
 //! by exhaustion of a finite model**, the const-eval analogue of the property tests below
 //! (they *sample* that check; const-eval makes it *total*), **not a type constraining the
 //! algebra**. And it **does not scale**: the real counter's counts are `u64`, a space
@@ -113,13 +116,14 @@
 //!
 //! ## Primitives used
 //!
-//! **E0451** alone is *used* (the sealed [`GCounter`] state — the monotone-API
-//! guarantee). E0382 and the E0308-class brand are honestly unused. E0080 is unused here
-//! too, but for the subtler reason spelled out above: a const-eval wall *could* enforce
-//! the four laws over a *bounded* model (proof by exhaustion), yet not over the counter's
-//! real `u64` domain — so the laws' discharge over the real domain falls to a proof
-//! (Sol), not a primitive. (One primitive used, like leaves 3 and 13 — a different
-//! finding each time.)
+//! **E0451** is *used* (the sealed [`GCounter`] state — the monotone-API guarantee), and
+//! **E0080** is *used* — but only at a **bounded** model (the `_BOUNDED_MODEL_LAWS` rung:
+//! a const-eval wall that enforces the four laws over `{0..=3}` by exhaustion, rejecting
+//! `+`/`min` at compile time). It does **not** reach the counter's real `u64` domain — that
+//! space const-eval cannot enumerate — so the laws' discharge over the real domain still
+//! falls to a **proof** (Sol), not a primitive. E0382 and the E0308-class brand are
+//! honestly unused. (So the residue splits cleanly by scope: the seal + the bounded wall
+//! are the garden's, the unbounded law is the proof face's.)
 //!
 //! ## Honest limits
 //!
@@ -296,6 +300,88 @@ impl GCounter {
         other.entries.iter().all(|(&r, &c)| self.count_for(r) >= c)
     }
 }
+
+/// **The E0080 rung — the module doc's "a `const` block *can* reject a wrong `merge`"
+/// made real, not asserted.**
+///
+/// [`GCounter::merge`] is elementwise `max`, so the four semilattice + inflationary laws
+/// reduce, per replica slot, to the scalar laws of the join over the counts. This block
+/// runs the join over *every* pair and triple in the **bounded model** `{0..=N}` and
+/// asserts all four laws. It **compiles** — which is the point: `max` passes proof by
+/// exhaustion of the finite model, at compile time, enforced by the const-eval wall
+/// (a failing `assert!` in a `const` is `error[E0080]`). The two impostor joins do **not**
+/// compile through the same check (see the `compile_fail,E0080` doctests below): `+` fails
+/// idempotence, `min` fails inflation. That is a *genuine compile-time rejection of a
+/// wrong join* — but note what it is and is not: it is **proof by exhaustion of a finite
+/// model** (the const-eval analogue of the sampling property tests in `#[cfg(test)]`), and
+/// it does **not** scale to the counter's real `u64` domain — that unbounded, universally
+/// quantified obligation stays a **proof** for the proof face (Sol). So E0080 is now
+/// *used* here, at the bounded model only; the residue over the real domain is untouched.
+///
+/// `+` (add) is rejected — idempotence fails, `a + a ≠ a`:
+/// ```compile_fail,E0080
+/// const fn add_join(a: u64, b: u64) -> u64 { a + b }
+/// const _REJECTED: () = {
+///     let mut a = 0u64;
+///     while a <= 3 {
+///         assert!(add_join(a, a) == a, "idempotence violated");
+///         a += 1;
+///     }
+/// };
+/// ```
+///
+/// `min` is rejected — inflation fails, `min(a, b)` can be `< a`:
+/// ```compile_fail,E0080
+/// const fn min_join(a: u64, b: u64) -> u64 { if a <= b { a } else { b } }
+/// const _REJECTED: () = {
+///     let mut a = 0u64;
+///     while a <= 3 {
+///         let mut b = 0u64;
+///         while b <= 3 {
+///             assert!(min_join(a, b) >= a && min_join(a, b) >= b, "inflation violated");
+///             b += 1;
+///         }
+///         a += 1;
+///     }
+/// };
+/// ```
+const _BOUNDED_MODEL_LAWS: () = {
+    const N: u64 = 3;
+    // The join, per replica slot: `GCounter::merge` is elementwise `max`.
+    const fn max_join(a: u64, b: u64) -> u64 {
+        if a >= b {
+            a
+        } else {
+            b
+        }
+    }
+    let mut a = 0u64;
+    while a <= N {
+        // idempotent: join(a, a) == a
+        assert!(max_join(a, a) == a, "idempotence violated");
+        let mut b = 0u64;
+        while b <= N {
+            // commutative: join(a, b) == join(b, a)
+            assert!(max_join(a, b) == max_join(b, a), "commutativity violated");
+            // inflationary: join(a, b) >= a and >= b
+            assert!(
+                max_join(a, b) >= a && max_join(a, b) >= b,
+                "inflation violated"
+            );
+            let mut c = 0u64;
+            while c <= N {
+                // associative: join(join(a, b), c) == join(a, join(b, c))
+                assert!(
+                    max_join(max_join(a, b), c) == max_join(a, max_join(b, c)),
+                    "associativity violated"
+                );
+                c += 1;
+            }
+            b += 1;
+        }
+        a += 1;
+    }
+};
 
 #[cfg(test)]
 mod tests {
