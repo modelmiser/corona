@@ -26,10 +26,13 @@
 //! level held — enforced by a **const-eval wall** ([E0080]). Because a chain is strictly
 //! increasing, its most-recently-acquired guard is always the *maximum* level held on it,
 //! so the pairwise `B > A` check enforces increasing order over the *whole* chain: acquire
-//! two chained locks out of order and the program does not *build*, and no thread that
-//! takes all its locks in one such chain can sit in a wait-for cycle. **What the type
-//! cannot force is that a thread use only *one* chain** (see "the residue", below) — which
-//! is why the guarantee is *by construction within a chain*, not global.
+//! two chained locks out of order and the program does not *build*, and — **if every thread
+//! takes all its locks in one such chain** — no wait-for cycle can form. That quantifier is
+//! load-bearing: deadlock-freedom by ordering is a property of *all* threads complying, not
+//! of any one, so a single thread that opens several chains (part 1 below) can still trap an
+//! otherwise-compliant thread in a cycle. **What the type cannot force is that *every*
+//! thread use a single chain** (see "the residue", below) — which is why the guarantee is
+//! *by construction within a chain*, not global.
 //!
 //! ```
 //! use deadlock_types::Lock;
@@ -114,13 +117,14 @@
 //!
 //! A level is a **compile-time constant**. The moment the lock you must acquire is chosen
 //! at **runtime**, no `const LEVEL` can label it, and the whole discipline falls off the
-//! type. The textbook case is transferring between two bank accounts: `transfer(a, b)`
-//! locks `a` then `b`, while a concurrent `transfer(b, a)` locks `b` then `a` — a wait-for
-//! cycle. Which account is "higher" is *runtime data* (their ids), so they cannot be
-//! statically leveled; in fact two locks at the **same** level cannot be nested at all
-//! (the wall rejects `B <= A`), which is precisely the type telling you it needs a static
-//! level assignment it cannot have. Deadlock-freedom for runtime-selected locks reduces to
-//! a **runtime canonical order** — [`transfer`] locks the **lower id first** — the same
+//! type. The textbook case is transferring between two bank accounts: a *naive* transfer
+//! that locks its arguments in order — `f(a, b)` locking `a` then `b`, raced by `f(b, a)`
+//! locking `b` then `a` — is the classic AB–BA deadlock. Which account is "higher" is
+//! *runtime data* (their ids), so they cannot be statically leveled; in fact two locks at
+//! the **same** level cannot be nested at all (the wall rejects `B <= A`), which is precisely
+//! the type telling you it needs a static level assignment it cannot have. Deadlock-freedom
+//! for runtime-selected locks reduces to a **runtime canonical order** — this crate's
+//! [`transfer`] locks the **lower id first** (never argument order), dodging the cycle — the same
 //! shape as the garden's other runtime residues (the count of leaf 1, the freshness of
 //! leaf 11, the wire of leaf 9): *the type discipline holds only when the participation
 //! structure is statically known.*
@@ -131,8 +135,8 @@
 //! of a *local* check (E0451 everywhere) or made a *local* misuse untypeable (E0382, the
 //! brand). Here the hazard is **global** — a cycle in the cross-thread wait-for graph — and
 //! the reduction works by making that bad state **untypeable within a single acquisition
-//! chain**, not by witnessing any single fact; the residual "one chain per thread"
-//! obligation (part 1, above) is the emergent hazard's irreducible core. It is also
+//! chain**, not by witnessing any single fact; the residual obligation that *every* thread
+//! use a single chain (part 1, above) is the emergent hazard's irreducible core. It is also
 //! distinct from the garden's *composition*
 //! leaves: leaf 7 (`mss-types`) found a composite **inherits its components' obligations**
 //! (they propagate *up* from the parts); a deadlock obligation is **new at the whole** — no
