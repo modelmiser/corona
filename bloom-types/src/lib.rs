@@ -523,6 +523,55 @@ mod tests {
     }
 
     #[test]
+    fn a_definitely_absent_witness_is_meaningless_against_another_filter_or_item() {
+        // Makes the "unbranded witness" honest-limit (crate docs) executable. A
+        // `DefinitelyAbsent` records only `unset_bit` — the bare fact of *a* query,
+        // never *which* (item, filter) produced it. It is `Clone`, so a caller can
+        // carry it to a different subject, where the very same index is not a proof
+        // but a category error the type does not prevent (it cannot forge a seal,
+        // clear a bit, or cause a false negative — it is misuse, not unsoundness).
+
+        // Filter A is empty, so it definitely-absents everything. Mint X's witness.
+        let a = BloomFilter::new(256, 3);
+        let w = match a.query(b"xavier") {
+            Membership::DefinitelyAbsent(w) => w,
+            Membership::PossiblyPresent(_) => unreachable!("an empty filter has no set bits"),
+        };
+        let carried = w.clone(); // the type permits carrying it away from its subject
+        assert!(!a.get_bit(carried.unset_bit()), "sound against A, its true subject");
+
+        // MISUSE 1 — a different FILTER. B has the same (m, k) but *contains* X, so X's
+        // probe positions — including the carried `unset_bit` — are all SET in B, and
+        // B's own query says PossiblyPresent. The carried witness "proves" an absence
+        // B contradicts; its `unset_bit` names a set bit, not an unset one.
+        let mut b = BloomFilter::new(256, 3);
+        b.insert(b"xavier");
+        assert!(matches!(b.query(b"xavier"), Membership::PossiblyPresent(_)));
+        assert!(
+            b.probe_positions(b"xavier").any(|p| p == carried.unset_bit()),
+            "the carried index is one of X's probe positions"
+        );
+        assert!(
+            b.get_bit(carried.unset_bit()),
+            "and in B that bit is SET — the witness's 'unset' claim is false here"
+        );
+
+        // MISUSE 2 — a different ITEM. The witness names no item, so its `unset_bit`
+        // need not even be one of *another* item Y's probe positions. Find such a Y
+        // (almost every item qualifies — X's single index vs Y's k probes): reading
+        // X's witness as evidence about Y is then meaningless, its index unrelated to
+        // Y's probes in any filter.
+        let y = (0u32..)
+            .map(|i| format!("y-{i}"))
+            .find(|y| !a.probe_positions(y.as_bytes()).any(|p| p == carried.unset_bit()))
+            .expect("almost every item's probe set excludes one fixed index");
+        assert!(
+            !a.probe_positions(y.as_bytes()).any(|p| p == carried.unset_bit()),
+            "X's unset bit is not one of Y's probes — the witness is about X, not Y"
+        );
+    }
+
+    #[test]
     fn the_two_witnesses_are_identically_sealed_tokens() {
         // To the compiler both are just sealed, cloneable tokens minted by `query`; the
         // strength difference (sound absence vs one-sided presence) lives only in the docs
