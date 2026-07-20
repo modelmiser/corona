@@ -1206,8 +1206,8 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   resets were claims-precision on the const-eval-vs-type-level budget honesty (R1 "witnesses halting"
   overclaim, R2 "type level is exact" overclaim, R4 unqualified-absolute sweep), a prose-mutation
   ratchet at diminishing amplitude closed by freezing + whole-class sweeps.** Four codes by direct
-  rustc (E0080 is post-mono const-eval → needs a real `-o` path). NOT pushed. **Garden now corona-core
-  + 30 leaves, no review debt.**
+  rustc (E0080 is post-mono const-eval → needs a real `-o` path). PUSHED origin/main
+  `49e5dc4..b7f3d71` (2026-07-20). **Garden now corona-core + 30 leaves, no review debt.**
 
 ## Garden state (2026-07-20b)
 
