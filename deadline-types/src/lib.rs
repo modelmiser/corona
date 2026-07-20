@@ -404,6 +404,48 @@ mod tests {
     }
 
     #[test]
+    fn admission_hierarchy_holds_over_all_small_task_sets() {
+        // Whole-class closure via PROVABLE cross-checks over an enumerated bounded space — no
+        // external simulator, so no oracle-bug risk. Three theorems must hold for every set,
+        // and together they catch any EDF/RM logic error on a multi-task set (e.g. a dropped
+        // RTA interference term falsely accepts a U>1 set, breaking rm_exact ⇒ edf):
+        //   1. EDF exactness:          admit_edf ⇔ (Σ Cᵢ/Tᵢ ≤ 1), computed a second way.
+        //   2. EDF optimality:         admit_rm_exact ⇒ admit_edf.
+        //   3. sound sufficient bound: admit_rm_sufficient ⇒ admit_rm_exact.
+        fn util_le_one(set: &[(u32, u32)]) -> bool {
+            let denom: u128 = set.iter().map(|&(_, t)| t as u128).product();
+            let numer: u128 = set
+                .iter()
+                .map(|&(c, t)| c as u128 * (denom / t as u128))
+                .sum();
+            numer <= denom
+        }
+        let periods = [2u32, 3, 4, 5];
+        let mut checked = 0u32;
+        for &t0 in &periods {
+            for c0 in 1..=t0 {
+                for &t1 in &periods {
+                    for c1 in 1..=t1 {
+                        for &t2 in &periods {
+                            for c2 in 1..=t2 {
+                                let s = [(c0, t0), (c1, t1), (c2, t2)];
+                                let edf = Schedulable::admit_edf(s).is_some();
+                                let rme = Schedulable::admit_rm_exact(s).is_some();
+                                let rms = Schedulable::admit_rm_sufficient(s).is_some();
+                                assert_eq!(edf, util_le_one(&s), "EDF ⇔ (U≤1) failed: {s:?}");
+                                assert!(!rme || edf, "RM-exact ⇒ EDF (optimality) failed: {s:?}");
+                                assert!(!rms || rme, "RM-suff ⇒ RM-exact failed: {s:?}");
+                                checked += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        assert!(checked > 1000, "enumeration coverage too small: {checked}");
+    }
+
+    #[test]
     fn certificate_is_copy_a_duplicable_fact() {
         // Unlike dp's linear Budget, a feasibility certificate may be freely duplicated.
         let s = Schedulable::admit_edf([(1u32, 4u32)]).unwrap();
