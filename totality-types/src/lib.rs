@@ -95,10 +95,24 @@
 //!   divergence.
 //!
 //! The const evaluator is a **bounded** evaluator, and the total fragment it will actually
-//! run to completion is *strictly narrower* than "structural/terminating." The real
-//! termination guarantee in this leaf is the **type-level** structural descent (finite type
-//! ⇒ finite trait-resolution walk), which is exact; the const-fn story is a *value-level
-//! illustration* of the same idea, with this honest ceiling.
+//! run to completion is *strictly narrower* than "structural/terminating."
+//!
+//! **The type level is *also* budget-bounded — do not overclaim it as "exact."** Resolving
+//! `<`[`S`]`<…<`[`Z`]`> as `[`Total`]`>::DEPTH` for a **deep** Peano numeral trips
+//! [E0275] *"overflow evaluating the requirement … consider increasing the recursion
+//! limit"* once the nesting passes the default `recursion_limit` (128) — the trait-resolution
+//! analogue of `triangular(u64::MAX)` blowing the frame budget. **Both** the type-level
+//! descent and the const evaluator are *sound-but-incomplete under a configurable recursion
+//! budget* (E0275 / `recursion_limit` for resolution; E0080 frame budget for const-eval);
+//! neither is a totality oracle. The **genuine** asymmetry — and it is the real point — is
+//! *what bounds the step count*: the type descent's is bounded by the **syntactic size of
+//! the type you wrote**, so raising `recursion_limit` *always* suffices for a type you can
+//! actually write (a 128-deep numeral compiles at `#![recursion_limit = "512"]`), whereas the
+//! const-fn's is bounded by **runtime values that can dwarf the program text** — the budget
+//! `triangular(N)` needs grows with the *runtime* `N`, so the five-character
+//! `triangular(u64::MAX)` demands a depth its own source never implies. That is why the
+//! type-level check is *complete over the types you can write* while const-eval is not; it is
+//! not that one is "total" and the other "a mere budget."
 //!
 //! ### The seal witnesses halting, not totality (the witness-trap, again)
 //!
@@ -147,19 +161,24 @@
 //!
 //! The guarantee that the type-level structural descent *terminates* does not rest on any
 //! of the four primitives. It rests on a fact the leaf **cannot deploy as a type** because
-//! it is the **substrate**: the compiler's own **trait-resolution totality** — a finite
-//! type is a finite term, so resolving `Total` down a Peano chain must bottom out (a
-//! genuinely non-terminating resolution, e.g. a self-referential associated const, is the
-//! separate thing the compiler stops with [E0391]). Every prior leaf's guarantee rests on a
-//! primitive it *wields*; this one's rests on the **ground the whole garden already stands
-//! on** — "the type checker halts" is not itself expressible as a type, being presupposed
-//! by every type. So the reduce-half is real but **borrowed**: the total fragment is exactly
-//! *what the compiler can itself finish checking*, the escape-hatch ("give up
-//! Turing-completeness") is *restricting to that fragment*, and the residue is *what lies
-//! outside it*. Note the honest scope of the claim: it is trait-resolution totality that is
-//! the borrowed fact, **not** the const evaluator (whose termination is merely the [E0080]
-//! *budget*, above) — the garden's first residue that is a **limit of the substrate** rather
-//! than a fact about a value, and the first bought by *subtraction* rather than *addition*.
+//! it is the **substrate**: the compiler's own **structural checker** — a finite type is a
+//! finite term, so resolving `Total` down a Peano chain terminates for any numeral you can
+//! write. Be precise about how strong that fact is. It is **not** "trait-resolution
+//! totality": trait resolution is a *sound-but-incomplete, budget-bounded* procedure — deep
+//! resolution overflows the `recursion_limit` ([E0275]), and a self-referential associated
+//! const is stopped by cycle detection ([E0391]) — the same *kind* of budget the const
+//! evaluator has ([E0080]), not a totality oracle. What is genuinely borrowed is weaker and
+//! honest: the compiler will **finish checking any structural definition you can write**,
+//! because its budget scales with your syntax (raise the limit and it completes), whereas no
+//! budget makes it check a *general* recursion whose cost is a runtime value. Every prior
+//! leaf's guarantee rests on a primitive it *wields*; this one's rests on the **ground the
+//! whole garden already stands on** — the compiler's structural checker — which is not
+//! itself expressible as a type, being presupposed by every type. So the reduce-half is real
+//! but **borrowed**: the total fragment is exactly *what the compiler can finish checking
+//! within a syntax-bounded budget*, the escape-hatch ("give up Turing-completeness") is
+//! *restricting to that fragment*, and the residue is *what lies outside it*. It is the
+//! garden's first residue that is a **limit of the substrate** rather than a fact about a
+//! value, and the first bought by *subtraction* rather than *addition*.
 //!
 //! ## The codes, verified out of band
 //!
@@ -209,6 +228,7 @@
 //! ```
 //!
 //! [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
+//! [E0275]: https://doc.rust-lang.org/error_codes/E0275.html
 //! [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 //! [E0391]: https://doc.rust-lang.org/error_codes/E0391.html
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
@@ -248,9 +268,10 @@ mod sealed {
 ///
 /// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 pub trait Total: sealed::Sealed {
-    /// The structural depth, summed by the const evaluator: each step is `N::DEPTH + 1`,
-    /// bottoming out at `Z`'s `0`. (This is ordinary associated-const evaluation over a
-    /// finite type — not the E0080 budget wall, which concerns *value*-level `const fn`s.)
+    /// The structural depth, summed as each step's `N::DEPTH + 1`, bottoming out at `Z`'s
+    /// `0`. (Resolving this walks the finite type; like all trait resolution it is bounded by
+    /// `recursion_limit` — a *deep* numeral overflows with E0275 — a different budget from
+    /// the E0080 frame wall on *value*-level `const fn`s, but a budget all the same.)
     const DEPTH: u32;
 
     /// The same descent reflected to a runtime value — total because the type shrank.
