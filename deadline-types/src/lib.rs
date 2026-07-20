@@ -47,8 +47,9 @@
 //!   so those alone are *not* what makes the problem hard.
 //! - Hardness enters with **release jitter / offsets** (plus adversarial period structure):
 //!   exact static-priority *response-time computation* becomes **NP-hard** (Eisenbrand &
-//!   Rothvoß 2008), and the *feasibility decision* — a `∀` over release patterns whose
-//!   complement (a deadline miss) is a short witness — is **coNP-hard**. **Multiprocessor**
+//!   Rothvoß 2008), and the *feasibility decision* — a `∀` over release patterns, so its
+//!   complement (a deadline miss) is a short witness placing it *in* coNP — is itself
+//!   **coNP-hard** (from the same reduction). **Multiprocessor**
 //!   schedulability is hard for a separate reason (partitioning = bin-packing, NP-hard).
 //!
 //! So a compile-time wall must **choose**: tractable-but-conservative (a utilisation bound)
@@ -294,8 +295,9 @@ impl<const N: usize> Schedulable<N> {
 /// higher; ties by index). Returns `true` iff `Rᵢ ≤ Dᵢ = Tᵢ`.
 ///
 /// The recurrence is monotone increasing and either reaches a fixed point `≤ Dᵢ` or crosses
-/// `Dᵢ` (unschedulable) — so it always terminates. All arithmetic is `u64` to keep the
-/// interference sum from overflowing on toy inputs.
+/// `Dᵢ` (unschedulable) — so it always terminates. Interference arithmetic is `u64` and
+/// **saturating**, so an out-of-contract input rejects rather than wrapping; on valid inputs
+/// `Cⱼ ≤ Tⱼ` bounds each term by `r`, so saturation never actually triggers.
 fn rm_task_meets_deadline<const N: usize>(tasks: &[(u32, u32); N], i: usize) -> bool {
     let (ci, ti) = tasks[i];
     let deadline = ti as u64;
@@ -305,12 +307,12 @@ fn rm_task_meets_deadline<const N: usize>(tasks: &[(u32, u32); N], i: usize) -> 
         for (j, &(cj, tj)) in tasks.iter().enumerate() {
             let higher_priority = tj < ti || (tj == ti && j < i);
             if higher_priority {
-                // ⌈r / Tⱼ⌉ · Cⱼ
+                // ⌈r / Tⱼ⌉ · Cⱼ (saturating: an over-range input rejects, never wraps)
                 let jobs = r.div_ceil(tj as u64);
-                interference += jobs * cj as u64;
+                interference = interference.saturating_add(jobs.saturating_mul(cj as u64));
             }
         }
-        let next = ci as u64 + interference;
+        let next = (ci as u64).saturating_add(interference);
         if next > deadline {
             return false; // response time would miss the deadline
         }
@@ -390,6 +392,16 @@ mod tests {
     fn rta_reaches_a_fixed_point_below_the_deadline() {
         // {C=1,T=2},{C=2,T=4}: task 2's response time iterates 2 → 3 → 4 = D, schedulable.
         assert!(rm_task_meets_deadline(&[(1u32, 2u32), (2, 4)], 1));
+    }
+
+    #[test]
+    fn rta_tie_break_excludes_self_among_equal_periods() {
+        // Two equal-period tasks at U = 1.0 ARE schedulable — but only if a task is not
+        // counted as its own higher-priority interferer. This ACCEPTING equal-period set
+        // pins the strict `j < i` tie-break: a `j <= i` mutant makes task 1 self-interfere
+        // (next = 6 > 4) and wrongly rejects. (A rejecting set can't distinguish the two.)
+        assert!(Schedulable::admit_rm_exact([(2u32, 4u32), (2, 4)]).is_some());
+        assert!(Schedulable::admit_edf([(2u32, 4u32), (2, 4)]).is_some()); // sanity: U=1.0 OK
     }
 
     #[test]
