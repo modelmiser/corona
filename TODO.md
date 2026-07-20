@@ -1214,8 +1214,7 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   magnitude-ignorance to the BACKWARD error (it is the FORWARD error conditioning drives; backward error
   is magnitude-independent), caught R5, propagated into the sub/add docstrings R6, confirmed R7 — a
   prose-mutation ratchet at diminishing amplitude; clippy clean.** PUSHED origin/main
-  `b2a9d4a..<doc-sync>` (2026-07-20; range recorded in the follow-up flag commit). **Garden now
-  corona-core + 32 leaves, no review debt.**
+  `b2a9d4a..5826cd3` (2026-07-20). **Garden now corona-core + 32 leaves, no review debt.**
 
 ## Garden state (2026-07-20d)
 
