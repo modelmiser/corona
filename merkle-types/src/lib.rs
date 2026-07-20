@@ -812,6 +812,47 @@ mod tests {
     }
 
     #[test]
+    fn understated_size_misattributes_to_a_real_committed_slot() {
+        // The COMPANION channel to the overstated/phantom test above, and the
+        // sharper one: an *understated* adopted size makes genuine bytes verify at a
+        // REAL OTHER committed slot (not a phantom out-of-range position). True
+        // n = 5; erin's genuine proof (index 4) folds through a single top-level
+        // pairing (widths 5→3→2→1 promote index 4 twice, then pair it once). Relabel
+        // that proof to index 1 and adopt the true root under an understated size 2:
+        // shape (1, 2) is *also* a single left-pairing, consuming erin's one genuine
+        // sibling identically, so it folds to the true root — and index 1 is bob's
+        // real slot. Genuine bytes, a real (wrong) position: membership intact,
+        // position semantics relative to the ADOPTED shape, now colliding with an
+        // authentic leaf rather than an out-of-tree phantom.
+        let (hash, p_erin, p_bob) = commit_scoped(&sample(), |root, tree| {
+            (root.hash(), tree.proof(4).unwrap(), tree.proof(1).unwrap())
+        })
+        .unwrap();
+        let mut misattributed = p_erin.clone();
+        misattributed.index = 1;
+        adopt_scoped(hash, 2, |root| {
+            let v = root
+                .verify(b"erin", &misattributed)
+                .expect("erin's genuine bytes verify at the understated shape");
+            assert_eq!(
+                v.index(),
+                1,
+                "misattributed to index 1 — a real committed slot, not a phantom"
+            );
+        })
+        .unwrap();
+        adopt_scoped(hash, 5, |root| {
+            // Index 1 is genuinely a REAL slot: bob lives there under the true size,
+            // so erin's relabel impersonates an authentic leaf's position…
+            assert_eq!(root.verify(b"bob", &p_bob).unwrap().index(), 1);
+            // …and the honestly-sized root rejects the relabel: shape (1, 5) demands
+            // more siblings than erin's single-pairing proof carries.
+            assert!(root.verify(b"erin", &misattributed).is_none());
+        })
+        .unwrap();
+    }
+
+    #[test]
     fn a_proof_does_not_transfer_across_roots() {
         // The provenance gap at the *value* level: a proof from one tree fails
         // against a different root by the fold. Rung 2 additionally makes the
