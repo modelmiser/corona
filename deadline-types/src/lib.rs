@@ -475,10 +475,13 @@ mod tests {
 
     #[test]
     fn edf_exceeds_capacity_is_total_on_invalid_input() {
-        // A zero period is invalid: the pub helper returns `true` (safe reject) rather than
-        // dividing by zero. Pins the totality of the now-guarded public path.
-        assert!(edf_exceeds_capacity(&[(1u32, 0u32)]));
-        assert!(edf_exceeds_capacity(&[(5u32, 3u32)])); // C > T is likewise invalid → reject
+        // Invalid sets return `true` (safe reject) rather than dividing by zero — pins the
+        // totality of the guarded public path. `(0,0)` is the ONLY input that isolates the
+        // `t == 0` clause (its `c > t` is false), so it must be covered explicitly; the
+        // other two would each trip the `c > t` clause first.
+        assert!(edf_exceeds_capacity(&[(0u32, 0u32)])); // isolates the `t == 0` guard
+        assert!(edf_exceeds_capacity(&[(1u32, 0u32)])); // zero period, C > 0
+        assert!(edf_exceeds_capacity(&[(5u32, 3u32)])); // C > T
     }
 }
 
