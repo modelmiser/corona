@@ -1172,7 +1172,7 @@ combinator ran*, never *that it was oblivious*.
 ## Build
 
 ```sh
-cargo test --workspace          # 385 unit tests + 84 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check; leaf 25 consttime adds the OBLIVIOUS-mode seal — no-== on a Secret [E0369] — and the timing residue, beneath every type)
+cargo test --workspace          # 395 unit tests + 87 doctests (incl. compile-fails: sealed-ctor, no-clone, no-decrement, no-remove, cross-brand/cross-adoption/cross-snapshot/cross-consistency-scope, one-time-key, mss-stale-keychain, hypertree-stale-state, coin-reuse, ratchet-advance-reuse, nonce-reuse [frost + sigma], blinding-factor-reuse, token-double-send [swap], const-eval-wall [static-config + pow difficulty + vdf delay + pospace size + crdt bounded-model laws]; leaf 24 arq adds the E0451 delivery seal — the first LIVENESS residue, outside any finite check; leaf 25 consttime adds the OBLIVIOUS-mode seal — no-== on a Secret [E0369] — and the timing residue, beneath every type. The 2026-07-19 residue-executability rungs made leaves 2/3/5/10/14/15C/22's residues demonstrated-in-code, not prose)
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 

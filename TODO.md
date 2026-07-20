@@ -1136,6 +1136,21 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Garden state (2026-07-19k)
+
+- **Depth-batch Tier-1 rung set COMPLETE — 7 residues now demonstrated-in-code.** On the user's
+  "build the full Tier-1 sibling set", built all seven Tier-1 rungs, each atomic + gates green:
+  **22** `RewoundState: Clone` (`fd7194c`), **15C** real const-eval wall (`6f9c3f7`), **10**
+  memory-level-FS slot model (`e903fa1`), **14** persistence-boundary restore (`55deb45`), **2**
+  commitment-alone secret crack (`940cd94`), **3** fabricated-fragments + m==k silent misdecode
+  (`def3de0`), **5** seed re-mint forgery + preimage harvest (`e964012`). Doc-sync: CHARTER 14/15C
+  over-claims corrected, 22 rung noted, a consolidated "Residue-executability rungs" note added,
+  README count refreshed. **Workspace: 395 unit + 87 doctests = 482, all green** (was 469); every
+  compile-fail verified vs rustc (E0599, E0080). **Two deeper facets deferred to Tier-2** (both need
+  hash-preimage search over the toy FNV): leaf 3's crafted chosen-wrong-output near a neighbour
+  codeword, leaf 5's full third-message assembly. **NEXT: a cold-review pass over the 7 new
+  surfaces** (the garden discipline — each rung its own short review). Nothing else auto-starts.
+
 ## Garden state (2026-07-19j)
 
 - **Depth-batch AUDIT complete (read-only); rung builds await go-ahead.** corona-core + **25 leaves**,
@@ -1516,29 +1531,37 @@ itself a GAP. The leaf-22 rung (item 1) is CONFIRMED real and NOT alone — the 
 started — await an explicit go-ahead on which batch to build):**
 
 *Tier 1 — genuine PROSE-ONLY headline residues (the residue the leaf is ABOUT is unexercised):*
-- [ ] **Leaf 22 `sigma-types` — `RewoundState: Clone` rung** (item 1 below; the batch's anchor).
-- [ ] **Leaf 15C `crdt-types` — a real `const` block** exhausting a small finite model so `+`/`min`
+- [x] **Leaf 22 `sigma-types` — `RewoundState: Clone` rung** — DONE `fd7194c`. (item 1 below; the batch's anchor).
+- [x] **Leaf 15C `crdt-types` — a real `const` block** — DONE `6f9c3f7`. exhausting a small finite model so `+`/`min`
       fail with `error[E0080]` and `max` passes. The MOST LITERAL sibling of 22's rung: both convert a
       prose "the type COULD" into a demonstrated compile fact. (Also fixes CHARTER over-claim #3.)
-- [ ] **Leaf 10 `ratchet-types` — memory-level-FS witness.** A test (behind a scoped `unsafe`, or a
+- [x] **Leaf 10 `ratchet-types` — memory-level-FS witness.** DONE `e903fa1`. A test (behind a scoped `unsafe`, or a
       `zeroize`-on-`Drop` variant) showing a moved-from `ChainKey`'s 32 bytes still linger non-zero,
       contrasted with a scrubbing variant. Closes the leaf's self-described unique contribution.
-- [ ] **Leaf 14 `hypertree-types` — restore-twice reuse test.** A test-only private-field reconstructor
+- [x] **Leaf 14 `hypertree-types` — restore-twice reuse test.** DONE `55deb45`. A test-only private-field reconstructor
       (∥ leaf 15's `state` helper) that "restores" one keychain into two, signs two messages, shows both
       reuse the same `(subtree,leaf)` index — the reuse E0382 cannot reach across persistence. (Fixes
       CHARTER over-claim #2.)
-- [ ] **Leaf 2 `vss-types` — confidentiality leak test.** From the `Commitment` alone (C₀ = g^secret),
+- [x] **Leaf 2 `vss-types` — confidentiality leak test.** DONE `940cd94`. From the `Commitment` alone (C₀ = g^secret),
       brute-force the toy dlog with ZERO shares and recover the secret — "even a zero-share holder gets
       it," now prose.
-- [ ] **Leaf 3 `erasure-types` — property-agnostic-seal + silent-misdecode tests.** (a) mint a
+- [x] **Leaf 3 `erasure-types` — property-agnostic-seal + silent-misdecode tests.** DONE `def3de0` (parts a+c; part b deferred). (a) mint a
       `RecoveredData` from k hand-built never-encoded fragments (seal is a token, not availability);
       (b) `decode_correcting` with >t corruptions crafted to land near a neighbour codeword → a
       `CorrectedData` of WRONG bytes; (c) the `m==k ⇒ t=0` silent case.
-- [ ] **Leaf 5 `lamport-types` — seed re-mint forgery test.** Two keys from one seed, sign two
+- [x] **Leaf 5 `lamport-types` — seed re-mint forgery test.** DONE `e964012` (re-mint + harvest; full 3rd-msg assembly deferred). Two keys from one seed, sign two
       different messages, assemble a `Signature` for a THIRD digest from the union of revealed
       preimages and assert `verify` accepts — the classic Lamport multi-sig forgery, now prose.
 
 *Tier 2 — deeper-facet rungs on already-EXECUTABLE leaves (lower priority; not the leaf's headline):*
+- [ ] Leaf 3 `erasure-types` — the deferred part (b): a `decode_correcting` case with >t corruptions
+      CRAFTED to land near a neighbour codeword, yielding a `CorrectedData` of chosen-WRONG bytes with a
+      bogus `corrected()` count (a sharper adversarial form of the now-executable m==k silent misdecode;
+      needs deliberate RS construction over GF(256)).
+- [ ] Leaf 5 `lamport-types` — the deferred full forgery: assemble a THIRD-message signature from the
+      union of two harvested signatures and have `verify` accept it (needs a message whose FNV digest is
+      covered by the two signed digests — hash-preimage search over the toy digest; the harvest material
+      is already exhibited).
 - [ ] Leaf 1 `threshold-types` — fully-fabricated (never-dealt) k shares mint a `Secret` (pure
       authenticity residue; current test uses the milder wrong-threshold variant).
 - [ ] Leaf 4 `merkle-types` — `understated_size_misattributes_to_a_real_committed_slot` (only the
