@@ -1136,6 +1136,44 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Research directions — unmapped residue SHAPES (parked 2026-07-19, NOT scheduled)
+
+A new leaf is only *interesting* if its domain lands on a residue **shape** not yet in the
+taxonomy — otherwise it re-lands on a mapped one (count / freshness / coordination / proof-
+obligation / emergent-completion / cost / delay / space / order / knowledge-soundness /
+unlinkability / trust / liveness / timing / duality / scale). The candidates below are
+**shapes, not instances**. Parked for the user's call; nothing auto-starts.
+
+- **THE MISSING AXIS — quantitative / ε-graded correctness.** Every mapped residue is
+  BINARY (holds or not). An entire half-plane is "holds to within ε." This is the biggest
+  gap and a third meta-axis (the known two: safety/liveness, value/operational-layer).
+  Living on it:
+  - ⭐ **`dp-types` — differential privacy** (strongest bet). reduce-half: *sensitivity
+    composition = move-linearity* — spend the privacy budget at most once (Fuzz/DFuzz use
+    **linear types** for exactly this) → **E0382**. Residue: the ε guarantee itself (noise
+    calibration = a probabilistic proof, no type). Would be the FIRST leaf on the
+    quantitative axis AND connect a foreign domain to E0382 — the garden's favourite kind
+    of result (a domain reusing a puzzle-piece from somewhere unrelated).
+  - **`numerical-accuracy`** — leaf 27's analytic cousin: types track *units* (leaf 27) but
+    not rounding error / catastrophic cancellation / condition number. Residue = the drift
+    between ideal real arithmetic and representable floats.
+  - **`deadline`/robustness** — *quantitative* liveness: not leaf 24's "eventually" but
+    "within D" (real-time schedulability, NP-hard → residue); Lipschitz robustness.
+- **`totality-types` — termination / halting.** A **new escape-hatch category**: close the
+  residue by *sacrificing expressiveness* — restrict to a total language (Agda / Idris-total
+  refuse general recursion). No current residue escapes to "give up Turing-completeness."
+  reduce-half: structural recursion type-checks as terminating; residue: general recursion
+  (undecidable). Sibling: *productivity* for coinductive streams.
+- **`deadlock-types` — the emergent / holistic residue.** A defect invisible to *every part
+  in isolation*, visible only in the whole (each lock acquisition safe; the CYCLE emergent).
+  Distinct from leaf 7's *inherited* obligations — these are *new at the whole*. reduce-half:
+  a phantom-typed **lock hierarchy** enforces acquisition order at compile time
+  (deadlock-free by construction — the brand/ordering machinery, cf. leaf 17); residue:
+  dynamic composition.
+- **`refinement-types` — the abstraction gap.** "Does the impl *refine* the spec?"
+  (linearizability, protocol conformance). Types hold the *interface*; residue = a
+  **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
+
 ## Garden state (2026-07-19n)
 
 - **Leaf 27 (`unit-types`) SEEDED + CONVERGED + DOC-SYNCED — dimensional analysis, the garden's
