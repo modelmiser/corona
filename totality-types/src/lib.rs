@@ -12,7 +12,7 @@
 //! true almost by construction once "restrict to the total fragment" is the move, but the
 //! point of the leaf is *which* fragment Rust already gives you for free (below).
 //!
-//! ## The reduction: structural recursion the compiler is forced to finish
+//! ## The reduction: structural recursion the compiler finishes (within its budget)
 //!
 //! A recursive call is *structural* when its argument is a **strictly smaller piece** of
 //! the caller's argument. Structural recursion always terminates: the argument cannot
@@ -31,7 +31,7 @@
 //! use totality_types::{Total, S, Z};
 //!
 //! // A depth computed by structural recursion over the type: S<S<S<Z>>> forces
-//! // S<S<Z>> forces S<Z> forces Z. A finite descent the compiler is forced to finish.
+//! // S<S<Z>> forces S<Z> forces Z. A finite descent the compiler finishes.
 //! assert_eq!(<S<S<S<Z>>> as Total>::DEPTH, 3);
 //! assert_eq!(<S<S<S<Z>>> as Total>::reify(), 3);
 //! assert_eq!(<Z as Total>::DEPTH, 0);
@@ -155,7 +155,8 @@
 //! The garden's thesis is that each domain's invariant reduces to the **same four**
 //! compile primitives — E0451, E0382, the E0308-class brand, E0080 — with an irreducible
 //! residue, and *no new primitive*. Totality honors that (its reduce-half touches only
-//! [E0080] and [E0451]; the structural requirement *and* the seal both bite as [E0277], the
+//! [E0080] and [E0451] **of the four primitives**; the structural requirement *and* the seal
+//! both bite as [E0277] — an *enforcement* code, not one of the four — the
 //! ordinary unsatisfied-bound error of leaves 27–28; the brand and [E0382] are unused) —
 //! and it exposes the garden's **floor**.
 //!
@@ -169,7 +170,8 @@
 //! const is stopped by cycle detection ([E0391]) — the same *kind* of budget the const
 //! evaluator has ([E0080]), not a totality oracle. What is genuinely borrowed is weaker and
 //! honest: the compiler will **finish checking any structural definition you can write**,
-//! because its budget scales with your syntax (raise the limit and it completes), whereas no
+//! because the *required* budget is a function of your syntax — raise the limit to meet it
+//! and it completes — whereas no
 //! budget makes it check a *general* recursion whose cost is a runtime value. Every prior
 //! leaf's guarantee rests on a primitive it *wields*; this one's rests on the **ground the
 //! whole garden already stands on** — the compiler's structural checker — which is not
@@ -263,9 +265,11 @@ mod sealed {
 /// supertrait): implemented for [`Z`] (base) and for [`S`]`<N>` **only when `N: Total`** — the inductive
 /// step *requires the predecessor's proof* ([E0277] if it is missing). Because each step
 /// descends to a strictly smaller type and a finite type is a finite term, resolving
-/// `Total` for any Peano numeral is a finite descent the compiler must complete, bottoming
-/// out at [`Z`].
+/// `Total` for any Peano numeral you can write is a finite descent the compiler completes,
+/// bottoming out at [`Z`] (budget-bounded by `recursion_limit`, not unconditional — a deep
+/// chain overflows [E0275]; see the crate docs).
 ///
+/// [E0275]: https://doc.rust-lang.org/error_codes/E0275.html
 /// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 pub trait Total: sealed::Sealed {
     /// The structural depth, summed as each step's `N::DEPTH + 1`, bottoming out at `Z`'s
@@ -287,7 +291,7 @@ impl Total for Z {
 impl<N: Total> Total for S<N> {
     // The inductive step: defined in terms of the predecessor's `DEPTH`, so building this
     // value forces `N`'s, forcing its predecessor's, down to `Z`. Structural recursion the
-    // compiler is obliged to finish.
+    // compiler finishes for any numeral you can write (within its recursion budget).
     const DEPTH: u32 = N::DEPTH + 1;
 }
 
