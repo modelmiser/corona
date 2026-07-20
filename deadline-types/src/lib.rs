@@ -516,9 +516,21 @@ mod tests {
     #[test]
     fn empty_task_set_is_vacuously_schedulable_under_every_test() {
         // All three minters agree the empty set is schedulable (vacuous) — no disagreement.
-        assert!(Schedulable::admit_edf([]).is_some());
-        assert!(Schedulable::admit_rm_sufficient([]).is_some());
-        assert!(Schedulable::admit_rm_exact([]).is_some());
+        // Also pins each minter's tag on the N==0 path: `admit_rm_sufficient` has a SEPARATE
+        // `RmSufficient` literal in its early return (distinct from the normal-path one), so
+        // the tag must be checked here too — the last of the four `certified_by` sites.
+        assert_eq!(
+            Schedulable::admit_edf([]).map(|s| s.certified_by()),
+            Some(Test::EdfExact)
+        );
+        assert_eq!(
+            Schedulable::admit_rm_sufficient([]).map(|s| s.certified_by()),
+            Some(Test::RmSufficient)
+        );
+        assert_eq!(
+            Schedulable::admit_rm_exact([]).map(|s| s.certified_by()),
+            Some(Test::RmExact)
+        );
     }
 
     #[test]
