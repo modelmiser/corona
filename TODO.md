@@ -1174,6 +1174,41 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
+## Garden state (2026-07-20c)
+
+- **Leaf 30 (`totality-types`) SEEDED + CONVERGED + DOC-SYNCED — termination/totality as typestate,
+  the garden's FIRST ESCAPE-HATCH residue** (every leaf 1–29 buys its reduce-half by *adding* type
+  structure — a brand, a seal, a linear token, a wall; termination is **undecidable** (Turing 1936 /
+  Rice 1953), so no type *added* to a function makes it halt, and the only route is to **subtract**
+  expressiveness — restrict to a total fragment, the way Agda/Idris-total refuse general recursion —
+  so **the residue IS the sacrifice**, Turing-completeness). Thesis answered: **the structural fragment
+  reduces, to a budget-bounded check; the rest is the undecidable residue.** reduce-half = structural
+  recursion made a type invariant: a type-level Peano nat (`Z`/`S<N>`), a **SEALED** `Total` (private
+  supertrait) impl'd for `S<N>` only when `N: Total` (**E0277**), each step descending to a strictly
+  smaller *type*; plus a structural `const fn` in the const evaluator. **NEITHER level is a totality
+  oracle** (the crux the review sharpened): **E0080** (const-eval frame budget) AND **E0275**
+  (trait-resolution `recursion_limit`) are BOTH sound-but-incomplete budgets — `triangular(u64::MAX)`,
+  structural and terminating, trips the same E0080 as a divergent fn; a deep numeral trips E0275
+  (compiles at `recursion_limit=512`). The genuine asymmetry is *what bounds the step count* —
+  syntactic size of the type you WROTE (type descent) vs runtime values that dwarf the source (const-fn).
+  **E0451** seals `Halted` (witness-trap: attests THIS run halted, not totality for all inputs). **THE
+  BORROWED FLOOR:** the reduce-half's soundness is borrowed from the compiler's own STRUCTURAL CHECKER
+  (finishes any structural definition you can WRITE; budget = f(syntax)) — a substrate fact no leaf can
+  deploy as a type; explicitly NOT "trait-resolution totality" (which is itself E0275-bounded +
+  E0391-cycle-guarded). residue three faces: general recursion (undecidable; `diverge` type-checks),
+  non-structural well-founded recursion (a measure the type can't see), productivity (coinductive
+  sibling). Two primitives touched (E0080 + E0451), the structural requirement + seal both bite as
+  **E0277** (enforcement, not a new primitive); brand + E0382 unused. Seed `d6bd165`; fixes
+  `0aac0d1`(R1)/`1fd9482`(R2)/`bda9bf8`(R4); converged `0b6881c` (R5+R6 clean on frozen text).
+  Workspace **436 unit + 109 doctests = 545**. 6 unit + 7 doctests (3 positive + 4 compile_fail).
+  **Converged 6 rounds: correctness + adversarial clean R2–R6 (~200 safe-Rust exploits rejected with
+  exact codes E0080/E0275/E0277/E0391/E0451/E0603/E0117/E0210), code sound from R1's seal — all three
+  resets were claims-precision on the const-eval-vs-type-level budget honesty (R1 "witnesses halting"
+  overclaim, R2 "type level is exact" overclaim, R4 unqualified-absolute sweep), a prose-mutation
+  ratchet at diminishing amplitude closed by freezing + whole-class sweeps.** Four codes by direct
+  rustc (E0080 is post-mono const-eval → needs a real `-o` path). NOT pushed. **Garden now corona-core
+  + 30 leaves, no review debt.**
+
 ## Garden state (2026-07-20b)
 
 - **Leaf 29 (`deadlock-types`) SEEDED + CONVERGED + DOC-SYNCED — a compile-time lock hierarchy,
