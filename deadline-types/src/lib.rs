@@ -369,8 +369,12 @@ mod tests {
 
     #[test]
     fn rm_sufficient_accepts_a_light_set() {
-        // U = 1/4 + 1/8 = 0.375 ≤ 0.828: the conservative bound is happy here.
-        assert!(Schedulable::admit_rm_sufficient([(1u32, 4u32), (1, 8)]).is_some());
+        // U = 1/4 + 1/8 = 0.375 ≤ 0.828: the conservative bound is happy here. Also pins the
+        // `RmSufficient` certificate tag — the leaf's thesis is that the three tests carry
+        // DIFFERENT strengths in this enum, so a conservative admission must not be labelled
+        // `EdfExact`/`RmExact` (which `the_utilisation_bound_is_conservative` pins).
+        let s = Schedulable::admit_rm_sufficient([(1u32, 4u32), (1, 8)]);
+        assert_eq!(s.map(|s| s.certified_by()), Some(Test::RmSufficient));
     }
 
     #[test]
@@ -453,6 +457,9 @@ mod tests {
         let b = s; // both live: Schedulable is Copy, E0382 not recruited
         assert_eq!(a.certified_by(), b.certified_by());
         assert_eq!(a.count(), 1);
+        // The certificate round-trips its inputs and tag faithfully (pins the stored fields).
+        assert_eq!(a.tasks(), &[(1u32, 4u32)]);
+        assert_eq!(a.certified_by(), Test::EdfExact);
     }
 
     #[test]
