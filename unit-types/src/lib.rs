@@ -1,15 +1,20 @@
 //! # unit-types — dimensional analysis, and the dimension/scale split
 //!
-//! Corona **leaf 27**, and the garden's first leaf with **no adversary, no secret, no
-//! hardness assumption, and no distribution** — only physical quantities and the oldest
-//! correctness discipline in engineering: *you may not add a length to a time.* (The
-//! nearest neighbour is `bloom-types`, leaf 16 — also a purely local structure — but it
-//! leans on hash-collision hardness for its false-positive bound and reasons about an
-//! adversarial pollution model; nothing here rests on hardness or an adversary at all.
-//! So "non-crypto" is exact and unqualified; the point is that the machinery
-//! — unforgeability, hardness, coordination — the previous twenty-six leaned on is
-//! *entirely absent*.) The garden's standing question, put to that bare a domain:
-//! **does dimensional consistency reduce to the compile-primitive vocabulary?**
+//! Corona **leaf 27**, and the first leaf whose domain lies outside **both** cryptography
+//! **and** distributed systems, with a guarantee resting on **nothing but the type
+//! structure itself** — no adversary, no secret, no hardness assumption, no probability,
+//! no coordination. Just physical quantities and the oldest correctness discipline in
+//! engineering: *you may not add a length to a time.* Earlier leaves each shed *some* of
+//! that machinery but never all of it: `bloom-types` (16) is a purely local structure
+//! too, but its false-positive bound rests on a *uniform-hashing probability* assumption
+//! (its own docs call the rate a claim about *random* inputs — not collision hardness,
+//! which is why toy FNV suffices); `crdt-types` (15) uses no cryptography and needs no
+//! coordination, but it is a *distributed* domain — replicated state converging across
+//! replicas; `static-config-types` (6) is purely structural, yet walls a *k-of-n
+//! threshold* — a distributed-systems primitive. Here the machinery the previous
+//! twenty-six leaned on — unforgeability, hardness, replication, even probability — is
+//! *entirely absent*, leaving the garden's standing question at its barest: **does
+//! dimensional consistency reduce to the compile-primitive vocabulary?**
 //!
 //! The answer is **yes, entirely to the [E0308] brand** — and this leaf is the first to
 //! earn that primitive's *name literally*. It then **splits**: the brand pins a
