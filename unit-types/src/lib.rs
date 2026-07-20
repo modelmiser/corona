@@ -33,10 +33,11 @@
 //!
 //! This matters to the garden's own bookkeeping. The charter names this primitive
 //! *"E0308 — brand unification,"* yet **no prior leaf has ever produced an E0308**:
-//! every branded leaf — `vss`, `merkle`, `mss`, `accumulator`, `translog`, `commit` —
-//! brands with a **generative lifetime** (`for<'brand>`), whose concrete diagnostic is
-//! [E0521] (*"borrowed data escapes"*, a region error), which is exactly why leaf 26
-//! had to write "E0308-**class**". A dimension marker carries **no lifetime**: it is a
+//! every leaf that *introduces* a brand — `vss`, `merkle`, `accumulator`, `translog`,
+//! `commit` — does so with a **generative lifetime** (`for<'brand>`), whose concrete
+//! diagnostic is [E0521] (*"borrowed data escapes"*, a region error), which is exactly why
+//! leaf 26 had to write "E0308-**class**". (Composition leaves like `mss` don't introduce
+//! their own — they *consume* a component's brand — so they emit no E0521 either.) A dimension marker carries **no lifetime**: it is a
 //! *static, nominal* type parameter, so a mismatch is decided by plain **type
 //! equality** — the literal E0308 the primitive was named for, at last. It is also the
 //! **simplest** brand in the garden: no `PhantomData<fn(&'brand ()) -> &'brand ()>`
