@@ -941,4 +941,51 @@ mod tests {
         let lied_old = honest_old.wrapping_add(0x9e37_79b9);
         assert!(!verify_consistency_hashes(m, n, lied_old, new_root, &proof));
     }
+
+    #[test]
+    fn same_size_different_roots_is_equivocation_caught_only_out_of_band() {
+        // The "gossip" residue made executable (crate docs: detecting a log that
+        // served a DIFFERENT root for a size it served before is an out-of-band
+        // comparison of retained tree heads — not a brand's job, and not a single
+        // auditor's fold). A malicious log presents two auditors divergent histories
+        // of the same length.
+        let mut view_a = built(&[b"a0", b"a1", b"a2"]);
+        let view_b = built(&[b"b0", b"b1", b"b2"]);
+
+        // Each auditor's retained "signed tree head" is an unbranded (root, size) pair.
+        let head_a = (view_a.root().unwrap(), view_a.size());
+        let head_b = (view_b.root().unwrap(), view_b.size());
+
+        // An auditor looking at ONLY its own view sees a perfectly valid, extensible
+        // history — its size-3 prefix stays consistent as the log grows, and both the
+        // fold and the `Consistent` brand accept. Nothing local fires.
+        view_a.append(b"a3");
+        view_a
+            .consistency_scoped(3, |old, new, proof| {
+                assert_eq!(
+                    old.root(),
+                    head_a.0,
+                    "the auditor's retained head is its own prefix"
+                );
+                assert!(
+                    new.verify_consistency(&old, proof).is_ok(),
+                    "auditor A's own history is internally consistent"
+                );
+            })
+            .unwrap();
+
+        // The equivocation is invisible to either auditor alone and unholdable by any
+        // `Consistent<'old,'new>` brand — which relates two snapshots of ONE log inside
+        // one scope, never two disjoint wire views. It surfaces ONLY when the two
+        // retained heads are gossiped and compared out of band: the SAME size carries
+        // DIFFERENT roots.
+        assert_eq!(
+            head_a.1, head_b.1,
+            "the log served the same size to both auditors"
+        );
+        assert_ne!(
+            head_a.0, head_b.0,
+            "…but different roots — equivocation, which only the cross-view compare reveals"
+        );
+    }
 }
