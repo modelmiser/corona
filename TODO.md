@@ -1664,3 +1664,24 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
    multi-facet (A executable / B proxied / C prose-only-GAP / D Sol-obligation), leaf 23 COMPLETE
    (impossibility theorem — one exhibited failure is all a theorem admits), leaf 9 COMPLETE (deliberate
    out-of-scope coordination seam, as expected).
+
+## Leaf 26 — commit-types (fresh open-ended domain, 2026-07-19)
+
+- [x] Seed `commit-types` (leaf 26): cryptographic commitment (hash-based; Pedersen as the dual),
+      standalone, TOY 64-bit FNV-1a. Thesis = the garden's **first DUAL-property split**: binding &
+      hiding, a definitional dual pair, land on OPPOSITE sides of the line. Seal (`899a8a6`).
+- [x] Cold-review to convergence — **5 rounds** (R1–R3 each one real doc defect, R4+R5 two consecutive
+      clean). Every CRITICAL was doc crypto-precision (E0308→E0521; statistically→computationally
+      binding; the false universal "binding is only ever computational"); the seal (E0451) & brand
+      (E0521) held under ~35 safe-Rust attack vectors across 4 adversarial passes with ZERO breaks.
+      Fixes `50f239a` (R1) / `918d15c` (R2) / `6bbeac5` (R3) / `071482a` (R4) / `fd503c9` (convergence).
+- [x] Doc-sync: CHARTER catalog row added; README tree + `408 unit + 89 doctests` + compile-fail note;
+      INSIGHTS `leaf-26-commit.md` + INDEX status → converged; DEVLOG; memory `corona-garden.md`.
+- Findings made executable-in-code (not prose): E0451 seal (`compile_fail,E0451`), E0521 generative
+  brand (`compile_fail,E0521` + brand-strictly-stronger-than-hash), binding-hardness collision residue
+  (16-bit birthday `weak_verify` collapse), hiding 2-safety (type-identity array vs leaky foil).
+- E0080/E0382 honestly unused; explicit "no linearity claimed" note (`Opening` = evidence, not a
+  use-once capability, ∥ contrast leaf 5). Two garden primitives, no new one.
+
+The garden is again a finished thought: corona-core + **26 leaves**, no review debt. Any further leaf
+is a fresh open-ended domain, not backlog. Nothing auto-starts.
