@@ -659,6 +659,39 @@ mod tests {
     }
 
     #[test]
+    fn value_level_provenance_trades_a_compile_brand_for_a_distributable_key() {
+        // The deliberate value-level-vs-brand TRADE (crate docs, "Witness provenance is
+        // value-level, not a brand") made executable as a red/green fact — rather than by
+        // building the branded MssPublicKey the leaf explicitly declined ("a scoped-
+        // signature design would fight the scheme's whole point"). The leaf CHOSE value-
+        // level provenance so the key stays DISTRIBUTABLE; the cost is that cross-key
+        // misuse type-checks and is caught only at RUNTIME. A brand would reject that
+        // misuse at COMPILE time (cf. merkle_types' cross-brand `compile_fail`) — but a
+        // branded key could not be distributed at all, which is exactly the trade.
+        let (chain_a, pk_a) = generate(1, 2).unwrap();
+        let (_chain_b, pk_b) = generate(2, 2).unwrap();
+        let (sig_a, _) = chain_a.sign_next(b"m");
+        let va = pk_a.verify(b"m", &sig_a).unwrap();
+
+        // THE WIN a brand forbids — distributability. `MssPublicKey` is `Copy`, so it
+        // duplicates and the original stays live (a brand-scoped value is pinned to its
+        // generative closure — it could be neither returned nor freely copied); the
+        // witness is `Clone` in kind, crossing scopes and the wire freely.
+        let distributed_copy = pk_a;
+        assert_eq!(pk_a.root_hash(), distributed_copy.root_hash());
+        let _witness_copy = va.clone();
+
+        // THE COST — cross-key misuse COMPILES. Presenting A's witness against key B is a
+        // well-typed call (no compile error, unlike a brand); only the runtime `minted_by`
+        // check catches it.
+        assert!(
+            !va.minted_by(&pk_b),
+            "cross-key misuse: caught only at runtime, never by the type"
+        );
+        assert!(va.minted_by(&pk_a), "and holds for the genuine minting key");
+    }
+
+    #[test]
     fn overstated_adopted_capacity_yields_phantom_indices_caught_by_minted_by() {
         // The acceptance channel of a capacity lie, at the composition level:
         // real n = 2; key 1's genuine signature relabeled to index 2 verifies
