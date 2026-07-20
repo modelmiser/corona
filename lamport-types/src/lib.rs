@@ -72,7 +72,11 @@
 //!   same [`VerifyingKey`] — and harvesting both preimage sides that way is exactly the
 //!   classic Lamport multi-signature forgery the one-time rule exists to prevent. The
 //!   linear guarantee is therefore **conditional on the seed being discarded after
-//!   keygen** (a real CSPRNG-generated key has no reproducible seed). This is the
+//!   keygen** (a real CSPRNG-generated key has no reproducible seed). Made executable by
+//!   `a_retained_seed_re_mints_the_key_and_forges_a_second_message` (the seed re-mints
+//!   the key and forges a second message under the same `VerifyingKey`) and
+//!   `two_signatures_harvest_both_preimage_sides_at_a_differing_position` (two signatures
+//!   reveal both secret preimages wherever their digests differ — the forgery material). This is the
 //!   general rule that *a capability is only as strong as the most permissive way to
 //!   obtain what it gates* — here the most permissive path, `generate(seed)`, is
 //!   unconstrained, and the type system does not track it.
@@ -264,6 +268,66 @@ mod tests {
         let (sk, vk) = SigningKey::generate(42);
         let sig = sk.sign(b"hello");
         assert!(vk.verify(b"goodbye", &sig).is_none());
+    }
+
+    #[test]
+    fn a_retained_seed_re_mints_the_key_and_forges_a_second_message() {
+        // The residue, made executable: E0382's one-time guarantee is over the key
+        // *value*, not the seed-derived key *material*. `sign` consumes the SigningKey (a
+        // second `sk.sign` is `error[E0382]` — the compile_fail doctest), but the key is
+        // deterministic in the seed, so a holder of the seed re-mints the identical key and
+        // signs a DIFFERENT message under the SAME VerifyingKey — the one-time property is
+        // void. This is why the guarantee is "conditional on discarding the seed" (honest
+        // limits): the type tracks the value's linearity, never the seed that reproduces it.
+        let seed = 0xA5A5;
+        let (sk, vk) = SigningKey::generate(seed);
+        let sig1 = sk.sign(b"pay alice 10"); // legitimate; consumes sk (a 2nd sign = E0382)
+        assert!(vk.verify(b"pay alice 10", &sig1).is_some());
+
+        // The seed re-mints the identical key (same vk) — E0382 never reached this path.
+        let (sk2, vk2) = SigningKey::generate(seed);
+        assert_eq!(vk.to_bytes(), vk2.to_bytes(), "same seed → same key");
+
+        // Forge: sign a second, different message under the same long-term public key.
+        let forged = sk2.sign(b"pay attacker 1000000");
+        assert!(
+            vk.verify(b"pay attacker 1000000", &forged).is_some(),
+            "a retained seed forges a message the one-time key should never have signed"
+        );
+    }
+
+    #[test]
+    fn two_signatures_harvest_both_preimage_sides_at_a_differing_position() {
+        // The multi-signature forgery *material*, made executable — the mechanism behind
+        // the seed hole above. If a one-time key ever signs two different messages, the two
+        // signatures TOGETHER reveal, at every digest position where the messages differ,
+        // BOTH secret preimages — the material to forge a signature for any third digest
+        // covered by their union (the classic Lamport two-message attack). We exhibit the
+        // harvest directly: at a differing position, sig1 and sig2 hold the preimages for
+        // bit 0 and bit 1, each a valid opening of the vk's published commitment for its
+        // side. (Assembling a full third-message signature additionally needs a message
+        // whose FNV digest is covered — hash-preimage search, a deeper follow-up; the
+        // harvested material is what makes that a mechanical, not cryptographic, step.)
+        let seed = 0xA5A5;
+        let (sk1, vk) = SigningKey::generate(seed);
+        let (sk2, _) = SigningKey::generate(seed); // the same key, re-minted (the seed hole)
+        let (m1, m2): (&[u8], &[u8]) = (b"message one", b"message two");
+        let (d1, d2) = (hash::digest(m1), hash::digest(m2));
+        let sig1 = sk1.sign(m1);
+        let sig2 = sk2.sign(m2);
+
+        // A position where the two digests differ — there the attacker holds BOTH sides.
+        let i = (0..BITS)
+            .find(|&i| (d1 >> i) & 1 != (d2 >> i) & 1)
+            .expect("two distinct digests differ somewhere");
+        let b1 = ((d1 >> i) & 1) as usize;
+        let b2 = ((d2 >> i) & 1) as usize;
+        assert_ne!(b1, b2, "the two signed messages took opposite bits here");
+
+        // sig1 revealed side b1, sig2 side b2 — together both preimages at position i, each
+        // committing to the verifying key's published commitment for its side.
+        assert_eq!(hash::commit(sig1.revealed[i]), vk.commitments[i][b1]);
+        assert_eq!(hash::commit(sig2.revealed[i]), vk.commitments[i][b2]);
     }
 
     #[test]
