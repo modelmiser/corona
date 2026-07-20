@@ -17,14 +17,19 @@
 //! acquire locks in **strictly increasing** level order. Then a wait-for cycle is
 //! impossible — a cycle `L₁ → L₂ → … → Lₙ → L₁` would need
 //! `level(L₁) < level(L₂) < … < level(Lₙ) < level(L₁)`, and a strict total order has no
-//! such loop. Deadlock-freedom is not *checked*; it is **unreachable by construction**.
+//! such loop.
 //!
-//! This leaf makes the discipline a **type** invariant. A [`Lock`]`<LEVEL, T>` carries its
-//! level as a `const` generic. Acquiring the *first* lock ([`Lock::acquire`]) is
-//! unconstrained; acquiring a *further* lock ([`Guard::acquire`]) requires the new level
-//! to be **strictly greater** than the level of the guard you already hold — enforced by a
-//! **const-eval wall** ([E0080]). Acquire two locks in the wrong order and the program
-//! does not *build*.
+//! This leaf makes the discipline a **type** invariant *along a single acquisition chain*.
+//! A [`Lock`]`<LEVEL, T>` carries its level as a `const` generic. Acquiring the *first*
+//! lock ([`Lock::acquire`]) is unconstrained; acquiring a *further* lock through the guard
+//! you hold ([`Guard::acquire`]) requires the new level to be **strictly greater** than the
+//! level held — enforced by a **const-eval wall** ([E0080]). Because a chain is strictly
+//! increasing, its most-recently-acquired guard is always the *maximum* level held on it,
+//! so the pairwise `B > A` check enforces increasing order over the *whole* chain: acquire
+//! two chained locks out of order and the program does not *build*, and no thread that
+//! takes all its locks in one such chain can sit in a wait-for cycle. **What the type
+//! cannot force is that a thread use only *one* chain** (see "the residue", below) — which
+//! is why the guarantee is *by construction within a chain*, not global.
 //!
 //! ```
 //! use deadlock_types::Lock;
@@ -53,11 +58,12 @@
 //!   wall — exactly leaf 6's seal-forces-the-path, wall-guards-the-path pairing.
 //! - **The borrow checker gives the *release* order for free.** [`Guard::acquire`] takes
 //!   `&mut self`, so a child guard **mutably borrows its parent**. You therefore cannot
-//!   spawn two live children off one guard (that would need two `&mut` borrows), which is
-//!   what forces acquisition into a single strictly-increasing **nested chain** — a lock
-//!   *stack* — rather than unordered siblings. And you cannot drop an **outer** guard
-//!   while an **inner** one is still alive ([E0505]): releases are **LIFO**, the reverse
-//!   of acquisition, with no runtime bookkeeping.
+//!   spawn two live children off *one* guard (that would need two `&mut` borrows), so a
+//!   single chain stays a strictly-increasing **stack** rather than a fan of unordered
+//!   siblings; and you cannot drop an **outer** guard while an **inner** one is still alive
+//!   ([E0505]): releases are **LIFO**, the reverse of acquisition, with no runtime
+//!   bookkeeping. (This disciplines *one* chain; it does **not** stop a thread from opening
+//!   several independent chains — the residual obligation the next section makes precise.)
 //!
 //! ### Why not the brand? Because the brand cannot order
 //!
@@ -69,7 +75,37 @@
 //! and that `<` is a compile-time integer comparison, i.e. the **E0080** wall. The brand
 //! is honestly **unused** here; the leaf uses the one primitive that carries an order.
 //!
-//! ## The residue: dynamic composition
+//! ## The residue, part 1: the single-chain obligation
+//!
+//! The wall fires only on [`Guard::acquire`] — the *nested* path. [`Lock::acquire`], which
+//! *enters* the hierarchy, is unconstrained (it must be: the first lock has nothing to be
+//! greater than). So a thread can open **two independent chains** and hold their base
+//! guards in any order, entirely in safe code, with the wall never firing:
+//!
+//! ```
+//! use deadlock_types::Lock;
+//! let high = Lock::<5, i32>::new(0);
+//! let low = Lock::<3, i32>::new(0);
+//! let g_high = high.acquire(); // hold level 5 ...
+//! let g_low = low.acquire(); // ... and level 3 at once — compiles, wall untouched
+//! # let _ = (&g_high, &g_low);
+//! ```
+//!
+//! Run that as `(high, low)` in one thread and `(low, high)` in another and the AB–BA
+//! deadlock is back — over *statically-leveled* locks. Closing it would require every
+//! acquisition, **including the first**, to be checked against the thread's *running
+//! maximum* held level — a `max(held, L)` carried in a **linear token** threaded through
+//! the acquisitions. Rust can express the linearity (a non-`Clone` token moved into each
+//! guard), but not the **type-level `max`**: a `Guard<{ max(HELD, L) }>` needs
+//! `generic_const_exprs`, still unstable. So the type reduces the *within-chain* order to
+//! E0080, while the **"a thread takes all its locks in one increasing chain" obligation is
+//! itself the residue** — unenforceable in stable Rust, disclosed and left to discipline (a
+//! real lock-order checker such as the kernel's lockdep recovers it *at runtime* by
+//! tracking the true maximum across *all* held locks). The emergent hazard bites one level
+//! up: even the *fix* for the global cycle carries a global obligation the local type
+//! cannot hold.
+//!
+//! ## The residue, part 2: dynamic composition
 //!
 //! A level is a **compile-time constant**. The moment the lock you must acquire is chosen
 //! at **runtime**, no `const LEVEL` can label it, and the whole discipline falls off the
@@ -89,15 +125,17 @@
 //! The garden's **first emergent/holistic residue**. Prior leaves either sealed a witness
 //! of a *local* check (E0451 everywhere) or made a *local* misuse untypeable (E0382, the
 //! brand). Here the hazard is **global** — a cycle in the cross-thread wait-for graph — and
-//! the reduction works by making that global bad state **unreachable by construction**,
-//! not by witnessing any single fact. It is also distinct from the garden's *composition*
+//! the reduction works by making that bad state **untypeable within a single acquisition
+//! chain**, not by witnessing any single fact; the residual "one chain per thread"
+//! obligation (part 1, above) is the emergent hazard's irreducible core. It is also
+//! distinct from the garden's *composition*
 //! leaves: leaf 7 (`mss-types`) found a composite **inherits its components' obligations**
 //! (they propagate *up* from the parts); a deadlock obligation is **new at the whole** — no
 //! part carries it. Two primitives touched — **[E0080]** (acquire order) and **[E0451]**
 //! (unforgeable level) — plus the borrow checker for LIFO release; **[E0382]** and the
 //! brand are honestly unused. That a hazard as different as cross-thread deadlock still
-//! lands on the same vocabulary — reserving only its *dynamic* case for a runtime order —
-//! is the leaf's contribution.
+//! lands on the same vocabulary — reserving its *cross-chain* and *dynamic* cases for a
+//! runtime order (lockdep-style) — is the leaf's contribution.
 //!
 //! ## The codes, verified out of band
 //!
@@ -293,7 +331,15 @@ pub enum TransferError {
     /// The source balance is below the requested amount.
     InsufficientFunds,
     /// Source and destination are the same account (a non-reentrant self-lock hazard).
+    /// Also returned for two *distinct* accounts that share an `id` — ids must be unique
+    /// (see [`transfer`]).
     SameAccount,
+    /// The amount was negative, which would silently *reverse* the transfer direction and
+    /// slip past the [`InsufficientFunds`](TransferError::InsufficientFunds) check.
+    NegativeAmount,
+    /// Crediting the destination would overflow `i64`. No balance is changed (and no lock
+    /// is poisoned): the credit is computed before either account is written.
+    BalanceOverflow,
 }
 
 impl Account {
@@ -326,7 +372,19 @@ impl Account {
 /// hierarchy cannot express — because the locks are chosen at runtime — re-established as a
 /// runtime discipline. Acquire naively in argument order instead and `transfer(a, b)` racing
 /// `transfer(b, a)` is the textbook deadlock.
+///
+/// **Precondition:** account `id`s must be unique. Ordering and the self-lock guard key on
+/// `id`, so two *distinct* accounts sharing an `id` are (safely) refused as
+/// [`SameAccount`](TransferError::SameAccount) rather than transferred.
+///
+/// `amount` must be non-negative; a credit that would overflow `i64` is rejected before any
+/// write, so a failed transfer never mutates a balance or poisons a lock.
 pub fn transfer(from: &Account, to: &Account, amount: i64) -> Result<(), TransferError> {
+    if amount < 0 {
+        // A negative amount would reverse direction and sail past the `**src < amount`
+        // guard below (magnitude/sign are runtime facts no lock ordering can see).
+        return Err(TransferError::NegativeAmount);
+    }
     if from.id == to.id {
         return Err(TransferError::SameAccount);
     }
@@ -355,8 +413,14 @@ pub fn transfer(from: &Account, to: &Account, amount: i64) -> Result<(), Transfe
     if **src < amount {
         return Err(TransferError::InsufficientFunds);
     }
+    // Compute the credited balance BEFORE writing anything: on overflow we return with no
+    // partial mutation and no poisoned lock. The debit cannot underflow (amount >= 0 and
+    // **src >= amount), but the credit can overflow i64.
+    let credited = (**dst)
+        .checked_add(amount)
+        .ok_or(TransferError::BalanceOverflow)?;
     **src -= amount;
-    **dst += amount;
+    **dst = credited;
     Ok(())
 }
 
@@ -427,6 +491,48 @@ mod tests {
         assert_eq!((a.balance(), b.balance()), (10, 0)); // unchanged on rejection
 
         assert_eq!(transfer(&a, &a, 1), Err(TransferError::SameAccount));
+    }
+
+    #[test]
+    fn transfer_rejects_negative_amount_without_reversing() {
+        // A negative amount would move money from `to` back to `from` and skip the overdraft
+        // check — the runtime sign residue the lock ordering cannot see. It is refused, and
+        // no balance moves.
+        let a = Account::new(1, 100);
+        let b = Account::new(2, 100);
+        assert_eq!(transfer(&a, &b, -1000), Err(TransferError::NegativeAmount));
+        assert_eq!((a.balance(), b.balance()), (100, 100));
+    }
+
+    #[test]
+    fn transfer_rejects_overflow_without_mutating_or_poisoning() {
+        // Crediting i64::MAX + 1 overflows; the credit is computed before any write, so both
+        // balances are untouched and neither lock is poisoned (later ops still succeed).
+        let a = Account::new(1, i64::MAX);
+        let b = Account::new(2, i64::MAX);
+        assert_eq!(
+            transfer(&a, &b, i64::MAX),
+            Err(TransferError::BalanceOverflow)
+        );
+        assert_eq!((a.balance(), b.balance()), (i64::MAX, i64::MAX)); // no poison, no change
+                                                                      // A subsequent valid transfer still works — proof the locks were not poisoned.
+        let c = Account::new(3, 10);
+        assert_eq!(transfer(&a, &c, 5), Ok(()));
+        assert_eq!((a.balance(), c.balance()), (i64::MAX - 5, 15));
+    }
+
+    #[test]
+    fn two_independent_root_chains_escape_the_hierarchy() {
+        // The disclosed part-1 residue, executable: `Lock::acquire` (entering the hierarchy)
+        // is unconstrained, so a thread can hold two BASE guards in descending order — the
+        // wall (which only fires on `Guard::acquire`) is never touched. This is exactly the
+        // "one chain per thread" obligation the type cannot enforce.
+        let high = Lock::<5, i32>::new(100);
+        let low = Lock::<3, i32>::new(200);
+        let g_high = high.acquire(); // level 5 ...
+        let g_low = low.acquire(); // ... and level 3 held at once — compiles and runs
+        assert_eq!((*g_high, *g_low), (100, 200));
+        assert_eq!((g_high.level(), g_low.level()), (5, 3)); // descending, yet both live
     }
 
     #[test]
