@@ -44,7 +44,12 @@
 //!   reconstructed data distinct from raw. It is **not** a security guarantee:
 //!   [`Fragment`]s are public and forgeable (see limits), so "≥ k assembled" says
 //!   nothing about *genuine* availability. E0451 seals the token, whatever the
-//!   token means.
+//!   token means. Made executable by
+//!   `fabricated_fragments_mint_a_genuine_recovered_data_the_seal_is_not_availability`
+//!   (invented fragments, dispersed by no one, mint the same sealed witness a real
+//!   dispersal yields) and `a_single_corruption_at_m_equals_k_is_silently_misdecoded`
+//!   (at `t = 0`, one corruption yields wrong bytes with `corrected() == 0` — the
+//!   silent-misdecode facet `beyond_t_errors_is_detected` avoids).
 //!
 //! ## Honest limits (parallel to leaf 1)
 //!
@@ -502,6 +507,70 @@ mod tests {
                 presented: 7,
                 max_correctable: 2,
             })
+        );
+    }
+
+    #[test]
+    fn fabricated_fragments_mint_a_genuine_recovered_data_the_seal_is_not_availability() {
+        // The property-agnostic-seal residue (the leaf's headline), made executable.
+        // `decode` interpolates the first k DISTINCT fragments and seals the result — it
+        // never checks the fragments came from a real `encode`. So k fragments a caller
+        // INVENTS (dispersed by no one) mint a bona fide sealed `RecoveredData`, the exact
+        // same type a genuine dispersal yields. The seal witnesses "interpolation ran over
+        // k distinct points," never "these fragments were genuinely available / had this
+        // provenance" — the confidentiality-vs-availability axis is invisible to E0451,
+        // exactly as it was to Shamir's identical seal in leaf 1.
+        let th = t(3, 5);
+        let fabricated = [
+            Fragment {
+                index: 3,
+                value: 111,
+            },
+            Fragment {
+                index: 7,
+                value: 222,
+            },
+            Fragment {
+                index: 42,
+                value: 55,
+            },
+        ];
+        // Minted from invented fragments no dispersal produced.
+        let recovered = decode(&fabricated, th).expect("k distinct fragments always decode");
+        assert_eq!(recovered.bytes().len(), 3);
+
+        // And it is indistinguishable, as a sealed witness, from one recovered from a real
+        // dispersal of the same interpolated data — the seal cannot tell invented from
+        // genuine (both are bona fide `RecoveredData`).
+        let same_data = recovered.bytes().to_vec();
+        let genuine = decode(&encode(&same_data, th).unwrap()[..3], th).unwrap();
+        assert_eq!(recovered, genuine);
+    }
+
+    #[test]
+    fn a_single_corruption_at_m_equals_k_is_silently_misdecoded() {
+        // The silent-misdecode residue (the facet `beyond_t_errors_is_detected`
+        // deliberately dodges), at its cleanest. `decode_correcting` corrects up to
+        // t = ⌊(m−k)/2⌋ errors; at the degenerate m == k, t = 0 — no correction capacity,
+        // and the forgeable fragments carry no commitment to check against. So a single
+        // corrupted fragment is NOT detected: it is interpolated as if genuine, yielding
+        // WRONG bytes with a corrected() count of 0 that looks perfectly clean. Integrity
+        // holds only within t; here t = 0, so `CorrectedData` proves only provenance
+        // through the path, never correctness.
+        let th = t(3, 3); // k = n = 3, so m = 3 = k and t = 0
+        let data = [1u8, 2, 3];
+        let mut frags = encode(&data, th).unwrap();
+        frags[0].value ^= 0xFF; // corrupt one fragment
+        let corrected = decode_correcting(&frags, th).expect("m == k always 'succeeds'");
+        assert_ne!(
+            corrected.bytes(),
+            &data,
+            "the corruption silently changed the output"
+        );
+        assert_eq!(
+            corrected.corrected(),
+            0,
+            "yet it reports zero corrections — undetected"
         );
     }
 
