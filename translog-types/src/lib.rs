@@ -950,29 +950,32 @@ mod tests {
         // auditor's fold). A malicious log presents two auditors divergent histories
         // of the same length.
         let mut view_a = built(&[b"a0", b"a1", b"a2"]);
-        let view_b = built(&[b"b0", b"b1", b"b2"]);
+        let mut view_b = built(&[b"b0", b"b1", b"b2"]);
 
         // Each auditor's retained "signed tree head" is an unbranded (root, size) pair.
         let head_a = (view_a.root().unwrap(), view_a.size());
         let head_b = (view_b.root().unwrap(), view_b.size());
 
-        // An auditor looking at ONLY its own view sees a perfectly valid, extensible
-        // history — its size-3 prefix stays consistent as the log grows, and both the
-        // fold and the `Consistent` brand accept. Nothing local fires.
-        view_a.append(b"a3");
-        view_a
-            .consistency_scoped(3, |old, new, proof| {
+        // EACH auditor, looking at ONLY its own view, sees a perfectly valid, extensible
+        // history — its size-3 prefix stays consistent as its log grows, and both the fold
+        // and the `Consistent` brand accept. Nothing local fires for either one. (We
+        // exercise both symmetrically so "neither sees the lie" is demonstrated, not just
+        // asserted.)
+        for (view, head, who) in [(&mut view_a, head_a, "A"), (&mut view_b, head_b, "B")] {
+            view.append(b"x3");
+            view.consistency_scoped(3, |old, new, proof| {
                 assert_eq!(
                     old.root(),
-                    head_a.0,
+                    head.0,
                     "the auditor's retained head is its own prefix"
                 );
                 assert!(
                     new.verify_consistency(&old, proof).is_ok(),
-                    "auditor A's own history is internally consistent"
+                    "auditor {who}'s own history is internally consistent",
                 );
             })
             .unwrap();
+        }
 
         // The equivocation is invisible to either auditor alone and unholdable by any
         // `Consistent<'old,'new>` brand — which relates two snapshots of ONE log inside

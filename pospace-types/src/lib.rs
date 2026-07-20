@@ -616,13 +616,17 @@ mod tests {
     #[test]
     fn the_space_time_tradeoff_is_a_prove_time_recomputation_count() {
         // Makes the space×TIME tradeoff EXECUTABLE (crate docs / the tradeoff table),
-        // with leaf-25's op-count technique: count the `table_entry(seed, i)`
-        // recomputations each prover incurs on its PROVE path. The counting twins below
-        // mirror the two production `prove()` bodies exactly — Space::prove regenerates
-        // every leaf from the seed `(0..capacity).map(|i| table_entry(seed, i))`;
-        // MaterializedTable::prove hands its resident `leaves` straight to `respond`.
-        // Same byte-identical witness, opposite occupancy: the residue is precisely this
-        // hidden recomputation cost, which no type or witness can see.
+        // with leaf-25's op-count technique. The storage-strategy-dependent cost at prove
+        // time is TABLE REGENERATION: Space::prove regenerates every leaf from the seed
+        // (`(0..capacity).map(|i| table_entry(seed, i))`), while MaterializedTable::prove
+        // hands its resident `leaves` straight to `respond`, regenerating none. The
+        // counting twins below mirror exactly those two table-acquisition steps.
+        //
+        // Both paths THEN call `verify`, which recomputes `QUERIES` entries as the
+        // verifier's light spot-check — a small, storage-INDEPENDENT constant incurred
+        // identically on either path, so it is NOT part of the tradeoff (asserted below).
+        // The residue is the table-regeneration asymmetry alone (2^K vs 0), which — being
+        // dropped before the witness is minted — leaves no trace in the byte-identical proof.
         const K: u32 = 10;
         let capacity = 1usize << K; // 1024
         let seed = 0x00C0_FFEEu64;
@@ -631,28 +635,29 @@ mod tests {
         let table = space.materialize();
 
         // Seed-only prover: regenerate the whole table (the exact map in Space::prove),
-        // counting each recomputation.
-        let mut seed_only = 0usize;
+        // counting each `table_entry` call.
+        let mut seed_only_regen = 0usize;
         let regenerated: Vec<u64> = (0..capacity as u64)
             .map(|i| {
-                seed_only += 1;
+                seed_only_regen += 1;
                 table_entry(seed, i)
             })
             .collect();
 
-        // Materialized prover: the leaves are ALREADY resident, so obtaining them for
-        // `respond` costs zero `table_entry` calls (MaterializedTable::prove reads
-        // `self.leaves`). The count is 0 by the same faithful mirroring.
-        let materialized = 0usize;
+        // Materialized prover: the leaves are ALREADY resident, so acquiring them for
+        // `respond` (MaterializedTable::prove reads `self.leaves`) calls `table_entry`
+        // zero times — 0 by the definition of resident storage, the same epistemic status
+        // as leaf-25's structurally-constant twin.
+        let materialized_regen = 0usize;
         let resident: &Vec<u64> = &table.leaves;
 
         assert_eq!(
-            seed_only, capacity,
-            "the seed-only prover recomputes every one of the 2^K entries at prove time"
+            seed_only_regen, capacity,
+            "seed-only regenerates the whole 2^K table at prove time"
         );
         assert_eq!(
-            materialized, 0,
-            "the materialized prover recomputes nothing — it paid the storage instead"
+            materialized_regen, 0,
+            "materialized regenerates NONE of the table — it reads the resident copy"
         );
         // The twins feed the identical table into the identical production `respond`.
         assert_eq!(
@@ -660,9 +665,16 @@ mod tests {
             respond(resident, K),
             "both provers derive the same table, so the same response"
         );
+        // The shared, storage-independent verifier cost: both prove() paths call verify(),
+        // which recomputes exactly QUERIES entries regardless of storage strategy — a small
+        // constant (< the table), the same on either path, hence not part of the tradeoff.
+        assert!(
+            QUERIES > 0 && QUERIES < capacity,
+            "verify's spot-check recomputes a small shared constant ({QUERIES}), the same for both provers"
+        );
 
         // The payoff both ways is the SAME sealed witness with OPPOSITE occupancy — the
-        // ~2^K vs ~0 recomputation gap left no trace in the proof (the leaf's finding).
+        // 2^K-vs-0 table-regeneration gap left no trace in the proof (the leaf's finding).
         let (p_seed, resident_seed) = space.prove();
         let (p_mat, resident_mat) = table.prove();
         assert_eq!(
