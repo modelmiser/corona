@@ -169,11 +169,14 @@
 //! let _ = m.plus(f);
 //! ```
 //!
-//! The crate's **one [E0277]** comes from a *different kind* of violation — not a value
-//! mismatch but an **unsatisfied type-level bound**. The coherence bound [`UnitOf<D>`]
-//! keeps a unit paired with *its* dimension, so a `Scaled<Time, Meters>` ("a time in
-//! metres") is not even constructible: [`Meters`] is a unit of [`Length`], never of
-//! [`Time`], so `Scaled::new`'s `U: UnitOf<D>` bound is unsatisfied — E0277:
+//! The crate's **[E0277]s** come from a *different kind* of violation — not a value
+//! mismatch but an **unsatisfied type-level bound**. The clearest is the coherence bound
+//! [`UnitOf<D>`], which keeps a unit paired with *its* dimension, so a `Scaled<Time,
+//! Meters>` ("a time in metres") is not even constructible: [`Meters`] is a unit of
+//! [`Length`], never of [`Time`], so `Scaled::new`'s `U: UnitOf<D>` bound is unsatisfied —
+//! E0277. (The same code appears wherever *any* bound is unmet — e.g. calling
+//! [`Scaled::to::<V>`](Scaled::to) for a `V` that is not a [`UnitOf<D>`], or lacks a
+//! [`ConvertTo`] from the source unit — all the *same kind*, an unmet bound.)
 //!
 //! ```compile_fail,E0277
 //! use unit_types::{Scaled, Time, Meters};
@@ -182,8 +185,9 @@
 //! ```
 //!
 //! So the two codes track two violation *kinds*: **E0308** = a value/type mismatch (every
-//! bad addition, on either surface), **E0277** = an unsatisfied bound (an incoherent
-//! construction). "Which code" depends on the *kind* of the error, not the API surface.
+//! bad addition, on either surface), **E0277** = any unsatisfied type-level bound (an
+//! incoherent construction, or a missing conversion). "Which code" depends on the *kind*
+//! of the error, not the API surface.
 //!
 //! [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
 //! [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
