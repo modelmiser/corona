@@ -1,7 +1,7 @@
 //! # dp-types — a differential-privacy budget, and the quantitative axis
 //!
-//! Corona **leaf 28**, and the garden's first leaf on the **quantitative axis**. Every
-//! residue the previous twenty-seven leaves mapped is **binary**: a witness is sound or it
+//! Corona **leaf 28**, and — as of this leaf — the garden's first on the **quantitative
+//! axis**. Every residue the garden has mapped so far is **binary**: a witness is sound or it
 //! is forged, a budget is spent or unspent, a snapshot is fresh or stale. Differential
 //! privacy is different in kind — it is a *graded* guarantee, one that holds **"to within
 //! `ε`"**. An `ε`-differentially-private mechanism promises that adding or removing one
@@ -10,9 +10,12 @@
 //! answer *spends* some of it. This leaf asks the garden's standing question of that graded
 //! world: **does a privacy budget reduce to the compile-primitive vocabulary?**
 //!
-//! The answer is a **three-way synthesis** (∥ `frost-types`, leaf 12): it lands on three
-//! primitives already in the vocabulary, **no new one** — and the *third* landing is a
-//! *non*-reduction that hands the graded core to Sol.
+//! The answer is a **three-way split** (∥ `frost-types`, leaf 12), each concern landing where
+//! it belongs, **no new primitive**: the budget's *accounting* reduces — non-duplication to
+//! **[E0382]**, the static ceiling to **[E0080]**, with the released answer sealed by
+//! **[E0451]** — while the `ε`-*guarantee* itself (noise calibrated to sensitivity) does
+//! **not** reduce, and is handed to Sol as a proof obligation. Two layers reduce, one does
+//! not; that non-reduction is the leaf's point.
 //!
 //! ## The budget is (as of this leaf) the garden's first *continuous, divisible* resource
 //!
@@ -52,11 +55,12 @@
 //! privacy. In Fuzz what lives in the graded-linear type is a function's **sensitivity** (a
 //! scaling modality on inputs); the privacy cost `ε` is charged *on top of* that sensitivity
 //! discipline, through a probability monad. The **shared mechanism** is the honest core of
-//! the analogy: **no contraction** — you may not *fork* an input and pay its sensitivity
-//! (hence its `ε`) only once. Rust's move checker is an **affine** discipline (use *at most*
-//! once; dropping an unused value is fine), weaker than Fuzz's graded-linear types but
-//! coinciding with them on exactly this no-duplication point (both forbid contraction), so a
-//! budget re-use is caught before it runs. Another E0382 leaf, a *reuse*-kind catastrophe
+//! the analogy: **no *free* contraction** — you may not *fork* an input and pay its
+//! sensitivity (hence its `ε`) only once. Rust's move checker is an **affine** discipline
+//! (use *at most* once; dropping an unused value is fine), weaker than Fuzz's graded-linear
+//! types — where `!_r` *meters* duplication at summed sensitivity cost rather than forbidding
+//! it outright — but coinciding with them on exactly this point: neither lets you copy a
+//! value *for free*. So a budget re-use is caught before it runs. Another E0382 leaf, a *reuse*-kind catastrophe
 //! (leaf 5's family — "spend twice") — and the first where the linear resource is a
 //! continuous *magnitude* rather than a discrete token.
 //!
@@ -128,7 +132,8 @@
 //! never inspects — from *adding* to the budget on its way through [`Budget::run`] (a
 //! negative cost sails past the `cost > remaining` ceiling, since `-5 > 1` is false). Both
 //! are therefore **runtime checks**: `split`'s body conserves the sum, and both `run` and
-//! `split` reject a negative or non-finite cost with [`SpendError::InvalidCost`]. Same
+//! `split` reject any cost that is not a positive, finite real with
+//! [`SpendError::InvalidCost`]. Same
 //! quantitative residue as calibration, now on the *plumbing* rather than the noise.
 //! Linearity is about *identity* (this value is used at most once); it is silent about
 //! *magnitude and sign* (the numbers add up, and they are non-negative). A discrete token has
@@ -203,7 +208,7 @@ pub struct Epsilon(pub f64);
 /// The `remaining` field is private, but the load-bearing guarantee here is the
 /// *linearity* (no `Clone`/`Copy`), not the seal: privacy is broken by *re-using* a budget,
 /// which the move checker stops, not by *forging* one from a raw `f64` (any non-negative
-/// magnitude is a legitimate budget). Contrast [`Released`], where the private field is a
+/// finite magnitude is a legitimate budget). Contrast [`Released`], where the private field is a
 /// genuine [E0451] seal on a checked path.
 ///
 /// [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
@@ -227,31 +232,39 @@ pub enum SpendError {
         /// The `ε` that was actually available.
         available: f64,
     },
-    /// The cost was **negative or non-finite** — a malformed charge. The compiler cannot see
-    /// a cost's *sign* or *finiteness* (they are runtime data, ∥ the magnitude residue), so a
-    /// negative cost would otherwise slip past the ceiling check (`-5 > 1` is false) and
-    /// *inflate* the budget. Rejecting it here is the sign-analogue of the ceiling check, and
-    /// the reason it must live at runtime is itself the leaf's thesis: the linear type guards
-    /// identity, not arithmetic.
+    /// The cost was **not a positive, finite real** — a malformed charge. The compiler cannot
+    /// see a cost's *sign* or *finiteness* (they are runtime data, ∥ the magnitude residue),
+    /// so a negative cost would otherwise slip past the ceiling check (`-5 > 1` is false) and
+    /// *inflate* the budget. `ε` must be strictly positive (the DP convention): `ε = 0` is the
+    /// perfect-privacy *limit* (noise scale `Δf/0 = ∞`), not a runnable query. Rejecting a bad
+    /// cost here is the sign-analogue of the ceiling check, and the reason it must live at
+    /// runtime is itself the leaf's thesis: the linear type guards identity, not arithmetic.
     InvalidCost(f64),
 }
 
-/// A cost is valid iff it is finite and non-negative. Charging a negative or non-finite `ε`
-/// is malformed — and, crucially, a negative cost would *grow* the budget, so it is rejected
-/// rather than clamped (a silent clamp would hide the caller's bug). `Budget::new` clamps a
-/// negative *budget* down to zero because a smaller budget is conservative; a bad *cost* is
-/// refused because the unsafe direction is inflation.
+/// A cost is valid iff it is **finite and strictly positive**. A negative cost would *grow*
+/// the budget, and `ε = 0` is the degenerate perfect-privacy limit (infinite noise), so both
+/// are refused rather than clamped — a silent clamp would hide the caller's bug. Note the
+/// asymmetry with [`Budget::new`], which clamps a malformed *budget* down to zero (a smaller
+/// budget is always conservative); a bad *cost* is refused because its unsafe direction is
+/// inflation.
 fn valid_cost(cost: f64) -> bool {
-    cost.is_finite() && cost >= 0.0
+    cost.is_finite() && cost > 0.0
 }
 
 impl Budget {
-    /// Open a budget of total `ε`. Any non-negative magnitude is a legitimate budget, so
-    /// there is no checked path to seal here — the discipline is *linearity*, applied by
-    /// every spending method taking `self`.
+    /// Open a budget of total `ε`. Any non-negative **finite** magnitude is a legitimate
+    /// budget; a non-finite or negative one is clamped to zero (an empty budget — the
+    /// conservative floor, and `+∞` would make `e^ε` meaningless). There is no checked path to
+    /// seal here — the discipline is *linearity*, applied by every spending method taking
+    /// `self`.
     pub fn new(epsilon: f64) -> Self {
         Budget {
-            remaining: epsilon.max(0.0),
+            remaining: if epsilon.is_finite() {
+                epsilon.max(0.0)
+            } else {
+                0.0
+            },
         }
     }
 
@@ -270,8 +283,9 @@ impl Budget {
     /// miscalibrated mechanism spends the same `ε` and mints the same [`Released`] (the
     /// residue; see crate docs and the calibration test).
     ///
-    /// A negative or non-finite `cost` is refused with [`SpendError::InvalidCost`] — not a
-    /// compile error, because the type cannot see a cost's sign (∥ the ceiling check).
+    /// A `cost` that is not a positive, finite real is refused with
+    /// [`SpendError::InvalidCost`] — not a compile error, because the type cannot see a cost's
+    /// sign or finiteness (∥ the ceiling check).
     ///
     /// [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
     pub fn run<M: Mechanism>(
@@ -308,7 +322,7 @@ impl Budget {
     /// guarantee they *sum back to* the original — **conservation** (`ε₁ + ε₂ = ε`) is
     /// enforced by this body's arithmetic, not by the type (see crate docs, "linear stops
     /// duplication, not inflation"). A buggy split handing out more than it took in would
-    /// type-check. A negative or non-finite `first` is refused with
+    /// type-check. A `first` that is not a positive, finite real is refused with
     /// [`SpendError::InvalidCost`] (a negative first share would hand out a `1.5`-of-`1.0`
     /// remainder — inflation the sign check forecloses).
     ///
@@ -498,12 +512,13 @@ mod tests {
         }
     }
 
-    /// **The negative-cost inflation channel, closed.** A negative or non-finite cost sails
-    /// past the `cost > remaining` ceiling (`-100 > 1` is false), so without a sign check it
-    /// would *grow* the budget and mint a free `Released`. `run` and `split` reject it with
-    /// `SpendError::InvalidCost` — the sign is a runtime residue the type cannot see.
+    /// **The negative-cost inflation channel, closed.** A cost that is not a positive, finite
+    /// real sails past the `cost > remaining` ceiling (`-100 > 1` is false), so without a sign
+    /// check it would *grow* the budget and mint a free `Released`. `run` and `split` reject
+    /// it with `SpendError::InvalidCost` — the sign/finiteness is a runtime residue the type
+    /// cannot see.
     #[test]
-    fn negative_or_nonfinite_cost_is_refused_not_inflated() {
+    fn invalid_cost_is_refused_not_inflated() {
         // A negative charge to `run` is refused — the budget is NOT grown, no token minted.
         let b = Budget::new(1.0);
         assert_eq!(
@@ -511,7 +526,7 @@ mod tests {
             SpendError::InvalidCost(-100.0)
         );
 
-        // Non-finite likewise.
+        // Non-finite likewise (NaN, +∞).
         let b = Budget::new(1.0);
         assert!(matches!(
             b.run(Epsilon(f64::NAN), &Counting, 0.0, 1).unwrap_err(),
@@ -524,22 +539,39 @@ mod tests {
             SpendError::InvalidCost(f64::INFINITY)
         );
 
-        // A negative first-share to `split` would otherwise hand out a 1.5-of-1.0 remainder.
+        // ε = 0 is the perfect-privacy limit (Δf/0 = ∞), NOT a runnable query: refused, so no
+        // non-finite `Released` value can be minted. `-0.0` too (`-0.0 > 0.0` is false).
+        let b = Budget::new(1.0);
+        assert_eq!(
+            b.run(Epsilon(0.0), &Counting, 0.0, 1).unwrap_err(),
+            SpendError::InvalidCost(0.0)
+        );
+        let b = Budget::new(1.0);
+        assert!(matches!(
+            b.run(Epsilon(-0.0), &Counting, 0.0, 1).unwrap_err(),
+            SpendError::InvalidCost(_)
+        ));
+
+        // A negative first-share to `split` would otherwise hand out a 1.5-of-1.0 remainder;
+        // and an infinite first-share must be refused as InvalidCost, NOT reported as Overspent
+        // (validity is checked before the ceiling — pins the guard order).
         let b = Budget::new(1.0);
         assert_eq!(
             b.split(Epsilon(-0.5)).unwrap_err(),
             SpendError::InvalidCost(-0.5)
         );
-
-        // A zero cost is valid (a degenerate no-op charge), and deducts nothing.
         let b = Budget::new(1.0);
-        let (_r, b) = b.run(Epsilon(0.0), &Counting, 0.0, 1).unwrap();
-        assert!((b.remaining() - 1.0).abs() < EPS);
+        assert_eq!(
+            b.split(Epsilon(f64::INFINITY)).unwrap_err(),
+            SpendError::InvalidCost(f64::INFINITY)
+        );
     }
 
-    /// `split`'s **overspend** error path (the field wiring), previously untested.
+    /// `split`'s **overspend** error path (the field wiring) and its **exact-boundary**
+    /// acceptance, both previously untested.
     #[test]
-    fn split_overspend_reports_the_request_and_availability() {
+    fn split_overspend_and_exact_boundary() {
+        // Over-ceiling: reports the request and availability.
         let b = Budget::new(0.3);
         match b.split(Epsilon(0.5)).unwrap_err() {
             SpendError::Overspent {
@@ -551,14 +583,24 @@ mod tests {
             }
             other => panic!("expected Overspent, got {other:?}"),
         }
+
+        // Exact boundary: splitting off the whole budget is allowed (`>` not `>=`), leaving a
+        // zero remainder. Pins the ceiling comparison against a `>`→`>=` regression.
+        let b = Budget::new(0.5);
+        let (left, right) = b.split(Epsilon(0.5)).unwrap();
+        assert!((left.remaining() - 0.5).abs() < EPS);
+        assert!((right.remaining() - 0.0).abs() < EPS);
     }
 
-    /// `Budget::new` clamps a negative or NaN budget down to zero (conservative — a smaller
-    /// budget is always safe), unlike a bad *cost*, which is refused.
+    /// `Budget::new` clamps a malformed budget (negative, NaN, or non-finite) down to zero
+    /// (conservative — a smaller budget is always safe, and `+∞` would make `e^ε`
+    /// meaningless), unlike a bad *cost*, which is refused.
     #[test]
-    fn new_clamps_negative_and_nan_budget_to_zero() {
+    fn new_clamps_malformed_budget_to_zero() {
         assert!((Budget::new(-5.0).remaining() - 0.0).abs() < EPS);
         assert!((Budget::new(f64::NAN).remaining() - 0.0).abs() < EPS);
+        assert!((Budget::new(f64::INFINITY).remaining() - 0.0).abs() < EPS);
+        assert!((Budget::new(f64::NEG_INFINITY).remaining() - 0.0).abs() < EPS);
         assert!((Budget::new(2.5).remaining() - 2.5).abs() < EPS);
     }
 
