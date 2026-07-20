@@ -51,7 +51,12 @@
 //! only the program it type-checks") and leaf 11's *unbranded-wire* finding, now for
 //! **signature state** — and it is exactly *why the stateless SPHINCS+ exists*: it
 //! eliminates the state because this boundary is uncrossable by any local type
-//! discipline. See the honest limits.
+//! discipline. This is made **executable** by
+//! `the_persistence_boundary_reuses_a_one_time_index_across_a_restore`, which models a
+//! restore with the crate's own seed-determinism (rebuilding the state twice from one
+//! seed *is* restoring one checkpoint twice) and shows two valid signatures on
+//! *different* messages at the *same* one-time index — the reuse E0382 cannot catch.
+//! See the honest limits.
 //!
 //! **(bonus) Composition can *discharge* a component's obligation, not only inherit
 //! it.** Leaf 7's `MssPublicKey::adopt` takes a **caller-trusted** `(root, capacity)`
@@ -534,5 +539,48 @@ mod tests {
         // top_n = 1: a degenerate hypertree = one subtree of capacity bottom_n.
         let oks = sign_all(3, 1, 3, &[b"p", b"q", b"r"]);
         assert_eq!(oks, vec![true, true, true]);
+    }
+
+    #[test]
+    fn the_persistence_boundary_reuses_a_one_time_index_across_a_restore() {
+        // Finding 3, made executable. Within one keychain E0382 forbids reuse:
+        // `sign_next(self)` consumes the state, so a one-time index is never signed
+        // twice (finding 2). But E0382 guards only the *in-memory value* — it cannot
+        // reach a state that was persisted and RESTORED. The crate has no `Serialize`,
+        // so we model a restore with the crate's own determinism: `generate_hypertree`
+        // rebuilds the exact state from the seed, and calling it twice with one seed IS
+        // restoring one checkpoint into two independent keychains (a save-then-restore-
+        // twice, a VM fork, a crash-recovery double-resume). This is the catastrophe no
+        // local type discipline can prevent — *why stateless SPHINCS+ exists*.
+        let seed = 0xC0FFEE;
+        let (ka, pk) = generate_hypertree(seed, 2, 2).unwrap();
+        let (kb, _) = generate_hypertree(seed, 2, 2).unwrap(); // the same state, restored again
+
+        // Advance both identically one step — a shared history up to the checkpoint — so
+        // the reuse below is at an *advanced* index (subtree 0, leaf 1), not fresh (0, 0).
+        let (_s0a, ka) = ka.sign_next(b"msg-0");
+        let (_s0b, kb) = kb.sign_next(b"msg-0");
+        let ka = ka.unwrap();
+        let kb = kb.unwrap();
+
+        // Now the fork: sign DIFFERENT messages from the two restored copies.
+        let (sig_a, _) = ka.sign_next(b"transfer $10");
+        let (sig_b, _) = kb.sign_next(b"transfer $1000000");
+
+        let va = pk.verify(b"transfer $10", &sig_a).expect("copy A verifies");
+        let vb = pk
+            .verify(b"transfer $1000000", &sig_b)
+            .expect("copy B verifies");
+
+        // Both are valid, at the SAME one-time (subtree, leaf) index, for DIFFERENT
+        // messages — a one-time key signing twice, the reuse E0382 cannot catch across
+        // the persistence boundary (with a real hash this is the Lamport forgery hole).
+        assert_eq!(
+            (va.subtree_index(), va.leaf_index()),
+            (vb.subtree_index(), vb.leaf_index()),
+            "the restored copies signed at the same one-time index"
+        );
+        assert_eq!((va.subtree_index(), va.leaf_index()), (0, 1));
+        assert_ne!(va.digest(), vb.digest(), "yet on two different messages");
     }
 }
