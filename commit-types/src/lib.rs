@@ -34,9 +34,11 @@
 //!    [`ScopedOpening`] under a fresh **invariant, generative lifetime brand**, so
 //!    [`ScopedCommitment::verify`] accepts *only* an opening minted in the same
 //!    scope. Feeding one scope's opening to another scope's commitment does not
-//!    **compile** (see the `compile_fail` doctest below) — the mismatch is caught a
-//!    whole phase earlier than the hash check, which would also reject it at
-//!    runtime. Provenance is the *brand*, not the hash. In this
+//!    **compile** (see the `compile_fail` doctest below) — caught a whole phase
+//!    earlier than any hash check. And the brand is *strictly* stronger than the hash
+//!    here: two scopes committing the *same* `(value, blind)` would have the hash
+//!    **accept** the cross-scope opening, yet the brand still rejects it at compile
+//!    time. Provenance is the *brand*, not the hash. In this
 //!    **generative-lifetime** instantiation the concrete diagnostic is [E0521]
 //!    (*"borrowed data escapes …"*, driven by `'brand` invariance), **not** a literal
 //!    [E0308] mismatched-types — the "-class" in "E0308-class" is exactly this: brand
@@ -66,9 +68,9 @@
 //! runs on different secrets lives an entire layer beneath it. Concretely, the
 //! hiding scheme [`commit`] (which mixes a fresh blinding factor into every digest)
 //! and the leaky scheme [`leaky_commit`] (which hashes the value alone, so equal
-//! values produce equal — thus *linkable* — commitments) are **type-indistinguishable**:
-//! curry [`commit`] on a fixed blind and project it to its commitment, and it inhabits
-//! the very same `fn(&[u8]) -> Commitment` as [`leaky_commit`], which the compiler
+//! values produce equal — thus *linkable* — commitments) become **type-indistinguishable
+//! once [`commit`] is curried on a fixed blind and projected to its commitment**: it then
+//! inhabits the very same `fn(&[u8]) -> Commitment` as [`leaky_commit`], which the compiler
 //! type-checks identically. Only a **runtime distinguisher** — "do two commitments of the same
 //! value collide?" — separates the scheme that hides from the scheme that leaks,
 //! and that distinguisher lives *outside* every type. The
@@ -77,14 +79,15 @@
 //!
 //! ## The tradeoff, and the seam
 //!
-//! Binding and hiding are not merely dual — they **trade off**, and no scheme gets
-//! both *perfectly*. The hash commitment here is **statistically binding** (a
-//! collision is information-theoretically rare, only computationally findable) and
-//! **computationally hiding** (the digest hides the value only as far as the hash
-//! is one-way). Its mirror — a Pedersen commitment `g^v · h^r` in a prime-order
-//! group — is **perfectly hiding** (every `c` opens to *every* value under some
-//! `r`) and only **computationally binding** (binding rests on discrete-log
-//! hardness). The type sees **neither end** of this tradeoff: `Commitment` is one
+//! Binding and hiding are not merely dual — they **trade off**: no scheme is both
+//! *perfectly* binding and *perfectly* hiding at once. The hash commitment here is
+//! **computationally binding** (collisions *exist* — a compressing map always has
+//! them — but are computationally infeasible to find, exactly the birthday search of
+//! item 3) and **computationally hiding** (the digest hides the value only as far as
+//! the hash is one-way) — neither half perfect. Its mirror — a Pedersen commitment
+//! `g^v · h^r` in a prime-order group — buys **perfect hiding** (every `c` opens to
+//! *every* value under some `r`) at the price of only **computational binding**
+//! (binding rests on discrete-log hardness). The type sees **neither end** of this tradeoff: `Commitment` is one
 //! struct, and which of the two irreducible assumptions it leans on is chosen
 //! entirely off the type, in the hash-or-group it is instantiated over.
 //!
@@ -108,6 +111,14 @@
 //!         let _ = c_b.verify(&o_a);
 //!     });
 //! });
+//! ```
+//!
+//! And the seal (item 1): a `Commitment` cannot be forged with a chosen digest — the
+//! `digest` field is private, so this does **not** compile either:
+//!
+//! ```compile_fail,E0451
+//! // The `digest` field is private (E0451) — no path to a chosen-digest commitment.
+//! let _ = commit_types::Commitment { digest: 0xdead_beef };
 //! ```
 //!
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
@@ -392,13 +403,12 @@ mod tests {
             let blind = 0xC0FFEE ^ i;
             let d = weak_digest(&value, blind);
             if let Some(prev) = seen.get(&d) {
-                if *prev != (value.clone(), blind) {
-                    collision = Some((prev.clone(), (value, blind)));
-                    break;
-                }
-            } else {
-                seen.insert(d, (value, blind));
+                // `i` is strictly increasing and encoded into `value`, so a stored
+                // opening at this digest is necessarily a DISTINCT one — a real collision.
+                collision = Some((prev.clone(), (value, blind)));
+                break;
             }
+            seen.insert(d, (value, blind));
         }
 
         let ((v1, r1), (v2, r2)) = collision.expect("16 bits must collide within the cap");
