@@ -82,7 +82,7 @@
 //!
 //! It is tempting to say the const-eval **wall** ([E0080]) "rejects non-terminating
 //! definitions." It does not. [E0080] for recursion is *"reached the configured maximum
-//! number of stack frames"* — a **stack-frame budget**, a watchdog with a timeout. It trips
+//! number of stack frames"* — a **stack-frame budget**, a watchdog on frame depth. It trips
 //! on any evaluation that exceeds the budget, and a **terminating-but-deep** computation
 //! trips it exactly as a divergent one does: `triangular(u64::MAX)` is structural and
 //! mathematically halts, yet it blows the frame budget and fails to compile with the *same*
