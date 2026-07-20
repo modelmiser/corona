@@ -572,6 +572,58 @@ mod tests {
     }
 
     #[test]
+    fn corruption_crafted_near_a_neighbour_codeword_misdecodes_to_chosen_wrong_bytes() {
+        // The SHARP form of the silent misdecode (sibling of the m==k case above): with a
+        // real budget t = ⌊(m−k)/2⌋ > 0, an adversary crafts a received word landing
+        // WITHIN t of a *different* (neighbour) codeword. Berlekamp–Welch then "corrects"
+        // toward that neighbour and returns the adversary's CHOSEN wrong bytes with a
+        // small, plausible corrected() count — a confident misdecode, because past t the
+        // code no longer has a unique nearest codeword and BW commits to the wrong one.
+        fn hamming(a: &[Fragment], b: &[Fragment]) -> usize {
+            // encode() emits indices 1..=n in order, so the two are position-aligned.
+            a.iter().zip(b).filter(|(x, y)| x.value != y.value).count()
+        }
+
+        let th = t(3, 7); // k = 3, n = 7  ->  t = ⌊(7−3)/2⌋ = 2
+        let genuine = [0x01u8, 0x02, 0x03];
+        let chosen_wrong = [0xAAu8, 0xBB, 0xCC];
+        let c_genuine = encode(&genuine, th).unwrap();
+        let c_neighbour = encode(&chosen_wrong, th).unwrap();
+
+        // Two errors ON TOP of the neighbour codeword: d(received, neighbour) = 2 = t.
+        let mut received = c_neighbour.clone();
+        received[0].value ^= 0xFF;
+        received[4].value ^= 0xFF;
+
+        // RS is MDS: distinct data -> codewords differ in >= n−k+1 = 5 positions. So by the
+        // triangle inequality the received word is >= 5−2 = 3 > t from the genuine codeword
+        // — MORE than t corruptions relative to the intended data, yet uniquely nearest the
+        // neighbour, which is exactly why BW is fooled.
+        assert_eq!(
+            hamming(&received, &c_neighbour),
+            2,
+            "received sits exactly t=2 from the neighbour codeword"
+        );
+        assert!(
+            hamming(&received, &c_genuine) > 2,
+            "…and strictly beyond t from the genuine codeword"
+        );
+
+        let out = decode_correcting(&received, th).expect("within t of a codeword: 'succeeds'");
+        assert_eq!(
+            out.bytes(),
+            &chosen_wrong,
+            "misdecoded to the adversary's chosen data"
+        );
+        assert_ne!(out.bytes(), &genuine, "…which is NOT the intended data");
+        assert_eq!(
+            out.corrected(),
+            2,
+            "reporting a small, plausible, entirely believable correction count"
+        );
+    }
+
+    #[test]
     fn clean_fragments_correct_zero_errors() {
         let th = t(3, 6);
         let data = [0xaa, 0xbb, 0xcc];
