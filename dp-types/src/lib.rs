@@ -427,7 +427,7 @@ pub trait Mechanism {
     /// RNG. A graduated leaf would swap this body for a vetted sampler behind the same trait
     /// (the graduation seam), exactly as the crypto leaves' toy `hash` modules would swap.
     fn noise(&self, epsilon: f64, seed: u64) -> f64 {
-        // Deterministic pseudo-noise in [-1, 1] (splitmix64-style), scaled by Δf/ε. The
+        // Deterministic pseudo-noise in [-1, 1) (splitmix64-style), scaled by Δf/ε. The
         // distribution is wrong for real DP; the POINT is only that the scale is `Δf/ε` and
         // that the type never audits `Δf`.
         let scale = self.sensitivity() / epsilon;
@@ -447,7 +447,7 @@ impl Mechanism for Counting {
     }
 }
 
-/// Deterministic toy jitter in `[-1, 1]` — a splitmix64 finalizer mapped to a signed unit
+/// Deterministic toy jitter in `[-1, 1)` — a splitmix64 finalizer mapped to a signed unit
 /// interval. Non-cryptographic, wrong distribution for real DP; used only so tests are
 /// reproducible and the calibration point is visible.
 fn unit_jitter(seed: u64) -> f64 {
