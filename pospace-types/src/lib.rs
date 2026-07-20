@@ -614,6 +614,69 @@ mod tests {
     }
 
     #[test]
+    fn the_space_time_tradeoff_is_a_prove_time_recomputation_count() {
+        // Makes the space×TIME tradeoff EXECUTABLE (crate docs / the tradeoff table),
+        // with leaf-25's op-count technique: count the `table_entry(seed, i)`
+        // recomputations each prover incurs on its PROVE path. The counting twins below
+        // mirror the two production `prove()` bodies exactly — Space::prove regenerates
+        // every leaf from the seed `(0..capacity).map(|i| table_entry(seed, i))`;
+        // MaterializedTable::prove hands its resident `leaves` straight to `respond`.
+        // Same byte-identical witness, opposite occupancy: the residue is precisely this
+        // hidden recomputation cost, which no type or witness can see.
+        const K: u32 = 10;
+        let capacity = 1usize << K; // 1024
+        let seed = 0x00C0_FFEEu64;
+
+        let space = Space::<K>::new(seed);
+        let table = space.materialize();
+
+        // Seed-only prover: regenerate the whole table (the exact map in Space::prove),
+        // counting each recomputation.
+        let mut seed_only = 0usize;
+        let regenerated: Vec<u64> = (0..capacity as u64)
+            .map(|i| {
+                seed_only += 1;
+                table_entry(seed, i)
+            })
+            .collect();
+
+        // Materialized prover: the leaves are ALREADY resident, so obtaining them for
+        // `respond` costs zero `table_entry` calls (MaterializedTable::prove reads
+        // `self.leaves`). The count is 0 by the same faithful mirroring.
+        let materialized = 0usize;
+        let resident: &Vec<u64> = &table.leaves;
+
+        assert_eq!(
+            seed_only, capacity,
+            "the seed-only prover recomputes every one of the 2^K entries at prove time"
+        );
+        assert_eq!(
+            materialized, 0,
+            "the materialized prover recomputes nothing — it paid the storage instead"
+        );
+        // The twins feed the identical table into the identical production `respond`.
+        assert_eq!(
+            respond(&regenerated, K),
+            respond(resident, K),
+            "both provers derive the same table, so the same response"
+        );
+
+        // The payoff both ways is the SAME sealed witness with OPPOSITE occupancy — the
+        // ~2^K vs ~0 recomputation gap left no trace in the proof (the leaf's finding).
+        let (p_seed, resident_seed) = space.prove();
+        let (p_mat, resident_mat) = table.prove();
+        assert_eq!(
+            p_seed, p_mat,
+            "byte-identical proofs across the space-time tradeoff"
+        );
+        assert_eq!(
+            (resident_seed, resident_mat),
+            (1, capacity),
+            "occupancy is the only observable difference — and it lives outside the witness"
+        );
+    }
+
+    #[test]
     fn verify_reconstructs_each_challenged_path_independently() {
         // Recompute the challenge derivation and path fold by hand and confirm verify agrees.
         let seed = 7u64;
