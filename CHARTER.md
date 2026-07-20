@@ -128,10 +128,26 @@ bounded model); **leaf 10** (memory-level-vs-logical FS via an observable slot m
 (crack the secret from the Feldman commitment alone — confidentiality is the backend's,
 not the type's); **leaf 3** (fabricated fragments mint a genuine `RecoveredData`; `m==k`
 silent misdecode); **leaf 5** (seed re-mint forgery + two-signature preimage harvest).
-Two residual deeper facets stay described-not-exhibited (a follow-up, in `TODO.md`): leaf
-3's crafted chosen-wrong-output near a neighbour codeword, and leaf 5's full third-message
-assembly (both need hash-preimage search over the toy FNV). See DEVLOG 2026-07-19 and
-`INSIGHTS/residue-executability-audit.md`.
+A second **Tier-2 depth batch** (2026-07-19) then exhibited nine deeper facets across nine
+leaves — each a small additive **test-only** rung (no production API change), cold-reviewed
+to convergence (3 blind reviewers; 7/9 SOUND on the first pass, two doc-precision fixes,
+2 consecutive clean rounds). It cleared the two residual facets above and seven siblings:
+**leaf 3** the crafted near-codeword misdecode (chosen-wrong bytes with a bogus
+`corrected()` — pure RS/GF(256) algebra, **no** hash search: MDS distance ≥ n−k+1 forces the
+received word > t from the genuine codeword); **leaf 5** the full two-message forgery (an
+assembled third-message signature that `verify` accepts, via a bounded two-stage FNV
+preimage search — the one facet that genuinely needed it); **leaf 1** fabricated never-dealt
+shares mint a `Secret` (+ steered value); **leaf 4** understated-size misattribution to a
+*real* committed slot (the orbit companion to the overstated/phantom test); **leaf 16**
+cross-filter/item `DefinitelyAbsent` misuse; **leaf 17** wire-equivocation (same size,
+different roots, caught only out-of-band); **leaf 19** the perfect-hiding *bijection*
+exhaustive over all 3120 units; **leaf 21** the space×time tradeoff as a prove-time
+table-regeneration count (2^K vs 0, with `verify`'s `QUERIES` spot-check a shared constant
+outside the trade); and **leaf 7/8** the value-level-vs-brand provenance *trade* as a
+red/green fact — the branded `MssPublicKey` the audit floated was **declined**, since it
+contradicts leaf 7's converged thesis ("a scoped-signature design would fight the scheme's
+whole point") and costs `Copy`/distributability; the trade itself is exhibited instead. See
+DEVLOG 2026-07-19 and `INSIGHTS/residue-executability-audit.md`.
 
 ### `corona-core` promotion check (at leaves 2 and 3)
 

@@ -1136,6 +1136,30 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Garden state (2026-07-19m)
+
+- **Tier-2 deeper-facet rung set BUILT + CONVERGED (all 9).** On the user's "do the tier-2 rungs",
+  built every Tier-2 backlog item — one small additive **test-only** rung per leaf, atomic + gates green:
+  leaf 1 (fabricated never-dealt shares mint a `Secret`), leaf 4 (understated-size misattribution to a
+  REAL slot — orbit companion), leaf 16 (cross-filter/item `DefinitelyAbsent` misuse), leaf 17
+  (wire-equivocation, out-of-band only), leaf 19 (perfect-hiding bijection, exhaustive over 3120 units),
+  leaf 21 (space×time = prove-time table-regeneration count 2^K vs 0), leaf 3 (crafted near-codeword
+  misdecode — deferred part-b, pure RS/GF(256), NO hash search), leaf 5 (full two-message forgery —
+  deferred assembly, bounded FNV preimage search, ~0.06s), leaf 7/8 (value-vs-brand provenance TRADE).
+  **The leaf-7/8 judgment:** the audit floated "an optional brand-scoped `MssPublicKey`," but leaf 7's
+  converged thesis DECLINES exactly that (the key must stay `Copy`/wire-crossing); building it would
+  construct the leaf's road-not-taken and trade a load-bearing property on converged code. Realized the
+  TRADE as a red/green fact instead, NO production API change. (If the user later WANTS the literal
+  branded variant despite the thesis cost, that's an explicit separate go-ahead — noted in the Tier-2 list.)
+  **Cold review:** 3 blind reviewers, R1 found 1 MODERATE (pospace: "recomputes nothing" ignored verify's
+  shared `QUERIES` cost → reframed to table-regeneration + shared-constant assertion) + 1 over-claim LOW
+  (translog: "each/neither auditor" but only A exercised → now both symmetric); R2 + R3 both CLEAN → 2
+  consecutive clean, CONVERGED. The CODE carried ZERO defects in every round (7/9 SOUND on the first pass);
+  all churn was doc/claims-precision — the Tier-1 pattern exactly. Workspace **404 unit + 87 doctests =
+  491**, all green. NEXT is the user's call: the deferred leaf-13 CHARTER doc fix (Tier-3), the literal
+  branded MssPublicKey/DispersalAnchor variant (if wanted despite the thesis cost), or a fresh open-ended
+  leaf. **Not pushed** (user said "do the tier-2 rungs", not push). Nothing auto-starts.
+
 ## Garden state (2026-07-19l)
 
 - **Tier-1 rung set CONVERGED (cold-reviewed, 2 consecutive clean).** 7 blind reviewers over the 7
@@ -1565,29 +1589,43 @@ started — await an explicit go-ahead on which batch to build):**
       different messages, assemble a `Signature` for a THIRD digest from the union of revealed
       preimages and assert `verify` accepts — the classic Lamport multi-sig forgery, now prose.
 
-*Tier 2 — deeper-facet rungs on already-EXECUTABLE leaves (lower priority; not the leaf's headline):*
-- [ ] Leaf 3 `erasure-types` — the deferred part (b): a `decode_correcting` case with >t corruptions
-      CRAFTED to land near a neighbour codeword, yielding a `CorrectedData` of chosen-WRONG bytes with a
-      bogus `corrected()` count (a sharper adversarial form of the now-executable m==k silent misdecode;
-      needs deliberate RS construction over GF(256)).
-- [ ] Leaf 5 `lamport-types` — the deferred full forgery: assemble a THIRD-message signature from the
-      union of two harvested signatures and have `verify` accept it (needs a message whose FNV digest is
-      covered by the two signed digests — hash-preimage search over the toy digest; the harvest material
-      is already exhibited).
-- [ ] Leaf 1 `threshold-types` — fully-fabricated (never-dealt) k shares mint a `Secret` (pure
-      authenticity residue; current test uses the milder wrong-threshold variant).
-- [ ] Leaf 4 `merkle-types` — `understated_size_misattributes_to_a_real_committed_slot` (only the
-      overstated/phantom direction is tested).
-- [ ] Leaf 7/8 `mss`/`vid` — an optional brand-scoped `MssPublicKey` / `DispersalAnchor` mode making
-      the value-level-vs-brand provenance trade a red/green compile contrast (costs `Copy`/distributability).
-- [ ] Leaf 16 `bloom-types` — a cross-filter `DefinitelyAbsent` misuse test (witness's `unset_bit` is
-      meaningless against a different item/filter).
-- [ ] Leaf 17 `translog-types` — a wire-equivocation/gossip test (two same-size different-root
-      checkpoints; out-of-band compare flags the lie the brand cannot hold).
-- [ ] Leaf 19 `blindsig-types` — a perfect-uniform-hiding bijection test (for fixed m, r over all units
-      permutes m' — upgrades the coverage test to the distributional claim).
-- [ ] Leaf 21 `pospace-types` — a hash-recomputation op-counter on the two `prove()` paths (leaf-25's
-      op-count technique) making the space×TIME tradeoff executable (seed-only pays ~2^K, materialized ~0).
+*Tier 2 — deeper-facet rungs on already-EXECUTABLE leaves — BUILT + CONVERGED 2026-07-19 (all 9;
+cold-review 3 rounds: R1 1 MOD [pospace count precision] + 1 over-claim LOW [translog] fixed, R2 + R3
+both CLEAN → converged; commits 57a7681/8f101ea/a5306a4/3ce97f0/5576a8e/614a7c5/67a9038/8e8c6e4/b7d15d6,
+fmt 5c5e951, R1-fixes 8aa24de):*
+- [x] Leaf 3 `erasure-types` — deferred part (b): `decode_correcting` with >t corruptions CRAFTED near a
+      neighbour codeword → `CorrectedData` of chosen-WRONG bytes, bogus `corrected()==2`. DONE `67a9038`
+      (`corruption_crafted_near_a_neighbour_codeword_misdecodes_to_chosen_wrong_bytes`; pure RS/GF(256), no
+      hash search — MDS distance ≥ n−k+1=5 + triangle inequality guarantee the >t-from-genuine gap).
+- [x] Leaf 5 `lamport-types` — deferred full forgery: assemble a THIRD-message signature from two harvests
+      and have `verify` accept it. DONE `8e8c6e4` (`two_harvested_signatures_forge_a_verifying_third_message`;
+      bounded two-stage hash-preimage search — an m2 disagreeing on ≥48 bits shrinks the agreement set to ≤16,
+      an m3 covering it ≤~2^16; converges in ~0.06s. `Signature.revealed` is public → assembly is bookkeeping).
+- [x] Leaf 1 `threshold-types` — fully-fabricated (never-dealt) k shares mint a `Secret`. DONE `57a7681`
+      (`fabricated_never_dealt_shares_mint_a_genuine_secret`; adversary also steers the recovered value to 0x99).
+- [x] Leaf 4 `merkle-types` — `understated_size_misattributes_to_a_real_committed_slot`. DONE `8f101ea`
+      (erin's index-4 proof relabeled to index 1 under adopted size 2 → genuine bytes verify at bob's REAL slot;
+      the orbit companion to the overstated/phantom test).
+- [x] Leaf 7/8 `mss`/`vid` — the value-level-vs-brand provenance trade, realized THESIS-CONSISTENTLY.
+      DONE `b7d15d6` (`value_level_provenance_trades_a_compile_brand_for_a_distributable_key`). NOTE: the audit
+      said "optional brand-scoped MssPublicKey"; leaf 7's converged thesis DECLINES exactly that ("a
+      scoped-signature design would fight the scheme's whole point"). Building a branded key would construct
+      the leaf's road-not-taken + trade away Copy/distributability on converged code. Instead made the TRADE
+      itself a red/green fact (key is Copy/distributable; cross-key misuse COMPILES, caught only at runtime by
+      `minted_by`; a brand would reject at compile time — cf. merkle's cross-brand compile_fail — but couldn't
+      be distributed). NO production API change. Leaf 8 (vid) shares the identical trade (disclosed in its docs,
+      not re-demonstrated). If the user WANTS the literal branded MssPublicKey/DispersalAnchor variant built
+      despite the thesis cost, that remains an explicit, separate go-ahead.
+- [x] Leaf 16 `bloom-types` — cross-filter/item `DefinitelyAbsent` misuse. DONE `a5306a4`
+      (`a_definitely_absent_witness_is_meaningless_against_another_filter_or_item`).
+- [x] Leaf 17 `translog-types` — wire-equivocation/gossip. DONE `3ce97f0`
+      (`same_size_different_roots_is_equivocation_caught_only_out_of_band`; each auditor internally consistent,
+      lie surfaces only on the out-of-band head compare).
+- [x] Leaf 19 `blindsig-types` — perfect-uniform-hiding bijection. DONE `5576a8e`
+      (`for_a_fixed_message_the_blinding_factor_permutes_the_units_exactly`; exhaustive over all 3120 units).
+- [x] Leaf 21 `pospace-types` — prove-time recomputation op-counter (space×TIME tradeoff). DONE `614a7c5`
+      (`the_space_time_tradeoff_is_a_prove_time_recomputation_count`; counting twins mirror both prove() bodies
+      — seed-only 2^K, materialized 0 — both minting the byte-identical proof).
 
 *Tier 3 — CHARTER doc corrections (audit-verified over-claims; doc hygiene, not code):*
 - [ ] Leaf 13 `fountain` CHARTER row: the "200/200, 1.5× 37%, 2× 7%, 3× 0%" figures are dev-time
