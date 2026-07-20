@@ -1136,6 +1136,18 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Garden state (2026-07-19l)
+
+- **Tier-1 rung set CONVERGED (cold-reviewed, 2 consecutive clean).** 7 blind reviewers over the 7
+  new surfaces → 4 fix rounds. The CODE was compiler-verified sound in every round (E0599/E0080 vs
+  rustc, `Clone` load-bearing by derive-deletion, dlog uniqueness, silent misdecode); ALL findings
+  were doc/claims-precision. sigma took R1+R2 doc fixes (the recurring **doc-site-propagation**
+  MODERATE — "identical except Clone" left at the `respond` method doc after fixing the summaries;
+  also an E0382-vs-E0599 conflation) then R3+R4 clean; the other six were 0-CRIT/0-MOD by R2. Review
+  fixes `a9cf205` (R1: 1 MOD + 4 MINOR) + `3bd0ce9` (R2: 1 MOD). Workspace 482, all green; orphans
+  swept, scratch trashed. **Batch DONE.** NEXT is user's call: Tier-2 deeper-facet rungs (optional
+  polish, incl. the 2 deferred facets + leaf-13 doc fix) or a fresh open-ended leaf. Nothing auto-starts.
+
 ## Garden state (2026-07-19k)
 
 - **Depth-batch Tier-1 rung set COMPLETE — 7 residues now demonstrated-in-code.** On the user's
