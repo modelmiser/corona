@@ -3,8 +3,8 @@
 //! Corona **leaf 31**. A **refinement type** is a base type `T` carved down by a
 //! predicate `P`: `{v: T | P(v)}` — the values of `T` that satisfy `P`. Positive
 //! integers `{v: i64 | v > 0}`, sorted vectors, non-empty slices, indices below a
-//! length. Refinement-type systems — LiquidHaskell, F\*, Dafny, Liquid Haskell/Idris —
-//! let you *type* those sets and *check statically* that programs respect them.
+//! length. Refinement-type systems — LiquidHaskell, F\*, Dafny — let you *type* those sets and
+//! *check statically* that programs respect them.
 //!
 //! This leaf asks the garden's question of them: **does a refinement type reduce to the
 //! four compile primitives?** The answer factors it exactly along the garden's own
@@ -16,13 +16,16 @@
 //!
 //! ### (1) Boundary enforcement — [E0451]
 //!
-//! [`Refined`]`<T, P>` is a newtype with **private fields**; its only constructor,
+//! [`Refined`]`<T, P>` is a newtype with **private fields**; its only *public* constructor,
 //! [`Refined::new`], runs `P::holds(&v)` and returns `Option<Self>` — `Some` exactly when
-//! the predicate held. Because the fields are sealed, no other path can mint one, so the
-//! type carries an enforced invariant: **every `Refined<T, P>` had `P::holds` return `true`
-//! at its construction.** This is the enforcement skeleton behind every Rust *smart
-//! constructor* (`NonZeroU32`, `NonEmpty`, …): the seal is what turns "values of this type
-//! satisfy `P`" from a comment into a fact.
+//! the predicate held. Because the fields are private, **no code outside this crate** can mint
+//! one, so a downstream caller carries the enforced invariant: **every `Refined<T, P>` it can
+//! obtain had `P::holds` return `true` at construction.** (Field privacy is per-*crate*, so the
+//! *in-crate* sole-`new` discipline is an upheld, auditable convention — not a per-function
+//! guarantee; the standard sealed-newtype caveat, see [`Refined::new`].) This is the
+//! enforcement skeleton behind every Rust *smart constructor* (`NonZeroU32`, `NonEmpty`, …):
+//! the seal is what turns "values of this type satisfied `P` *at construction*" from a comment
+//! into a fact.
 //!
 //! ```
 //! use refinement_types::{Refined, Positive};
@@ -35,7 +38,7 @@
 //! ### (2) Closed-term discharge — [E0080]
 //!
 //! For a **constant** (variable-free) term, the predicate can be discharged **at compile
-//! time with no runtime check**: [`refine_const_positive`] is a `const fn` whose body
+//! time (in a `const` context), with no runtime check**: [`refine_const_positive`] is a `const fn` whose body
 //! `assert!`s the predicate, so evaluating it in a `const` context *decides* the predicate —
 //! a violation is a const-eval error ([E0080]). This is a genuine static refinement, but a
 //! narrow one: it holds **only for constants**, and only because the predicate here is a
@@ -84,7 +87,7 @@
 //!
 //! - **(C) The abstraction / simulation relation (the deepest).** The most general
 //!   refinement question is *"does a concrete **impl** refine an abstract **spec**?"* — a
-//!   **simulation relation** / abstraction function (data refinement, Hoare & He 1986;
+//!   **simulation relation** / abstraction function (data refinement, He, Hoare & Sanders 1986;
 //!   refinement mappings, Abadi & Lamport 1991), quantified over the **reachable states** of
 //!   a transition system, not merely over values. No Rust type expresses "impl `M` refines
 //!   spec `S`"; that is a proof obligation — squarely Sol's PROOF face.
@@ -94,6 +97,19 @@
 //!
 //! ## Honest nuances (disclosed at seed, not after review)
 //!
+//! - **Why [`Refined`] is deliberately *not* `Clone` (a witness-trap avoided by design).** A
+//!   refinement is *conceptually* duplicable evidence — unlike leaf 5's one-time signing
+//!   *capability*, nothing about a proven fact forbids copying it — so one might expect
+//!   `Refined: Clone`. This leaf declines to derive it, on purpose. Cloning over an arbitrary
+//!   foreign `T` would route construction through `T::clone`, whose faithfulness (`clone()` ==
+//!   the original) is a **semantic contract the compiler does not enforce**: a lawless `Clone`
+//!   could mint a `Refined` whose value never passed `P`, making the seal's guarantee
+//!   *conditional on a foreign trait's good behavior* (the same witness-trap as the vacuous
+//!   predicate below and the interior-mutability caveat). Keeping [`Refined`] a plain **move
+//!   type** keeps the invariant free of that foreign-trait dependency: **[`Refined::new`] is the
+//!   only construction path from outside the crate** — no `Clone`/`Default`/`From` back-door.
+//!   (Still construction-time and per-crate, as above; "unconditional" here means only that no
+//!   foreign `Clone` impl can weaken it.)
 //! - **The predicate is *open*, on purpose.** [`Predicate`] is an ordinary public trait, not
 //!   sealed (contrast leaf 30's sealed `Total`): refinements are **user-defined**, so a
 //!   downstream crate must be able to add its own. The unforgeability lives **only** in
@@ -118,9 +134,12 @@
 //!
 //! **Primitives:** [E0451] central (the boundary seal) + [E0080] (closed-term discharge). The
 //! ordinary bound `P: `[`Predicate`]`<T>` on [`Refined`] bites as [E0277] — an *enforcement*
-//! code, not one of the four primitives (as in leaves 27/28/30). The **brand** and [E0382]
-//! are honestly **unused**: a refinement is a `Clone`-able *fact*, not a use-once capability,
-//! and there is no provenance scope to pen.
+//! code, not one of the four primitives (as in leaves 27/28/30). [E0382] governs [`Refined`]
+//! **by default** (it is a plain move type) but is **not *recruited*** as the reduction
+//! mechanism — the seal ([E0451]) carries the guarantee. This is the deliberate inverse of leaf
+//! 5, where use-once semantics *are* the guarantee and [E0382] is load-bearing: a refinement is
+//! a *fact* (proven once, not spent), a capability is *consumable*. The **brand** is unused too
+//! (no fresh-per-value provenance scope to pen).
 //!
 //! ## The codes, verified out of band
 //!
@@ -134,8 +153,8 @@
 //!
 //! ```compile_fail,E0451
 //! use refinement_types::{Refined, Positive};
-//! // `Refined`'s fields are private; only `new` mints one. A struct literal from outside
-//! // the crate cannot name the fields — error[E0451].
+//! // From outside the crate, `Refined`'s private fields are unnameable, so only `new` can
+//! // mint one. A struct literal from outside cannot name the fields — error[E0451].
 //! let _forged: Refined<i64, Positive> = Refined { value: -1, _p: Default::default(), _seal: () };
 //! ```
 //!
@@ -156,7 +175,18 @@
 //! let _ = Refined::<i64, NotAPredicate>::new(1); // error[E0277]: `NotAPredicate: Predicate<i64>`
 //! ```
 //!
+//! **[E0599]** — the deliberate absence of `Clone`, machine-checked: cloning would route
+//! construction through a foreign `T::clone` (see "Honest nuances"), so [`Refined`] is a plain
+//! move type and `.clone()` does not resolve:
+//!
+//! ```compile_fail,E0599
+//! use refinement_types::{Refined, Positive};
+//! let r = Refined::<i64, Positive>::new(5).unwrap();
+//! let _dup = r.clone(); // error[E0599]: no method named `clone` — `Refined` is not `Clone`
+//! ```
+//!
 //! [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
+//! [E0599]: https://doc.rust-lang.org/error_codes/E0599.html
 //! [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 //! [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
@@ -184,9 +214,12 @@ pub trait Predicate<T> {
 
 /// A value of `T` that **passed `P` at construction**: the executable form of `{v: T | P(v)}`.
 ///
-/// The fields are **private** ([E0451]): the only way to obtain a `Refined<T, P>` is
-/// [`Refined::new`], which runs [`Predicate::holds`]. So the type carries the enforced
-/// invariant "`P::holds` returned `true` for this value **when it was built**."
+/// The fields are **private** ([E0451]): from **outside this crate** the only way to obtain a
+/// `Refined<T, P>` is [`Refined::new`], which runs [`Predicate::holds`] — so a downstream caller
+/// carries the enforced invariant "`P::holds` returned `true` for this value **when it was
+/// built**." (Field privacy is per-crate: *in-crate* code could name the fields, so the
+/// sole-`new` discipline is an upheld convention here — see [`Refined::new`] — not a per-function
+/// guarantee.)
 ///
 /// **What it does *not* carry:** a proof that `P` holds for *all* `T` (that is the caller's
 /// predicate, GIGO), a proof preserved through *operations* (the arrow residue), or any
@@ -199,14 +232,20 @@ pub struct Refined<T, P: Predicate<T>> {
     // `P` is a zero-sized marker: it names *which* refinement this value satisfies without
     // storing anything. Private, so it cannot be set from outside.
     _p: PhantomData<P>,
-    // Seals construction (E0451): only `new` — which runs the predicate — can name this field
-    // from inside the crate. A foreign struct literal cannot, so no unchecked value is mintable.
+    // Seals construction against FOREIGN code (E0451): a struct literal outside this crate
+    // cannot name these private fields, so no out-of-crate path mints an unchecked value.
+    // (In-crate the fields ARE nameable; that only `new` uses them is an upheld convention.)
     _seal: (),
 }
 
 impl<T, P: Predicate<T>> Refined<T, P> {
-    /// The **sole minter**. Runs `P::holds(&value)`; returns `Some` iff it held. This is the
-    /// boundary where the refinement is enforced (E0451 guarantees it is the *only* boundary).
+    /// The **sole minter** — by an in-crate convention, made hard to bypass from outside. Runs
+    /// `P::holds(&value)`; returns `Some` iff it held, so this is the one place the predicate is
+    /// enforced. Note the precise reach of the seal: **[E0451] guarantees only that no *foreign*
+    /// crate can build a `Refined` around the private fields** — Rust field privacy is per-*crate*,
+    /// not per-*function*, so code *inside* this crate could construct one directly; that it does
+    /// not (only `new` does) is an upheld, auditable convention, not something the type forces.
+    /// The standard sealed-newtype caveat.
     pub fn new(value: T) -> Option<Self> {
         if P::holds(&value) {
             Some(Refined {
@@ -259,10 +298,16 @@ pub const fn refine_const_positive(n: i64) -> i64 {
 }
 
 /// The **arrow-refinement residue in the flesh**: adds two [`Positive`]s and can only return
-/// a **raw `i64`**. The result is mathematically positive, yet the type cannot say so — there
-/// is no way to write `Positive + Positive : Positive` here, because the seal refines *values*
-/// at a boundary, not *functions* through their bodies. To recover a [`Refined`] you must
-/// re-check at a new boundary (`Refined::new` on the result).
+/// a **raw `i64`**. In ℤ the sum of two positives is positive, yet the type cannot say so —
+/// and over `i64` it is not even *unconditionally* true: `i64::MAX + 1` overflows (a debug
+/// panic, a release wrap to negative). So a faithful arrow `Positive → Positive → Positive`
+/// carries a **no-overflow side-condition** — exactly the kind of obligation a real refinement
+/// checker discharges by SMT and this seal cannot. But overflow is *not* why the predicate is
+/// dropped: the seal has no arrow machinery at all — it would drop the refinement even for a
+/// provably non-overflowing op like `min` — and the overflow only shows the arrow isn't even
+/// unconditionally *true*. There is simply no way to write `Positive + Positive : Positive`
+/// here, because the seal refines *values* at rest, not *functions* through their bodies. To
+/// recover a [`Refined`] you must re-check at a new boundary (`Refined::new` on the result).
 pub fn sum_unrefined(a: &Refined<i64, Positive>, b: &Refined<i64, Positive>) -> i64 {
     a.get() + b.get()
 }
