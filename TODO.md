@@ -1212,7 +1212,7 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   `Clone` impl the author ADDED in R1's over-correction and REMOVED in R2's fix; every genuine reset
   was claims-precision on the thesis prose or a self-inflicted fix artifact, at diminishing amplitude
   (R2 CRIT → R3 MOD → R4/R5/R6 clean) — a prose-mutation ratchet closed by freezing + whole-class
-  sweeps + a pre-freeze self-audit.** NOT pushed. **Garden now corona-core + 31 leaves, no review debt.**
+  sweeps + a pre-freeze self-audit.** PUSHED origin/main `42aa57b..66aee5d` (2026-07-20). **Garden now corona-core + 31 leaves, no review debt.**
 
 ## Garden state (2026-07-20c)
 
