@@ -21,14 +21,13 @@
 //! ## Binding's shape reduces; binding's hardness does not
 //!
 //! 1. **The value is pinned at construction — this reduces to the E0451 seal.** A
-//!    [`Commitment`] is nothing but a sealed digest: its field is **private**, and
-//!    its **only** constructor is [`commit`], which takes the value and a blinding
-//!    factor and folds both into the digest. You cannot fabricate a `Commitment`
-//!    that is not already the image of some `(value, blind)` you held — there is no
-//!    public path to a digest that skips [`commit`]. That "the committer must
-//!    already possess a full opening to have produced the commitment at all" is the
-//!    reduce-able *core* of binding, and it is exactly the seal used throughout the
-//!    garden.
+//!    [`Commitment`] is nothing but a sealed digest: its field is **private**, so the
+//!    only constructors are [`commit`] and [`leaky_commit`], and *both* fold a value
+//!    into the digest. You cannot fabricate a `Commitment` that is not already the
+//!    image of some value you held — there is no public path to a digest that skips
+//!    hashing a value. That "the committer must already possess the value to have
+//!    produced the commitment at all" is the reduce-able *core* of binding, and it is
+//!    exactly the seal used throughout the garden.
 //!
 //! 2. **Provenance — which opening belongs to which commitment — reduces to the
 //!    E0308-class brand.** [`commit_scoped`] issues a [`ScopedCommitment`] and its
@@ -37,20 +36,26 @@
 //!    scope. Feeding one scope's opening to another scope's commitment does not
 //!    **compile** (see the `compile_fail` doctest below) — the mismatch is caught a
 //!    whole phase earlier than the hash check, which would also reject it at
-//!    runtime. Provenance is the *brand*, not the hash.
+//!    runtime. Provenance is the *brand*, not the hash. In this
+//!    **generative-lifetime** instantiation the concrete diagnostic is [E0521]
+//!    (*"borrowed data escapes …"*, driven by `'brand` invariance), **not** a literal
+//!    [E0308] mismatched-types — the "-class" in "E0308-class" is exactly this: brand
+//!    unification enforced by the region checker rather than by type equality. (Delete
+//!    the phantom brands and the cross-scope call compiles — so the brand, not an
+//!    incidental borrow, is what rejects it.)
 //!
 //! 3. **But binding's *hardness* — that **no** second opening exists — is a
 //!    collision residue, invisible to the type.** [`Commitment::verify`] decides exactly one
 //!    thing: does the opening re-hash to the stored digest? So binding rests
 //!    *wholly* on the hash being injective enough that a second `(value', blind')`
 //!    colliding the digest is infeasible to find. That is a property of the hash's
-//!    **width and strength**, and **the type cannot see it**: the E0451 seal
-//!    type-checks *identically* at 64 bits and at 16 bits (`Commitment` is the same
-//!    struct either way), yet at 16 bits a birthday search forges a second opening
-//!    in microseconds. The
+//!    **width and strength**, and **the type cannot see it**: `Commitment` is the
+//!    same struct at any digest width, yet at 16 bits a birthday search finds two
+//!    distinct openings that collapse to *one and the same* `Commitment` value. The
 //!    `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged` test makes
-//!    this executable. Binding is only ever *computational*: the seal secures the
-//!    **path**, never the **mathematics** underneath it.
+//!    this executable — it builds the two real `Commitment`s and shows they are equal.
+//!    Binding is only ever *computational*: the seal secures the **path**, never the
+//!    **mathematics** underneath it.
 //!
 //! ## Hiding reduces to nothing at all
 //!
@@ -61,9 +66,10 @@
 //! runs on different secrets lives an entire layer beneath it. Concretely, the
 //! hiding scheme [`commit`] (which mixes a fresh blinding factor into every digest)
 //! and the leaky scheme [`leaky_commit`] (which hashes the value alone, so equal
-//! values produce equal — thus *linkable* — commitments) have the **identical
-//! type**: both are `fn(&[u8], …) -> Commitment`, and the compiler type-checks them
-//! the same. Only a **runtime distinguisher** — "do two commitments of the same
+//! values produce equal — thus *linkable* — commitments) are **type-indistinguishable**:
+//! curry [`commit`] on a fixed blind and project it to its commitment, and it inhabits
+//! the very same `fn(&[u8]) -> Commitment` as [`leaky_commit`], which the compiler
+//! type-checks identically. Only a **runtime distinguisher** — "do two commitments of the same
 //! value collide?" — separates the scheme that hides from the scheme that leaks,
 //! and that distinguisher lives *outside* every type. The
 //! `hiding_is_a_two_safety_the_type_cannot_express` test exhibits both schemes
@@ -92,12 +98,13 @@
 //!
 //! A witness cannot cross scopes — this does **not** compile:
 //!
-//! ```compile_fail
+//! ```compile_fail,E0521
 //! use commit_types::commit_scoped;
 //!
 //! commit_scoped(b"transfer 100", 0xAAAA, |c_a, o_a| {
 //!     commit_scoped(b"transfer 200", 0xBBBB, |c_b, _o_b| {
-//!         // `o_a` carries scope A's brand; `c_b` expects its own — brand mismatch.
+//!         // `o_a` carries scope A's brand; `c_b` expects its own — the `'brand`
+//!         // invariance makes `o_a` escape its scope: E0521, caught at compile time.
 //!         let _ = c_b.verify(&o_a);
 //!     });
 //! });
@@ -105,6 +112,7 @@
 //!
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 //! [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
+//! [E0521]: https://doc.rust-lang.org/error_codes/E0521.html
 
 #![forbid(unsafe_code)]
 
@@ -134,9 +142,11 @@ pub mod hash {
     }
 
     /// The commitment digest of a value under a blinding factor: `H(len ‖ value ‖
-    /// blind)`. The length prefix domain-separates the value from the blind so that
-    /// `(value="ab", blind=…)` and `(value="a", blind=b"b"‖…)` cannot alias — a real
-    /// correctness property kept even in the toy, independent of the toy's weakness.
+    /// blind)`, with `blind` a fixed 8-byte little-endian trailing field. The length
+    /// prefix is a defensive domain-separation habit; for *this* fixed-width layout it
+    /// is strictly redundant — the trailing 8-byte `blind` already splits the buffer
+    /// unambiguously (`blind` = last 8 bytes, `value` = the rest). It is kept so the
+    /// seam matches a real hash's length-framed input after graduation.
     pub fn digest_of(value: &[u8], blind: u64) -> u64 {
         let mut buf = Vec::with_capacity(value.len() + 16);
         buf.extend_from_slice(&(value.len() as u64).to_le_bytes());
@@ -300,15 +310,18 @@ mod tests {
         assert!(!c.verify(&reblind));
     }
 
-    /// Provenance is the **brand**, not the hash. Within one scope, verify succeeds;
-    /// the `compile_fail` doctest at the crate root shows the cross-scope call is
-    /// rejected a phase earlier than any hash check.
+    /// Within a scope, a branded opening verifies and a wrong-value opening is
+    /// *hash*-rejected. Note the split honestly: with only one brand in scope, the
+    /// brand does no discriminating work *here* — the provenance/brand claim ("a
+    /// foreign scope's opening cannot even be offered") is carried entirely by the
+    /// crate-root `compile_fail` doctest, which rejects the cross-scope call at compile
+    /// time (E0521). This test covers only the runtime half.
     #[test]
-    fn provenance_is_the_brand_within_a_scope() {
+    fn scoped_opening_verifies_and_a_wrong_value_is_hash_rejected() {
         commit_scoped(b"transfer 100", 0xAAAA, |c, o| {
             assert!(c.verify(&o));
-            // A same-scope opening with a mutated value is still correctly rejected at
-            // runtime — the brand governs *which pair*, the hash governs *whether it opens*.
+            // A same-scope opening with a mutated value is rejected by the HASH — same
+            // brand on both sides, so the brand cannot discriminate within one scope.
             let bad = ScopedOpening {
                 value: b"transfer 999".to_vec(),
                 blind: o.blind,
@@ -341,14 +354,17 @@ mod tests {
             "the leaky scheme links equal values",
         );
 
-        // The point: `commit` (curried on a fixed blind) and `leaky_commit` have the
-        // SAME type — `fn(&[u8]) -> Commitment` — and type-check identically. The
-        // compiler cannot tell the hiding scheme from the leaky one; only the runtime
-        // distinguisher above (are two commits of one value equal?) can.
-        let hiding: fn(&[u8]) -> Commitment = |v| commit(v, 0xAAAA).0;
+        // The point is *type-identity*, nothing more: currying `commit` on a fixed
+        // blind projects it to `fn(&[u8]) -> Commitment`, the very type of
+        // `leaky_commit`. This curried form is itself non-hiding — a fixed blind
+        // relinks equal values — which is precisely why type-identity, not behaviour, is
+        // all the compiler can see: it cannot tell the hiding scheme from the leaky one.
+        // Only the runtime distinguisher above (two fresh-blind commits decorrelating)
+        // shows real hiding.
+        let commit_fixed_blind: fn(&[u8]) -> Commitment = |v| commit(v, 0xAAAA).0;
         let leaky: fn(&[u8]) -> Commitment = leaky_commit;
         // Both inhabit the same function type — this line would not compile otherwise.
-        let _schemes: [fn(&[u8]) -> Commitment; 2] = [hiding, leaky];
+        let _schemes: [fn(&[u8]) -> Commitment; 2] = [commit_fixed_blind, leaky];
     }
 
     /// Binding's **hardness** is a collision residue, invisible to the type. Narrow the
@@ -391,16 +407,20 @@ mod tests {
             (&v2, r2),
             "the two openings must be genuinely distinct"
         );
-        let c = weak_digest(&v1, r1);
-        assert_eq!(weak_digest(&v1, r1), c);
-        // A SECOND opening the committer never authored opens the same commitment: a
-        // 16-bit `verify` cannot tell it from the first. Binding evaporated; the type
-        // never changed. At 64 bits the same search is infeasible — that width, and
-        // nothing in the type, is where binding's hardness lives.
+        // Build the two REAL `Commitment`s a 16-bit scheme would publish. The struct is
+        // the same `Commitment` at any digest width — the seal never sees the width — so
+        // two distinct openings collapse to *one and the same* value: binding has
+        // evaporated while the type is unchanged. (At 64 bits the search is infeasible;
+        // that width, and nothing in the type, is where binding's hardness lives.)
+        let c1 = Commitment {
+            digest: weak_digest(&v1, r1) as u64,
+        };
+        let c2 = Commitment {
+            digest: weak_digest(&v2, r2) as u64,
+        };
         assert_eq!(
-            weak_digest(&v2, r2),
-            c,
-            "forged opening opens the same digest"
+            c1, c2,
+            "two distinct openings yield the identical Commitment at 16 bits"
         );
     }
 }
