@@ -1174,6 +1174,34 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
+## Garden state (2026-07-20b)
+
+- **Leaf 29 (`deadlock-types`) SEEDED + CONVERGED + DOC-SYNCED — a compile-time lock hierarchy,
+  the garden's FIRST EMERGENT / holistic residue** (every residue in leaves 1–28 is a fact about
+  *one value*; a deadlock's *wait-for cycle* is a property of the **global** cross-thread
+  acquisition graph — invisible in every part, visible only in the whole). Thesis answered:
+  **within a single acquisition chain, deadlock-freedom reduces — by construction, not by a sealed
+  witness.** reduce-half = the lock hierarchy (Havender/Dijkstra) as typestate: `Lock<const LEVEL>`
+  + a const-eval wall `assert!(B > A)` forces strictly-increasing acquisition, so within a chain a
+  cycle is unreachable BY CONSTRUCTION (**E0080**, the garden's first correct-by-construction
+  result). **E0451** seals `Guard` (no forged levels); `acquire(&mut self)` gives LIFO release free
+  (**E0505**). Brand + E0382 honestly unused — leaves 11/17 found the brand *relates but does not
+  ORDER*, so this reaches past it to ordered const-generic levels. **residue is two-part:** (1) the
+  **SINGLE-CHAIN obligation** — `Lock::acquire` (entry) is unconstrained, so multi-rooting escapes;
+  deadlock-freedom needs **universal compliance** (every thread one chain), unenforceable without
+  `generic_const_exprs` (a running-max linear token); lockdep recovers it at runtime by
+  cycle-detection in a lock-class graph (a detector, no levels). (2) **DYNAMIC COMPOSITION** —
+  runtime-selected locks (bank `transfer`) fall back to a runtime canonical order (lower-id-first).
+  Distinct from leaf 7's *inherited* obligations — new at the whole. Two primitives touched
+  (E0080 + E0451), no new one. Seed `2822abe`; fixes `fed3af1`/`3b0619d`/`b6da3e1`; converged
+  (R5+R6 clean on frozen text). Workspace **430 unit + 102 doctests = 532**. **Converged 6 rounds:
+  the type-level core NEVER broke (~120 safe-Rust exploits rejected with exact codes), code sound
+  from R1's `transfer` hardening — all three resets were claims-precision on the thesis prose (the
+  multi-root overclaim R1, the lockdep mechanism R3, an ∀-vs-∃ quantifier slip R4), a textbook
+  prose-mutation ratchet closed by freezing + a self-audit.** Four codes by direct rustc (E0080 is
+  post-mono const-eval → needs a real `-o` path, not `/dev/null`). NOT pushed. **Garden now
+  corona-core + 29 leaves, no review debt.**
+
 ## Garden state (2026-07-20)
 
 - **Leaf 28 (`dp-types`) SEEDED + CONVERGED + DOC-SYNCED — differential privacy, the garden's
