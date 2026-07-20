@@ -94,7 +94,11 @@
 //!   secrecy needs zero-on-drop (e.g. the `zeroize` crate's `Drop`), which the move
 //!   system does not express — a move relocates a value, it does not scrub its old home.
 //!   *This* is the line the leaf draws: the type reaches the program's view of the key,
-//!   not the machine's.
+//!   not the machine's. The distinction is made **executable** by
+//!   `logical_forward_secrecy_is_not_memory_level`, which models the physical slot as an
+//!   observable cell: a plain key's bytes linger after disposal, a scrub-on-`Drop` key's
+//!   do not. (The slot is a *model* — the real home is unobservable in safe Rust, which is
+//!   why the crate forbids `unsafe`; the model shows the residue without needing it.)
 //! - **Conditional on discarding the root seed.** [`ChainKey::init`] is deterministic,
 //!   so a retained root seed re-mints the *entire* chain — every past message key — and
 //!   forward secrecy is void. It holds only if the seed is discarded after
@@ -372,5 +376,95 @@ mod tests {
             index: u64::MAX,
         };
         let _never_returned = chain.advance();
+    }
+
+    // ---- memory-level vs logical forward secrecy (the residue E0382 does NOT reach) ----
+    //
+    // E0382 gives *logical* forward secrecy: after `advance` consumes a ChainKey no live
+    // binding names it and — with no `Clone` — nothing kept a copy (the compile_fail,E0382
+    // doctest pins that). But "logically unreachable" is not "erased from memory": a move
+    // relocates a value's bytes, it does not scrub their old home, so the moved-from 32
+    // bytes linger on the stack/heap they occupied until something overwrites them —
+    // recoverable by a memory dump / cold-boot attack. That home is unobservable in safe
+    // Rust, which is exactly why this crate forbids `unsafe` and why the residue needs an
+    // explicit *model* to be seen at all. We model the physical slot as a shared,
+    // observable cell a key's material is resident in; whether the bytes survive the key's
+    // disposal is the entire distinction. (The model is what makes it executable without
+    // reaching for `unsafe` — the crate's honest posture, not a workaround.)
+
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
+    type MemorySlot = Rc<RefCell<[u8; 32]>>;
+
+    /// A key resident in a modeled memory slot that — like a plain moved-from `[u8; 32]`
+    /// — does **not** scrub the slot on drop. Logical forward secrecy only.
+    struct LingeringKey {
+        _slot: MemorySlot,
+    }
+    impl LingeringKey {
+        fn resident(material: [u8; 32], slot: MemorySlot) -> LingeringKey {
+            *slot.borrow_mut() = material; // the material is now resident in the slot
+            LingeringKey { _slot: slot }
+        }
+    }
+    // No `Drop`: disposal leaves the slot's bytes exactly as they were — the unscrubbed
+    // move, modeled.
+
+    /// A key that scrubs its modeled memory slot on drop — memory-level forward secrecy,
+    /// the extra step the move system does not perform for you (`zeroize`-on-`Drop`).
+    struct ScrubbingKey {
+        slot: MemorySlot,
+    }
+    impl ScrubbingKey {
+        fn resident(material: [u8; 32], slot: MemorySlot) -> ScrubbingKey {
+            *slot.borrow_mut() = material;
+            ScrubbingKey { slot }
+        }
+    }
+    impl Drop for ScrubbingKey {
+        fn drop(&mut self) {
+            *self.slot.borrow_mut() = [0u8; 32]; // scrub the slot on disposal
+        }
+    }
+
+    #[test]
+    fn logical_forward_secrecy_is_not_memory_level() {
+        // Real ChainKey material, so the model holds the bytes a live chain would.
+        let material = kdf::init(0x1234);
+        assert_ne!(
+            material, [0u8; 32],
+            "precondition: the key material is non-zero"
+        );
+
+        // A plain key's slot after disposal: bytes LINGER — logical FS is not memory FS.
+        let slot: MemorySlot = Rc::new(RefCell::new([0u8; 32]));
+        {
+            let k = LingeringKey::resident(material, Rc::clone(&slot));
+            drop(k); // logically gone and unreachable — but its home is not scrubbed
+        }
+        assert_eq!(
+            *slot.borrow(),
+            material,
+            "the moved-from / dropped key material still lingers in its old slot"
+        );
+
+        // A scrubbing key's slot after disposal: bytes ERASED — memory-level FS, and only
+        // because Drop did the work E0382 never promises.
+        let slot2: MemorySlot = Rc::new(RefCell::new([0u8; 32]));
+        {
+            let k = ScrubbingKey::resident(material, Rc::clone(&slot2));
+            drop(k);
+        }
+        assert_eq!(
+            *slot2.borrow(),
+            [0u8; 32],
+            "scrub-on-drop achieves the memory-level FS the move system does not"
+        );
+
+        // Sanity: the real logical guarantee still holds — `advance` consumes the chain
+        // (a second `advance` on it would be E0382, pinned by the doctest above).
+        let chain = ChainKey::init(0x1234);
+        let (_mk, _next) = chain.advance();
     }
 }
