@@ -1,11 +1,15 @@
 //! # unit-types — dimensional analysis, and the dimension/scale split
 //!
-//! Corona **leaf 27**, and the garden's **first non-crypto, non-distributed leaf**.
-//! There is no adversary here, no secret, no network — only physical quantities and
-//! the oldest correctness discipline in engineering: *you may not add a length to a
-//! time.* The garden's standing question is put to a domain with none of the machinery
-//! (unforgeability, hardness, coordination) the previous twenty-six leaned on: **does
-//! dimensional consistency reduce to the compile-primitive vocabulary?**
+//! Corona **leaf 27**, and the garden's first leaf with **no adversary, no secret, no
+//! hardness assumption, and no distribution** — only physical quantities and the oldest
+//! correctness discipline in engineering: *you may not add a length to a time.* (The
+//! nearest neighbour is `bloom-types`, leaf 16 — also a purely local structure — but it
+//! leans on hash-collision hardness for its false-positive bound and reasons about an
+//! adversarial pollution model; nothing here rests on hardness or an adversary at all.
+//! So "non-crypto" is exact and unqualified; the point is that the machinery
+//! — unforgeability, hardness, coordination — the previous twenty-six leaned on is
+//! *entirely absent*.) The garden's standing question, put to that bare a domain:
+//! **does dimensional consistency reduce to the compile-primitive vocabulary?**
 //!
 //! The answer is **yes, entirely to the [E0308] brand** — and this leaf is the first to
 //! earn that primitive's *name literally*. It then **splits**: the brand pins a
@@ -57,8 +61,11 @@
 //! This is not a toy curiosity. It is the failure mode that destroyed the **Mars
 //! Climate Orbiter** (1999): two teams exchanged an impulse in *pound-force-seconds*
 //! and *newton-seconds* — identical dimension, different unit, no type error anywhere —
-//! and a \$327M spacecraft burned up in the Martian atmosphere. A dimension type would
-//! not have caught it; the values were dimensionally consistent and numerically wrong.
+//! and the orbiter was lost in the Martian atmosphere. A dimension type would not have
+//! caught it; the values were dimensionally consistent and numerically wrong. (The
+//! \$327.6M figure usually quoted is the *Mars Surveyor '98 program* total — the orbiter
+//! plus the separately-lost Polar Lander, launch, and operations — not the orbiter alone,
+//! which ran nearer \$125M; the mistake was cheap in dollars and total in outcome.)
 //!
 //! To add mixed units correctly you must apply a **runtime conversion factor** (`×
 //! 0.3048`), and — the residue's sting — **a wrong factor type-checks**. The
@@ -72,10 +79,12 @@
 //! ## The residue is *relocatable*, never removable — the brand is a dial
 //!
 //! You can close the scale gap by pushing the unit **into** the brand: [`Scaled<D, U>`]
-//! tags a quantity with **both** a dimension `D` **and** a unit `U` ([`Meters`],
-//! [`Feet`]). Now [`Scaled::plus`] requires the *same* `U` on both sides, so
-//! `meters.plus(feet)` is itself a compile error (the third `compile_fail` doctest), and
-//! to combine them you must first call [`Scaled::to`], an explicit, greppable conversion.
+//! tags a quantity with **both** a dimension `D` **and** a unit `U` *of* that dimension
+//! ([`Meters`], [`Feet`]) — the coherence bound [`UnitOf<D>`] keeps the pairing sensible,
+//! so a `Scaled<Time, Meters>` does not even construct. Now [`Scaled::plus`] requires the
+//! *same* `U` on both sides, so `meters.plus(feet)` is itself a compile error (the third
+//! `compile_fail` doctest), and to combine them you must first call [`Scaled::to`], an
+//! explicit, greppable conversion.
 //!
 //! But this **relocates** the residue rather than removing it, and buys the move at a
 //! price:
@@ -145,6 +154,17 @@
 //! let f: Scaled<Length, Feet> = Scaled::new(1.0);
 //! // `plus` wants `Scaled<Length, Meters>`; `f` is `Scaled<Length, Feet>`. E0308.
 //! let _ = m.plus(f);
+//! ```
+//!
+//! And the coherence bound [`UnitOf<D>`] keeps a unit paired with *its* dimension: a
+//! `Scaled<Time, Meters>` ("a time in metres") is not even constructible, because
+//! [`Meters`] is declared a unit of [`Length`], not [`Time`] — an unsatisfied trait
+//! bound, so [E0277]:
+//!
+//! ```compile_fail,E0277
+//! use unit_types::{Scaled, Time, Meters};
+//! // `Scaled::new` requires `U: UnitOf<D>`, i.e. `Meters: UnitOf<Time>` — never impl'd.
+//! let _: Scaled<Time, Meters> = Scaled::new(1.0);
 //! ```
 //!
 //! [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
@@ -347,11 +367,24 @@ pub struct Meters;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Feet;
 
-/// A physical quantity tagged with **both** a dimension `D` **and** a unit `U`. This is
-/// the brand turned one notch finer than [`Quantity`]: [`Scaled::plus`] requires the
-/// *same* unit on both sides, so mixing metres and feet is a compile error. The cost is
-/// composability — see the crate docs — and the residue does not vanish, it moves into
-/// [`ConvertTo::FACTOR`].
+/// A **coherence** marker: `U` is a unit *of* dimension `D`. A finer brand must close a
+/// gap the looser one need not — without this bound a nonsensical `Scaled<Time, Meters>`
+/// ("a time measured in metres") would be constructible. [`Scaled`]'s whole API is
+/// bounded `U: UnitOf<D>`, so that pairing is a compile error ([E0277]) and every
+/// `Scaled<D, U>` is a *coherent* one. It is a pure marker (no methods): the coherence
+/// lives entirely in *which* impls exist — [`Meters`] and [`Feet`] are units of
+/// [`Length`], and nothing declares either a unit of [`Time`].
+///
+/// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
+pub trait UnitOf<D> {}
+impl UnitOf<Length> for Meters {}
+impl UnitOf<Length> for Feet {}
+
+/// A physical quantity tagged with **both** a dimension `D` **and** a unit `U` of that
+/// dimension (`U: UnitOf<D>`). This is the brand turned one notch finer than
+/// [`Quantity`]: [`Scaled::plus`] requires the *same* unit on both sides, so mixing
+/// metres and feet is a compile error. The cost is composability — see the crate docs —
+/// and the residue does not vanish, it moves into [`ConvertTo::FACTOR`].
 pub struct Scaled<D, U> {
     value: f64,
     _dim: PhantomData<D>,
@@ -389,8 +422,9 @@ impl ConvertTo<Feet> for Meters {
     const FACTOR: f64 = 1.0 / 0.3048;
 }
 
-impl<D, U> Scaled<D, U> {
-    /// Tag a magnitude with dimension `D` and unit `U`.
+impl<D, U: UnitOf<D>> Scaled<D, U> {
+    /// Tag a magnitude with dimension `D` and unit `U` — which must be a unit *of* `D`
+    /// ([`UnitOf`]), so a nonsensical `Scaled<Time, Meters>` does not compile.
     pub fn new(value: f64) -> Self {
         Scaled {
             value,
@@ -418,6 +452,7 @@ impl<D, U> Scaled<D, U> {
     /// factor it applies is data the compiler cannot audit (the relocated residue).
     pub fn to<V>(self) -> Scaled<D, V>
     where
+        V: UnitOf<D>,
         U: ConvertTo<V>,
     {
         Scaled::new(self.value * <U as ConvertTo<V>>::FACTOR)
@@ -493,6 +528,7 @@ mod tests {
         // happen, never checked that it was right. The residue has moved from "did you
         // convert?" down to "is the factor correct?"; it has not reached zero.
         struct SloppyFeet;
+        impl UnitOf<Length> for SloppyFeet {} // a (wrongly-calibrated) unit of Length
         impl ConvertTo<Meters> for SloppyFeet {
             const FACTOR: f64 = 0.30; // WRONG — should be 0.3048 — yet type-checks.
         }
