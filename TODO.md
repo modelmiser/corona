@@ -1174,6 +1174,46 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
+## Garden state (2026-07-20d)
+
+- **Leaf 31 (`refinement-types`) SEEDED + CONVERGED + DOC-SYNCED — refinement types `{v: T | P(v)}`
+  as typestate, the garden's FIRST SELF-LOCATING leaf** (its residue is not merely unencoded but
+  **literally the neighbouring face's job**: a refinement type factors *exactly* along the garden's
+  own architecture — Corona = the TYPE face, Sol = the PROOF face — as *enforce-at-boundary* (Corona)
+  + *discharge-∀* (Sol)). Thesis answered: **the boundary enforcement reduces, twice over; the
+  discharge is the residue, and it is Sol's.** reduce-half, two partial reductions: (1) **E0451
+  boundary seal** — `Refined<T,P>` is a sealed newtype whose only constructor `new` runs `P::holds`,
+  so "every value passed `P` at construction" is TRUE not aspirational (the skeleton behind
+  `NonZeroU32`); (2) **E0080 closed-term discharge** — a `const fn` predicate decides a *constant* at
+  compile time, but returns a plain `i64`, not a `Positive` (**the proof is not carried in the type**).
+  residue three faces, the NEW SHAPE = **the ARROW**: (A) open-term SMT discharge — *conceded
+  non-novel* (∥ crdt 15 / dp 28, Sol's remit); (B) **propagation through operations — the
+  arrow-refinement residue (headline, un-mapped):** refinement systems refine *function* types
+  `{v|P}→{r|Q}` and prove the body preserves them, but a sealed newtype captures only the *base*
+  refinement and loses the arrow (`sum_unrefined`: `Positive + Positive` → raw `i64`; over `i64` even
+  that carries a **no-overflow side-condition** — though overflow is *not* why the seal drops the
+  predicate: it has no arrow machinery at all) — **Corona types the refined VALUE, not the refined
+  FUNCTION**; (C) the **impl-refines-spec SIMULATION relation** (data refinement He/Hoare/Sanders 1986;
+  refinement mappings Abadi & Lamport 1991), ∀ over reachable *states* — Sol's PROOF face. `Predicate`
+  deliberately **OPEN** (contrast leaf 30's sealed `Total`); a vacuous `{v|true}` mints a meaningless
+  refinement (**GIGO — the witness-trap in refinement flavor**, ∥ leaf 5). `Refined` deliberately
+  **NOT `Clone`** (a witness-trap avoided *by design*: deriving it would route construction through a
+  foreign `T::clone` the compiler can't police — a lawless `Clone` could mint a `Refined` whose value
+  never passed `P`), so `new` is the only construction path from outside the crate. Two primitives
+  touched (**E0451** + **E0080**), the `P: Predicate<T>` bound bites as **E0277** (enforcement code,
+  not a new primitive); **brand** unused, **E0382** governs the move type by default but is **not
+  recruited** (the seal carries the guarantee — contrast leaf 5, where use-once semantics ARE the
+  guarantee). Standalone. TOY (predicates are runtime `bool` checks, not logical formulas; no SMT, no
+  arrow refinements, no dataflow propagation, no impl-refines-spec — the enforcement skeleton, not a
+  real refinement-type checker). Seed `535e522`. 6 unit + 7 doctests (3 positive + 4 compile_fail
+  E0451/E0080/E0277/E0599, all by direct rustc with a real `-o` path). Workspace **442 unit + 116
+  doctests = 558**. **CONVERGED 6 rounds (R5+R6 clean on frozen text); the E0451 seal NEVER broke —
+  ~55 safe-Rust exploits across the arc rejected with exact codes, the lone "CRITICAL" (R2) was a
+  `Clone` impl the author ADDED in R1's over-correction and REMOVED in R2's fix; every genuine reset
+  was claims-precision on the thesis prose or a self-inflicted fix artifact, at diminishing amplitude
+  (R2 CRIT → R3 MOD → R4/R5/R6 clean) — a prose-mutation ratchet closed by freezing + whole-class
+  sweeps + a pre-freeze self-audit.** NOT pushed. **Garden now corona-core + 31 leaves, no review debt.**
+
 ## Garden state (2026-07-20c)
 
 - **Leaf 30 (`totality-types`) SEEDED + CONVERGED + DOC-SYNCED — termination/totality as typestate,
