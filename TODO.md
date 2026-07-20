@@ -1174,6 +1174,49 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
+## Garden state (2026-07-20e)
+
+- **Leaf 32 (`numerical-accuracy`) SEEDED + CONVERGED + DOC-SYNCED — the ℝ-vs-`f64` accuracy gap as
+  typestate, leaf 27 (`unit-types`)'s ANALYTIC cousin and the home of the finite-precision residue
+  leaf 28 (`dp-types`) flagged and left** (`1.0 − 1e-20 == 1.0`). Where unit-27's residue is
+  *algebraic* (is the FACTOR right?), this is the analytic deepening: even with the right factor,
+  applied to specific data in `f64`, accuracy is destroyed by **conditioning**. Thesis answered: **a
+  data-independent bound reduces to the wall; the accuracy the user actually wants does not.**
+  reduce-half, two: (1) **E0080** — for a backward-stable straight-line computation the *backward*
+  error is data-independent (`≈ nu`, `γ_n = nu/(1−nu)`, magnitude-INDEPENDENT), so a worst-case
+  rounding-STEP count accumulates monotonically and `ulp_budget` walls it (∥ static-config 6 / dp 28);
+  (2) **E0451** — `Tracked` is a sealed newtype (private `value`/`err_ulps`/`_seal`) minted only by
+  `exact` or a tracked op, a certificate the value arrived *with* a step count (∥ leaf 31's `Refined`).
+  residue, the NEW SHAPE = **VALUE-DEPENDENT**: the forward error `≲ κ(x)·backward` (rule-of-thumb
+  inequality) where the condition number **κ is a function of the RUNTIME DATA** (`κ=(|a|+|b|)/|a−b| →
+  ∞` at the cancellation singularity `a=b`); the sharp form is that **`sup_x κ(x)` is UNBOUNDED** — no
+  finite worst-case constant for the wall. Distinct from the **parameter residue** (unit-27 FACTOR /
+  dp-28 Δf, finite globals) by *unboundedness* (a bounded κ collapses to the FACTOR/Δf move — supply
+  `K`), and from the **∀-proof residue** (crdt 15 / dp 28) by *substrate* (κ a continuous function of
+  runtime `f64` values — its **limiting case**, not cleanly disjoint; naming it needs an
+  `f64`-value-parametric type Rust lacks) — the **local-vs-global sensitivity** distinction DP itself
+  rests on (Δf finite global; κ local, pointwise-divergent). **The residue is the singularity, not the
+  runtime-ness.** A second face re-instances leaf 31's **ARROW**: float `+` is non-associative, so
+  accuracy is a property of the operation ORDER / algorithm (Kahan/pairwise) — the
+  refinement-belongs-on-the-FUNCTION residue, for **stability**. Careful two-axis split: **conditioning**
+  (κ — the headline residue) vs **stability** (the algorithm — the arrow/absorption face); the poster
+  `(1+1e-20)−1` is disclosed as **absorption/stability** (the map is the identity, `κ=1` exactly), not
+  cancellation. Two primitives touched (**E0451** + **E0080**), no new one; **E0382 NOT recruited** —
+  an accuracy certificate is a **duplicable fact** (`Tracked` is `Copy`), the deliberate *inverse* of
+  dp-28's **linear** `Budget` (same primitive, opposite polarity); **brand** unused. Standalone. TOY
+  (`err_ulps` is a loose first-order *backward* proxy, not a validated/forward bound; no interval
+  arithmetic / error-free transforms / Kahan-pairwise / libm — the enforcement skeleton). Seed
+  `58bde30`, converge `295154d`. 6 unit + 5 doctests (3 positive + 2 compile_fail E0451/E0080, by
+  direct rustc with real `-o` paths). Workspace **448 unit + 121 doctests = 569**. **CONVERGED 7 rounds
+  (3 fresh blind lenses/round); the E0451 seal & E0080 wall NEVER broke — ~85 safe-Rust exploits across
+  R2–R7 rejected with exact codes, the code sound throughout; every reset was numerical-analysis prose
+  precision, the arc's sharpest turn a fix-artifact ratchet — an R3 "honest nuances" edit misattributed
+  magnitude-ignorance to the BACKWARD error (it is the FORWARD error conditioning drives; backward error
+  is magnitude-independent), caught R5, propagated into the sub/add docstrings R6, confirmed R7 — a
+  prose-mutation ratchet at diminishing amplitude; clippy clean.** PUSHED origin/main
+  `b2a9d4a..<doc-sync>` (2026-07-20; range recorded in the follow-up flag commit). **Garden now
+  corona-core + 32 leaves, no review debt.**
+
 ## Garden state (2026-07-20d)
 
 - **Leaf 31 (`refinement-types`) SEEDED + CONVERGED + DOC-SYNCED — refinement types `{v: T | P(v)}`
