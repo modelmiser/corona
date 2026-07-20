@@ -93,6 +93,16 @@
 //! keeps the honest prover safe; the residue is what makes the protocol *mean*
 //! something.
 //!
+//! **The rung — the residue as a typed capability, not a proxy.** That "power to rewind"
+//! is made executable by [`RewoundState`]: the prover's post-commitment / pre-challenge
+//! state with the *identical* consuming `respond(self, …)` as [`ProverNonce`], differing
+//! in exactly one thing — it is `Clone`. Cloning it and answering two challenges from one
+//! `R` is the rewind, and the clone-ability **is** the capability E0382 denies the honest
+//! nonce (which has no `clone` at all — `error[E0599]`). So the reason knowledge-soundness
+//! is not a compile fact — the extractor lives in a strictly more powerful (cloneable)
+//! model than the linear prover — is now a red/green contrast between two types, not only
+//! the seed-reuse proxy `a_reused_nonce_leaks_the_witness` uses to fake a second run.
+//!
 //! ## Two witness species again
 //!
 //! The [`Witness`] `x` is **long-term** — a prover proves many sessions with the same
@@ -301,6 +311,86 @@ impl ProverNonce {
         let z = group::f_add(
             self.secret as u32,
             group::f_mul(challenge.c as u32, witness.x as u32),
+        );
+        Response { z: z as u16 }
+    }
+}
+
+/// The **extractor's capability, made a type** — the rung that turns
+/// knowledge-soundness from a prose thesis into an executable capability contrast.
+///
+/// A `RewoundState` is the prover's state *after committing but before being
+/// challenged*, the point a knowledge-soundness extractor forks by **rewinding**. It
+/// carries the same secret scalar `r` as a [`ProverNonce`] (so its commitment `R = g^r`
+/// matches one from the same seed) plus the witness `x`, and — the one load-bearing
+/// difference — it is `#[derive(Clone)]`.
+///
+/// The honest [`ProverNonce`] is linear (affine): [`respond`](ProverNonce::respond)
+/// consumes it, so it answers **at most one** challenge and a second is
+/// `error[E0382]`. `RewoundState` has the **identical consuming**
+/// [`respond`](RewoundState::respond)`(self, …)` — so the *only* way to answer a second
+/// challenge is to [`clone`](Clone::clone) first, and cloning is possible for exactly
+/// one reason: the derive the honest nonce withholds. The clone-ability **is** the
+/// capability E0382 denies the honest prover; cloning then answering two challenges from
+/// one `R` yields precisely the rewinding pair [`extract`] consumes to recover
+/// `x = (z₁ − z₂)·(c₁ − c₂)⁻¹`.
+///
+/// That contrast is *why knowledge-soundness is not a compile-time fact*: a type
+/// constrains the one execution it sees, but the extractor lives in a strictly more
+/// powerful (cloneable) model than the linear prover — "the prover as an algorithm
+/// across two counterfactual runs," now a typed object rather than the seed-reuse proxy
+/// the other extraction tests use. It models a **thought experiment**, not a real party:
+/// no honest protocol hands out a `RewoundState`. Sealed (E0451): private fields, minted
+/// only by [`rewindable`](RewoundState::rewindable); `Debug` redacts both secrets.
+///
+/// The honest nonce cannot be cloned at all:
+///
+/// ```compile_fail,E0599
+/// # use sigma_types::ProverNonce;
+/// let nonce = ProverNonce::commit(1);
+/// let _forked = nonce.clone(); // ProverNonce is not Clone — no such method (E0599)
+/// ```
+#[derive(Clone)]
+pub struct RewoundState {
+    secret: u16,
+    witness: u16,
+}
+
+impl core::fmt::Debug for RewoundState {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "RewoundState {{ secret: <redacted>, witness: <redacted> }}")
+    }
+}
+
+impl RewoundState {
+    /// Build the rewindable state from a nonce seed and the witness. The scalar `r` is
+    /// derived exactly as [`ProverNonce::commit`] derives it, so the commitment matches
+    /// an honest nonce from the same seed; the witness `x` is stored so the state can
+    /// answer any challenge on its own (a real extractor rewinds a black-box prover that
+    /// holds `x` internally — the state never *reveals* `x`, it is *recovered* from the
+    /// transcripts by [`extract`]).
+    pub fn rewindable(nonce_seed: u64, witness: &Witness) -> RewoundState {
+        RewoundState {
+            secret: ProverNonce::commit(nonce_seed).secret,
+            witness: witness.x,
+        }
+    }
+
+    /// This state's public commitment `R = g^r` — identical to the honest nonce's.
+    pub fn commitment(&self) -> Commitment {
+        Commitment {
+            r: group::g_pow(group::G, self.secret as u32) as u16,
+        }
+    }
+
+    /// Answer `challenge`, **consuming** the state: `z = r + c·x mod q`. The signature is
+    /// identical to [`ProverNonce::respond`] — `self` by value — so answering a *second*
+    /// challenge requires a prior [`clone`](Clone::clone). That clone is the rewinding
+    /// step, and it is the one thing the linear honest nonce forbids.
+    pub fn respond(self, challenge: Challenge) -> Response {
+        let z = group::f_add(
+            self.secret as u32,
+            group::f_mul(challenge.c as u32, self.witness as u32),
         );
         Response { z: z as u16 }
     }
@@ -788,6 +878,63 @@ mod tests {
         assert_eq!(leaked, witness);
     }
 
+    #[test]
+    fn rewinding_a_cloneable_state_extracts_where_the_linear_nonce_cannot() {
+        // The rung: the extractor's rewinding power is a *type*, not a seed-reuse proxy.
+        // Unlike `a_reused_nonce_leaks_the_witness` (which re-derives the nonce from a
+        // retained seed to fake a second run), here the second run comes from `Clone` —
+        // the exact capability E0382 denies the honest `ProverNonce`. `respond` consumes
+        // `self` for BOTH types; only `RewoundState` can be cloned before responding, so
+        // the clone IS the rewind.
+        let (statement, witness) = keygen(0x2a).unwrap();
+        let state = RewoundState::rewindable(0xBEEF, &witness);
+        let commitment = state.commitment();
+
+        // Fork the post-commitment / pre-challenge state. Possible only because
+        // `RewoundState: Clone`; the honest nonce has no `clone` (see the compile_fail
+        // doctest on `RewoundState`).
+        let forked = state.clone();
+        let c1 = Challenge::interactive(7);
+        let c2 = Challenge::interactive(19);
+        let t1 = Transcript {
+            commitment,
+            challenge: c1,
+            response: state.respond(c1), // consumes `state`
+        };
+        let t2 = Transcript {
+            commitment,
+            challenge: c2,
+            response: forked.respond(c2), // consumes the clone
+        };
+
+        // Both transcripts share R (one scalar r), differ only in the challenge — a
+        // genuine rewinding pair. Extraction recovers x WITHOUT the state ever revealing
+        // it (the extractor recovers, it does not read).
+        assert_eq!(t1.commitment, t2.commitment);
+        assert!(statement.verify(&t1).is_some());
+        assert!(statement.verify(&t2).is_some());
+        let extracted = extract(&statement, &t1, &t2).expect("a rewinding pair extracts");
+        assert_eq!(extracted, witness);
+    }
+
+    #[test]
+    fn a_rewound_state_answers_a_single_challenge_like_the_honest_nonce() {
+        // Without cloning, `RewoundState` is as one-shot as `ProverNonce`: `respond`
+        // consumes it. The linearity is identical; only the *option to clone* differs.
+        let (statement, witness) = keygen(0x2a).unwrap();
+        let state = RewoundState::rewindable(0xBEEF, &witness);
+        let commitment = state.commitment();
+        let c = Challenge::interactive(7);
+        let t = Transcript {
+            commitment,
+            challenge: c,
+            response: state.respond(c),
+        };
+        // `state` is consumed here; a second `state.respond(..)` would be E0382, exactly
+        // as for the honest nonce. One un-cloned state == one transcript == no extraction.
+        assert!(statement.verify(&t).is_some());
+    }
+
     // ---- posture / hygiene ----
 
     #[test]
@@ -804,6 +951,14 @@ mod tests {
         let shown = format!("{nonce:?}");
         assert!(shown.contains("secret: <redacted>"));
         assert!(shown.contains(&format!("commitment: {}", nonce.commitment().r)));
+    }
+
+    #[test]
+    fn rewound_state_debug_redacts_both_secrets() {
+        let (_s, witness) = keygen(0x2a).unwrap();
+        let shown = format!("{:?}", RewoundState::rewindable(0xBEEF, &witness));
+        assert!(shown.contains("secret: <redacted>"));
+        assert!(shown.contains("witness: <redacted>"));
     }
 
     #[test]
