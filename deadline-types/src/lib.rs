@@ -380,6 +380,15 @@ mod tests {
     }
 
     #[test]
+    fn rm_exact_rejects_a_zero_period_task() {
+        // `admit_rm_exact`'s `tasks_valid` guard is the ONLY thing preventing a zero-period
+        // higher-priority task from reaching `div_ceil(0)` in the RTA. A `(0,0)` HIGHER-
+        // priority task isolates the `t == 0` half of that guard (its `c > t` is false):
+        // guarded code returns None; without the guard the RTA would divide by zero.
+        assert!(Schedulable::admit_rm_exact([(0u32, 0u32), (1u32, 5u32)]).is_none());
+    }
+
+    #[test]
     fn certificate_is_copy_a_duplicable_fact() {
         // Unlike dp's linear Budget, a feasibility certificate may be freely duplicated.
         let s = Schedulable::admit_edf([(1u32, 4u32)]).unwrap();
