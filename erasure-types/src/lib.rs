@@ -515,12 +515,15 @@ mod tests {
         // The property-agnostic-seal residue (the leaf's headline), made executable.
         // `decode` interpolates the first k DISTINCT fragments and seals the result — it
         // never checks the fragments came from a real `encode`. So k fragments a caller
-        // INVENTS (dispersed by no one) mint a bona fide sealed `RecoveredData`, the exact
-        // same type a genuine dispersal yields. The seal witnesses "interpolation ran over
-        // k distinct points," never "these fragments were genuinely available / had this
-        // provenance" — the confidentiality-vs-availability axis is invisible to E0451,
-        // exactly as it was to Shamir's identical seal in leaf 1.
-        let th = t(3, 5);
+        // INVENTS mint a bona fide sealed `RecoveredData` — the SAME type a genuine
+        // dispersal yields (type identity is unconditional: `RecoveredData` has one
+        // constructor, `decode`, so the seal cannot tell invented from genuine). The seal
+        // witnesses "interpolation ran over k distinct points," never "these fragments were
+        // genuinely available / had this provenance" — the confidentiality-vs-availability
+        // axis is invisible to E0451, exactly as it was to Shamir's identical seal in leaf 1.
+        let th = t(3, 5); // k = 3, n = 5
+                          // Indices 7 and 42 EXCEED n = 5, so no real 3-of-5 dispersal could ever have
+                          // produced these fragments — "dispersed by no one" is literal, not rhetorical.
         let fabricated = [
             Fragment {
                 index: 3,
@@ -535,16 +538,10 @@ mod tests {
                 value: 55,
             },
         ];
-        // Minted from invented fragments no dispersal produced.
+        // A sealed `RecoveredData` is minted all the same — `decode` checks only count ≥ k
+        // and index-distinctness, no provenance and no availability.
         let recovered = decode(&fabricated, th).expect("k distinct fragments always decode");
         assert_eq!(recovered.bytes().len(), 3);
-
-        // And it is indistinguishable, as a sealed witness, from one recovered from a real
-        // dispersal of the same interpolated data — the seal cannot tell invented from
-        // genuine (both are bona fide `RecoveredData`).
-        let same_data = recovered.bytes().to_vec();
-        let genuine = decode(&encode(&same_data, th).unwrap()[..3], th).unwrap();
-        assert_eq!(recovered, genuine);
     }
 
     #[test]

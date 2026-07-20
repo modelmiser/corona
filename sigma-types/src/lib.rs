@@ -95,13 +95,24 @@
 //!
 //! **The rung — the residue as a typed capability, not a proxy.** That "power to rewind"
 //! is made executable by [`RewoundState`]: the prover's post-commitment / pre-challenge
-//! state with the *identical* consuming `respond(self, …)` as [`ProverNonce`], differing
-//! in exactly one thing — it is `Clone`. Cloning it and answering two challenges from one
-//! `R` is the rewind, and the clone-ability **is** the capability E0382 denies the honest
-//! nonce (which has no `clone` at all — `error[E0599]`). So the reason knowledge-soundness
-//! is not a compile fact — the extractor lives in a strictly more powerful (cloneable)
-//! model than the linear prover — is now a red/green contrast between two types, not only
-//! the seed-reuse proxy `a_reused_nonce_leaks_the_witness` uses to fake a second run.
+//! state that keeps the *same consuming* `respond(self, …)` as [`ProverNonce`] but **is
+//! `Clone`**. Answering two challenges from one `R` needs *two* live copies of that state,
+//! and the honest nonce is locked out of that two ways at once: `respond` **consumes** it
+//! (a second answer on the same value is `error[E0382]`) **and** it has no `clone`, so it
+//! cannot be duplicated (`error[E0599]`). `RewoundState` keeps the E0382 lock (its own
+//! `respond` still consumes `self`) and lifts *only* the duplication lock — so cloning
+//! then answering is the rewind. Rewinding is **duplication of the prover's state**, and
+//! that is exactly the capability the honest nonce's non-`Clone`-ness denies. (The two
+//! types are near-siblings, not identical-but-for-a-derive: the nonce caches its
+//! commitment, the rewound state bakes in the witness, and their `respond` arities differ;
+//! the *load-bearing* difference is the `Clone` derive — which the nonce could carry, its
+//! fields being `Copy`, but deliberately does not.) So the reason knowledge-soundness is
+//! not a compile fact — the extractor lives in a strictly more powerful (duplicable) model
+//! than the linear prover — is now a red/green contrast between two types, not only the
+//! seed-reuse proxy `a_reused_nonce_leaks_the_witness` uses to fake a second run (itself
+//! *another* runtime path to the pair — re-`rewindable`/`commit` from the same seed — so
+//! cloning is *a* way to duplicate the state, not the sole one; the type-level point is
+//! the `Clone`-vs-`E0599` contrast).
 //!
 //! ## Two witness species again
 //!
@@ -322,18 +333,24 @@ impl ProverNonce {
 /// A `RewoundState` is the prover's state *after committing but before being
 /// challenged*, the point a knowledge-soundness extractor forks by **rewinding**. It
 /// carries the same secret scalar `r` as a [`ProverNonce`] (so its commitment `R = g^r`
-/// matches one from the same seed) plus the witness `x`, and — the one load-bearing
-/// difference — it is `#[derive(Clone)]`.
+/// matches one from the same seed) plus the witness `x`; the two are near-siblings, not
+/// identical structs, but the **load-bearing** difference is one derive — `RewoundState`
+/// is `#[derive(Clone)]`, and the nonce is not.
 ///
-/// The honest [`ProverNonce`] is linear (affine): [`respond`](ProverNonce::respond)
-/// consumes it, so it answers **at most one** challenge and a second is
-/// `error[E0382]`. `RewoundState` has the **identical consuming**
-/// [`respond`](RewoundState::respond)`(self, …)` — so the *only* way to answer a second
-/// challenge is to [`clone`](Clone::clone) first, and cloning is possible for exactly
-/// one reason: the derive the honest nonce withholds. The clone-ability **is** the
-/// capability E0382 denies the honest prover; cloning then answering two challenges from
-/// one `R` yields precisely the rewinding pair [`extract`] consumes to recover
-/// `x = (z₁ − z₂)·(c₁ − c₂)⁻¹`.
+/// Answering two challenges from one `R` needs two live copies of this state. The honest
+/// [`ProverNonce`] is locked out of that **two ways at once**:
+/// [`respond`](ProverNonce::respond) **consumes** it (a second answer on the same value
+/// is `error[E0382]`), **and** it has no `clone`, so it cannot be duplicated
+/// (`error[E0599]`). `RewoundState` keeps the E0382 lock — its own
+/// [`respond`](RewoundState::respond)`(self, …)` still consumes `self` — and lifts *only*
+/// the duplication lock: so cloning then answering is the rewind. Rewinding is
+/// **duplication of the prover's state**, exactly the capability the honest nonce's
+/// non-`Clone`-ness denies (the nonce *could* derive `Clone`, its fields being `Copy`, but
+/// deliberately does not). Two same-`R`, different-challenge transcripts are precisely the
+/// rewinding pair [`extract`] consumes to recover `x = (z₁ − z₂)·(c₁ − c₂)⁻¹`. (Cloning is
+/// *a* runtime way to obtain the pair; re-deriving from the same seed is another — the
+/// seed-reuse proxy `a_reused_nonce_leaks_the_witness` uses. The rung's contribution is
+/// the *type-level* `Clone`-vs-`E0599` contrast, not a claim that cloning is the only way.)
 ///
 /// That contrast is *why knowledge-soundness is not a compile-time fact*: a type
 /// constrains the one execution it sees, but the extractor lives in a strictly more
@@ -358,7 +375,10 @@ pub struct RewoundState {
 
 impl core::fmt::Debug for RewoundState {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "RewoundState {{ secret: <redacted>, witness: <redacted> }}")
+        write!(
+            f,
+            "RewoundState {{ secret: <redacted>, witness: <redacted> }}"
+        )
     }
 }
 
@@ -883,9 +903,10 @@ mod tests {
         // The rung: the extractor's rewinding power is a *type*, not a seed-reuse proxy.
         // Unlike `a_reused_nonce_leaks_the_witness` (which re-derives the nonce from a
         // retained seed to fake a second run), here the second run comes from `Clone` —
-        // the exact capability E0382 denies the honest `ProverNonce`. `respond` consumes
-        // `self` for BOTH types; only `RewoundState` can be cloned before responding, so
-        // the clone IS the rewind.
+        // duplicating the prover's state, which the honest `ProverNonce` forbids by having
+        // no `clone` (E0599). `respond` consumes `self` for BOTH types (identical E0382
+        // linearity); the difference is that only `RewoundState` can be duplicated before
+        // responding, so the clone IS the rewind.
         let (statement, witness) = keygen(0x2a).unwrap();
         let state = RewoundState::rewindable(0xBEEF, &witness);
         let commitment = state.commitment();

@@ -462,8 +462,10 @@ mod tests {
             "scrub-on-drop achieves the memory-level FS the move system does not"
         );
 
-        // Sanity: the real logical guarantee still holds — `advance` consumes the chain
-        // (a second `advance` on it would be E0382, pinned by the doctest above).
+        // Marks the layers apart: the modeled memory above is separate from the *logical*
+        // FS the real `ChainKey` gets from E0382. `advance` consumes the chain (this just
+        // exercises the consuming step; the E0382 guarantee itself — no second `advance` —
+        // is pinned at compile time by the `compile_fail,E0382` doctest, not here).
         let chain = ChainKey::init(0x1234);
         let (_mk, _next) = chain.advance();
     }

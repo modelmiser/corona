@@ -299,15 +299,16 @@ mod tests {
     #[test]
     fn two_signatures_harvest_both_preimage_sides_at_a_differing_position() {
         // The multi-signature forgery *material*, made executable — the mechanism behind
-        // the seed hole above. If a one-time key ever signs two different messages, the two
-        // signatures TOGETHER reveal, at every digest position where the messages differ,
-        // BOTH secret preimages — the material to forge a signature for any third digest
-        // covered by their union (the classic Lamport two-message attack). We exhibit the
-        // harvest directly: at a differing position, sig1 and sig2 hold the preimages for
-        // bit 0 and bit 1, each a valid opening of the vk's published commitment for its
-        // side. (Assembling a full third-message signature additionally needs a message
-        // whose FNV digest is covered — hash-preimage search, a deeper follow-up; the
-        // harvested material is what makes that a mechanical, not cryptographic, step.)
+        // the seed hole above. If a one-time key ever signs two different messages, then at
+        // every digest position where the messages differ the two signatures TOGETHER
+        // reveal BOTH secret preimages — the material to forge a signature for any third
+        // digest covered by their union (the classic Lamport two-message attack). We exhibit
+        // the harvest at one such position (the mechanism is identical at each): sig1 and
+        // sig2 hold the preimages for bit 0 and bit 1, two DISTINCT secrets, each a valid
+        // opening of the vk's published commitment for its side. (Assembling a full
+        // third-message signature additionally needs a message whose FNV digest is covered
+        // — hash-preimage search, a deeper follow-up; the harvested material is what makes
+        // that a mechanical, not cryptographic, step.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);
         let (sk2, _) = SigningKey::generate(seed); // the same key, re-minted (the seed hole)
@@ -328,6 +329,9 @@ mod tests {
         // committing to the verifying key's published commitment for its side.
         assert_eq!(hash::commit(sig1.revealed[i]), vk.commitments[i][b1]);
         assert_eq!(hash::commit(sig2.revealed[i]), vk.commitments[i][b2]);
+        // The two harvested secrets are genuinely DISTINCT — "both sides" is real, not two
+        // openings of one value (so the union truly covers bit 0 and bit 1 at position i).
+        assert_ne!(sig1.revealed[i], sig2.revealed[i]);
     }
 
     #[test]

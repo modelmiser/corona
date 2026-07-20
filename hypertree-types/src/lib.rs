@@ -550,7 +550,11 @@ mod tests {
         // so we model a restore with the crate's own determinism: `generate_hypertree`
         // rebuilds the exact state from the seed, and calling it twice with one seed IS
         // restoring one checkpoint into two independent keychains (a save-then-restore-
-        // twice, a VM fork, a crash-recovery double-resume). This is the catastrophe no
+        // twice, a VM fork, a crash-recovery double-resume). The demonstrated mechanism is
+        // seed-*regeneration* (the "seed doubly load-bearing" hazard in the honest limits);
+        // it stands in for serialize/*restore* because the two share one catastrophe shape
+        // — two live copies of one signing state → OTS reuse — and that shape, not the
+        // provenance of the copies, is what the test exhibits. This is the catastrophe no
         // local type discipline can prevent — *why stateless SPHINCS+ exists*.
         let seed = 0xC0FFEE;
         let (ka, pk) = generate_hypertree(seed, 2, 2).unwrap();
