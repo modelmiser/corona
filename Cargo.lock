@@ -100,6 +100,10 @@ name = "ratchet-types"
 version = "0.1.0"
 
 [[package]]
+name = "refinement-types"
+version = "0.1.0"
+
+[[package]]
 name = "sigma-types"
 version = "0.1.0"
 
