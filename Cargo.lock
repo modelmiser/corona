@@ -19,6 +19,10 @@ name = "bloom-types"
 version = "0.1.0"
 
 [[package]]
+name = "commit-types"
+version = "0.1.0"
+
+[[package]]
 name = "consttime-types"
 version = "0.1.0"
 
