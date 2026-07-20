@@ -1136,6 +1136,42 @@ work (complete tasks, add children, keep siblings).
       datum is the seal's **dual mode** (observation, not construction) + the fifth seam.
       See CHARTER.
 
+## Garden state (2026-07-19n)
+
+- **Leaf 27 (`unit-types`) SEEDED + CONVERGED + DOC-SYNCED — dimensional analysis, the garden's
+  FIRST leaf outside BOTH crypto and distributed systems** (no adversary, secret, hardness, or
+  coordination; nearest neighbours each shed only some — bloom=probability, crdt=distributed/
+  replicated, static-config=k-of-n subject). Thesis answered YES: dimensional consistency reduces
+  **entirely to the E0308 brand**, and it's the garden's **first LITERAL E0308** — a *static
+  nominal* marker vs the generative-lifetime **E0521** of every prior brand leaf (composition
+  leaves like mss emit no E0521 — consume a component's brand). SPLITS: the brand pins the
+  DIMENSION, forgets the SCALE (`meters+feet` both `Quantity<Length>` → nonsense, the Mars Climate
+  Orbiter class); scale is a runtime residue, closable only by folding the unit into the brand
+  (`Scaled<D,U>` + a `UnitOf<D>` coherence bound) at a composability cost, and even then the
+  conversion `FACTOR` is data a wrong value type-checks past (witness-trap: forces a conversion to
+  be EXPLICIT, never CORRECT — the residue relocates, never reaches zero). **E0308 (value
+  mismatch, any surface — `.plus()` AND `+`, since the blanket `impl<D> Add` unifies D) vs E0277
+  (any unsatisfied bound) track two KINDS of violation, not two API surfaces.** E0451/E0382/E0080
+  honestly unused. Standalone. Seed `85fdd92`; fixes `b005615`/`9c0992f`/`d5c2bbc`/`045b422`;
+  converged `e413a24`. Workspace **411 unit + 93 doctests = 504**, all gates green.
+- **Cold review CONVERGED 2026-07-19 (5 rounds; R4+R5 two consecutive clean, 0 CRIT/0 MOD).** The
+  discipline NEVER broke — 30+ safe-Rust attack vectors across 4 adversarial passes, zero
+  compiles-when-it-shouldn't; **every finding was in the prose** (the recurring garden signature).
+  Arc: R1 Mars $327M→program-total + bloom "hardness"→probability + a `UnitOf<D>` coherence rung;
+  R2 over-corrected the non-crypto claim (bloom/crdt/static-config attributions) — re-anchored;
+  **R3 the standout** — the docs claimed the `+` operator gives E0277 ("different door"); direct
+  rustc showed it gives **E0308** (blanket impl unifies D), and that **rustdoc does NOT
+  machine-check `compile_fail` codes** (E0308 body under `,E0277` passes) → a *wrong* finding
+  became a *truer* one (E0308=value mismatch, E0277=unmet bound), codes now verified by direct
+  rustc, garden-wide caveat recorded; R4 "one E0277"→"any unmet bound" (to::<V> also); R5 dropped
+  mss from the generative-brand list. Not pushed. See CHARTER row + INSIGHTS/leaf-27 + DEVLOG.
+- `corona-core` promotion check (leaf-27 trigger): **nothing to promote** (standalone; imports
+  nothing — a domain-departure leaf must not lean on crypto siblings). The datum is the **first
+  literal E0308** (earning the charter's primitive name) and the dimension/scale intra-brand split.
+- **Garden now corona-core + 27 leaves.** NEXT is the user's call: a fresh open-ended leaf, the
+  deferred leaf-13 CHARTER fix (Tier-3), or the literal branded MssPublicKey (if wanted despite the
+  thesis cost). Nothing auto-starts.
+
 ## Garden state (2026-07-19m)
 
 - **Tier-2 deeper-facet rung set BUILT + CONVERGED (all 9).** On the user's "do the tier-2 rungs",
