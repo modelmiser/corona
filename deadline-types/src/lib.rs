@@ -297,7 +297,8 @@ impl<const N: usize> Schedulable<N> {
 /// The recurrence is monotone increasing and either reaches a fixed point `≤ Dᵢ` or crosses
 /// `Dᵢ` (unschedulable) — so it always terminates. Interference arithmetic is `u64` and
 /// **saturating**, so an out-of-contract input rejects rather than wrapping; on valid inputs
-/// `Cⱼ ≤ Tⱼ` bounds each term by `r`, so saturation never actually triggers.
+/// each term `⌈r/Tⱼ⌉·Cⱼ ≤ r + Tⱼ` with `r ≤ Dᵢ ≤ u32::MAX`, so the `N`-term sum stays far
+/// below `u64::MAX` and saturation never actually triggers.
 fn rm_task_meets_deadline<const N: usize>(tasks: &[(u32, u32); N], i: usize) -> bool {
     let (ci, ti) = tasks[i];
     let deadline = ti as u64;
@@ -402,6 +403,14 @@ mod tests {
         // (next = 6 > 4) and wrongly rejects. (A rejecting set can't distinguish the two.)
         assert!(Schedulable::admit_rm_exact([(2u32, 4u32), (2, 4)]).is_some());
         assert!(Schedulable::admit_edf([(2u32, 4u32), (2, 4)]).is_some()); // sanity: U=1.0 OK
+    }
+
+    #[test]
+    fn rta_detects_a_multi_iteration_deadline_miss() {
+        // {C=3,T=5},{C=3,T=8}: task 2's response climbs 3 → 6 → 9, crossing D=8 only on the
+        // SECOND iteration. Pins the `next == r` fixed-point test — a `next >= r` mutant
+        // would wrongly accept on iteration one (a first-iteration miss can't distinguish it).
+        assert!(Schedulable::admit_rm_exact([(3u32, 5u32), (3, 8)]).is_none());
     }
 
     #[test]
