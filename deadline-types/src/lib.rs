@@ -24,9 +24,9 @@
 //!
 //! **reduce-half (1) — the E0080 walls.** A task's `C` must not exceed its deadline
 //! ([`assert_schedulable_edf`] checks `C <= T` per task). And for the one tractable island
-//! — **preemptive, independent-task, implicit-deadline uniprocessor EDF** (negligible
-//! switching overhead) — Liu & Layland (1973)'s test is *exact* (necessary **and**
-//! sufficient): `Σ Cᵢ/Tᵢ ≤ 1`. That sum is an **integer** const-eval
+//! — **preemptive, independent, periodic (implicit-deadline) tasks under uniprocessor
+//! EDF** (no self-suspension, negligible switching overhead) — Liu & Layland (1973)'s
+//! test is *exact* (necessary **and** sufficient): `Σ Cᵢ/Tᵢ ≤ 1`. That sum is an **integer** const-eval
 //! computation (common-denominator cross-multiplication, no float in the wall), so an
 //! over-utilised set trips **E0080** at compile time — the depleting wall of
 //! `static-config` (leaf 6) / `dp` (leaf 28), now metering **processor utilisation**.
@@ -42,23 +42,29 @@
 //! - Fixed-priority **rate-monotonic** has no exact utilisation wall. The Liu & Layland
 //!   *sufficient* bound `U ≤ n(2^{1/n}−1)` (→ `ln 2 ≈ 0.693`) is **conservative** — it
 //!   *rejects schedulable sets*. The *exact* test is **Response-Time Analysis** (Joseph &
-//!   Pandya 1986; Audsley et al. 1993), a pseudo-polynomial **fixed-point** iteration.
-//! - Even on **one** processor, constrained/arbitrary deadlines and release jitter push
-//!   *exact* fixed-priority analysis to **NP-hard** (static-priority response-time
-//!   computation is NP-hard — Eisenbrand & Rothvoß 2008). **Multiprocessor** schedulability
-//!   is NP-hard for a separate reason (partitioning = bin-packing).
+//!   Pandya 1986; Audsley et al. 1993), a pseudo-polynomial **fixed-point** iteration — and
+//!   it stays pseudo-polynomial even for constrained/arbitrary deadlines (busy-window RTA),
+//!   so those alone are *not* what makes the problem hard.
+//! - Hardness enters with **release jitter / offsets** (plus adversarial period structure):
+//!   exact static-priority *response-time computation* becomes **NP-hard** (Eisenbrand &
+//!   Rothvoß 2008), and the *feasibility decision* — a `∀` over release patterns whose
+//!   complement (a deadline miss) is a short witness — is **coNP-hard**. **Multiprocessor**
+//!   schedulability is hard for a separate reason (partitioning = bin-packing, NP-hard).
 //!
 //! So a compile-time wall must **choose**: tractable-but-conservative (a utilisation bound)
-//! or exact. The exact test is at best **pseudo-polynomial** (RTA, for the uniprocessor
-//! cases — decidable, but not a cheap const comparison), and for the genuinely **NP-hard**
-//! models no *polynomial-cost* exact wall can exist unless P = NP. That gap is the residue —
-//! the garden's first gated by **proven complexity-theoretic hardness** (the schedulability
-//! *decision* is NP-hard), as opposed to a *conjectured* lower bound (leaf 20's hardness
-//! assumption), *undecidability* (leaf 30 — halting), or *unboundedness* (leaf 32's
-//! `sup κ = ∞`). Two facts, held apart: the NP-hardness reduction is a **theorem**; the
-//! claim that *no complete tractable wall exists* is **conditional on P ≠ NP** (open).
-//! Schedulability stays **decidable** throughout — the complexity-theoretic sibling of leaf
-//! 30's computability residue. It is demonstrated *executably* (see
+//! or exact. The exact test is at best **pseudo-polynomial** (RTA / busy-window, for the
+//! jitter-free uniprocessor cases — decidable, but not a cheap const comparison), and for
+//! the genuinely hard models (uniprocessor with jitter, or multiprocessor) no
+//! *polynomial-cost* exact wall can exist unless P = NP. That gap is the residue — the
+//! garden's first gated by **proven complexity-theoretic hardness** (response-time
+//! *computation* is NP-hard; the feasibility *decision* is coNP-hard), as opposed to a
+//! *conjectured* lower bound (leaf 20's hardness assumption), *undecidability* (leaf 30 —
+//! halting), or *unboundedness* (leaf 32's `sup κ = ∞`). Two facts, held apart: the
+//! hardness reductions are **theorems**; the claim that *no complete tractable wall exists*
+//! is **conditional on P ≠ NP** (open — and `P = NP ⟺ P = coNP`, so coNP-hardness gives the
+//! same conditional). Schedulability stays **decidable** throughout — the
+//! complexity-theoretic sibling of leaf 30's computability residue. It is demonstrated
+//! *executably* (see
 //! [`the_utilisation_bound_is_conservative`](self#tests)): a harmonic set at `U = 1.0` that
 //! EDF-exact **accepts**, RM-sufficient **rejects**, and RM-exact (RTA) **accepts**.
 //!
@@ -134,13 +140,17 @@ const fn tasks_valid<const N: usize>(tasks: &[(u32, u32); N]) -> bool {
 /// `true` iff EDF utilisation exceeds 100%: `Σ Cᵢ/Tᵢ > 1`.
 ///
 /// Exact integer arithmetic via a common denominator `D = Π Tⱼ` (cross-multiplication),
-/// so there is no float in the const-eval wall. **TOY caveat:** the exactness holds only
-/// while the `u128` period-product fits. On overflow the test **conservatively returns
-/// `true`** ("over capacity", a safe reject) via `checked_mul`/`checked_add`, so no false
-/// certificate is ever minted — even in a release build with overflow checks off. The
-/// price is only completeness: a genuinely schedulable set with enormous periods may be
-/// rejected.
+/// so there is no float in the const-eval wall. **Total and conservative:** an *invalid*
+/// set (zero period, or `C > T`) and any `u128` overflow of the period-product or the
+/// numerator all return `true` ("over capacity", a safe reject), so this helper never
+/// panics and never falsely certifies — even in a release build with overflow checks off.
+/// The price is only completeness: a schedulable set with enormous periods may be rejected.
 pub const fn edf_exceeds_capacity<const N: usize>(tasks: &[(u32, u32); N]) -> bool {
+    // An invalid set is conservatively "over capacity" — keeps this pub helper total (no
+    // divide-by-zero on the `denom / t` below) and never falsely certifies.
+    if !tasks_valid(tasks) {
+        return true;
+    }
     // Common denominator D = product of all periods. On overflow we cannot compute the
     // test exactly, so we conservatively report "over capacity" (reject) rather than wrap.
     let mut denom: u128 = 1;
@@ -152,7 +162,9 @@ pub const fn edf_exceeds_capacity<const N: usize>(tasks: &[(u32, u32); N]) -> bo
         };
         i += 1;
     }
-    // Numerator = Σ Cᵢ · (D / Tᵢ); compare Σ Cᵢ/Tᵢ > 1 as numerator > D.
+    // Numerator = Σ Cᵢ · (D / Tᵢ); compare Σ Cᵢ/Tᵢ > 1 as numerator > D. Each term is ≤ D
+    // (validity guarantees Cᵢ ≤ Tᵢ), so the `checked_mul` is defensive; the running SUM,
+    // however, can genuinely exceed `u128`, which is what the `checked_add` catches.
     let mut numer: u128 = 0;
     i = 0;
     while i < N {
@@ -423,6 +435,29 @@ mod tests {
         let huge = [(u32::MAX, u32::MAX); 6];
         assert!(edf_exceeds_capacity(&huge));
         assert!(Schedulable::admit_edf(huge).is_none());
+    }
+
+    #[test]
+    fn edf_numerator_overflow_also_rejects() {
+        // Periods chosen so D = Π T ≈ 2^127 FITS u128, but Σ Cᵢ·(D/Tᵢ) = 4·D overflows it —
+        // exercising the `numer.checked_add` conservative-reject branch, distinct from the
+        // `denom` branch above. (The set is also genuinely over capacity, U = 4.)
+        let set = [
+            (4294967295u32, 4294967295u32),
+            (4294967295, 4294967295),
+            (4294967295, 4294967295),
+            (2147483648, 2147483648),
+        ];
+        assert!(edf_exceeds_capacity(&set));
+        assert!(Schedulable::admit_edf(set).is_none());
+    }
+
+    #[test]
+    fn edf_exceeds_capacity_is_total_on_invalid_input() {
+        // A zero period is invalid: the pub helper returns `true` (safe reject) rather than
+        // dividing by zero. Pins the totality of the now-guarded public path.
+        assert!(edf_exceeds_capacity(&[(1u32, 0u32)]));
+        assert!(edf_exceeds_capacity(&[(5u32, 3u32)])); // C > T is likewise invalid → reject
     }
 }
 
