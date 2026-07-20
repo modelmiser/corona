@@ -1627,14 +1627,17 @@ fmt 5c5e951, R1-fixes 8aa24de):*
       (`the_space_time_tradeoff_is_a_prove_time_recomputation_count`; counting twins mirror both prove() bodies
       — seed-only 2^K, materialized 0 — both minting the byte-identical proof).
 
-*Tier 3 — CHARTER doc corrections (audit-verified over-claims; doc hygiene, not code):*
-- [ ] Leaf 13 `fountain` CHARTER row: the "200/200, 1.5× 37%, 2× 7%, 3× 0%" figures are dev-time
-      measurements; the test only pins `stalls > trials/4` and no intermediate-rate test exists. Soften to
-      what is pinned, or add the rate tests.
-- [ ] Leaf 14 CHARTER row: mark finding-3 (persistence reuse) as prose-only until its Tier-1 rung lands.
-- [ ] Leaf 15C CHARTER row (line ~102): "E0080 CAN const-execute … rejects `+`/`min` at compile time"
-      reads as implemented; lib.rs says "E0080 is unused here." Reconcile (either build the Tier-1 rung,
-      or reword to hypothetical).
+*Tier 3 — CHARTER doc corrections (audit-verified over-claims; doc hygiene, not code) — ALL DONE 2026-07-19:*
+- [x] Leaf 13 `fountain` CHARTER row + README: the "200/200, 1.5× 37%, 2× 7%, 3× 0%" figures over-claimed
+      (the suite pins only exactly-`k` stalls > ¼ of 200 trials, and `3×` overhead decodes 200/200; no
+      1.5×/2× test exists). SOFTENED (not add-tests — intermediate rates are probabilistic and would be
+      flaky to pin): both ends now stated as suite-pinned, the finer 1.5×≈37%/2×≈7% slope + the near-total
+      exactly-`k` rate labelled dev-time-illustrative-not-pinned. Both doc sites fixed in one pass
+      (doc-site-propagation); the crate's own module doc already said "a large fraction" (honest, unchanged).
+- [x] Leaf 14 CHARTER row: RESOLVED by its Tier-1 rung (`55deb45`) — finding-3 now "made executable
+      2026-07-19 by `the_persistence_boundary_reuses...`", reconciled during the Tier-1 batch.
+- [x] Leaf 15C CHARTER row: RESOLVED by its Tier-1 rung (`6f9c3f7`) — now "E0080 DOES touch the laws
+      (the `_BOUNDED_MODEL_LAWS` rung)" / "E0080 used at the bounded model only", reconciled during Tier-1.
 
 *Leaves confirmed COMPLETE by the audit (residue unexecutable in principle — do NOT write a rung):*
 6 (near-complete scope-limit), 9 & 12 (deliberate cross-crate coordination seam), 18 & 20 & 25 (gap

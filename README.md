@@ -505,9 +505,12 @@ breaks the *shape* of that count two ways:
   several* — does not imply you can decode: peeling can **stall**. Success is an
   **emergent predicate** ("did peeling recover all `k`?"), only *probabilistically*
   related to how many symbols you hold; you cannot name the acceptance count in
-  advance. (Measured on the toy at `k = 24`: exactly `k` symbols stall in **200/200**
-  independent instances, `1.5×` in 37%, `2×` in 7%, `3×` in 0% — the classic
-  belief-propagation cliff, where RS's acceptance is a step function at `k`.)
+  advance. (The toy's test suite pins both ends of this belief-propagation cliff at
+  `k = 24`: at exactly `k` symbols a *substantial fraction* of instances stall — the
+  test asserts more than ¼ of 200 trials — while `3×` overhead decodes in all 200. The
+  finer dev-time slope between them — `1.5×`≈37%, `2×`≈7%, and a near-total stall rate
+  at exactly `k` in the sampled run — is illustrative, not pinned by the suite. RS's
+  acceptance, by contrast, is a step function at `k`.)
 
 So the garden's runtime **count residue** splits into two species — **exact-count**
 (Shamir, RS: any `k` suffice, deterministically) versus **emergent-completion**
