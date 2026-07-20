@@ -784,6 +784,45 @@ mod tests {
     }
 
     #[test]
+    fn for_a_fixed_message_the_blinding_factor_permutes_the_units_exactly() {
+        // The complementary — and exhaustive — form of the test above (crate docs, "why
+        // hiding is perfect"). That one fixes the signer's VIEW and shows every message
+        // explains it; this fixes the MESSAGE and shows the blinding factor sweeps the
+        // view over the WHOLE unit group. For a fixed unit m, r ↦ m' = m·rᵉ mod n is a
+        // BIJECTION of the units onto themselves — gcd(e, φ(n)) = 1 makes r ↦ rᵉ a
+        // permutation, and multiplying by the fixed unit m is another — so r uniform over
+        // the units makes m' uniform over the units, exactly independent of m. Verified as
+        // a genuine permutation over all of (ℤ/3233)*.
+        let pk = Signer::toy_textbook_rsa().public_key();
+        let n = pk.modulus();
+        let units: std::collections::BTreeSet<u64> = (1..n).filter(|&x| gcd(x, n) == 1).collect();
+        assert_eq!(units.len(), 3120, "φ(3233) = φ(61)·φ(53) = 60·52");
+
+        let m = 1234u64; // a fixed unit message (1234 = 2·617, coprime to 61·53)
+        assert_eq!(gcd(m, n), 1, "the perfect-hiding argument needs m to be a unit");
+
+        let images: std::collections::BTreeSet<u64> = units
+            .iter()
+            .map(|&r| {
+                BlindingFactor::from_scalar(&pk, r)
+                    .expect("r is a unit")
+                    .blind(m)
+                    .0
+                    .value()
+            })
+            .collect();
+        // A genuine bijection: the images are EXACTLY the units — all 3120 distinct (a
+        // `BTreeSet` collapses collisions), none escaping the group. The signer's view is
+        // therefore uniform over the units, carrying zero information about m.
+        assert_eq!(
+            images.len(),
+            units.len(),
+            "no two factors collide onto one view (injective)"
+        );
+        assert_eq!(images, units, "r ↦ m·rᵉ is a permutation of the units (onto)");
+    }
+
+    #[test]
     fn the_blind_protocol_signing_entry_point_sees_only_a_blinded_value() {
         // The PROTOCOL's signing entry point (`sign_blinded`) takes a BlindedMessage, so a
         // signer following the protocol never receives the cleartext. (This is a protocol
