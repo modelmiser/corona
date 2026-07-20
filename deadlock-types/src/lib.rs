@@ -96,13 +96,18 @@
 //! acquisition, **including the first**, to be checked against the thread's *running
 //! maximum* held level — a `max(held, L)` carried in a **linear token** threaded through
 //! the acquisitions. Rust can express the linearity (a non-`Clone` token moved into each
-//! guard), but not the **type-level `max`**: a `Guard<{ max(HELD, L) }>` needs
-//! `generic_const_exprs`, still unstable. So the type reduces the *within-chain* order to
-//! E0080, while the **"a thread takes all its locks in one increasing chain" obligation is
-//! itself the residue** — unenforceable in stable Rust, disclosed and left to discipline (a
-//! real lock-order checker such as the kernel's lockdep recovers it *at runtime* by
-//! tracking the true maximum across *all* held locks). The emergent hazard bites one level
-//! up: even the *fix* for the global cycle carries a global obligation the local type
+//! guard), but not a **`max` over these `const` levels**: a `Guard<{ max(HELD, L) }>` needs
+//! `generic_const_exprs`, still unstable (a `typenum`-style unary encoding *could* compute
+//! the max on stable, at the cost of abandoning the ergonomic `const LEVEL: u32`). So the
+//! type reduces the *within-chain* order to E0080, while the **"a thread takes all its
+//! locks in one increasing chain" obligation is itself the residue** — unenforceable in
+//! stable Rust, disclosed and left to discipline. A runtime lock-order checker such as the
+//! kernel's **lockdep** recovers it dynamically instead, by a mechanism the type could not
+//! use: it assigns each lock a *class* and, on every acquisition, records which classes are
+//! already held to build a "class X held while class Y is acquired" dependency graph,
+//! flagging any **cycle** in it — no numeric levels, no maximum, and *detecting* a bad
+//! order after the fact rather than *forbidding* it before. The emergent hazard bites one
+//! level up: even the *fix* for the global cycle carries a global obligation the local type
 //! cannot hold.
 //!
 //! ## The residue, part 2: dynamic composition
@@ -134,8 +139,9 @@
 //! part carries it. Two primitives touched — **[E0080]** (acquire order) and **[E0451]**
 //! (unforgeable level) — plus the borrow checker for LIFO release; **[E0382]** and the
 //! brand are honestly unused. That a hazard as different as cross-thread deadlock still
-//! lands on the same vocabulary — reserving its *cross-chain* and *dynamic* cases for a
-//! runtime order (lockdep-style) — is the leaf's contribution.
+//! lands on the same vocabulary — reserving its *cross-chain* case for runtime cycle
+//! *detection* (lockdep) and its *dynamic* case for a runtime canonical *order*
+//! ([`transfer`]) — is the leaf's contribution.
 //!
 //! ## The codes, verified out of band
 //!
