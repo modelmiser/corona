@@ -161,9 +161,10 @@ pub struct VerifiedShare<'brand> {
 /// recoverable by anyone holding `k` shares (that is what secret sharing *is*),
 /// the [`feldman`] arithmetic is reimplementable, and in *this toy* the
 /// [`Commitment`] alone leaks `g^{secret}` under trivially-breakable dlog (so even
-/// a zero-share commitment-holder recovers it — see the TOY banner). A `Secret`
-/// witnesses "you went through the checked path," nothing about who else could
-/// compute `f(0)`.
+/// a zero-share commitment-holder recovers it — see the TOY banner; made executable by
+/// the `a_zero_share_commitment_holder_recovers_the_secret` test, which cracks the
+/// discrete log from the commitment with no shares at all). A `Secret` witnesses "you
+/// went through the checked path," nothing about who else could compute `f(0)`.
 /// The only path that hands *you* the byte from a `Secret` is
 /// [`expose`](Secret::expose); the redacting [`Debug`] keeps `{:?}` from leaking
 /// it (the derived `Eq` is at most a redundant equality oracle, no stronger than
@@ -410,6 +411,32 @@ mod tests {
         })
         .unwrap();
         assert!(recovered);
+    }
+
+    #[test]
+    fn a_zero_share_commitment_holder_recovers_the_secret() {
+        // The confidentiality residue, made executable. A `Secret` is only a *typestate*
+        // guarantee — it says nothing about the value's secrecy. The Feldman commitment
+        // publishes C₀ = g^{a₀} = g^{secret}, and the toy group's discrete log is
+        // breakable, so a holder of the commitment ALONE — zero verified shares, below
+        // any threshold — recovers the secret. No garden primitive makes the value
+        // confidential; secrecy is a property of the *backend's hardness*, which the toy
+        // deliberately lacks (∥ leaf 5's type-vs-backend split: the seal/brand hold, the
+        // hardness does not). g = 64 generates the order-257 subgroup, so the discrete
+        // log is unique over a u8 secret's range.
+        let secret = 0x42u8;
+        let cracked = deal_scoped(secret, t(3, 5), &[11, 200], |c, _shares| {
+            // Ignore every share. C₀ is the commitment's first coefficient.
+            let c0 = c.coeffs[0] as u32;
+            // Brute-force the discrete log — trivial in the toy group.
+            (0u32..=255).find(|&x| feldman::g_pow(feldman::G, x) == c0)
+        })
+        .unwrap();
+        assert_eq!(
+            cracked,
+            Some(secret as u32),
+            "the commitment alone leaks the secret — no shares, no threshold"
+        );
     }
 
     #[test]
