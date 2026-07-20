@@ -8,7 +8,9 @@
 //! 1936; Rice 1953). So the only way to *guarantee* it is to **subtract** expressiveness:
 //! restrict to a **total fragment**, exactly as Agda and Idris-total refuse general
 //! recursion and admit only definitions whose termination the checker can see. The
-//! guarantee is bought by giving something up, and **the residue is what you gave up.**
+//! guarantee is bought by giving something up, and **the residue is what you gave up** —
+//! true almost by construction once "restrict to the total fragment" is the move, but the
+//! point of the leaf is *which* fragment Rust already gives you for free (below).
 //!
 //! ## The reduction: structural recursion the compiler is forced to finish
 //!
@@ -17,12 +19,13 @@
 //! shrink forever. This leaf makes "strictly smaller" a fact **in the type**.
 //!
 //! A type-level **Peano natural** carries the inductive structure — [`Z`] (zero) and
-//! [`S`]`<N>` (successor of `N`). The [`Total`] trait is implemented for [`Z`] (the base)
-//! and for [`S`]`<N>` **only when `N: Total`** — the inductive step *requires the
-//! predecessor's proof*. So computing anything over `S<S<Z>>` forces the compiler to
-//! descend to `S<Z>`, then to `Z`, and **stop**. The recursion is structural because the
-//! *type shrinks at every step*, and **monomorphization must bottom out** — an
-//! infinitely-descending instantiation is not a program the compiler will build.
+//! [`S`]`<N>` (successor of `N`). The [`Total`] trait is **sealed** (it has a private
+//! supertrait; see below) and implemented for [`Z`] (the base) and for [`S`]`<N>` **only
+//! when `N: Total`** — the inductive step *requires the predecessor's proof*. So computing
+//! anything over `S<S<Z>>` forces the compiler to descend to `S<Z>`, then to `Z`, and
+//! **stop**. The recursion is structural because the *type shrinks at every step*, and the
+//! descent bottoms out because **a finite type is a finite term**: resolving `Total` for
+//! `S<S<Z>>` is a finite walk down a finite type, which trait resolution must complete.
 //!
 //! ```
 //! use totality_types::{Total, S, Z};
@@ -35,26 +38,76 @@
 //! ```
 //!
 //! The value-level counterpart is a **structural `const fn`** run by the **const
-//! evaluator** — Rust's built-in *total sublanguage*. [`triangular`] recurses on `n - 1`
-//! (a strictly smaller `n`), and evaluating it at compile time produces a `const` value.
-//! **That value's existence is the termination witness:** if the recursion did not halt,
-//! there would be no value — the const evaluator would trip its step limit ([E0080]).
+//! evaluator**. [`triangular`] recurses on `n - 1` (a strictly smaller `n`), and evaluating
+//! it at compile time produces a `const` value. **That value's existence witnesses that the
+//! evaluation halted *within the compiler's budget*** — see the sharp caveat in "the const
+//! evaluator is a watchdog, not an oracle" below; the const evaluator is *not* a decision
+//! procedure for termination.
 //!
 //! ```
 //! use totality_types::triangular;
-//! const T10: u64 = triangular(10); // evaluated at compile time — it HALTED
+//! const T10: u64 = triangular(10); // evaluated at compile time — it finished
 //! assert_eq!(T10, 55);
 //! ```
+//!
+//! ### Why [`Total`] is sealed
+//!
+//! Left open, `Total` would be a bare public trait, and a downstream crate could write
+//! `impl Total for Whatever { const DEPTH = 999; }` — a proof with **no Peano descent**,
+//! bottoming out at `Whatever` rather than `Z`. The descent-to-`Z` story would then be a
+//! description of the *intended* impls, not of what the type enforces. So `Total` carries a
+//! **private supertrait** (`sealed::Sealed`, implemented only for `Z` and `S<N>`): a
+//! foreign `impl Total` fails its `Sealed` bound ([E0277]). This is the same discipline the
+//! leaf applies to [`Halted`] (E0451) — the guarantee should be *enforced*, not merely
+//! intended. (A foreign impl could not have been *non-terminating* even unsealed — a
+//! self-referential `const DEPTH` is caught by the compiler's cycle detection, [E0391] —
+//! but it could assert a *bogus* depth; sealing removes even that.)
+//!
+//! ### Three mechanisms — the seal, the requirement, the wall
+//!
+//! - **E0451 seals [`Halted`]** — a completion witness is mintable only by [`run_total`].
+//! - **E0277 enforces the structure** — `S<N>: Total` needs `N: Total`, and the private
+//!   `Sealed` bound blocks any non-Peano impl (both are unsatisfied-bound errors).
+//! - **E0080 walls the const evaluator** — but only as a **budget**; read on.
+//!
+//! ### Why not the brand? Because the brand cannot order
+//!
+//! The garden's ordering intuitions come from the E0308-class **brand** — but leaves 11
+//! (`accumulator-types`) and 17 (`translog-types`) established that *two generative brands
+//! are unordered*. Termination needs not an *order* but a *well-founded descent*, which the
+//! Peano type provides directly. The brand and [E0382] are honestly **unused** here (no
+//! provenance scope to pen, no linearity to spend).
+//!
+//! ## The const evaluator is a watchdog, not an oracle
+//!
+//! It is tempting to say the const-eval **wall** ([E0080]) "rejects non-terminating
+//! definitions." It does not. [E0080] for recursion is *"reached the configured maximum
+//! number of stack frames"* — a **stack-frame budget**, a watchdog with a timeout. It trips
+//! on any evaluation that exceeds the budget, and a **terminating-but-deep** computation
+//! trips it exactly as a divergent one does: `triangular(u64::MAX)` is structural and
+//! mathematically halts, yet it blows the frame budget and fails to compile with the *same*
+//! [E0080]. So:
+//!
+//! - A produced `const` value witnesses **halting-within-budget** — necessary, not
+//!   sufficient, for totality: it proves *this* evaluation finished inside the budget.
+//! - An [E0080] trip witnesses **exceeded-the-budget** — it does **not** distinguish
+//!   non-termination from deep-but-finite recursion, and it is **not** a certificate of
+//!   divergence.
+//!
+//! The const evaluator is a **bounded** evaluator, and the total fragment it will actually
+//! run to completion is *strictly narrower* than "structural/terminating." The real
+//! termination guarantee in this leaf is the **type-level** structural descent (finite type
+//! ⇒ finite trait-resolution walk), which is exact; the const-fn story is a *value-level
+//! illustration* of the same idea, with this honest ceiling.
 //!
 //! ### The seal witnesses halting, not totality (the witness-trap, again)
 //!
 //! [`run_total`] runs a closure and wraps its result in an **E0451-sealed** [`Halted`].
 //! Because a divergent closure never returns, control never reaches the seal — so a
-//! `Halted` can exist only for a computation that *actually finished*. But the seal is a
-//! **witness-trap** (the shape recurring since leaves 5/23/28): it attests **this
-//! evaluation halted**, never that the function is total *for all inputs*. `run_total`
-//! over an input that happens to converge mints a witness; the *same function* on another
-//! input may diverge and mint nothing. Halting is observed, not proven.
+//! `Halted` exists only for a computation that *actually finished*. But (the shape recurring
+//! since leaves 5/23/28) it attests **this evaluation halted**, never that the function is
+//! total *for all inputs*: `run_total` over a convergent input mints a witness; the *same
+//! function* on another input may diverge and mint nothing. Halting is observed, not proven.
 //!
 //! ```
 //! use totality_types::{run_total, triangular};
@@ -67,11 +120,10 @@
 //! The reduce-half covers only the **structural** fragment. Everything outside it is the
 //! residue, and it is irreducible by a decidability theorem, not merely unencoded:
 //!
-//! - **General recursion is undecidable.** Nothing in the type system rejects
-//!   [`diverge`] — `loop {}` has type `!`, which coerces to any return type, so a
-//!   never-returning function is **indistinguishable at the type level** from a total one.
-//!   No type separates `diverge` from `triangular`; a type that did would decide the
-//!   halting problem.
+//! - **General recursion is undecidable.** Nothing in the type system rejects [`diverge`] —
+//!   `loop {}` has type `!`, which coerces to any return type, so a never-returning function
+//!   is **indistinguishable at the type level** from a total one. No type separates
+//!   `diverge` from `triangular`; a type that did would decide the halting problem.
 //! - **Non-structural (well-founded) recursion** — a call that decreases some *measure*
 //!   other than the syntactic structure (e.g. Euclid's `gcd`, `n` shrinking by a
 //!   non-obvious amount) — terminates, but the type cannot see the measure. Agda accepts
@@ -84,27 +136,30 @@
 //!   Productivity is a whole second obligation no value type here touches — the dual of
 //!   termination across the induction/coinduction line.
 //!
-//! ## What this leaf adds to the map: the meta-appeal
+//! ## What this leaf adds to the map: the borrowed floor
 //!
 //! The garden's thesis is that each domain's invariant reduces to the **same four**
 //! compile primitives — E0451, E0382, the E0308-class brand, E0080 — with an irreducible
-//! residue, and *no new primitive*. Totality both **honors** that (its reduce-half touches
-//! only [E0080] and [E0451]; the structural requirement bites as [E0277], the same
-//! bound-not-satisfied enforcement seen in leaves 27–28; the brand and [E0382] are
-//! honestly unused) **and** exposes its floor.
+//! residue, and *no new primitive*. Totality honors that (its reduce-half touches only
+//! [E0080] and [E0451]; the structural requirement *and* the seal both bite as [E0277], the
+//! ordinary unsatisfied-bound error of leaves 27–28; the brand and [E0382] are unused) —
+//! and it exposes the garden's **floor**.
 //!
-//! The guarantee that structural recursion *terminates* does not rest on any primitive the
-//! leaf **deploys**. It rests on a **fifth fact the leaf cannot deploy** — the **compiler's
-//! own totality**: monomorphization terminates by construction (a finite type has a finite
-//! descent), and const-eval terminates by a step limit. Every prior leaf's guarantee rests
-//! on a primitive it *wields*; totality's rests on the **ground the whole garden already
-//! stands on**, and you cannot encode "the type checker halts" *as a type* — it is
-//! presupposed by every type. So the reduce-half is real but **borrowed**: the total
-//! fragment is exactly *what the compiler can itself finish checking*, and the escape-hatch
-//! ("give up Turing-completeness") is precisely *restricting to that fragment*. The residue
-//! — general recursion, the undecidable remainder — is what lies **outside the substrate's
-//! own totality**. It is the garden's first residue that is not a fact about a value but a
-//! **limit of the substrate**, and the first bought by *subtraction* rather than *addition*.
+//! The guarantee that the type-level structural descent *terminates* does not rest on any
+//! of the four primitives. It rests on a fact the leaf **cannot deploy as a type** because
+//! it is the **substrate**: the compiler's own **trait-resolution totality** — a finite
+//! type is a finite term, so resolving `Total` down a Peano chain must bottom out (a
+//! genuinely non-terminating resolution, e.g. a self-referential associated const, is the
+//! separate thing the compiler stops with [E0391]). Every prior leaf's guarantee rests on a
+//! primitive it *wields*; this one's rests on the **ground the whole garden already stands
+//! on** — "the type checker halts" is not itself expressible as a type, being presupposed
+//! by every type. So the reduce-half is real but **borrowed**: the total fragment is exactly
+//! *what the compiler can itself finish checking*, the escape-hatch ("give up
+//! Turing-completeness") is *restricting to that fragment*, and the residue is *what lies
+//! outside it*. Note the honest scope of the claim: it is trait-resolution totality that is
+//! the borrowed fact, **not** the const evaluator (whose termination is merely the [E0080]
+//! *budget*, above) — the garden's first residue that is a **limit of the substrate** rather
+//! than a fact about a value, and the first bought by *subtraction* rather than *addition*.
 //!
 //! ## The codes, verified out of band
 //!
@@ -113,23 +168,34 @@
 //! direct `rustc`** (with a real `-o` path — [E0080] is a const-eval error surfaced at
 //! evaluation, and compiling to `/dev/null` can abort before it fires; the leaf-29 datum).
 //!
-//! **[E0080]** — a **non-structural** `const fn` (it recurses without descending), which
-//! the const evaluator cannot complete: it runs until the step limit trips. The total
-//! fragment **rejecting** a definition whose termination it cannot establish:
+//! **[E0080]** — a `const fn` that exceeds the const-eval **frame budget** (here a
+//! non-structural recursion that never descends, so it never finishes). This is the budget
+//! tripping, *not* a proof of non-termination — a deep-but-finite call trips it too:
 //!
 //! ```compile_fail,E0080
 //! // Recurses on `n` unchanged — no structural descent, no base case reached.
 //! const fn nonterminating(n: u64) -> u64 { nonterminating(n) + 1 }
-//! const _BAD: u64 = nonterminating(1); // error[E0080]: reached the step limit
+//! const _BAD: u64 = nonterminating(1); // error[E0080]: reached the max stack frames
 //! ```
 //!
-//! **[E0277]** — the **structural requirement** in action: `S<N>: Total` holds *only* when
-//! `N: Total`, so a successor built over a non-`Total` type has no proof and no `DEPTH`:
+//! **[E0277]** — the **structural requirement**: `S<N>: Total` holds *only* when `N: Total`,
+//! so a successor built over a non-`Total` type has no proof and no `DEPTH`:
 //!
 //! ```compile_fail,E0277
 //! use totality_types::{Total, S};
 //! struct NotTotal; // never implements `Total`
 //! let _ = <S<NotTotal> as Total>::DEPTH; // error[E0277]: `NotTotal: Total` unsatisfied
+//! ```
+//!
+//! **[E0277]** — the **seal**: [`Total`]'s private supertrait blocks a foreign impl, so the
+//! descent-to-`Z` narrative is *enforced*, not merely intended (this doctest compiles as an
+//! external crate, so the impl is genuinely foreign):
+//!
+//! ```compile_fail,E0277
+//! use totality_types::Total;
+//! struct Evil;
+//! // No Peano descent — a bare bogus depth. Blocked by the private `Sealed` supertrait.
+//! impl Total for Evil { const DEPTH: u32 = 999; } // error[E0277]: `Evil: Sealed` unsatisfied
 //! ```
 //!
 //! **[E0451]** — forging a [`Halted`] past its private seal (a witness for a computation
@@ -144,6 +210,7 @@
 //!
 //! [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
 //! [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
+//! [E0391]: https://doc.rust-lang.org/error_codes/E0391.html
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 //! [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
 
@@ -159,18 +226,31 @@ pub struct Z;
 /// fact the compiler compares at build time.
 pub struct S<N>(PhantomData<N>);
 
-/// A structural-termination witness at the **type** level. Implemented for [`Z`] (base)
-/// and for [`S`]`<N>` **only when `N: Total`** — the inductive step *requires the
-/// predecessor's proof* ([E0277] if it is missing). Because each step descends to a
-/// strictly smaller type and monomorphization must bottom out, any use of `Total` is a
-/// finite, guaranteed-terminating descent.
+/// Seals [`Total`]: a private supertrait implemented only for [`Z`] and [`S`]`<N>`, so no
+/// downstream crate can add a non-Peano `impl Total` (its `Sealed` bound is unsatisfiable
+/// from outside — [E0277]). This makes the descent-to-[`Z`] guarantee *enforced*, not
+/// merely a description of the intended impls.
 ///
 /// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
-pub trait Total {
-    /// The structural depth, summed by the const evaluator ([E0080]): each step is
-    /// `N::DEPTH + 1`, bottoming out at `Z`'s `0`.
-    ///
-    /// [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
+mod sealed {
+    /// Implemented only for the Peano constructors in this crate.
+    pub trait Sealed {}
+    impl Sealed for super::Z {}
+    impl<N: super::Total> Sealed for super::S<N> {}
+}
+
+/// A structural-termination witness at the **type** level. **Sealed** (via a private
+/// supertrait): implemented for [`Z`] (base) and for [`S`]`<N>` **only when `N: Total`** — the inductive
+/// step *requires the predecessor's proof* ([E0277] if it is missing). Because each step
+/// descends to a strictly smaller type and a finite type is a finite term, resolving
+/// `Total` for any Peano numeral is a finite descent the compiler must complete, bottoming
+/// out at [`Z`].
+///
+/// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
+pub trait Total: sealed::Sealed {
+    /// The structural depth, summed by the const evaluator: each step is `N::DEPTH + 1`,
+    /// bottoming out at `Z`'s `0`. (This is ordinary associated-const evaluation over a
+    /// finite type — not the E0080 budget wall, which concerns *value*-level `const fn`s.)
     const DEPTH: u32;
 
     /// The same descent reflected to a runtime value — total because the type shrank.
@@ -190,12 +270,15 @@ impl<N: Total> Total for S<N> {
     const DEPTH: u32 = N::DEPTH + 1;
 }
 
-/// A **total computation** in Rust's compile-time fragment: structural recursion on `n`
+/// A **structural computation** in Rust's compile-time fragment: structural recursion on `n`
 /// (each call takes `n - 1`, a strictly smaller value), evaluated by the const evaluator.
 ///
-/// Evaluating this in a `const` context produces a value **iff it halted** — the value is
-/// the termination witness. A definition that failed to descend would trip the const-eval
-/// step limit ([E0080]) instead of producing a value.
+/// Evaluating this in a `const` context produces a value **iff it halted within the
+/// compiler's frame budget** — the value witnesses *halting-within-budget*, which is
+/// necessary but not sufficient for totality. A definition that failed to descend runs past
+/// the budget and trips [E0080] — but so does a *terminating-but-deep* call such as
+/// `triangular(u64::MAX)`: the wall is a budget, not a termination test (see the crate docs,
+/// "the const evaluator is a watchdog, not an oracle").
 ///
 /// [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
 pub const fn triangular(n: u64) -> u64 {
@@ -268,8 +351,10 @@ mod tests {
     }
 
     #[test]
-    fn triangular_halts_at_compile_time() {
-        // Forced into a const context: if it did not halt, this would not compile.
+    fn triangular_halts_within_budget_at_compile_time() {
+        // Forced into a const context: if it ran past the frame budget, this would not
+        // compile. It does compile, so it finished within budget — halting-within-budget,
+        // which for this (small) input coincides with true termination.
         const T: u64 = triangular(10);
         assert_eq!(T, 55);
         assert_eq!(triangular(0), 0);
@@ -301,6 +386,6 @@ mod tests {
         let g: fn(u64) -> u64 = triangular;
         // Reference both without invoking the divergent one.
         assert_eq!(g(4), 10);
-        assert_eq!(f as usize != g as usize, true);
+        assert!(f as usize != g as usize);
     }
 }
