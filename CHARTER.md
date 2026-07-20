@@ -2,9 +2,12 @@
 
 *A garden of typestate crates that encode a domain's invariants through one small
 vocabulary of compile-time primitives. Corona is the **type** face of the Radiant
-verification work; [Sol](../../active/sol) is the **proof** face. They are
-*intended to be* wired, not merged (see "Relationship to Sol" — the flow is not
-yet exercised by any graduated leaf).*
+verification work; [Sol](../../active/sol) is the **proof** face; and [Spicule](../spicule) is the
+**seam** face — the same investigation seen where a domain's *residue* becomes a
+boundary cost (the seam trilemma). Corona *names* the residue → Spicule *prices*
+the seam → Sol *discharges* the obligation. They are *intended to be* wired, not
+merged (see "Relationship to Sol" — the flow is not yet exercised by any graduated
+leaf).*
 
 ## Why "garden"
 
