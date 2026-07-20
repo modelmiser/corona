@@ -403,10 +403,11 @@ impl RewoundState {
         }
     }
 
-    /// Answer `challenge`, **consuming** the state: `z = r + c·x mod q`. The signature is
-    /// identical to [`ProverNonce::respond`] — `self` by value — so answering a *second*
-    /// challenge requires a prior [`clone`](Clone::clone). That clone is the rewinding
-    /// step, and it is the one thing the linear honest nonce forbids.
+    /// Answer `challenge`, **consuming** the state: `z = r + c·x mod q`. Takes `self` by
+    /// value — the same *consuming* discipline as [`ProverNonce::respond`] (the arities
+    /// differ: this holds the witness, so it needs no `&Witness` argument) — so answering a
+    /// *second* challenge requires a prior [`clone`](Clone::clone). That clone is the
+    /// rewinding step, and it is the one thing the linear honest nonce forbids.
     pub fn respond(self, challenge: Challenge) -> Response {
         let z = group::f_add(
             self.secret as u32,
