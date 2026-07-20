@@ -122,6 +122,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "totality-types"
+version = "0.1.0"
+
+[[package]]
 name = "translog-types"
 version = "0.1.0"
 
