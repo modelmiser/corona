@@ -1,5 +1,10 @@
 //! # numerical-accuracy — the ℝ-vs-`f64` gap as typestate
 //!
+//! **⚠ TOY — not for real use.** This crate is the *enforcement skeleton* of an accuracy
+//! discipline, **not** a numerical-error analyzer: `err_ulps` is an illustrative rounding-*step*
+//! counter (**not** a validated error bound), and there is no interval arithmetic, error-free
+//! transform, Kahan/pairwise summation, or stability analysis. See "Honest nuances" below.
+//!
 //! Corona **leaf 32**. Real arithmetic happens over ℝ; a program runs over 𝔽, the finite set
 //! of IEEE-754 `f64` values. Every operation rounds: `fl(a op b) = (a op b)(1 + δ)`, with
 //! `|δ| ≤ u` (the unit round-off, `u = 2⁻⁵³` for `f64`). **Numerical accuracy** is the study of
@@ -16,16 +21,19 @@
 //! flagged but left — *"the arithmetic residue goes one level deeper: finite precision
 //! (`1.0 − 1e-20 == 1.0`)."*
 //!
-//! The answer is a **three-way split**: two things reduce, and the headline residue is a shape
-//! new to the garden — a **value-dependent** residue.
+//! The answer is a **three-way split**: two things reduce (a data-independent *bound*, and the
+//! certificate *seal* that carries it — only the first is accuracy-relevant substance), and the
+//! headline residue is a shape new to the garden — a **value-dependent** residue whose sharp form
+//! is that the problem's condition number has *no finite worst-case*.
 //!
 //! ## The reduce-half
 //!
 //! ### (1) The data-independent bound — [E0080]
 //!
-//! For a **backward-stable** straight-line computation, the *backward* error — equivalently a
-//! worst-case count of rounding **steps** — is a function of the **operations**, not the
-//! **values**. It accumulates **monotonically** and can be walled at compile time.
+//! For a **backward-stable** straight-line computation, the *backward* error — proportional, in
+//! the first-order `(1 + δ)` model, to a worst-case count of rounding **steps** — is a function
+//! of the **operations**, not the **values**. It accumulates **monotonically** and can be walled
+//! at compile time.
 //! [`ulp_budget`] is a `const fn` whose `assert!` trips [E0080] when the accumulated worst-case
 //! step count exceeds a declared tolerance — the **depleting wall** of `static-config` (leaf 6)
 //! and `dp-types` (leaf 28), now metering accumulated round-off instead of a k-of-n count or a
@@ -49,8 +57,10 @@
 //!
 //! ```
 //! use numerical_accuracy::Tracked;
+//! // `exact` takes each literal as ground truth (err 0) — the rounding of `0.1`/`0.2` into f64
+//! // happened before `Tracked` saw them and is *outside* the counted steps; only the `add` rounds.
 //! let x = Tracked::exact(0.1).add(Tracked::exact(0.2));
-//! assert_eq!(x.err_ulps(), 1);          // one rounding step recorded
+//! assert_eq!(x.err_ulps(), 1);          // one rounding step recorded (the add)
 //! assert!((x.value() - 0.3).abs() < 1e-9);
 //! ```
 //!
@@ -59,38 +69,79 @@
 //! The accuracy a user actually cares about is the **forward** error, and the textbook
 //! decomposition is
 //!
-//! > forward error  ≈  κ(x) · backward error,
+//! > relative forward error  ≲  κ(x) · relative backward error   (the standard rule of thumb —
+//! > an inequality),
 //!
-//! where **κ is the condition number of the problem at the input point `x`**. **κ is a function
-//! of the runtime data.** For `f(a, b) = a − b`, `κ = (|a| + |b|) / |a − b| → ∞` as `a → b`:
-//! **catastrophic cancellation**. A `Tracked` computation records only rounding *steps* — a
-//! data-independent count — so it reports a tiny bound exactly when κ blows up:
+//! where **κ is the *relative* condition number of the problem at the input point `x`**. **κ is a
+//! function of the runtime data.** For `f(a, b) = a − b`, `κ = (|a| + |b|) / |a − b| → ∞` as `a →
+//! b`: the **conditioning** that makes cancellation catastrophic once the operands carry prior
+//! error (the subtraction op itself is backward-stable — often *exact*, by Sterbenz — so it is `κ`
+//! *amplifying* that prior error, not the op losing digits; `condition_number_of_subtraction`
+//! exhibits the divergence directly). A `Tracked`
+//! computation records only rounding *steps* — a data-independent count — so it reports a tiny
+//! bound even as the accuracy is destroyed:
 //!
 //! ```
 //! use numerical_accuracy::Tracked;
-//! // (1 + 1e-20) − 1.  In ℝ this is 1e-20; in f64, 1e-20 falls below the ULP of 1.0, so the
-//! // add rounds back to 1.0 and the subtraction yields 0.0 — a TOTAL relative error.
+//! // (1 + 1e-20) − 1.  In ℝ this is 1e-20. The loss here is *absorption* (swamping): 1e-20 is
+//! // below the ULP of 1.0, so the add rounds back to 1.0; the following 1.0 − 1.0 is then *exact*
+//! // — yet the true difference is already gone. Result 0.0 for a true 1e-20: a TOTAL relative error.
 //! let r = Tracked::exact(1.0).add(Tracked::exact(1e-20)).sub(Tracked::exact(1.0));
 //! assert_eq!(r.value(), 0.0);           // true answer is 1e-20
 //! assert_eq!(r.err_ulps(), 2);          // yet the certificate says "2 rounding steps": tiny
 //! ```
 //!
-//! The destruction lives in the **values** (`1e-20` fell below the ULP of `1.0`), which no
-//! data-*independent* compile-time constant can see. This is a residue shape the garden has not
-//! met:
+//! (A caveat on the example's *mechanism*, kept honest: the loss above is **absorption** — an
+//! unstable *intermediate* rounding — which is really the *stability/algorithm* axis (the arrow
+//! face below), and the map `ε ↦ (1 + ε) − 1` is in fact **well-conditioned** — it is the identity
+//! on ε, so `κ = 1` exactly. It earns
+//! its place only as a self-contained three-op demonstration that the step count is blind to
+//! accuracy loss. The **conditioning** residue proper — the *unbounded* `κ` of the headline — is
+//! the analytic statement above and [`condition_number_of_subtraction`], where subtracting two
+//! *distinct* nearby operands amplifies any prior error without bound. The step count is blind to
+//! **both** axes — stability *and* conditioning — which is the stronger claim.)
 //!
-//! - It is **not** a missing ∀-proof over a domain (`crdt-types` 15 / `dp-types` 28's "proof
-//!   obligation over the reals").
-//! - It is **not** a mis-supplied *static parameter* a caller could in principle get right
-//!   (`unit-types` 27's `FACTOR`, `dp-types` 28's sensitivity `Δf`).
-//! - It is an invariant whose very **value varies point-by-point at runtime**, structurally
-//!   unreachable by a compile-time type: **Rust has no `f64`-*value*-parametric types** (no
-//!   dependent types over floats), so `κ(x)` can never be a type-level quantity. The
-//!   type-level bound is *sound* (it bounds the backward error) and *useless for the question
-//!   asked* (it does not bound the forward error).
+//! The destruction lives in the **values** (`1e-20` fell below the ULP of `1.0`). This is a
+//! residue shape distinct from the garden's two nearest neighbours — and the distinction is
+//! sharper than "the data varies at runtime," which alone does **not** defeat a compile-time
+//! wall:
+//!
+//! - **Against the *parameter* residue** (`unit-types` 27's `FACTOR`, `dp-types` 28's sensitivity
+//!   `Δf`). Those are finite **global** constants: supply the worst case and the [E0080] wall
+//!   consumes it. A merely *bounded* condition number would be no different — if `sup_x κ(x) = K <
+//!   ∞` over the input domain, then `forward ≲ K · backward` and the caller supplies `K`, exactly
+//!   the `FACTOR`/`Δf` move (the wall never needed the *exact* `κ(x)`, only a finite bound — and
+//!   whether that `K` is *correct* is then the `FACTOR`/`Δf` residue's own unchecked-constant
+//!   problem). What
+//!   makes subtraction irreducible is that **`sup κ` diverges**: `κ = (|a|+|b|)/|a−b| → ∞` at the
+//!   cancellation singularity `a = b`, so **there is no finite worst-case constant to supply at
+//!   all.** This is the *local-vs-global sensitivity* distinction differential privacy itself
+//!   turns on — `Δf` is a finite **global** sensitivity (DP *requires* it finite), while `κ` is a
+//!   **local** sensitivity with no finite global sup. (The parallel is on the
+//!   *per-input-vs-global* axis only; the quantities differ in kind — `κ` is a dimensionless
+//!   *relative* amplification, `Δf` an *absolute* magnitude — and `κ` additionally diverges
+//!   *pointwise* at `a = b`, whereas DP's local sensitivity is finite at every point; only the
+//!   per-input-vs-global-sup structure is shared.)
+//! - **Against the *∀-proof* residue** (`crdt-types` 15 / `dp-types` 28's "proof obligation over
+//!   the reals"). A forward-accuracy *guarantee* is still implicitly ∀-quantified (`∀x, err(x) ≤
+//!   ε`), so this is not cleanly disjoint — it is the **limiting case** where the quantified
+//!   quantity `sup_x κ(x)` is unbounded. What is genuinely new is the **substrate**: `κ` is a
+//!   continuous function of runtime `f64` *values*, not a logical proposition over a structural
+//!   domain, so even *naming* it would need a value-parametric (dependent) type Rust does not have
+//!   — and there is no finite constant to name in its place.
+//!
+//! So the compile-time bound is *valid within the first-order `(1 + δ)` model* — a worst-case
+//! *backward*-error **proxy**, not a validated bound, data-independently — but answers the wrong
+//! question **precisely when the
+//! problem is ill-conditioned**, when `sup κ = ∞`. For a *well-conditioned* problem the same
+//! backward bound *does* control the forward error, and the residue collapses back to the ordinary
+//! worst-case wall. So what **defeats the wall** is the singularity, not the runtime-ness;
+//! runtime-ness only fixes the residue's *substrate* (a continuous function of `f64` values). **The
+//! residue is the singularity.**
 //!
 //! [`condition_number_of_subtraction`] makes κ concrete: it is computed **from the runtime
-//! arguments** and diverges precisely where [`Tracked::sub`]'s step count stays flat.
+//! arguments** and diverges at `a = b`, where [`Tracked::sub`]'s step count stays flat — as it
+//! does for *every* input (the count is `+1` per op regardless of value; κ is what varies).
 //!
 //! ### A second face — the *arrow* again (leaf 31)
 //!
@@ -104,11 +155,19 @@
 //! ## Honest nuances (disclosed at seed, not after review)
 //!
 //! - **`err_ulps` is a *toy* rounding-**step** counter, not a validated error bound.** It counts
-//!   the roundings that fed a value — the first-order `(1 + δ)` model's step count — and
-//!   **ignores intermediate-magnitude growth**, which is exactly where forward-error blow-up
-//!   hides. A real bound is Higham's running-error analysis. **The residue argument does not
-//!   depend on the counter's tightness**: conditioning `κ(x)` defeats *any* data-independent
-//!   bound, crude or exact, because κ is not a function of the operations at all.
+//!   the roundings that fed a value — the first-order `(1 + δ)` model's step count. It **ignores
+//!   intermediate-magnitude growth**, so it is **not a *forward*-error bound**: magnitude and
+//!   conditioning are exactly what a forward bound must track (that is Higham's running-error
+//!   analysis), and the forward blow-up lives in the problem's `κ`, not in this counter. What the
+//!   raw count *is*, at best, is a **loose first-order *backward*-error proxy** — the backward
+//!   error of straight-line `+`/`−`/`×` is `≈ nu` (`γ_n = nu/(1−nu)`), magnitude-*independent*, so
+//!   a step count `n` tracks it up to the missing `u` scale and the dropped `O(u²)`/`γ_n` weights.
+//!   (Note this is the *opposite* attribution from a forward bound: magnitude-ignorance is fine for
+//!   the backward error and fatal for the forward one.) **The residue argument does not depend on
+//!   the counter's tightness**: at the cancellation singularity the amplification `κ` has no finite
+//!   worst-case, so *no* data-independent bound — crude or exact — can be folded into a compile-time
+//!   constant (a *bounded* `κ` would collapse to the parameter-residue move — supply a finite `K`;
+//!   see the residue section).
 //! - **Why [`Tracked`] *is* `Copy` (E0382 not recruited — the inverse of leaf 28).** An error
 //!   certificate is a **duplicable fact**: knowing "this value carries ≤ n rounding steps" can be
 //!   shared freely. Contrast `dp-types` (leaf 28), whose `Budget` is deliberately **linear**
@@ -124,11 +183,15 @@
 //!
 //! ## What this leaf adds to the map
 //!
-//! The **value-dependent residue**: an invariant (forward accuracy) whose value is a function
-//! `κ(x)` of the *runtime data*, which a compile-time type is structurally forbidden to depend
-//! on. Distinct from the ∀-proof residue (a quantifier the type does not discharge) and the
-//! parameter residue (a constant the caller must supply right) — here there is no constant and
-//! no quantifier, only data the type never sees.
+//! The **value-dependent residue** in its sharp form: the accuracy invariant `forward ≲ κ(x) ·
+//! backward` (the rule-of-thumb inequality) has **no finite worst-case constant** — the condition number's global supremum
+//! `sup_x κ(x)` is *unbounded* (it diverges at the cancellation singularity), so there is nothing
+//! finite for a caller to hand the [E0080] wall. This separates it from the **parameter** residue
+//! (a finite constant — `FACTOR`, `Δf` — the caller must supply right) by *unboundedness*, and
+//! from the **∀-proof** residue by *substrate*: `κ` is a continuous function of runtime `f64`
+//! values — an implicit ∀ whose bound diverges — not a logical proposition over a structural
+//! domain. It is the *local-sensitivity-diverges* case of the local-vs-global distinction
+//! differential privacy itself rests on.
 //!
 //! **Primitives:** [E0451] central (the certificate seal) + [E0080] (the round-off budget
 //! wall). [E0382] is **not recruited** ([`Tracked`] is `Copy`; a certificate is a fact, not a
@@ -194,6 +257,11 @@ pub struct Tracked {
     _seal: (),
 }
 
+// `add`/`sub`/`mul` are deliberately *inherent* methods, not `std::ops` trait impls: arithmetic
+// must go through a tracked call that advances `err_ulps`, so a bare `+`/`-`/`*` (which would drop
+// the step count) is not even in scope. The clippy lint that wants these to be the standard traits
+// is therefore intentionally waived.
+#[allow(clippy::should_implement_trait)]
 impl Tracked {
     /// A value known **exactly** — zero rounding steps. The sole entry point for a literal or an
     /// input taken as ground truth. (Per-crate convention as usual: only this and the tracked
@@ -208,8 +276,8 @@ impl Tracked {
 
     /// Tracked addition. Value is `fl(a + b)` (one rounding); the step count is
     /// `a.err_ulps + b.err_ulps + 1` (saturating). **Monotone** — the count never decreases, so
-    /// it is safe to wall with [`ulp_budget`]. Note it says nothing about *magnitudes*: this is
-    /// where cancellation hides (see the crate docs).
+    /// it is safe to wall with [`ulp_budget`]. Note the count says nothing about *magnitudes* —
+    /// the very thing the forward accuracy depends on (absorption, conditioning; see the crate docs).
     pub fn add(self, other: Tracked) -> Tracked {
         Tracked {
             value: self.value + other.value,
@@ -219,8 +287,10 @@ impl Tracked {
     }
 
     /// Tracked subtraction. Structurally identical to [`add`](Tracked::add) — one rounding step —
-    /// which is precisely the point: `a − b` for `a ≈ b` is catastrophic cancellation, an
-    /// unbounded *forward* error, yet the step count is just `+1`.
+    /// which is precisely the point: `a − b` for `a ≈ b` is the cancellation singularity. The op
+    /// itself is **backward-stable** (`fl(a − b) = (a − b)(1 + δ)`, `+1` step), but `κ` amplifies
+    /// any *prior* input error without bound, so the **relative forward** error is unbounded while
+    /// the step count stays `+1`.
     pub fn sub(self, other: Tracked) -> Tracked {
         Tracked {
             value: self.value - other.value,
@@ -258,6 +328,12 @@ impl Tracked {
 /// Reduces here only because the step count is a **data-independent** function of a
 /// straight-line schedule; the moment accuracy depends on runtime *values*, it is the residue
 /// (κ(x)), not this wall.
+///
+/// Being a `const fn`, `ulp_budget` is *also* callable at runtime — where an overspend **panics**
+/// (the `assert!`) rather than failing to compile. The compile-time wall ([E0080]) is a guarantee
+/// **only in a `const` context**; a runtime call fails loudly, never silently, but it is a panic,
+/// not a static error. (Callers wanting a non-panicking runtime check should compare `err_ulps <=
+/// tol_ulps` themselves.)
 ///
 /// [E0080]: https://doc.rust-lang.org/error_codes/E0080.html
 pub const fn ulp_budget(err_ulps: u32, tol_ulps: u32) -> u32 {
@@ -310,8 +386,9 @@ mod tests {
     }
 
     #[test]
-    fn catastrophic_cancellation_is_invisible_to_the_step_count() {
-        // (1 + 1e-20) − 1.  True answer 1e-20; f64 rounds the add back to 1.0, so result is 0.0.
+    fn absorption_is_invisible_to_the_step_count() {
+        // (1 + 1e-20) − 1.  True answer 1e-20; f64 rounds the add back to 1.0 (absorption/swamping),
+        // so result is 0.0. NB: this is the STABILITY axis (κ=1 exactly for this map), not conditioning.
         let r = Tracked::exact(1.0)
             .add(Tracked::exact(1e-20))
             .sub(Tracked::exact(1.0));
