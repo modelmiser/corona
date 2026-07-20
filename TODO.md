@@ -1174,6 +1174,36 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
+## Garden state (2026-07-20)
+
+- **Leaf 28 (`dp-types`) SEEDED + CONVERGED + DOC-SYNCED — differential privacy, the garden's
+  FIRST leaf on the QUANTITATIVE axis** (every prior residue is *binary*; DP is *graded*, holds
+  "to within ε" — a third meta-axis beside safety/liveness (24) and value/operational-layer (25)),
+  and the **first CONTINUOUS, DIVISIBLE resource** (prior resources are discrete counts/tokens/
+  epochs; ε ∈ ℝ⁺, splittable). Thesis answered: **a three-way split of concerns, no new primitive;
+  two of three reduce.** (1) budget non-duplication + sequential composition → **E0382** (`Budget`
+  linear, `run(self,…)→(Released,Budget)` consumes it — the Fuzz/DFuzz *linear-type* choice, Rust's
+  affine move-checker coinciding on no-free-contraction); (2) static ceiling → **E0080**
+  (`StaticBudget` const-fn over integer micro-ε sums costs at compile time, static-config's wall now
+  depleting; runtime ε → runtime `Overspent` = leaf-1 count residue); (3) the ε-**guarantee** (noise
+  calibrated to sensitivity Δf) does **NOT** reduce — a proof obligation over the real domain (Sol,
+  ∥ crdt 15) AND a witness-trap (∥ unit-types FACTOR): `SloppyCounting` under-noises for the same ε
+  and type-checks. Released answer sealed by **E0451** (witnesses the CHARGE, never finiteness/
+  calibration); brand unused → three primitives touched, two of three concerns reduce. **NEW DATA:**
+  (a) linear stops DUPLICATION not INFLATION — sign/magnitude are runtime residues (`valid_cost =
+  finite && > 0` closes the R1 negative-cost inflation CRITICAL; `split` conservation is a body
+  invariant); (b) the arithmetic residue goes deeper — f64 keeps a finite-precision floor (a sub-ULP
+  charge `1.0−1e-20==1.0` doesn't deplete → promise softened to "no larger"; integer units the fix,
+  why StaticBudget is u32), and ε→0 ⇒ Δf/ε→∞ ⇒ a subnormal-small ε yields a non-finite `Released`.
+  Standalone. TOY (non-crypto jitter, no secure RNG, sub-allocation not parallel composition). Seed
+  `cc7f6fa`; fixes `a5b2cb0`/`3046148`/`cbf70b7`/`727df40`; converged `159a917`. Workspace **421 unit
+  + 96 doctests = 517**, all gates green. **CONVERGED 6 rounds (R5+R6 clean); the type-level core
+  NEVER broke — ~90 safe-Rust exploits rejected with exact codes, mutation suite 17/17 killed. Lone
+  code finding = R1 negative-cost inflation; every finding after = doc-precision on my own edits (a
+  textbook prose-mutation ratchet, closed by freezing the text for the R5/R6 confirmation pair).
+  All 3 codes (E0382/E0451/E0080) verified by direct rustc.** Garden now corona-core + 28 leaves,
+  no review debt. `dp-types` realizes the parked "quantitative / ε-graded axis" research direction.
+
 ## Garden state (2026-07-19n)
 
 - **Leaf 27 (`unit-types`) SEEDED + CONVERGED + DOC-SYNCED — dimensional analysis, the garden's
