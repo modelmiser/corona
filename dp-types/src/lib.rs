@@ -10,12 +10,14 @@
 //! answer *spends* some of it. This leaf asks the garden's standing question of that graded
 //! world: **does a privacy budget reduce to the compile-primitive vocabulary?**
 //!
-//! The answer is a **three-way split** (∥ `frost-types`, leaf 12), each concern landing where
-//! it belongs, **no new primitive**: the budget's *accounting* reduces — non-duplication to
-//! **[E0382]**, the static ceiling to **[E0080]**, with the released answer sealed by
-//! **[E0451]** — while the `ε`-*guarantee* itself (noise calibrated to sensitivity) does
-//! **not** reduce, and is handed to Sol as a proof obligation. Two layers reduce, one does
-//! not; that non-reduction is the leaf's point.
+//! The answer is a **three-way split** (∥ `frost-types`, leaf 12) into three *concerns*, **no
+//! new primitive**: **(1)** budget non-duplication + sequential composition reduce to
+//! **[E0382]**, **(2)** the static ceiling reduces to **[E0080]**, and **(3)** the
+//! `ε`-*guarantee* itself (noise calibrated to sensitivity) does **not** reduce — a proof
+//! obligation handed to Sol. Two of the three concerns reduce to a compile primitive; the
+//! third — the graded core — is the leaf's point. (The released answer is *additionally*
+//! sealed by **[E0451]**, and the E0308 brand is unused: **three** primitives are *touched*,
+//! but only **two** of the three *concerns* reduce.)
 //!
 //! ## The budget is (as of this leaf) the garden's first *continuous, divisible* resource
 //!
@@ -40,8 +42,9 @@
 //! ## (1) Non-duplication + sequential composition reduce to [E0382]
 //!
 //! [`Budget`] is a **linear** value: it is **not** `Clone`/`Copy`, and [`Budget::run`]
-//! takes `self` **by value**. Answering a query consumes the budget and returns a *new,
-//! strictly smaller* one:
+//! takes `self` **by value**. Answering a query consumes the budget and returns a *new, no
+//! larger* one (strictly smaller for any charge above the budget's float granularity — see
+//! "the arithmetic residue" below):
 //!
 //! ```text
 //! run(self, cost, mechanism, answer, seed) -> Result<(Released, Budget), SpendError>
@@ -140,6 +143,32 @@
 //! no magnitude to conserve, so no earlier leaf could surface this; a divisible real quantity
 //! is the first that can — which is why the sign guard is not a mere patch but the thesis in
 //! miniature: **the linear type guards identity; arithmetic is a runtime residue.**
+//!
+//! ## The arithmetic residue, one level deeper: finite precision
+//!
+//! Push that thought one notch further and the sharpest form appears: the *runtime* check is
+//! itself `f64`, so the accounting is honest only down to the float's granularity. Two
+//! consequences — both **disclosed limits of the toy**, neither a break of the type-level
+//! guarantees (which held under every adversarial probe):
+//!
+//! - **A sub-granularity charge does not deplete.** A positive cost below the ULP of
+//!   `remaining` (e.g. `1e-20` against a `1.0` budget) satisfies `cost > 0`, yet `remaining -
+//!   cost == remaining` *exactly*, so the budget does not move — which is why the promise
+//!   above is "*no larger*", strictly smaller only above the granularity. Enough such charges
+//!   compose to unbounded real privacy loss while the *recorded* budget stands still. This is
+//!   inherent to a *continuous* budget held in `f64`: the price of `ε ∈ ℝ⁺` is a
+//!   finite-precision floor. The honest fix is *integer* budget units — exactly why
+//!   [`StaticBudget`] carries micro-`ε` as a `u32`, not an `f64`; a graduated runtime budget
+//!   would do the same.
+//! - **A `Released` value can be non-finite.** As `ε → 0` the noise scale `Δf/ε → ∞` (faithful
+//!   DP — perfect privacy *is* infinite noise), so a tiny-but-valid `ε` (or a mechanism
+//!   reporting a non-finite sensitivity, or a non-finite `answer`) yields a non-finite
+//!   release. The [E0451] seal witnesses that a budget was *charged*, never that the released
+//!   number is finite or calibrated — the same "the seal is only as strong as its checked
+//!   path" the calibration residue already named.
+//!
+//! Both are the quantitative axis telling the truth about itself: a continuous resource in
+//! finite precision keeps a magnitude blind spot the type never had a chance to hold.
 //!
 //! ## What this leaf adds to the map
 //!
@@ -274,8 +303,10 @@ impl Budget {
     }
 
     /// Answer a query under this budget, **consuming it** and returning the noisy
-    /// [`Released`] answer together with a *new, strictly smaller* budget. Charging the same
-    /// budget twice is a compile error ([E0382]), because `self` is moved in — this is
+    /// [`Released`] answer together with a *new, no-larger* budget (strictly smaller for any
+    /// charge above the budget's `f64` granularity — see the crate docs' finite-precision
+    /// residue). Charging the same budget twice is a compile error ([E0382]), because `self`
+    /// is moved in — this is
     /// **sequential composition** enforced by the move checker.
     ///
     /// The `mechanism` is asked to add noise scaled by its reported sensitivity over `ε`.
@@ -539,8 +570,9 @@ mod tests {
             SpendError::InvalidCost(f64::INFINITY)
         );
 
-        // ε = 0 is the perfect-privacy limit (Δf/0 = ∞), NOT a runnable query: refused, so no
-        // non-finite `Released` value can be minted. `-0.0` too (`-0.0 > 0.0` is false).
+        // ε = 0 is the perfect-privacy limit (Δf/0 = ∞), NOT a runnable query: refused. (A
+        // tiny-but-nonzero ε IS accepted and correctly yields an unbounded noise scale — the
+        // finite-precision residue, pinned separately below.) `-0.0` too (`-0.0 > 0.0` false).
         let b = Budget::new(1.0);
         assert_eq!(
             b.run(Epsilon(0.0), &Counting, 0.0, 1).unwrap_err(),
@@ -565,6 +597,28 @@ mod tests {
             b.split(Epsilon(f64::INFINITY)).unwrap_err(),
             SpendError::InvalidCost(f64::INFINITY)
         );
+    }
+
+    /// **The finite-precision residue (disclosed).** The runtime budget is `f64`, so the
+    /// accounting is honest only above the float granularity, and the released value can be
+    /// non-finite for an extreme-but-valid `ε`. Neither breaks a type-level guarantee; both are
+    /// disclosed toy limits, pinned here so a regression cannot silently change them.
+    #[test]
+    fn finite_precision_residue_is_disclosed() {
+        // A positive cost BELOW the ULP of `remaining` is accepted (`cost > 0`), but does NOT
+        // deplete: `1.0 - 1e-20 == 1.0` exactly, so the recorded budget stands still. This is
+        // the granularity behind the softened "no larger" promise (unbounded sub-ULP charges).
+        let (_r, b) = Budget::new(1.0)
+            .run(Epsilon(1e-20), &Counting, 50.0, 0)
+            .unwrap();
+        assert_eq!(b.remaining(), 1.0);
+
+        // As ε → 0 the noise scale Δf/ε → ∞ (faithful DP), so a tiny valid ε yields a
+        // NON-FINITE release. The E0451 seal witnesses the charge, never the value's finiteness.
+        let (r, _b) = Budget::new(1.0)
+            .run(Epsilon(5e-324), &Counting, 42.0, 0)
+            .unwrap();
+        assert!(!r.value().is_finite());
     }
 
     /// `split`'s **overspend** error path (the field wiring) and its **exact-boundary**
