@@ -335,6 +335,82 @@ mod tests {
     }
 
     #[test]
+    fn two_harvested_signatures_forge_a_verifying_third_message() {
+        // The deferred follow-up named in the harvest test above, completed: assemble a
+        // full THIRD-message signature from the union of two harvested signatures and have
+        // `verify` ACCEPT it — the classic Lamport two-message forgery, end to end.
+        //
+        // With sig1 (over m1) and sig2 (over m2) under one re-minted key, the attacker
+        // holds, at each position i, the preimage for bit d1[i] (from sig1) and for bit
+        // d2[i] (from sig2). A third digest d3 is forgeable iff d3[i] ∈ {d1[i], d2[i]} for
+        // every i — i.e. d3 agrees with d1 on every position where d1 and d2 AGREE (on the
+        // disagreeing positions the attacker owns both bit values). So the only search is
+        // for an m3 matching d1 on the agreement set; we first pick an m2 that disagrees
+        // with m1 on many bits to keep that set (and the search) small. `Signature.revealed`
+        // is public, so assembly is pure bookkeeping — the cryptographic step is gone.
+        const HAM_THRESHOLD: u32 = 48; // |agreement set| <= 16  => stage-2 <= ~2^16
+        const CAP: u64 = 50_000_000; // generous; expected work is ~10^5 hashes total
+
+        let seed = 0xF0F0;
+        let (sk1, vk) = SigningKey::generate(seed);
+        let (sk2, _) = SigningKey::generate(seed); // the same key, re-minted (the seed hole)
+
+        let m1: &[u8] = b"forgery-anchor-message";
+        let d1 = hash::digest(m1);
+        let sig1 = sk1.sign(m1);
+
+        // Stage 1: find m2 whose digest disagrees with d1 on >= HAM_THRESHOLD positions.
+        let (m2, d2) = (0..CAP)
+            .map(|i| {
+                let m = format!("forge-m2-{i}").into_bytes();
+                let d = hash::digest(&m);
+                (m, d)
+            })
+            .find(|(_, d)| (d1 ^ d).count_ones() >= HAM_THRESHOLD)
+            .expect("a high-disagreement m2 exists (Binomial tail, huge cap)");
+        let sig2 = sk2.sign(&m2);
+
+        // The agreement set A: bits where d1 and d2 coincide. A forgeable m3 must match d1
+        // there; on the complement the attacker owns both preimage sides.
+        let agree_mask = !(d1 ^ d2);
+
+        // Stage 2: find a genuinely-new m3 matching d1 on A.
+        let (m3, d3) = (0..CAP)
+            .map(|j| {
+                let m = format!("forge-m3-{j}").into_bytes();
+                let d = hash::digest(&m);
+                (m, d)
+            })
+            .find(|(_, d)| (d & agree_mask) == (d1 & agree_mask) && *d != d1 && *d != d2)
+            .expect("an m3 covering the small agreement set exists (<= 2^16 expected)");
+        assert!(
+            m3 != m1 && m3 != m2,
+            "the forgery targets a genuinely third message"
+        );
+
+        // Assemble the forged signature: at each position take the preimage for d3's bit
+        // from whichever harvested signature revealed that side.
+        let mut revealed = [0u64; BITS];
+        for (i, r) in revealed.iter_mut().enumerate() {
+            let b3 = (d3 >> i) & 1;
+            let b1 = (d1 >> i) & 1;
+            // b3 == b1 -> sig1 opened this side; else d1,d2 disagreed here and sig2 did.
+            *r = if b3 == b1 {
+                sig1.revealed[i]
+            } else {
+                sig2.revealed[i]
+            };
+        }
+        let forged = Signature { revealed };
+
+        // The verifier accepts the forgery for a message the key never signed.
+        let verified = vk
+            .verify(&m3, &forged)
+            .expect("the assembled signature verifies — the two-message forgery, complete");
+        assert_eq!(verified.digest(), d3);
+    }
+
+    #[test]
     fn tampered_signature_does_not_verify() {
         let (sk, vk) = SigningKey::generate(42);
         let mut sig = sk.sign(b"hello");
