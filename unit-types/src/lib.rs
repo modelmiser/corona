@@ -125,10 +125,17 @@
 //! shape — is the leaf's contribution: **the reduction is about structure, not about
 //! adversaries.**
 //!
-//! ---
+//! ## Two codes, two *kinds* of violation
 //!
-//! Adding two different **dimensions** through the inherent method is a **literal
-//! [E0308]** — this does **not** compile:
+//! The leaf's subject is *which* compile error each violation produces, so the codes
+//! below are stated precisely — and verified by direct `rustc` invocation, **not** by the
+//! `compile_fail` doctests alone: rustdoc's `compile_fail` checks only that the snippet
+//! *fails to compile*, and ignores the `,EXXXX` code annotation (an `E0308` body under a
+//! `,E0277` tag still passes). So the doctests below guard against the examples silently
+//! *compiling*; the specific code after each `,` is documentation, confirmed out of band.
+//!
+//! A **value-level mismatch** — adding incompatible quantities — is **[E0308]**
+//! (*mismatched types*), and it is E0308 *regardless of the surface*. The inherent method:
 //!
 //! ```compile_fail,E0308
 //! use unit_types::{meters, seconds};
@@ -137,21 +144,22 @@
 //! let _ = meters(1.0).plus(seconds(1.0));
 //! ```
 //!
-//! The **same** safety, routed through the `+` **operator** instead, surfaces as a
-//! different code — [E0277], the unimplemented-trait error — because `+` is trait
-//! resolution, not type equality. Same rejection, different diagnostic; *which* code you
-//! get is a surface choice, not a strength difference:
+//! The idiomatic `+` **operator** gives the **same** code, E0308 — *not* the
+//! trait-resolution [E0277] one might expect. The reason is instructive: the blanket
+//! `impl<D> Add for Quantity<D>` (i.e. `Add<Quantity<D>>`) lets inference fix `D = Length`
+//! from the **left** operand, so `Add` *is* resolved and the right operand is a plain
+//! argument mismatch — type equality again, E0308. (Only *per-dimension* `Add` impls would
+//! make the operator emit E0277; the idiomatic blanket collapses both surfaces to E0308.)
 //!
-//! ```compile_fail,E0277
+//! ```compile_fail,E0308
 //! use unit_types::{meters, seconds};
-//! // `Add<Quantity<Time>>` is not implemented for `Quantity<Length>` — only
-//! // `Add<Quantity<Length>>` is. Trait resolution fails: E0277.
+//! // Blanket `impl<D> Add`: `D` unifies to `Length` from the LHS, so the RHS
+//! // `Quantity<Time>` is an argument mismatch — E0308, same as `.plus()`.
 //! let _ = meters(1.0) + seconds(1.0);
 //! ```
 //!
-//! And folding the **unit** into the brand ([`Scaled<D, U>`]) makes a cross-**unit** add
-//! a compile error too — a second literal [E0308], now discriminating *within* a single
-//! dimension:
+//! Folding the **unit** into the brand ([`Scaled<D, U>`]) makes a cross-**unit** add a
+//! compile error too — still E0308, now discriminating *within* a single dimension:
 //!
 //! ```compile_fail,E0308
 //! use unit_types::{Scaled, Length, Meters, Feet};
@@ -161,16 +169,21 @@
 //! let _ = m.plus(f);
 //! ```
 //!
-//! And the coherence bound [`UnitOf<D>`] keeps a unit paired with *its* dimension: a
-//! `Scaled<Time, Meters>` ("a time in metres") is not even constructible, because
-//! [`Meters`] is declared a unit of [`Length`], not [`Time`] — an unsatisfied trait
-//! bound, so [E0277]:
+//! The crate's **one [E0277]** comes from a *different kind* of violation — not a value
+//! mismatch but an **unsatisfied type-level bound**. The coherence bound [`UnitOf<D>`]
+//! keeps a unit paired with *its* dimension, so a `Scaled<Time, Meters>` ("a time in
+//! metres") is not even constructible: [`Meters`] is a unit of [`Length`], never of
+//! [`Time`], so `Scaled::new`'s `U: UnitOf<D>` bound is unsatisfied — E0277:
 //!
 //! ```compile_fail,E0277
 //! use unit_types::{Scaled, Time, Meters};
 //! // `Scaled::new` requires `U: UnitOf<D>`, i.e. `Meters: UnitOf<Time>` — never impl'd.
 //! let _: Scaled<Time, Meters> = Scaled::new(1.0);
 //! ```
+//!
+//! So the two codes track two violation *kinds*: **E0308** = a value/type mismatch (every
+//! bad addition, on either surface), **E0277** = an unsatisfied bound (an incoherent
+//! construction). "Which code" depends on the *kind* of the error, not the API surface.
 //!
 //! [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
 //! [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
@@ -263,12 +276,11 @@ impl<D> Quantity<D> {
 
     /// Add two quantities of the **same dimension** `D`. The argument type is
     /// `Quantity<D>` with `D` fixed by `self`, so a different dimension is a **literal
-    /// [E0308]** (see the crate-level `compile_fail` doctest). This inherent form is the
-    /// one that yields E0308; the [`Add`] operator below yields [E0277] for the same
-    /// mismatch (trait resolution, not type equality).
+    /// [E0308]** (see the crate-level `compile_fail` doctest). The [`Add`] operator
+    /// yields the *same* E0308 (its blanket impl unifies `D` from the left operand — see
+    /// crate docs), so both surfaces reject a dimension mismatch identically.
     ///
     /// [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
-    /// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
     pub fn plus(self, other: Quantity<D>) -> Quantity<D> {
         Quantity::new(self.value + other.value)
     }
@@ -282,11 +294,14 @@ impl<D> Quantity<D> {
 }
 
 /// The idiomatic `+`. Correct (same-dimension) use compiles; a dimension mismatch
-/// surfaces as [E0277] (`Add<Quantity<Other>>` is unimplemented) rather than the
-/// [E0308] of [`Quantity::plus`] — the same rejection through a different door.
+/// surfaces as [E0308] — the **same** code as [`Quantity::plus`], not the trait-resolution
+/// [E0277] one might expect. This is a single blanket `impl<D> Add for Quantity<D>`
+/// (`Rhs = Quantity<D>`), so inference fixes `D` from the left operand and the right
+/// operand mismatches by type equality. (Per-dimension `Add` impls would instead make it
+/// E0277; the crate docs' "Two codes" section spells this out.)
 ///
-/// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 /// [E0308]: https://doc.rust-lang.org/error_codes/E0308.html
+/// [E0277]: https://doc.rust-lang.org/error_codes/E0277.html
 impl<D> Add for Quantity<D> {
     type Output = Quantity<D>;
     fn add(self, rhs: Quantity<D>) -> Quantity<D> {
@@ -487,6 +502,9 @@ mod tests {
         assert!((d.value() - 10.0).abs() < EPS);
         let back: Quantity<Velocity> = d / seconds(2.0);
         assert!((back.value() - 5.0).abs() < EPS);
+        // Length ÷ Velocity = Time (the other quotient of the same relation).
+        let dur: Quantity<Time> = d / Quantity::<Velocity>::new(5.0);
+        assert!((dur.value() - 2.0).abs() < EPS);
 
         // Length × Length = Area, and Area ÷ Length = Length.
         let a: Quantity<Area> = meters(3.0) * meters(4.0);
