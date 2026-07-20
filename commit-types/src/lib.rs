@@ -183,6 +183,12 @@ type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
 /// digest; there is no public path to a `Commitment` that skips having held a full
 /// opening. That is the reduce-able core of *binding* (see crate docs, item 1).
 ///
+/// **Invariant guard (for future maintainers):** [`hash::digest_of`] is `pub`, so an
+/// outsider can freely *compute* any digest — the seal holds only because no
+/// constructor *accepts* one. Never add a digest-taking constructor (`From<u64>`,
+/// `from_digest`, a public `digest` field, `Default`): any of them evaporates the
+/// seal, since a `Commitment` would no longer be provably the image of a held value.
+///
 /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Commitment {
