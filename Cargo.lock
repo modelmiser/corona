@@ -35,6 +35,10 @@ name = "crdt-types"
 version = "0.1.0"
 
 [[package]]
+name = "deadlock-types"
+version = "0.1.0"
+
+[[package]]
 name = "dp-types"
 version = "0.1.0"
 
