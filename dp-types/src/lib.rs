@@ -14,17 +14,25 @@
 //! primitives already in the vocabulary, **no new one** — and the *third* landing is a
 //! *non*-reduction that hands the graded core to Sol.
 //!
-//! ## The budget is the garden's first *continuous, divisible* resource
+//! ## The budget is (as of this leaf) the garden's first *continuous, divisible* resource
 //!
-//! Before the reduction, the datum that makes this leaf new. The garden has tracked many
-//! resources, and every one until now is **discrete**: a k-of-n **count** (`threshold`,
-//! leaf 1), a use-once **capability** (`lamport`, leaf 5; `ratchet`, leaf 10), an **epoch**
-//! (`accumulator`, leaf 11). A privacy budget is a **real number** `ε ∈ ℝ⁺`, and — the
-//! sharper novelty — it is **divisible**: *parallel composition* lets you split a budget
-//! `ε` into `ε₁ + ε₂`, spend the parts on disjoint slices of the data, and pay only the
-//! **max** rather than the sum. So the resource is not just continuous but *arithmetic* —
-//! it adds under sequential composition and partitions under parallel composition. Nothing
-//! earlier in the garden is a quantity you can *arithmetically divide and conserve*.
+//! Before the reduction, the datum that makes this leaf new. Every resource the garden has
+//! tracked so far is **discrete**: a k-of-n **count** (`threshold`, leaf 1), a use-once
+//! **capability** (`lamport`, leaf 5; `ratchet`, leaf 10), an **epoch** (`accumulator`,
+//! leaf 11). A privacy budget is a **real number** `ε ∈ ℝ⁺`, and — the sharper novelty — it
+//! is **divisible**: it can be partitioned into sub-budgets `ε₁ + ε₂ = ε` that are then
+//! spent independently ([`Budget::split`]). So the resource is not just continuous but
+//! *arithmetic*: it adds and subtracts, and it conserves under partition. Nothing earlier in
+//! the garden is a quantity you can arithmetically divide and conserve.
+//!
+//! One DP term is worth pinning down up front, because it is easy to over-claim:
+//! [`Budget::split`] is **sub-allocation**, *not* **parallel composition** in the DP sense.
+//! Sub-allocation conserves the **sum** (`ε₁ + ε₂ = ε`) and each part depletes on its own —
+//! the additive story. True parallel composition earns a *discount*: over **disjoint** data
+//! partitions the total cost is the **max** of the per-partition `ε`, not the sum. That
+//! discount is a fact about disjoint *data*, which this toy does not model, so it is
+//! deliberately **not** implemented here — `split` is the sum-conserving partition, and the
+//! max-saving parallel form is out of scope.
 //!
 //! ## (1) Non-duplication + sequential composition reduce to [E0382]
 //!
@@ -33,20 +41,24 @@
 //! strictly smaller* one:
 //!
 //! ```text
-//! run(self, cost, mechanism, answer, seed) -> Result<(Released, Budget), Overspent>
+//! run(self, cost, mechanism, answer, seed) -> Result<(Released, Budget), SpendError>
 //! ```
 //!
 //! Because the old budget is *moved into* `run`, no live binding reaches it afterward, so
 //! the same `ε` **cannot be spent twice** — the second use is a compile error
-//! (`error[E0382]: use of moved value`; see the `compile_fail` doctest). This is exactly
-//! how the two dependently-typed privacy languages, **Fuzz** (Reed–Pierce 2010) and
-//! **DFuzz** (Gaboardi et al. 2013), enforce composition: `ε` lives in a **linear** type,
-//! and the type system's contraction rule is what a naïve accountant forgets — you may not
-//! *fork* a budget and charge each fork the full amount. Rust's move checker is that linear
-//! discipline, so **sequential composition threads the budget linearly** and a re-use is
-//! caught before it runs. The **fourth** family of E0382 leaf (after reuse in 5/9/12 and
-//! retention in 10), and the first where the linear resource is a *magnitude* rather than a
-//! token.
+//! (`error[E0382]: use of moved value`; see the `compile_fail` doctest). This echoes how the
+//! two **linear-typed** privacy languages, **Fuzz** (Reed–Pierce, ICFP 2010) and **DFuzz**
+//! (Gaboardi et al., POPL 2013 — Fuzz extended with lightweight *dependent* types), track
+//! privacy. In Fuzz what lives in the graded-linear type is a function's **sensitivity** (a
+//! scaling modality on inputs); the privacy cost `ε` is charged *on top of* that sensitivity
+//! discipline, through a probability monad. The **shared mechanism** is the honest core of
+//! the analogy: **no contraction** — you may not *fork* an input and pay its sensitivity
+//! (hence its `ε`) only once. Rust's move checker is an **affine** discipline (use *at most*
+//! once; dropping an unused value is fine), weaker than Fuzz's graded-linear types but
+//! coinciding with them on exactly this no-duplication point (both forbid contraction), so a
+//! budget re-use is caught before it runs. Another E0382 leaf, a *reuse*-kind catastrophe
+//! (leaf 5's family — "spend twice") — and the first where the linear resource is a
+//! continuous *magnitude* rather than a discrete token.
 //!
 //! Note the deliberate witness-species contrast (∥ leaf 12's redacted share vs one-time
 //! nonce): a **cost** ([`Epsilon`]) is freely `Copy` — a number is evidence, you may read
@@ -58,9 +70,9 @@
 //! If a query plan's costs are known at compile time, the ceiling moves there. [`StaticBudget`]
 //! is a `const fn` newtype over **fixed-point micro-`ε`** (`ε × 10⁶`, an integer because
 //! const-eval arithmetic is cleanest on integers), and [`StaticBudget::spend`] does a
-//! `checked_sub().expect(...)`. Evaluate a plan in a `const` context and an overspend
-//! **panics during const-eval** — a compile error, [E0080] — so **sequential composition
-//! sums at compile time**:
+//! `checked_sub`, `panic!`-ing on `None`. Evaluate a plan in a `const` context and an
+//! overspend **panics during const-eval** — a compile error, [E0080] — so **sequential
+//! composition sums at compile time**:
 //!
 //! ```compile_fail,E0080
 //! use dp_types::StaticBudget;
@@ -73,8 +85,8 @@
 //! invariant `1 ≤ k ≤ n` walled at compile time is here `Σ cost ≤ budget`, walled the same
 //! way. The **split with the runtime layer** mirrors leaf 6 exactly: a *compile-time* plan
 //! gets an E0080 wall, a *runtime-chosen* `ε` (data-dependent, adaptive) falls back to
-//! [`Budget::run`]'s runtime `Overspent` check — the **count residue** (leaf 1) in a graded
-//! costume. And a *quantitative* subtlety the discrete leaves never met: the static layer
+//! [`Budget::run`]'s runtime [`SpendError::Overspent`] check — the **count residue** (leaf 1)
+//! in a graded costume. And a *quantitative* subtlety the discrete leaves never met: the static layer
 //! must **quantize** real `ε` to integer micro-`ε`, and that rounding is itself a tiny
 //! residue — round the ceiling *down* and you are conservative (safe), round it *up* and you
 //! have silently *loosened* privacy. The wall is exact on the integers it is given; whether
@@ -106,23 +118,29 @@
 //!
 //! ## The new datum: linear stops *duplication*, not *inflation*
 //!
-//! Sequential composition is E0382; parallel composition is where the *continuous* nature
+//! Sequential composition is E0382; **sub-allocation** is where the *continuous* nature
 //! bites. [`Budget::split`] partitions `ε` into `ε₁ + ε₂` and returns **two** budgets,
-//! consuming the original (so you cannot keep the whole *and* the parts — that would be the
-//! contraction the linear discipline forbids). E0382 guarantees the parts are not the
-//! original *reused*. But it does **not** guarantee they *sum back to* the original: nothing
-//! in the type stops a buggy `split` from handing out `ε₁ + ε₂ > ε` and **inflating** the
-//! budget from nothing. **Conservation is a body invariant, checked by arithmetic, not by
-//! the type** — the same quantitative residue as calibration, now on the *plumbing* rather
-//! than the noise. Linearity is about *identity* (this value is used once); it is silent
-//! about *magnitude* (the numbers add up). A discrete token has no magnitude to conserve, so
-//! no earlier leaf could surface this; a divisible quantity is the first that can.
+//! consuming the original (so you cannot keep the whole *and* the parts — the contraction the
+//! affine discipline forbids). E0382 guarantees the parts are not the original *reused*. But
+//! it is **silent about arithmetic**, in two ways the type cannot see: nothing in the type
+//! stops a buggy `split` body from handing out `ε₁ + ε₂ > ε` and **inflating** the budget
+//! from nothing, and nothing in the type stops a **negative** cost — a sign the compiler
+//! never inspects — from *adding* to the budget on its way through [`Budget::run`] (a
+//! negative cost sails past the `cost > remaining` ceiling, since `-5 > 1` is false). Both
+//! are therefore **runtime checks**: `split`'s body conserves the sum, and both `run` and
+//! `split` reject a negative or non-finite cost with [`SpendError::InvalidCost`]. Same
+//! quantitative residue as calibration, now on the *plumbing* rather than the noise.
+//! Linearity is about *identity* (this value is used at most once); it is silent about
+//! *magnitude and sign* (the numbers add up, and they are non-negative). A discrete token has
+//! no magnitude to conserve, so no earlier leaf could surface this; a divisible real quantity
+//! is the first that can — which is why the sign guard is not a mere patch but the thesis in
+//! miniature: **the linear type guards identity; arithmetic is a runtime residue.**
 //!
 //! ## What this leaf adds to the map
 //!
-//! The **first residue on the quantitative axis** — a third meta-axis beside the
-//! safety/liveness axis (leaf 24) and the value/operational-layer axis (leaf 25). Every
-//! prior residue answers "does the property *hold*?"; this one answers "does it hold *to
+//! The first residue on the **quantitative axis** the garden has mapped — a third meta-axis
+//! beside the safety/liveness axis (leaf 24) and the value/operational-layer axis (leaf 25).
+//! Every prior residue answers "does the property *hold*?"; this one answers "does it hold *to
 //! within `ε`*, and is that `ε` *earned*?", and the graded core (calibration, conservation)
 //! is exactly the part the binary vocabulary cannot hold. Three primitives, each doing its
 //! home job — **[E0382]** (linear budget, central), **[E0080]** (static ceiling, ∥ leaf 6),
@@ -195,15 +213,36 @@ pub struct Budget {
     remaining: f64,
 }
 
-/// The error returned when a query or split asks for more `ε` than remains. The runtime
-/// residue: with a *runtime-chosen* cost, the ceiling is an ordinary comparison (∥ leaf 1's
-/// count), not a compile-time wall — that wall is [`StaticBudget`], for compile-time costs.
+/// Why a query or split was refused — both cases are **runtime** checks, because the type
+/// threads the budget's *identity* (used at most once) but never its *arithmetic* (see the
+/// crate docs, "linear stops duplication, not inflation").
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Overspent {
-    /// The `ε` that was requested.
-    pub requested: f64,
-    /// The `ε` that was actually available.
-    pub available: f64,
+pub enum SpendError {
+    /// The request asked for more `ε` than remained. The runtime *ceiling* residue: with a
+    /// runtime-chosen cost the ceiling is an ordinary comparison (∥ leaf 1's count), not a
+    /// compile-time wall — that wall is [`StaticBudget`], for compile-time costs.
+    Overspent {
+        /// The `ε` that was requested.
+        requested: f64,
+        /// The `ε` that was actually available.
+        available: f64,
+    },
+    /// The cost was **negative or non-finite** — a malformed charge. The compiler cannot see
+    /// a cost's *sign* or *finiteness* (they are runtime data, ∥ the magnitude residue), so a
+    /// negative cost would otherwise slip past the ceiling check (`-5 > 1` is false) and
+    /// *inflate* the budget. Rejecting it here is the sign-analogue of the ceiling check, and
+    /// the reason it must live at runtime is itself the leaf's thesis: the linear type guards
+    /// identity, not arithmetic.
+    InvalidCost(f64),
+}
+
+/// A cost is valid iff it is finite and non-negative. Charging a negative or non-finite `ε`
+/// is malformed — and, crucially, a negative cost would *grow* the budget, so it is rejected
+/// rather than clamped (a silent clamp would hide the caller's bug). `Budget::new` clamps a
+/// negative *budget* down to zero because a smaller budget is conservative; a bad *cost* is
+/// refused because the unsafe direction is inflation.
+fn valid_cost(cost: f64) -> bool {
+    cost.is_finite() && cost >= 0.0
 }
 
 impl Budget {
@@ -231,6 +270,9 @@ impl Budget {
     /// miscalibrated mechanism spends the same `ε` and mints the same [`Released`] (the
     /// residue; see crate docs and the calibration test).
     ///
+    /// A negative or non-finite `cost` is refused with [`SpendError::InvalidCost`] — not a
+    /// compile error, because the type cannot see a cost's sign (∥ the ceiling check).
+    ///
     /// [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
     pub fn run<M: Mechanism>(
         self,
@@ -238,9 +280,12 @@ impl Budget {
         mechanism: &M,
         answer: f64,
         seed: u64,
-    ) -> Result<(Released, Budget), Overspent> {
+    ) -> Result<(Released, Budget), SpendError> {
+        if !valid_cost(cost.0) {
+            return Err(SpendError::InvalidCost(cost.0));
+        }
         if cost.0 > self.remaining {
-            return Err(Overspent {
+            return Err(SpendError::Overspent {
                 requested: cost.0,
                 available: self.remaining,
             });
@@ -254,20 +299,26 @@ impl Budget {
         ))
     }
 
-    /// **Parallel composition.** Partition the budget into a piece of `first.0` and the
-    /// remainder, returning **two** budgets and consuming the original (you cannot keep the
-    /// whole *and* the parts — that contraction is what linearity forbids).
+    /// **Sub-allocation** (not *parallel composition* — see crate docs). Partition the budget
+    /// into a piece of `first.0` and the remainder, returning **two** budgets and consuming
+    /// the original (you cannot keep the whole *and* the parts — the contraction the affine
+    /// discipline forbids). The two parts are then spent independently.
     ///
     /// [E0382] guarantees the two parts are not the original *re-used*. It does **not**
     /// guarantee they *sum back to* the original — **conservation** (`ε₁ + ε₂ = ε`) is
     /// enforced by this body's arithmetic, not by the type (see crate docs, "linear stops
     /// duplication, not inflation"). A buggy split handing out more than it took in would
-    /// type-check.
+    /// type-check. A negative or non-finite `first` is refused with
+    /// [`SpendError::InvalidCost`] (a negative first share would hand out a `1.5`-of-`1.0`
+    /// remainder — inflation the sign check forecloses).
     ///
     /// [E0382]: https://doc.rust-lang.org/error_codes/E0382.html
-    pub fn split(self, first: Epsilon) -> Result<(Budget, Budget), Overspent> {
+    pub fn split(self, first: Epsilon) -> Result<(Budget, Budget), SpendError> {
+        if !valid_cost(first.0) {
+            return Err(SpendError::InvalidCost(first.0));
+        }
         if first.0 > self.remaining {
-            return Err(Overspent {
+            return Err(SpendError::Overspent {
                 requested: first.0,
                 available: self.remaining,
             });
@@ -375,7 +426,7 @@ fn unit_jitter(seed: u64) -> f64 {
 ///
 /// The reduction is honest about its limit (∥ leaf 6): it applies only when the costs are
 /// *compile-time constants*. A runtime-chosen, data-dependent, or adaptive `ε` cannot be
-/// walled here and falls back to [`Budget::run`]'s runtime [`Overspent`] check. And the
+/// walled here and falls back to [`Budget::run`]'s runtime [`SpendError::Overspent`] check. And the
 /// micro-`ε` *quantization* is a small residue of its own: rounding the ceiling down is
 /// conservative, rounding it up silently loosens privacy — the wall is exact only on the
 /// integers it is handed.
@@ -431,19 +482,104 @@ mod tests {
         let (_r2, b) = b.run(Epsilon(0.5), &Counting, 200.0, 2).unwrap();
         assert!((b.remaining() - 0.2).abs() < EPS);
 
-        // Overspending the remainder is a runtime `Overspent` (the runtime residue).
-        // Compare with tolerance: sequential f64 subtraction leaves `available` at
+        // Overspending the remainder is a runtime `SpendError::Overspent` (the runtime
+        // residue). Compare with tolerance: sequential f64 subtraction leaves `available` at
         // 0.19999999999999996, not an exact 0.2 (a float fact, not a budget bug).
         let err = b.run(Epsilon(0.5), &Counting, 0.0, 3).unwrap_err();
-        assert!((err.requested - 0.5).abs() < EPS);
-        assert!((err.available - 0.2).abs() < EPS);
+        match err {
+            SpendError::Overspent {
+                requested,
+                available,
+            } => {
+                assert!((requested - 0.5).abs() < EPS);
+                assert!((available - 0.2).abs() < EPS);
+            }
+            other => panic!("expected Overspent, got {other:?}"),
+        }
     }
 
-    /// **Parallel composition, and the conservation invariant.** `split` partitions the
-    /// budget into two pieces that sum back to the original — but conservation is arithmetic
-    /// in the body, not a fact the type enforces (the new datum).
+    /// **The negative-cost inflation channel, closed.** A negative or non-finite cost sails
+    /// past the `cost > remaining` ceiling (`-100 > 1` is false), so without a sign check it
+    /// would *grow* the budget and mint a free `Released`. `run` and `split` reject it with
+    /// `SpendError::InvalidCost` — the sign is a runtime residue the type cannot see.
     #[test]
-    fn parallel_composition_conserves_in_the_body_not_the_type() {
+    fn negative_or_nonfinite_cost_is_refused_not_inflated() {
+        // A negative charge to `run` is refused — the budget is NOT grown, no token minted.
+        let b = Budget::new(1.0);
+        assert_eq!(
+            b.run(Epsilon(-100.0), &Counting, 42.0, 7).unwrap_err(),
+            SpendError::InvalidCost(-100.0)
+        );
+
+        // Non-finite likewise.
+        let b = Budget::new(1.0);
+        assert!(matches!(
+            b.run(Epsilon(f64::NAN), &Counting, 0.0, 1).unwrap_err(),
+            SpendError::InvalidCost(_)
+        ));
+        let b = Budget::new(1.0);
+        assert_eq!(
+            b.run(Epsilon(f64::INFINITY), &Counting, 0.0, 1)
+                .unwrap_err(),
+            SpendError::InvalidCost(f64::INFINITY)
+        );
+
+        // A negative first-share to `split` would otherwise hand out a 1.5-of-1.0 remainder.
+        let b = Budget::new(1.0);
+        assert_eq!(
+            b.split(Epsilon(-0.5)).unwrap_err(),
+            SpendError::InvalidCost(-0.5)
+        );
+
+        // A zero cost is valid (a degenerate no-op charge), and deducts nothing.
+        let b = Budget::new(1.0);
+        let (_r, b) = b.run(Epsilon(0.0), &Counting, 0.0, 1).unwrap();
+        assert!((b.remaining() - 1.0).abs() < EPS);
+    }
+
+    /// `split`'s **overspend** error path (the field wiring), previously untested.
+    #[test]
+    fn split_overspend_reports_the_request_and_availability() {
+        let b = Budget::new(0.3);
+        match b.split(Epsilon(0.5)).unwrap_err() {
+            SpendError::Overspent {
+                requested,
+                available,
+            } => {
+                assert!((requested - 0.5).abs() < EPS);
+                assert!((available - 0.3).abs() < EPS);
+            }
+            other => panic!("expected Overspent, got {other:?}"),
+        }
+    }
+
+    /// `Budget::new` clamps a negative or NaN budget down to zero (conservative — a smaller
+    /// budget is always safe), unlike a bad *cost*, which is refused.
+    #[test]
+    fn new_clamps_negative_and_nan_budget_to_zero() {
+        assert!((Budget::new(-5.0).remaining() - 0.0).abs() < EPS);
+        assert!((Budget::new(f64::NAN).remaining() - 0.0).abs() < EPS);
+        assert!((Budget::new(2.5).remaining() - 2.5).abs() < EPS);
+    }
+
+    /// The toy jitter is documented to land in `[-1, 1)`; pin that bound across many seeds.
+    #[test]
+    fn unit_jitter_stays_in_signed_unit_interval() {
+        for seed in 0..10_000u64 {
+            let j = unit_jitter(seed);
+            assert!(
+                (-1.0..1.0).contains(&j),
+                "jitter {j} out of [-1,1) at seed {seed}"
+            );
+        }
+    }
+
+    /// **Sub-allocation, and the conservation invariant.** `split` partitions the budget into
+    /// two pieces that sum back to the original — but conservation is arithmetic in the body,
+    /// not a fact the type enforces (the new datum). This is sum-conserving sub-allocation,
+    /// *not* the max-saving parallel composition (which this toy does not model).
+    #[test]
+    fn sub_allocation_conserves_in_the_body_not_the_type() {
         let b = Budget::new(1.0);
         let (left, right) = b.split(Epsilon(0.4)).unwrap();
         assert!((left.remaining() - 0.4).abs() < EPS);
