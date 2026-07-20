@@ -48,8 +48,9 @@
 //! - Hardness enters with **release jitter / offsets** (plus adversarial period structure):
 //!   exact static-priority *response-time computation* becomes **NP-hard** (Eisenbrand &
 //!   Rothvoß 2008), and the *feasibility decision* — a `∀` over release patterns, so its
-//!   complement (a deadline miss) is a short witness placing it *in* coNP — is itself
-//!   **coNP-hard** (from the same reduction). **Multiprocessor**
+//!   complement (unschedulability) has a short witness (a phasing that misses a deadline)
+//!   placing it *in* coNP — is itself **coNP-hard** (from the same reduction).
+//!   **Multiprocessor**
 //!   schedulability is hard for a separate reason (partitioning = bin-packing, NP-hard).
 //!
 //! So a compile-time wall must **choose**: tractable-but-conservative (a utilisation bound)
@@ -377,6 +378,20 @@ mod tests {
         // Two tasks each needing 3 of every 4 ticks: U = 1.5 > 1, unschedulable by anyone.
         assert!(Schedulable::admit_rm_exact([(3u32, 4u32), (3, 4)]).is_none());
         assert!(Schedulable::admit_edf([(3u32, 4u32), (3, 4)]).is_none());
+    }
+
+    #[test]
+    fn rta_sums_multiple_higher_priority_interferers() {
+        // The RTA interference is a SUM over all higher-priority tasks. With three tasks the
+        // lowest-priority one has TWO interferers — exercising the accumulation (every other
+        // RTA test has ≤ 1 interferer, so a "keep only the last term" mutant would slip).
+        // Reject: {(3,6),(3,7),(1,8)} — task 3's R climbs 1 → 7 → 10 (interference 6 = 3+3
+        // from BOTH higher tasks), crossing D=8; a single term would give R=4 and wrongly
+        // accept. U = 0.5 + 0.428… + 0.125 = 1.05 > 1, genuinely unschedulable.
+        assert!(Schedulable::admit_rm_exact([(3u32, 6u32), (3, 7), (1, 8)]).is_none());
+        // Accept: {(1,4),(1,5),(2,20)} — task 3 has the same two interferers but their summed
+        // interference (2) leaves R = 4 ≤ 20. Pins that correct summation does not over-reject.
+        assert!(Schedulable::admit_rm_exact([(1u32, 4u32), (1, 5), (2, 20)]).is_some());
     }
 
     #[test]
