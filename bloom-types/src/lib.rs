@@ -538,7 +538,10 @@ mod tests {
             Membership::PossiblyPresent(_) => unreachable!("an empty filter has no set bits"),
         };
         let carried = w.clone(); // the type permits carrying it away from its subject
-        assert!(!a.get_bit(carried.unset_bit()), "sound against A, its true subject");
+        assert!(
+            !a.get_bit(carried.unset_bit()),
+            "sound against A, its true subject"
+        );
 
         // MISUSE 1 — a different FILTER. B has the same (m, k) but *contains* X, so X's
         // probe positions — including the carried `unset_bit` — are all SET in B, and
@@ -548,7 +551,8 @@ mod tests {
         b.insert(b"xavier");
         assert!(matches!(b.query(b"xavier"), Membership::PossiblyPresent(_)));
         assert!(
-            b.probe_positions(b"xavier").any(|p| p == carried.unset_bit()),
+            b.probe_positions(b"xavier")
+                .any(|p| p == carried.unset_bit()),
             "the carried index is one of X's probe positions"
         );
         assert!(
@@ -563,10 +567,14 @@ mod tests {
         // Y's probes in any filter.
         let y = (0u32..)
             .map(|i| format!("y-{i}"))
-            .find(|y| !a.probe_positions(y.as_bytes()).any(|p| p == carried.unset_bit()))
+            .find(|y| {
+                !a.probe_positions(y.as_bytes())
+                    .any(|p| p == carried.unset_bit())
+            })
             .expect("almost every item's probe set excludes one fixed index");
         assert!(
-            !a.probe_positions(y.as_bytes()).any(|p| p == carried.unset_bit()),
+            !a.probe_positions(y.as_bytes())
+                .any(|p| p == carried.unset_bit()),
             "X's unset bit is not one of Y's probes — the witness is about X, not Y"
         );
     }

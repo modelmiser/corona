@@ -799,7 +799,11 @@ mod tests {
         assert_eq!(units.len(), 3120, "φ(3233) = φ(61)·φ(53) = 60·52");
 
         let m = 1234u64; // a fixed unit message (1234 = 2·617, coprime to 61·53)
-        assert_eq!(gcd(m, n), 1, "the perfect-hiding argument needs m to be a unit");
+        assert_eq!(
+            gcd(m, n),
+            1,
+            "the perfect-hiding argument needs m to be a unit"
+        );
 
         let images: std::collections::BTreeSet<u64> = units
             .iter()
@@ -819,7 +823,10 @@ mod tests {
             units.len(),
             "no two factors collide onto one view (injective)"
         );
-        assert_eq!(images, units, "r ↦ m·rᵉ is a permutation of the units (onto)");
+        assert_eq!(
+            images, units,
+            "r ↦ m·rᵉ is a permutation of the units (onto)"
+        );
     }
 
     #[test]
