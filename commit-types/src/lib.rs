@@ -56,8 +56,10 @@
 //!    distinct openings that collapse to *one and the same* `Commitment` value. The
 //!    `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged` test makes
 //!    this executable — it builds the two real `Commitment`s and shows they are equal.
-//!    Binding is only ever *computational*: the seal secures the **path**, never the
-//!    **mathematics** underneath it.
+//!    For this hash commitment, binding is only ever *computational* — a different
+//!    scheme can be *perfectly* binding (paying with only computational hiding, the
+//!    dual regime of the tradeoff below), just never perfectly *both*, and never in
+//!    the type — so the seal secures the **path**, never the **mathematics** underneath it.
 //!
 //! ## Hiding reduces to nothing at all
 //!
@@ -84,16 +86,17 @@
 //! **computationally binding** (collisions *exist* — a compressing map always has
 //! them — but are computationally infeasible to find, exactly the birthday search of
 //! item 3) and **computationally hiding** (the digest hides the value only as far as
-//! the hash is one-way) — neither half perfect. Its mirror — a Pedersen commitment
+//! the hash *conceals its input*) — neither half perfect. Its mirror — a Pedersen commitment
 //! `g^v · h^r` in a prime-order group — buys **perfect hiding** (every `c` opens to
 //! *every* value under some `r`) at the price of only **computational binding**
 //! (binding rests on discrete-log hardness). The type sees **neither end** of this tradeoff: `Commitment` is one
 //! struct, and which of the two irreducible assumptions it leans on is chosen
 //! entirely off the type, in the hash-or-group it is instantiated over.
 //!
-//! So this leaf hands its residue to a **hardness assumption** (collision
-//! resistance for binding; hiding-hardness or perfect-hiding for the other half) —
-//! the same *kind* of seam as the crypto leaves before it, but reached for the
+//! So this leaf hands its residue to a **hardness assumption** — collision-resistance
+//! for binding here (a perfectly-binding dual would instead lean on perfect binding),
+//! and hiding-hardness or perfect hiding for hiding — the seam symmetric across the
+//! two halves, the same *kind* of seam as the crypto leaves before it, but reached for the
 //! first time by a subject whose **definition itself** is the pair of properties
 //! that split. What reduces here is the seal (the value is pinned, and there is no
 //! forged path to a commitment) and the brand (provenance); what does not is the
