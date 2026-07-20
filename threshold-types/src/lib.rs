@@ -346,6 +346,47 @@ mod tests {
     }
 
     #[test]
+    fn fabricated_never_dealt_shares_mint_a_genuine_secret() {
+        // Limit (2), made executable (the sharper sibling of the wrong-threshold
+        // test above, which shows limit (1)). `combine` witnesses *presentation*,
+        // not *authenticity*. These k=3 points were produced by no dealer and no
+        // `split_with_coeffs` call — an adversary simply wrote them down — yet they
+        // meet the asserted threshold, pass every guard (distinct, non-zero
+        // indices), and mint a genuine E0451-sealed `Secret`. Its mere existence is
+        // the proof: a `Secret` can *only* arrive from the checked path, and the
+        // checked path cannot tell a fabricated point from an authentic share.
+        let asserted = t(3, 5);
+        let fabricated = [
+            Share { x: 1, y: 0x11 },
+            Share { x: 2, y: 0x22 },
+            Share { x: 3, y: 0x33 },
+        ];
+        let minted: Secret = combine(&fabricated, asserted).expect("fabricated points combine");
+        // A real, unforgeable `Secret` exists although nothing was ever dealt.
+        let _ = minted.expose();
+
+        // Sharper still: the adversary *chooses* the recovered value with no dealt
+        // secret in hand and no dealer's cooperation. They fabricate points on
+        // f(x) = 0x99 + 0x07·x + 0x2e·x² by their own GF(256) arithmetic
+        // (deliberately not `split_with_coeffs` — impersonating a dealing that
+        // never happened), present any 3, and `combine` hands back exactly 0x99.
+        let chosen = 0x99u8;
+        let (a1, a2) = (0x07u8, 0x2eu8);
+        let eval = |x: u8| {
+            gf256::add(
+                gf256::add(chosen, gf256::mul(a1, x)),
+                gf256::mul(a2, gf256::mul(x, x)),
+            )
+        };
+        let forged: Vec<Share> = (1u8..=3).map(|x| Share { x, y: eval(x) }).collect();
+        assert_eq!(
+            combine(&forged, asserted).unwrap().expose(),
+            chosen,
+            "an adversary steers reconstruction to a chosen value with no dealer"
+        );
+    }
+
+    #[test]
     fn roundtrip_any_k_shares_recover_the_secret() {
         let th = t(3, 5);
         let shares = split_with_coeffs(0x42, th, &[0x1b, 0xc7]).unwrap();
