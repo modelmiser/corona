@@ -157,13 +157,14 @@
 //!   above is "*no larger*", strictly smaller only above the granularity. Enough such charges
 //!   compose to unbounded real privacy loss while the *recorded* budget stands still. This is
 //!   inherent to a *continuous* budget held in `f64`: the price of `ε ∈ ℝ⁺` is a
-//!   finite-precision floor. The honest fix is *integer* budget units — exactly why
-//!   [`StaticBudget`] carries micro-`ε` as a `u32`, not an `f64`; a graduated runtime budget
-//!   would do the same.
+//!   finite-precision floor. The honest fix is *integer* budget units — which is also why
+//!   [`StaticBudget`] carries micro-`ε` as a `u32` (chosen there for clean const-eval, but the
+//!   integer choice dodges this ULP floor too); a graduated runtime budget would do the same.
 //! - **A `Released` value can be non-finite.** As `ε → 0` the noise scale `Δf/ε → ∞` (faithful
-//!   DP — perfect privacy *is* infinite noise), so a tiny-but-valid `ε` (or a mechanism
-//!   reporting a non-finite sensitivity, or a non-finite `answer`) yields a non-finite
-//!   release. The [E0451] seal witnesses that a budget was *charged*, never that the released
+//!   DP — perfect privacy *is* infinite noise), so a *sufficiently* tiny valid `ε` (subnormal
+//!   territory, small enough that `Δf/ε` overflows `f64` — a merely small `ε` like `1e-15`
+//!   stays finite), or a mechanism reporting a non-finite sensitivity, or a non-finite
+//!   `answer`, yields a non-finite release. The [E0451] seal witnesses that a budget was *charged*, never that the released
 //!   number is finite or calibrated — the same "the seal is only as strong as its checked
 //!   path" the calibration residue already named.
 //!
