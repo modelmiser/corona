@@ -68,7 +68,7 @@
 //! *indistinguishable* to anyone holding only the commitments. A type reasons about
 //! the value and flow of a *single* program run; a relation across two hypothetical
 //! runs on different secrets lives an entire layer beneath it. Concretely, the
-//! hiding scheme [`commit`] (which mixes a fresh blinding factor into every digest)
+//! hiding scheme [`commit`] (which mixes a caller-supplied, intended-fresh blinding factor into the digest)
 //! and the leaky scheme [`leaky_commit`] (which hashes the value alone, so equal
 //! values produce equal — thus *linkable* — commitments) become **type-indistinguishable
 //! once [`commit`] is curried on a fixed blind and projected to its commitment**: it then
@@ -192,6 +192,12 @@ pub struct Commitment {
 /// The secret material that opens a [`Commitment`]: the committed value and the
 /// blinding factor. Public, forgeable data — its correspondence to a commitment is
 /// decided only by [`Commitment::verify`], never by holding it.
+///
+/// **No linearity is claimed.** `Opening` (and [`ScopedOpening`]) are deliberately
+/// `Clone`: an opening is *evidence of a fact* (this `(value, blind)` hashes to that
+/// digest), not a consumable *capability* — nothing here is a use-once token, so the
+/// crate makes no E0382 move-linearity claim about them. (Contrast `lamport-types`,
+/// where the signing key genuinely *is* a use-once capability.)
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Opening {
     /// The committed value.
@@ -420,20 +426,25 @@ mod tests {
             (&v2, r2),
             "the two openings must be genuinely distinct"
         );
-        // Build the two REAL `Commitment`s a 16-bit scheme would publish. The struct is
-        // the same `Commitment` at any digest width — the seal never sees the width — so
-        // two distinct openings collapse to *one and the same* value: binding has
-        // evaporated while the type is unchanged. (At 64 bits the search is infeasible;
-        // that width, and nothing in the type, is where binding's hardness lives.)
-        let c1 = Commitment {
+        // Publish ONE 16-bit commitment (the real `Commitment` struct — the seal never
+        // sees the digest width) and re-hash-and-compare against it, exactly as
+        // `Commitment::verify` does at full width. The committer authored only the first
+        // opening, yet the second — which they never held — verifies against the same
+        // commitment: binding has evaporated while the type is unchanged. (At 64 bits the
+        // search is infeasible; that width, and nothing in the type, is where binding's
+        // hardness lives.)
+        let published = Commitment {
             digest: weak_digest(&v1, r1) as u64,
         };
-        let c2 = Commitment {
-            digest: weak_digest(&v2, r2) as u64,
-        };
-        assert_eq!(
-            c1, c2,
-            "two distinct openings yield the identical Commitment at 16 bits"
+        let weak_verify =
+            |c: &Commitment, value: &[u8], blind: u64| weak_digest(value, blind) as u64 == c.digest;
+        assert!(
+            weak_verify(&published, &v1, r1),
+            "the authored opening verifies"
+        );
+        assert!(
+            weak_verify(&published, &v2, r2),
+            "the un-authored second opening also verifies — binding collapsed"
         );
     }
 }
