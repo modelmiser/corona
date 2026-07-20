@@ -1157,8 +1157,12 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   - **`numerical-accuracy`** — leaf 27's analytic cousin: types track *units* (leaf 27) but
     not rounding error / catastrophic cancellation / condition number. Residue = the drift
     between ideal real arithmetic and representable floats.
-  - **`deadline`/robustness** — *quantitative* liveness: not leaf 24's "eventually" but
-    "within D" (real-time schedulability, NP-hard → residue); Lipschitz robustness.
+  - ~~**`deadline`/robustness**~~ — **DONE (leaf 33 `deadline-types`, converged 2026-07-20):**
+    real-time schedulability, the *quantitative* sharpening of leaf 24's liveness ("within D",
+    not "eventually"). Residue = the **tractability / P-vs-NP gap** (NP-hard response-time
+    computation / coNP-hard feasibility decision; the garden's first PROVEN-complexity-hardness
+    residue). Lipschitz robustness NOT built — a Lipschitz constant IS dp-28's global sensitivity
+    Δf, so it would re-land on the dp residue, not a new shape.
 - **`totality-types` — termination / halting.** A **new escape-hatch category**: close the
   residue by *sacrificing expressiveness* — restrict to a total language (Agda / Idris-total
   refuse general recursion). No current residue escapes to "give up Turing-completeness."
@@ -1174,7 +1178,48 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (linearizability, protocol conformance). Types hold the *interface*; residue = a
   **simulation relation** (impl ⊑ spec), a proof shape no leaf has. Seam to Sol (∥ leaf 15).
 
-## Garden state (2026-07-20e)
+## Garden state (2026-07-20f)
+
+- **Leaf 33 (`deadline-types`) SEEDED + CONVERGED + DOC-SYNCED — real-time schedulability as
+  typestate, `numerical-accuracy` (32)'s parked cousin and the QUANTITATIVE sharpening of `arq`
+  (24)'s liveness** (leaf 24: "does delivery *eventually* happen?"; this: "does the job finish
+  *within* a deadline?" — the second leaf on the QUANTITATIVE meta-axis `dp` 28 opened). Thesis
+  answered: **a three-way split, two primitives, no new one; the reduce-half is exact on one island,
+  the residue opens the instant you leave it.** reduce-half: (1) **E0080** walls — a per-task `C ≤ T`,
+  and for the ONE tractable island (preemptive/independent/periodic **implicit-deadline uniprocessor
+  EDF**) Liu & Layland 1973's `Σ Cᵢ/Tᵢ ≤ 1` is *exact*, an integer common-denominator const-eval
+  wall (∥ static-config 6 / dp 28, now metering utilisation); (2) **E0451** — `Schedulable<N>` sealed
+  certificate minted only by an admission fn, **`Copy`** so **E0382 NOT recruited** (a feasibility
+  fact is duplicable, the inverse of dp-28's *linear* `Budget`, ∥ leaf 32). residue, the NEW SHAPE =
+  **the TRACTABILITY / P-vs-NP gap**: off the island the cheap exact wall vanishes — fixed-priority
+  RM has no exact utilisation wall (the L&L *sufficient* bound is CONSERVATIVE; the exact test is a
+  pseudo-polynomial **RTA** fixed point, pseudo-poly even for constrained/arbitrary deadlines), and
+  with **jitter/offsets** the exact *response-time computation* is **NP-hard** (Eisenbrand–Rothvoß
+  2008) / the *feasibility decision* **coNP-hard** (complement = a short-witnessed deadline miss),
+  multiprocessor NP-hard separately (bin-packing). So a const wall must CHOOSE tractable-conservative
+  OR exact, and **no polynomial-cost exact wall exists unless P=NP**. The garden's **first residue
+  gated by PROVEN complexity-theoretic hardness** — decidable (unlike totality-30's undecidability), a
+  *theorem* not a conjecture (unlike vdf-20), *bounded* (unlike numerical-32's `sup κ=∞`); two facts
+  held apart (the reductions are theorems; "no complete tractable wall" is conditional on P≠NP, and
+  `P=NP ⟺ P=coNP`). Demonstrated EXECUTABLY: a harmonic U=1.0 set that EDF-exact ACCEPTS / RM-sufficient
+  REJECTS / RM-exact ACCEPTS. **BRIDGE to leaf 24:** quantifying a liveness bound RE-CROSSES to SAFETY
+  ("within D" has a finite bad prefix), so the hardness MIGRATES from "no finite witness" to "a finite
+  witness NP-hard to search for" (the critical-instant ∀-over-phasings). Witness-trap: feasibility
+  UNDER THE DECLARED WCETs, never that they are sound. Two primitives (E0080 + E0451), no new one;
+  brand + E0382 unused. Standalone. TOY (implicit-deadline periodic; classic uniprocessor RTA not
+  busy-window; no jitter/blocking/multiprocessor; u128-fit EDF exactness). **CONVERGED 12 rounds
+  (R11+R12 clean on frozen text) — the E0451 seal & E0080 wall NEVER broke** (per-round adversarial +
+  differential fuzz totalling tens of millions of task sets, debug AND release-overflow-off, 0 false
+  certificates; relabel attack blocked by E0451; code sound from R1). Every finding test-completeness
+  or numerical/complexity prose-precision. Signature: five straight rounds (R3–R7) of one surviving
+  mutant each, closed with an **admission-hierarchy INVARIANT test** (EDF⇔U≤1, RM-exact⇒EDF optimality,
+  RM-sufficient⇒RM-exact) over 2744 enumerated sets; two guard-isolation + two certificate-tag SIBLING
+  gaps (R5/R6, R9/R10) — lesson: *pinning one site of a multi-site value is not pinning the class*;
+  sharpest prose fix **NP-hard → coNP-hard for the DECISION problem** (R1's own sharpening carried the
+  class error, corrected R2). Seed `8fec4b6`; converged `f398f47` (R11/R12 no-change); doc-synced
+  (CHARTER row / README tree + counts `467 unit + 126 doctests = 593` / TODO). 19 unit + 5 doctests;
+  E0451/E0080 by direct rustc with real `-o` paths, clippy clean. **NOT PUSHED** (separate step).
+  **Garden now corona-core + 33 leaves, no review debt.**
 
 - **Leaf 32 (`numerical-accuracy`) SEEDED + CONVERGED + DOC-SYNCED — the ℝ-vs-`f64` accuracy gap as
   typestate, leaf 27 (`unit-types`)'s ANALYTIC cousin and the home of the finite-precision residue
