@@ -147,6 +147,24 @@
 //! *detection* (lockdep) and its *dynamic* case for a runtime canonical *order*
 //! ([`transfer`]) — is the leaf's contribution.
 //!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! This leaf is the **sixth Corona↔Sol wire** and the first to reach the **E0080 const-eval
+//! wall** (`Sol.Lib.Deadlock`, `Sol.Corona` §9 — CHARTER criterion #4). Sol reproduces the wall
+//! faithfully as a decidable gate — `wall a b = if a < b then some b else none`, where `none` stands
+//! for the const-eval panic — and proves the emergent bridge the wall exists for: a *local* per-step
+//! `B > A` check composes (by transitivity of `<`) to a *whole-chain* guarantee.
+//! `back_edge_to_head_walled` shows the back-edge that would close a cycle onto the chain's base
+//! fails the wall (`wall last a = none`, since a wall-legal chain forces `a < last`) — a strict order
+//! has no such closing edge. This forecloses a cross-thread wait-for cycle *only when every thread
+//! keeps to one chain* (the Havender premise, itself the residue); it is a within-chain fact, not a
+//! global deadlock-freedom theorem. The part-1 residue (the wall guards *within* a chain, not
+//! *across*, so two independent base chains can descend) is transported as a proved two-outcome
+//! contrast (`two_chain_residue`); the part-2 dynamic residue ([`transfer`]'s runtime canonical
+//! order) is named but stays below the const-integer model. The [`Guard`] seal (E0451) is the
+//! already-wired primitive of wires 1–3; the LIFO release (E0505) is the borrow checker — both noted
+//! there, not re-modeled.
+//!
 //! ## The codes, verified out of band
 //!
 //! As leaf 27 established, `rustdoc`'s `compile_fail` checks only that a snippet *fails*,
