@@ -87,7 +87,11 @@ lemma, as distinct from leaf 15 `crdt-types`, the first to merely *name* one as 
 today. A **second** invariant is wired as of 2026-07-20 — `deadline-types`' EDF test
 (`Sol.Lib.Deadline`) — and the shared acceptance-refinement is factored into
 `Sol.Lib.CoronaRefines`, used by both leaves (the promotion, earned by two unrelated
-users per corona-core's own rule). `warp-types` — the *pre-Corona ancestor*, not a
+users per corona-core's own rule). A **third** leaf, `refinement-types` (`Sol.Lib.Refinement`),
+names the shared *shape*: `Refined<T,P>` is textbook refinement types — the canonical *sibling* of
+`Threshold`/`Deadline` under the skeleton `dguard_ok_iff` (the true generalization), not their parent.
+All three are co-instances of one lemma; the sealed-checked-constructor shape simply *is* a refinement
+type. The wire's boundary is leaf 31's own arrow (function-refinement) residue. `warp-types` — the *pre-Corona ancestor*, not a
 leaf in this workspace — prefigures it: it is both a Rust crate and a Lean
 formalization that is one of Sol's test beds. Once a leaf graduates, the direction
 is **one-directional: a graduated Corona leaf contributes a Lean formalization to

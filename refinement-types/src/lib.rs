@@ -227,6 +227,13 @@ pub trait Predicate<T> {
 /// sealed receipt of one check, not a proof. See the crate docs.
 ///
 /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
+///
+/// `Refined::new`'s refinement — accepting exactly the values satisfying `P`, for any base type
+/// and any predicate — is machine-checked in Sol as `Sol.Lib.Refinement` (`refine_refines`): the
+/// **third** Corona↔Sol wire, and the one that reveals the shared skeleton `Sol.Lib.CoronaRefines`
+/// *is* refinement types — `corona-core::Threshold` and `deadline-types::Schedulable` are its
+/// instances. The wire captures the base refinement `{v | P v}`; the arrow (function refinement)
+/// stays the residue.
 pub struct Refined<T, P: Predicate<T>> {
     value: T,
     // `P` is a zero-sized marker: it names *which* refinement this value satisfies without
