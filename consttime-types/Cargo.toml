@@ -1,13 +1,18 @@
 [package]
 name = "consttime-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "Corona leaf 25 — constant-time secret comparison (data-obliviousness / timing side-channels) as typestate. The SOURCE-level data-oblivious discipline (no secret-dependent branch or index) reduces to the E0451 seal used in a NEW mode — an 'oblivious seal' that makes a value opaque to control flow (no PartialEq/Ord/Index/Deref). But whether the combinators are ACTUALLY constant-time, and whether the compiler and microarchitecture preserve it, are residues no value-level type can reach — the operational/physical layer BENEATH the value abstraction (a fifth residue home; generalizing leaf 10's memory-residue hint). It inverts leaf 20's TIME axis (within the 18-cost / 20-delay / 21-space triad): not how much time one run takes, but whether the time LEAKS the secret across runs (a 2-safety relation). TOY, not production."
+description = "Corona leaf 25 (GRADUATED 2026-07-21) — constant-time secret comparison (data-obliviousness / timing side-channels) as typestate. The SOURCE-level data-oblivious discipline (no secret-dependent branch or index) reduces to the E0451 seal used in a NEW mode — an 'oblivious seal' that makes a value opaque to control flow (no PartialEq/Ord/Index/Deref). But whether the combinators are ACTUALLY constant-time, and whether the compiler and microarchitecture preserve it, are residues no value-level type can reach — the operational/physical layer BENEATH the value abstraction (a fifth residue home). Graduation swapped the hand-rolled branchless fold for the vetted `subtle` crate behind the SAME seam. Its criterion-#4 discharge is Sol.Lib.ConstantTime, which does NOT prove the code constant-time (impossible at the value layer) but MECHANIZES why it cannot: value-equivalence does not imply cost-equivalence."
 
-# consttime-types is STANDALONE (imports nothing in the garden): a leaf whose subject
-# is *where a residue stops reducing* must not lean on sibling surfaces, and its
-# subject (data-oblivious secret comparison) is unrelated to corona-core's k-of-n
-# Threshold. It needs no crypto backend — the residue is about the operational
-# behaviour of the compiled program, not the unforgeability of any value.
+# consttime-types is STANDALONE w.r.t. the GARDEN (imports no sibling leaf and no
+# corona-core: its subject — where a residue stops reducing — must not lean on sibling
+# surfaces, and data-oblivious comparison is unrelated to corona-core's k-of-n Threshold).
+# Graduation adds exactly ONE external dependency: `subtle`, the reference data-oblivious
+# primitive crate (the branchless backend `curve25519-dalek` et al. depend on). The seam
+# (a sealed `Secret`, a masked `Choice`, and the `ct_eq`/`ct_select`/`declassify`
+# combinators) is unchanged; only the combinator BODIES now delegate to `subtle`. Note the
+# residue is unaffected by the swap: `subtle` gives audited *source-level* branchlessness,
+# not a guarantee the compiler/microarchitecture preserve it — that remains the leaf.
 [dependencies]
+subtle = "2.6"

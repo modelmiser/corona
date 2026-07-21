@@ -122,21 +122,31 @@
 //! *leaks the secret*** — a channel that exists only because types are silent about
 //! operational behaviour.
 //!
-//! ## ⚠ TOY — not production
+//! ## Security posture and limits (GRADUATED 2026-07-21)
 //!
-//! This crate demonstrates a **type discipline and its boundary**, not a real
-//! constant-time library (use `subtle`, or audited primitives from
-//! HACL\*/Jasmin/FaCT for real work). Deliberate simplifications, all orthogonal
-//! to the residue:
+//! This leaf is on the garden's **graduated (production-intent)** track: the
+//! data-oblivious combinators are backed by the vetted [`subtle`] crate — the
+//! reference masked-bit / conditional-select primitive that `curve25519-dalek`,
+//! `ed25519-dalek`, and much of the RustCrypto stack depend on — behind the *same*
+//! seam that the toy shipped ([`Secret::ct_eq`]/[`Secret::ct_select`]/`declassify`
+//! are unchanged in name and contract; only the bodies now delegate). Graduation
+//! was an **implementation swap**, not a rewrite.
 //!
-//! - **The combinators are *source*-oblivious only.** [`Secret::ct_eq`] and
-//!   [`Secret::ct_select`] are written branchless, but this crate makes **no
-//!   claim** the compiler preserves that to the emitted assembly — indeed the whole
-//!   point of the leaf is that no *type* can make that claim. A real library audits
-//!   the generated code (and uses tricks like `core::hint::black_box`, itself only
-//!   a hint). The final **diff-byte→bit** fold in `ct_eq` (the accumulated XOR
-//!   collapsed to the equality bit) uses one branchless `is_zero`, but even that is
-//!   a source-level courtesy, not a machine guarantee.
+//! **What graduation does NOT do — and cannot — is close the residue.** This is the
+//! whole point of the leaf, and it survives the swap intact:
+//!
+//! - **`subtle` gives *source-level* obliviousness, audited — not a machine
+//!   guarantee.** Its combinators are written branchless and use `black_box`-style
+//!   optimisation barriers, and they are far more carefully audited than a
+//!   hand-rolled fold. But `subtle` itself is explicit (see its README) that it
+//!   makes **no guarantee** the compiler and microarchitecture preserve
+//!   data-obliviousness down to the emitted instructions — an optimiser may still
+//!   lower a branchless select into a branch; some CPUs have data-dependent
+//!   instruction timing; speculation reintroduces secret-dependent behaviour the
+//!   source never wrote. Swapping in the best-audited dependency **narrows the
+//!   trust anchor** (you now trust `subtle` + the toolchain rather than a bespoke
+//!   fold + the toolchain); it does not **remove** it. The residue is a
+//!   platform/implementation assumption, and no dependency can discharge it.
 //! - **Fixed-width byte secrets only.** [`Secret`] wraps `[u8; N]`; no big-integer
 //!   or field arithmetic (real constant-time crypto is dominated by constant-time
 //!   *modular* arithmetic — the same residue on a wider surface, out of scope).
@@ -145,6 +155,25 @@
 //!   residue but not exercised. The "time" in every test is an **operation count**,
 //!   a portable deterministic proxy; real timing leaks are measured with cycle
 //!   counters and statistical tests (*dudect*).
+//!
+//! For secrets wider than fixed byte arrays, or where the above channels matter,
+//! use `subtle` directly together with audited primitives from HACL\*/Jasmin/FaCT.
+//!
+//! ## Machine-checked correspondence (Sol) — criterion #4, the honest way
+//!
+//! A graduated leaf discharges CHARTER criterion #4 by contributing a Lean
+//! formalization to [Sol](../../sol) *or* an explicit note why it cannot. This leaf
+//! does **both, and that is the point**: `Sol.Lib.ConstantTime` does **not** prove
+//! the combinators are constant-time — that is impossible at the value layer, and
+//! claiming it would be dishonest. Instead it **mechanizes *why* it is impossible**:
+//! it models a function under two semantics — a **value** semantics (the result) and
+//! a **cost/trace** semantics (an observable proxy for running time) — and proves
+//! that **value-equivalence does not imply cost-equivalence** (two functions equal
+//! on every input as values, distinguishable by cost). That is the Lean analogue of
+//! this crate's `the_type_system_cannot_tell_constant_time_from_leaky` test: a
+//! machine-checked statement that constant-time-ness lives *outside* the value
+//! semantics any Rust type reasons about — the twelfth Corona↔Sol wire, and the
+//! first to formalize a *residue's un-typability* rather than a leaf's invariant.
 //!
 //! ## What the types do and do not witness
 //!
@@ -215,36 +244,39 @@
 
 use core::fmt;
 
+use subtle::{ConditionallySelectable, ConstantTimeEq};
+
 /// A **masked boolean** — the result of a data-oblivious comparison. Its bit is
 /// **private** (the E0451 seal): you cannot read it as a `bool`, or branch on it,
 /// without the explicit [`Choice::declassify`] — the single point where a
 /// data-dependent branch becomes possible. Masked choices compose *without*
 /// branching via [`Choice::and`]/[`Choice::negate`], so a multi-part oblivious
 /// comparison stays oblivious until the one deliberate `declassify`.
+///
+/// Since graduation the inner bit is a [`subtle::Choice`] — the vetted masked bit
+/// `curve25519-dalek` et al. rely on — so its 0/1 invariant and its branchless
+/// combinators are the audited ones, not hand-rolled.
 #[derive(Clone, Copy)]
-pub struct Choice(u8); // invariant: 0 or 1
+pub struct Choice(subtle::Choice); // wraps subtle::Choice (inner bit is always 0 or 1)
 
 impl Choice {
-    /// Build a masked choice from a bit (any non-zero low bit becomes 1).
-    fn from_bit(bit: u8) -> Choice {
-        Choice(bit & 1)
-    }
-
-    /// Oblivious conjunction: `1` iff both are `1`. No branch.
+    /// Oblivious conjunction: `1` iff both are `1`. No branch (backed by
+    /// `subtle::Choice`'s branchless `BitAnd`).
     pub fn and(self, other: Choice) -> Choice {
         Choice(self.0 & other.0)
     }
 
-    /// Oblivious negation. No branch.
+    /// Oblivious negation. No branch (backed by `subtle::Choice`'s branchless `Not`).
     pub fn negate(self) -> Choice {
-        Choice(self.0 ^ 1)
+        Choice(!self.0)
     }
 
     /// **The audited branch point.** Turn the masked bit into a real `bool` —
     /// which is where control flow may finally fork on it. Deliberately explicit
-    /// so every such fork is a greppable `declassify` in the source.
+    /// so every such fork is a greppable `declassify` in the source. (Unwraps the
+    /// inner `subtle::Choice` via its `Into<bool>`.)
     pub fn declassify(self) -> bool {
-        self.0 == 1
+        self.0.into()
     }
 }
 
@@ -312,27 +344,29 @@ impl<const N: usize> Secret<N> {
     /// The `Choice` is masked precisely so the caller cannot cheaply branch on the
     /// result; acting on it requires an explicit [`Choice::declassify`].
     pub fn ct_eq(&self, other: &Secret<N>) -> Choice {
-        let mut diff = 0u8;
-        for (x, y) in self.bytes.iter().zip(other.bytes.iter()) {
-            diff |= x ^ y;
-        }
-        // `diff == 0` iff equal; fold to a masked bit without a per-value branch.
-        Choice::from_bit(u8_is_zero(diff))
+        // Delegate the data-oblivious fold to `subtle`: `ConstantTimeEq` for byte
+        // slices touches every byte with no early exit and returns a masked
+        // `subtle::Choice`. Both operands have length `N` — a public, type-level
+        // fact — so subtle's length comparison is not secret-dependent.
+        Choice(self.bytes.as_slice().ct_eq(other.bytes.as_slice()))
     }
 
     /// **Branchless select:** return a copy of `a` if `choice` is true, else `b`.
     /// Touches every byte of both inputs regardless of `choice` — the address
     /// stream and the operation count do not depend on the secret bit.
     pub fn ct_select(a: &Secret<N>, b: &Secret<N>, choice: Choice) -> Secret<N> {
-        // LOAD-BEARING: this mask (0x00/0xFF) is correct only because a `Choice`'s
-        // bit is always 0 or 1 — an invariant that rests on `Choice::from_bit` (its
-        // sole minter) being private and masking with `& 1`. A public `Choice`
-        // constructor admitting other values (e.g. `Choice(2)`) would silently break
-        // both the select's obliviousness AND its correctness. Keep `from_bit` private.
-        let mask = 0u8.wrapping_sub(choice.0); // 0xFF if choice==1 else 0x00
+        // Delegate the branchless choose to `subtle`'s audited
+        // `ConditionallySelectable::conditional_select`, byte by byte. subtle's
+        // contract is `conditional_select(f, t, c) = f if c == 0 else t`; we want
+        // `a` when `choice` is true and `b` when false, so pass `(b, a)`.
+        // Obliviousness and correctness now rest on subtle's masking (and on its
+        // guarantee that a `Choice`'s inner bit is always 0 or 1), not a hand-rolled
+        // one — this is the graduation's implementation swap, same seam.
         let mut out = [0u8; N];
         for ((o, x), y) in out.iter_mut().zip(a.bytes.iter()).zip(b.bytes.iter()) {
-            *o = (x & mask) | (y & !mask);
+            // conditional_select(f, t, c) = f if c == 0 else t; want `a` (=x) when
+            // true, `b` (=y) when false, so f = y, t = x.
+            *o = u8::conditional_select(y, x, choice.0);
         }
         Secret { bytes: out }
     }
@@ -346,16 +380,6 @@ impl<const N: usize> Secret<N> {
     pub fn declassify(&self) -> [u8; N] {
         self.bytes
     }
-}
-
-/// Branchless `is_zero` for a byte: returns `1` if `x == 0`, else `0`.
-///
-/// `x - 1` is negative exactly when `x == 0` (for `x` in `0..=255`); the arithmetic
-/// right shift by 31 broadcasts that sign bit, and `& 1` isolates it. No branch on
-/// `x`.
-fn u8_is_zero(x: u8) -> u8 {
-    let x = x as i32;
-    ((x.wrapping_sub(1) >> 31) & 1) as u8
 }
 
 #[cfg(test)]
@@ -581,16 +605,6 @@ mod tests {
         assert_eq!(shown, "Choice(<masked>)");
     }
 
-    /// The branchless `is_zero` helper is correct across the whole byte range: `1`
-    /// only for `0`, `0` for every non-zero byte.
-    #[test]
-    fn u8_is_zero_is_exact() {
-        assert_eq!(u8_is_zero(0), 1);
-        for x in 1u8..=255 {
-            assert_eq!(u8_is_zero(x), 0, "u8_is_zero({x}) must be 0");
-        }
-    }
-
     /// `Secret` is `Clone` (copying a secret is not the leak) and a clone compares
     /// equal to its source under `ct_eq` — the discipline forbids *branching* on a
     /// secret, not *duplicating* it (contrast the affine leaves 5/9/10).
@@ -636,6 +650,9 @@ mod tests {
     /// early-exits internally — the witness-trap exhibit.
     fn leaky_ct_eq<const N: usize>(a: &Secret<N>, b: &Secret<N>) -> Choice {
         let (equal, _ops) = leaky_eq_ops(a, b);
-        Choice::from_bit(u8::from(equal))
+        // Mint the masked Choice directly (the witness-trap exhibit): a leaky body
+        // produces the SAME public `Choice` type as the honest, subtle-backed one —
+        // the seal witnesses *that a combinator ran*, never *that it was oblivious*.
+        Choice(subtle::Choice::from(u8::from(equal)))
     }
 }
