@@ -162,8 +162,19 @@
 //! *across*, so two independent base chains can descend) is transported as a proved two-outcome
 //! contrast (`two_chain_residue`); the part-2 dynamic residue ([`transfer`]'s runtime canonical
 //! order) is named but stays below the const-integer model. The [`Guard`] seal (E0451) is the
-//! already-wired primitive of wires 1–3; the LIFO release (E0505) is the borrow checker — both noted
-//! there, not re-modeled.
+//! already-wired primitive of wires 1–3, noted not re-modeled.
+//!
+//! **As of the tenth wire**, this leaf's **E0505 LIFO release** is also wired (`Sol.Lib.Deadlock`
+//! Part 4) — the *second trusted-only seam*, beside move-linearity (E0382, wire 4). E0505 is
+//! substructural: `Guard::acquire(&mut self)` makes a child mutably borrow its parent, so releases are
+//! LIFO and a nesting cannot fork. Lean is not substructural, so — exactly as for move — Sol models
+//! the discipline's *structure* (a stack, its LIFO pop, `release_after_acquire`/`stack_top_max`) and
+//! *trusts* the enforcement (a non-LIFO release is expressible in Lean but forbidden by the borrow
+//! checker — `nonLifo_release_is_trusted`). It is **not** a fifth faithful primitive kind: it trusts
+//! *scope-nesting* where move trusts *cardinality*. The datum is the acquire/release duality — the
+//! E0080 wall orders acquisition (up), the E0505 borrow orders release (off the top), over one
+//! strictly-ordered stack (`stackOk_top_walled`). Residue: `&mut self` disciplines one nesting, not
+//! two independent base chains (`Lock::acquire(&self)`), so it does not close `two_chain_residue`.
 //!
 //! ## The codes, verified out of band
 //!
