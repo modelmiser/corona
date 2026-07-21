@@ -1218,8 +1218,8 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   sharpest prose fix **NP-hard → coNP-hard for the DECISION problem** (R1's own sharpening carried the
   class error, corrected R2). Seed `8fec4b6`; converged `f398f47` (R11/R12 no-change); doc-synced
   (CHARTER row / README tree + counts `467 unit + 126 doctests = 593` / TODO). 19 unit + 5 doctests;
-  E0451/E0080 by direct rustc with real `-o` paths, clippy clean. **NOT PUSHED** (separate step).
-  **Garden now corona-core + 33 leaves, no review debt.**
+  E0451/E0080 by direct rustc with real `-o` paths, clippy clean. **PUSHED origin/main
+  `eea3288..7966059` (2026-07-20).** **Garden now corona-core + 33 leaves, no review debt.**
 
 - **Leaf 32 (`numerical-accuracy`) SEEDED + CONVERGED + DOC-SYNCED — the ℝ-vs-`f64` accuracy gap as
   typestate, leaf 27 (`unit-types`)'s ANALYTIC cousin and the home of the finite-precision residue
