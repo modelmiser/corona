@@ -102,6 +102,33 @@
 //! forged path to a commitment) and the brand (provenance); what does not is the
 //! entire *strength* of both dual halves.
 //!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! The provenance brand of this leaf is machine-checked in Lean as the **eighth Corona↔Sol wire**
+//! (`Sol.Lib.Commit`), and its arrival is what **graduates the branded-tag match into a shared
+//! skeleton** (`Sol.Lib.CoronaBrand`) — the match is grade-agnostic *by signature* (decidable tag
+//! equality that would image a nominal brand too, though no nominal leaf actually routes through the
+//! lemma — both literal consumers are generative), under corona-core's rule that an abstraction earns its
+//! existence only when a *second, genuinely different* leaf proves it common. The first was
+//! `translog-types` (the *two-brand* relational design); this leaf is the *single-brand* co-instance,
+//! the same match at a different arity, in an unrelated domain. (It is a *thinner* graduation than the
+//! seal's `CoronaRefines`: both consumers share the identical decidable-equality predicate and only
+//! `translog` exercises it non-trivially — see the candour note in `Sol.Lib.CoronaBrand`.)
+//!
+//! - `commit_verify_pins_scope` — an opening verifies iff its one generative brand unifies with the
+//!   commitment's (`CoronaBrand.brand_match_iff` applied *once*; `translog` applies it twice).
+//! - `commit_foreign_scope_rejected` — a foreign-scope opening is rejected, the faithful image of the
+//!   cross-scope `verify` being the [E0521] compile error of the doctest below.
+//! - `commit_provenance_is_the_brand_not_the_hash` — the leaf's headline: the brand and the hash decide
+//!   *orthogonal* things (provenance vs. integrity), machine-checked as a structural orthogonality (two
+//!   ∀-quantified gate-blindness legs — each gate blind to the field the other reads) plus both-ways
+//!   disagreement on concrete witnesses.
+//!
+//! The correspondence is honest about the seam: the **match** (region-unification to decidable tag
+//! equality) is *faithful*; the brand's **freshness/unforgeability** (the `for<'brand>` non-escape) is
+//! *trusted* at the rustc boundary, not re-proved in Lean. Everything below — binding's collision
+//! hardness, hiding's 2-safety, the toy hash — is residue, named in Sol, modeled by no theorem.
+//!
 //! A witness cannot cross scopes — this does **not** compile:
 //!
 //! ```compile_fail,E0521
