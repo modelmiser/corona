@@ -104,6 +104,32 @@
 //!   existence; no safe-Rust seal prevents that. This is the *scope* of the guarantee (and
 //!   why the crate is `#![forbid(unsafe_code)]`), not a hole in it.
 //!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! This leaf is the **seventh Corona↔Sol wire** (`Sol.Lib.Translog`), the first to wire the
+//! **E0521 generative brand** — the brand kind's *second grade*, which the fifth wire (`unit-types`,
+//! literal E0308) named and deferred. Sol machine-checks three facts, ∀-quantified over an *open*
+//! scope domain (`Nat`) — an open carrier that *reflects* generativity's open family (it does not
+//! itself *prove* freshness; the proofs are tag-type-agnostic, and freshness stays trusted below):
+//!
+//! - `translog_relation_pins_both_scopes` — a [`Consistent`] is read back exactly under its **two**
+//!   minting scopes (the doubly-branded [`Checkpoint::authenticated_relation`], as an iff): the
+//!   garden's first witness carried across two brand scopes at once.
+//! - `translog_cross_scope_rejected` — presented under a *different* brand, the same witness is
+//!   refused: the faithful image of the cross-scope read being an E0521 compile error.
+//! - `translog_order_is_the_fold_not_the_brand` — **the new datum**: the runtime fold's order skeleton
+//!   `orderGuard` (its necessary size precondition) is `rfl`-invariant under swapping the two brands (the
+//!   guard never reads `.scope`; the `rfl` records that brand-blindness) yet flips under swapping the
+//!   two sizes. *The brand relates; the fold orders.* This is the
+//!   `the_brand_relates_two_snapshots_but_does_not_order_them` datum, above (that test rejects via
+//!   `SizeMismatch`; `orderGuard` models the sibling `NotAPrefix` size-order branch — which fires is
+//!   immaterial, the point is that *some runtime check*, never the brand, decides order).
+//!
+//! The *matching* is faithful (region unification ↦ tag equality); the *freshness/unforgeability* of
+//! the `for<'brand>` rank-2 brand is trusted at the boundary (as the seal's private constructor was).
+//! The RFC 6962 hash fold is abstracted to its order skeleton; its cryptographic strength and the
+//! cross-view equivocation ("gossip") are the residue below the model — no Sol theorem.
+//!
 //! ## Worked example
 //!
 //! ```
