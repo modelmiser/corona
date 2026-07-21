@@ -162,18 +162,27 @@
 //! ## Machine-checked correspondence (Sol) — criterion #4, the honest way
 //!
 //! A graduated leaf discharges CHARTER criterion #4 by contributing a Lean
-//! formalization to [Sol](../../sol) *or* an explicit note why it cannot. This leaf
-//! does **both, and that is the point**: `Sol.Lib.ConstantTime` does **not** prove
-//! the combinators are constant-time — that is impossible at the value layer, and
-//! claiming it would be dishonest. Instead it **mechanizes *why* it is impossible**:
-//! it models a function under two semantics — a **value** semantics (the result) and
-//! a **cost/trace** semantics (an observable proxy for running time) — and proves
-//! that **value-equivalence does not imply cost-equivalence** (two functions equal
-//! on every input as values, distinguishable by cost). That is the Lean analogue of
-//! this crate's `the_type_system_cannot_tell_constant_time_from_leaky` test: a
-//! machine-checked statement that constant-time-ness lives *outside* the value
-//! semantics any Rust type reasons about — the twelfth Corona↔Sol wire, and the
-//! first to formalize a *residue's un-typability* rather than a leaf's invariant.
+//! formalization to [Sol](../../sol) *or* an explicit note why it cannot. This leaf's
+//! discharge is the honest **hybrid** — a *formalization whose content is the
+//! why-it-cannot note*: `Sol.Lib.ConstantTime` does **not** prove the combinators are
+//! constant-time (impossible at the value layer, and claiming it would be dishonest).
+//! Instead it **mechanizes *why*** by modeling a function under two semantics — a
+//! **value** semantics (the result) and a **cost** semantics (an operation-count
+//! proxy for running time) — and proving that **value-equivalence does not imply
+//! cost-equivalence** (two functions equal on every input as values, distinguishable
+//! by cost). The Lean analogue of this crate's
+//! `the_type_system_cannot_tell_constant_time_from_leaky` test — the twelfth
+//! Corona↔Sol wire, the first to formalize a *residue's un-typability*.
+//!
+//! **Be exact about how much this proves.** Stripped of narrative, the formal core is
+//! a *modest* fact — over a `(result, cost)` pair, agreeing on the result does not
+//! force agreeing on the cost. Its *force* as a claim about constant-time rides on a
+//! **trusted reading**: that the modeled `value` is exactly what a Rust type observes
+//! and the modeled `cost` tracks a real timing observable. Granting that reading, the
+//! wire shows constant-time is a function of the cost semantics and invisible to the
+//! value semantics — it does **not** establish that any code is constant-time. Naming
+//! that boundary precisely (the modest formal fact, plus the bridge it rides on) is
+//! the point; it is the field-guide thesis, mechanized.
 //!
 //! ## What the types do and do not witness
 //!
@@ -336,10 +345,13 @@ impl<const N: usize> Secret<N> {
         Secret { bytes }
     }
 
-    /// **Data-oblivious equality.** Fold the XOR of every byte pair — touching
-    /// **all** `N` bytes, with **no early exit** — into a masked [`Choice`] that is
-    /// `1` iff the secrets are equal. The running time (here: the number of byte
-    /// operations) is independent of *where*, or *whether*, the secrets differ.
+    /// **Data-oblivious equality.** Delegates to `subtle`'s `ConstantTimeEq`, which
+    /// touches **all** `N` bytes with **no early exit**, yielding a masked [`Choice`]
+    /// that is `1` iff the secrets are equal. The **operation count** — a source-level
+    /// proxy for time — is independent of *where*, or *whether*, the secrets differ;
+    /// the crate's residue section is explicit that this carries **no** guarantee
+    /// about the *emitted* running time (the optimiser and microarchitecture are the
+    /// residue, closed by no type).
     ///
     /// The `Choice` is masked precisely so the caller cannot cheaply branch on the
     /// result; acting on it requires an explicit [`Choice::declassify`].

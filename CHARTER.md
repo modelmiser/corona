@@ -93,7 +93,7 @@ lemma, as distinct from leaf 15 `crdt-types`, the first to merely *name* one as 
 The **first leaf-level** realized instance arrived **2026-07-21**: `merkle-types` graduated
 (toy FNV-1a → vetted SHA-256 behind the `hash` seam) and contributed `Sol.Lib.Merkle`.
 The **second**, the same day, is `consttime-types` (toy branchless fold → the vetted `subtle`
-crate behind the `ct_eq`/`ct_select` seam), whose criterion-#4 contribution `Sol.Lib.ConstantTime`
+crate behind the `ct_eq`/`ct_select`/`declassify` seam), whose criterion-#4 contribution `Sol.Lib.ConstantTime`
 is the **first to use the "or an explicit note why it cannot" clause as a theorem**: it does not
 prove the code constant-time (impossible at the value layer) but machine-proves *why* — that
 value-equivalence does not imply cost-equivalence, so constant-time is un-typable. A graduation can
