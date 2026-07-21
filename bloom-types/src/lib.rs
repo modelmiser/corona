@@ -772,7 +772,7 @@ mod tests {
         // kills the whole class of position mutants at once — dropping `·h2` (consecutive
         // slots, which makes h2 dead code and passes every derived-property test), dropping
         // `| 1`, dropping `% m`, or shifting the `0..k` range all make the recomputed sequence
-        // differ. (`fnv1a`/`FNV_OFFSET_*` are in scope in this module.)
+        // differ. (`sip128`/`DEFAULT_KEY*` are in scope in this module.)
         for &(m, k) in &[(1024usize, 5u32), (997, 3), (64, 7), (2, 2)] {
             let f = BloomFilter::new(m, k);
             for item in [b"km-oracle".as_slice(), b"", b"a-second-item"] {
