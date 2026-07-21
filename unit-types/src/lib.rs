@@ -246,6 +246,18 @@ pub struct Area;
 /// a new *kind* (a type-level distinction, where the seal was a value-level construction discipline).
 /// The residue is the *scale* the dimension forgets (`meters`/`feet` collapse to one type).
 ///
+/// As of the **ninth** wire, `Sol.Lib.Unit` also routes its *data-level* match through the shared
+/// `Sol.Lib.CoronaBrand` skeleton, making this leaf that skeleton's **first nominal (E0308) consumer**
+/// (`dim_match_iff = brand_match_iff` at `β := Dim`), alongside the generative consumers `translog`/
+/// `commit` (`β := Nat`). So the branded-tag skeleton now has a consumer on *each grade* — but only at
+/// the *value-match layer*: this leaf's **primary** E0308 image stays the type-level `Quantity d` index,
+/// which a value-level `Bool` lemma cannot capture, so it is the value-level *shadow* (`addDim`) that
+/// routes through. Be exact: the eighth wire flatly called this leaf *not a literal consumer* (its match
+/// realized "not by this `Bool` decision"), so the ninth is a deliberate *reroute* of `addDim`'s
+/// pre-existing decision through the skeleton, electing to count a data-level shadow the eighth declined
+/// to count — not a latent fact surfacing. Unlike the generative consumers, this nominal one has *no*
+/// trusted freshness — its distinction is faithful at both layers.
+///
 /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 pub struct Quantity<D> {
     value: f64,
