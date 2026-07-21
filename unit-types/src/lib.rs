@@ -235,6 +235,17 @@ pub struct Area;
 /// private field is guarding — every magnitude is a valid quantity. (Contrast the
 /// crypto leaves, where the private field genuinely seals a construction discipline.)
 ///
+/// **Machine-checked correspondence (Sol).** This leaf is the *fifth* Corona↔Sol wire:
+/// `Sol.Lib.Unit` (in the `sol` repo) proves dimensional consistency reduces to a **grading into
+/// ℤ²** — each dimension marker is an exponent vector in ℤ², distinct markers are distinct vectors
+/// (`dimVec_injective`, the E0308 distinction re-encoded), and the Mul/Div table *respects*
+/// ℤ²-addition/subtraction as a sound fragment (`mulDim_hom`/`divDim_hom`). It is the first wire on
+/// the E0308 brand and the first carrying *no* seal. The seam is *faithful*: a dependent index
+/// `Quantity d` reproduces nominal type equality in Lean, the way a `cert` field reproduces the
+/// E0451 seal — a cross-dimension `plus` is a Lean type error exactly as it is an E0308 here — but of
+/// a new *kind* (a type-level distinction, where the seal was a value-level construction discipline).
+/// The residue is the *scale* the dimension forgets (`meters`/`feet` collapse to one type).
+///
 /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 pub struct Quantity<D> {
     value: f64,
