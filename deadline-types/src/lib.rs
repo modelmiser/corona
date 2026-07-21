@@ -35,7 +35,9 @@
 //! fields) minted only by an admission function, so a holder carries "this set *passed* a
 //! named test" — the skeleton behind leaf 32's `Tracked` / leaf 31's `Refined`. It is
 //! **`Copy`**: a feasibility certificate is a *duplicable fact*, so **E0382 is not
-//! recruited** — the deliberate inverse of `dp`'s *linear* `Budget`.
+//! recruited** — the deliberate inverse of `dp`'s *linear* `Budget`. The **E0308/E0521
+//! brand is likewise unused** (no fresh-per-value provenance scope) — two primitives
+//! touched, no new one.
 //!
 //! **residue — the NEW SHAPE = the tractability / P-vs-NP gap.** Step off the island and a
 //! cheap exact wall vanishes:
