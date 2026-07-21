@@ -92,16 +92,27 @@
 //! different finding each time: here the inversion of *what direction* the seal can soundly
 //! carry.)
 //!
-//! ## Honest limits
+//! ## Security posture and limits (GRADUATED 2026-07-21)
 //!
-//! - **TOY.** Two non-independent FNV-1a hashes combined by Kirsch–Mitzenmacher double
-//!   hashing — *not* independent cryptographic hashes. A real adversary who knows the hashes
-//!   can craft *insertions* that inflate the false-positive rate (a *pollution* attack, in
-//!   the Gerbet–Kumar–Lauradoux sense — DSN 2015) or craft *queries* that hit set bits
-//!   against a fixed filter — either way forcing false positives; the false-positive *rate*
-//!   is a statistical claim about *random* inputs, not an adversarial guarantee. Graduation swaps the FNV backend for keyed/cryptographic hashing behind the
-//!   same `probe_positions` seam. The subject is the *seal-direction* discipline, not the
-//!   hash.
+//! This leaf is on the garden's **graduated (production-intent)** track. The toy's two
+//! non-independent FNV-1a passes are replaced by the vetted **`siphasher`** crate — one keyed
+//! **SipHash-1-3-128** whose two 64-bit halves are the `(h1, h2)` of the *unchanged*
+//! Kirsch–Mitzenmacher `probe_positions` mapping. Graduation was an **implementation swap**,
+//! not a rewrite; the sealed seam and the seal-direction finding are untouched.
+//!
+//! - **Keyed hashing narrows the *adversarial-pollution* residue — but only with a secret
+//!   key.** A real adversary who can predict an item's probe positions can craft *insertions*
+//!   that inflate the false-positive rate (a *pollution* attack, Gerbet–Kumar–Lauradoux, DSN
+//!   2015) or craft *queries* that hit set bits. Under [`BloomFilter::with_keys`] with a
+//!   **secret** `(key0, key1)`, the SipHash positions are unpredictable, foreclosing that
+//!   class. [`BloomFilter::new`] uses **fixed public** default keys — better-distributed than
+//!   the toy, but carrying no secret, so it gives an adversary who knows them the same
+//!   leverage; it is the convenience default, not the robust one. Either way the false-positive
+//!   *rate* remains a statistical claim about the modeled inputs.
+//! - **The structural *false-positive* residue is untouched — that is the whole leaf.** No hash
+//!   closes it: a Bloom filter is one-sided by construction (no false negatives, only false
+//!   positives). Graduation narrows *who can force* false positives; it cannot remove that they
+//!   exist. The subject is the *seal-direction* discipline, not the hash.
 //! - **No sizing.** `m` and `k` are caller-chosen and fixed; there is no optimal-`k`
 //!   computation, no counting variant (so no removal, which is what keeps absence sound),
 //!   no scalable/partitioned variant, and no persisted form.
@@ -119,6 +130,19 @@
 //!   this leaf leaves it disclosed, since its subject is the seal's *direction*, not
 //!   provenance. (The recurring garden note: a witness is only as strong as what its checked
 //!   path establishes — here, a fact about *some* query, not about a named subject.)
+//!
+//! ## Machine-checked correspondence (Sol) — criterion #4
+//!
+//! `Sol.Lib.Bloom` (the **thirteenth Corona↔Sol wire**) formalizes this leaf's *invariant*
+//! half — the complement to `consttime-types`' un-typability wire. Modeling a filter as its set
+//! of set bits and `probe_positions` as an abstract per-item bit list, it proves the two sound
+//! directions: **no false negatives** (an inserted item always queries possibly-present, and
+//! presence is monotone under further inserts / unions) and **absence soundness** (a
+//! `DefinitelyAbsent` verdict — some probe bit unset — entails the item is not among those
+//! inserted). The **false-positive residue** is a *proved contrast*, not a gap: there exist an
+//! insert history and a never-inserted item that queries possibly-present (the "wrong thing
+//! succeeds", `crdt-types`/leaf-9 style). So the wire proves what the seal *soundly carries*
+//! and exhibits, as a theorem, exactly what it *cannot*.
 //!
 //! ## Intended use
 //!
@@ -158,8 +182,8 @@
 //!
 //! ```compile_fail,E0451
 //! use bloom_types::BloomFilter;
-//! // error[E0451]: fields `bits`, `m_bits` and `k` of struct `BloomFilter` are private
-//! let forged = BloomFilter { bits: vec![u64::MAX], m_bits: 64, k: 1 };
+//! // error[E0451]: fields `bits`, `m_bits`, `k`, `key0` and `key1` of `BloomFilter` are private
+//! let forged = BloomFilter { bits: vec![u64::MAX], m_bits: 64, k: 1, key0: 0, key1: 0 };
 //! ```
 //!
 //! And there is no un-insert — bits only turn on, so the state is monotone by omission
@@ -174,21 +198,27 @@
 
 #![forbid(unsafe_code)]
 
-/// FNV-1a (64-bit), used with two distinct offset bases to derive the two hashes that
-/// Kirsch–Mitzenmacher double hashing combines. **Toy:** not independent, not cryptographic.
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
-/// The standard FNV-1a offset basis — the first of the two hashes.
-const FNV_OFFSET_A: u64 = 0xcbf2_9ce4_8422_2325;
-/// A second, non-standard basis for the independent-ish companion hash (toy).
-const FNV_OFFSET_B: u64 = 0x8422_2325_cbf2_9ce4;
+use core::hash::Hasher;
+use siphasher::sip128::{Hasher128, SipHasher13};
 
-fn fnv1a(basis: u64, bytes: &[u8]) -> u64 {
-    let mut h = basis;
-    for &b in bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(FNV_PRIME);
-    }
-    h
+/// The default SipHash keys used by [`BloomFilter::new`]. **Public, fixed values** — so a
+/// filter built with `new` carries *no secret*, and an adversary who knows these keys keeps
+/// the same crafted-input leverage the toy had (the hashing is merely better-distributed, not
+/// adversarially keyed). For pollution / crafted-query resistance, supply your OWN secret keys
+/// via [`BloomFilter::with_keys`]. (This is exactly how keyed-hash DoS resistance works: the
+/// key must be a secret the attacker does not know — see the security-posture note.)
+const DEFAULT_KEY0: u64 = 0x0706_0504_0302_0100;
+const DEFAULT_KEY1: u64 = 0x0f0e_0d0c_0b0a_0908;
+
+/// One keyed **SipHash-1-3-128** over `bytes`, split into the two hashes Kirsch–Mitzenmacher
+/// double hashing needs (`h1`, `h2`). Replaces the toy's two non-independent FNV-1a passes: a
+/// single vetted keyed PRF yields both halves at once — well-distributed, and (with secret
+/// keys) unpredictable to an attacker.
+fn sip128(key0: u64, key1: u64, bytes: &[u8]) -> (u64, u64) {
+    let mut h = SipHasher13::new_with_keys(key0, key1);
+    h.write(bytes);
+    let out = h.finish128();
+    (out.h1, out.h2)
 }
 
 /// A **Bloom filter** — a probabilistic set with no false negatives, only false positives,
@@ -214,6 +244,13 @@ pub struct BloomFilter {
     m_bits: usize,
     /// The number of hash probes `k` per item (`>= 1`). Private, part of the sealed shape.
     k: u32,
+    /// The two SipHash keys the [`probe_positions`](BloomFilter::probe_positions) mapping is
+    /// keyed by. Private, part of the sealed shape: [`union`](BloomFilter::union) requires two
+    /// filters to share them (probe positions differ under different keys, so a cross-key union
+    /// would be a meaningless mix). `new` uses fixed public [`DEFAULT_KEY0`]/[`DEFAULT_KEY1`];
+    /// [`with_keys`](BloomFilter::with_keys) takes caller-supplied (ideally secret) keys.
+    key0: u64,
+    key1: u64,
 }
 
 /// The result of a [`query`](BloomFilter::query): exactly one of two sealed witnesses.
@@ -290,6 +327,19 @@ impl BloomFilter {
     /// If `m_bits == 0` or `k == 0`: a filter needs at least one bit to probe and at least
     /// one probe to make. (Enforced at construction — the sole entry to the sealed state.)
     pub fn new(m_bits: usize, k: u32) -> BloomFilter {
+        BloomFilter::with_keys(m_bits, k, DEFAULT_KEY0, DEFAULT_KEY1)
+    }
+
+    /// A fresh, empty filter with **caller-supplied SipHash keys** — the adversarially-robust
+    /// path. If `key0`/`key1` are a secret the attacker does not know, they cannot predict an
+    /// item's probe positions, foreclosing the crafted-input *pollution* / false-positive
+    /// attacks (Gerbet–Kumar–Lauradoux) that a fixed public key (as [`new`](BloomFilter::new)
+    /// uses) leaves open. Two filters must share keys to [`union`](BloomFilter::union).
+    ///
+    /// # Panics
+    ///
+    /// If `m_bits == 0` or `k == 0` (as [`new`](BloomFilter::new)).
+    pub fn with_keys(m_bits: usize, k: u32, key0: u64, key1: u64) -> BloomFilter {
         assert!(
             m_bits >= 1 && k >= 1,
             "a Bloom filter needs m_bits >= 1 and k >= 1"
@@ -299,6 +349,8 @@ impl BloomFilter {
             bits: vec![0u64; words],
             m_bits,
             k,
+            key0,
+            key1,
         }
     }
 
@@ -325,10 +377,11 @@ impl BloomFilter {
     /// (`pos_i = (h1 + i·h2) mod m`). Private — the mapping is an implementation detail of
     /// the sealed filter.
     fn probe_positions(&self, item: &[u8]) -> impl Iterator<Item = usize> + '_ {
-        let h1 = fnv1a(FNV_OFFSET_A, item);
+        // One keyed SipHash-1-3-128, split into the double-hashing pair (h1, h2).
+        let (h1, h2raw) = sip128(self.key0, self.key1, item);
         // Force `h2` odd (hence nonzero) so successive probes actually spread across the
         // array rather than collapsing onto `h1`.
-        let h2 = fnv1a(FNV_OFFSET_B, item) | 1;
+        let h2 = h2raw | 1;
         let m = self.m_bits as u64;
         (0..self.k).map(move |i| {
             let combined = h1.wrapping_add((i as u64).wrapping_mul(h2));
@@ -374,7 +427,14 @@ impl BloomFilter {
     /// so the union never introduces a false negative — the CvRDT convergence posture of
     /// `crdt-types`, for a set rather than a counter.
     pub fn union(&self, other: &BloomFilter) -> Option<BloomFilter> {
-        if self.m_bits != other.m_bits || self.k != other.k {
+        // Shape is (m_bits, k, key0, key1): probe positions are keyed, so two filters with
+        // different keys map the same item to different bits — a union across keys would be a
+        // meaningless mix (and could introduce false negatives against either input's members).
+        if self.m_bits != other.m_bits
+            || self.k != other.k
+            || self.key0 != other.key0
+            || self.key1 != other.key1
+        {
             return None;
         }
         let bits: Vec<u64> = self
@@ -397,6 +457,8 @@ impl BloomFilter {
             bits,
             m_bits: self.m_bits,
             k: self.k,
+            key0: self.key0,
+            key1: self.key1,
         })
     }
 }
@@ -713,8 +775,9 @@ mod tests {
         for &(m, k) in &[(1024usize, 5u32), (997, 3), (64, 7), (2, 2)] {
             let f = BloomFilter::new(m, k);
             for item in [b"km-oracle".as_slice(), b"", b"a-second-item"] {
-                let h1 = fnv1a(FNV_OFFSET_A, item);
-                let h2 = fnv1a(FNV_OFFSET_B, item) | 1;
+                // Recompute with the SAME keyed SipHash backend + default keys `new` uses.
+                let (h1, h2raw) = sip128(DEFAULT_KEY0, DEFAULT_KEY1, item);
+                let h2 = h2raw | 1;
                 let expected: Vec<usize> = (0..k)
                     .map(|i| (h1.wrapping_add((i as u64).wrapping_mul(h2)) % m as u64) as usize)
                     .collect();
@@ -773,11 +836,12 @@ mod tests {
         // probes are `h1 % 2` and `(h1 + h2) % 2`. If `h2` is EVEN they coincide (one bit,
         // an inflated false-positive rate); the `| 1` forces `h2` odd so they always differ.
         // We must feed an item whose RAW h2 is even, or the `| 1` is a no-op and the mutant
-        // hides (`fnv1a`/`FNV_OFFSET_B` are in scope in this module). Non-soundness (insert
-        // and query stay in lockstep) but a real, documented quality invariant.
+        // hides (`sip128`/`DEFAULT_KEY*` are in scope in this module; h2 is the second split
+        // half). Non-soundness (insert and query stay in lockstep) but a real, documented
+        // quality invariant.
         let item = (0u32..)
             .map(|i| format!("even-h2-{i}").into_bytes())
-            .find(|c| fnv1a(FNV_OFFSET_B, c) & 1 == 0)
+            .find(|c| sip128(DEFAULT_KEY0, DEFAULT_KEY1, c).1 & 1 == 0)
             .expect("some item has an even raw h2");
         let f = BloomFilter::new(2, 2);
         let distinct: std::collections::BTreeSet<usize> = f.probe_positions(&item).collect();
@@ -828,14 +892,70 @@ mod tests {
     }
 
     #[test]
-    fn the_backend_is_genuine_fnv_1a_64() {
-        // Pins the documented hash pedigree ("FNV-1a") with the standard 64-bit test vectors,
-        // so mutating the mixing step (`* prime` -> `+ prime`) or the constants is caught and
-        // the "FNV-1a" claim in the docs is itself tested. Empty input yields the offset basis;
-        // "a" and "foobar" are canonical FNV-1a-64 vectors.
-        assert_eq!(fnv1a(FNV_OFFSET_A, b""), 0xcbf2_9ce4_8422_2325);
-        assert_eq!(fnv1a(FNV_OFFSET_A, b"a"), 0xaf63_dc4c_8601_ec8c);
-        assert_eq!(fnv1a(FNV_OFFSET_A, b"foobar"), 0x8594_4171_f739_67e8);
+    fn the_backend_is_keyed_siphash_deterministic_and_key_and_input_sensitive() {
+        // Pins the graduated backend's contract (replacing the toy's FNV-1a vector test). We do
+        // not hardcode a SipHash vector; we pin the properties `probe_positions` relies on:
+        // same (keys, input) → same (h1, h2); a one-bit change to EITHER key or the input flips
+        // the output. This kills mutants that ignore a key, drop the write, or hash unkeyed.
+        let base = sip128(DEFAULT_KEY0, DEFAULT_KEY1, b"payload");
+        assert_eq!(
+            base,
+            sip128(DEFAULT_KEY0, DEFAULT_KEY1, b"payload"),
+            "deterministic for fixed (keys, input)"
+        );
+        assert_ne!(
+            base,
+            sip128(DEFAULT_KEY0 ^ 1, DEFAULT_KEY1, b"payload"),
+            "key0-sensitive (a mutant ignoring key0 would collide here)"
+        );
+        assert_ne!(
+            base,
+            sip128(DEFAULT_KEY0, DEFAULT_KEY1 ^ 1, b"payload"),
+            "key1-sensitive"
+        );
+        assert_ne!(
+            base,
+            sip128(DEFAULT_KEY0, DEFAULT_KEY1, b"payload-2"),
+            "input-sensitive"
+        );
+    }
+
+    #[test]
+    fn keyed_filters_probe_differently_and_refuse_cross_key_union() {
+        // The graduation's new surface: `with_keys`, the adversarially-robust path. A
+        // secret-keyed filter maps an item to DIFFERENT probe positions than the default-keyed
+        // one (so an attacker who does not know the keys cannot craft collisions), and the keys
+        // are part of the sealed shape — a cross-key union is refused, exactly like an (m, k)
+        // mismatch, because keyed positions do not correspond.
+        let def = BloomFilter::new(1024, 4);
+        let keyed = BloomFilter::with_keys(1024, 4, 0xdead_beef_0000_0001, 0xfeed_face_0000_0002);
+        assert_ne!(
+            def.probe_positions(b"item").collect::<Vec<_>>(),
+            keyed.probe_positions(b"item").collect::<Vec<_>>(),
+            "different keys → different probe positions"
+        );
+        assert!(
+            def.union(&keyed).is_none(),
+            "cross-key union is refused — keys are part of the shape"
+        );
+        assert!(
+            keyed
+                .union(&BloomFilter::with_keys(
+                    1024,
+                    4,
+                    0xdead_beef_0000_0001,
+                    0xfeed_face_0000_0002
+                ))
+                .is_some(),
+            "same keys + same (m, k) → unions"
+        );
+        // No false negatives under a secret key either — the invariant is key-independent.
+        let mut k2 = keyed.clone();
+        k2.insert(b"member");
+        assert!(
+            matches!(k2.query(b"member"), Membership::PossiblyPresent(_)),
+            "keyed filter still has no false negatives"
+        );
     }
 
     // ---- State posture: sealed, monotone, public (non-secret) Debug. ----

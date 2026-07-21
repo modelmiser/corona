@@ -1,8 +1,14 @@
 [package]
 name = "bloom-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 16: a Bloom filter (probabilistic set membership) as typestate — the first leaf whose sound seal witnesses non-membership, not membership; presence is a one-sided probabilistic proxy. Both directions reduce to E0451; which one is soundly sealable is structural, invisible to the primitive. TOY."
+description = "Corona leaf 16 (GRADUATED 2026-07-21): a Bloom filter (probabilistic set membership) as typestate — the first leaf whose sound seal witnesses non-membership, not membership; presence is a one-sided probabilistic proxy. Both directions reduce to E0451; which one is soundly sealable is structural, invisible to the primitive. Graduation swapped the toy FNV-1a double-hash for keyed SipHash-1-3 (`siphasher`) behind the same `probe_positions` seam — narrowing the adversarial-pollution residue when the caller supplies a secret key, while the structural false-positive residue (the leaf's whole point) is untouched. Criterion-#4 Lean is Sol.Lib.Bloom (no-false-negatives + absence-soundness invariant, false-positive as a proved contrast)."
 license = "MIT"
 
+# Graduation adds exactly ONE external dependency: `siphasher`, the vetted keyed
+# SipHash (a PRF, the DoS-resistant hash Rust's HashMap historically used). It replaces
+# the toy non-independent FNV-1a double-hash behind the UNCHANGED `probe_positions` seam
+# (the Kirsch–Mitzenmacher `pos_i = h1 + i·h2 mod m` mapping stays; only h1/h2 are now the
+# split halves of one keyed SipHash-1-3-128 output). Fan-in 0 → the swap has no blast radius.
 [dependencies]
+siphasher = "1.0"
