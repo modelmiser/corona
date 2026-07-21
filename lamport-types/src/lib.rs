@@ -131,6 +131,14 @@ const BITS: usize = 64;
 /// error (E0382). It is also E0451-sealed (private field, minted only by
 /// [`generate`](SigningKey::generate)), and its `Debug` **redacts** the secret
 /// preimages, mirroring `threshold-types`' `Secret`.
+///
+/// The one-time discipline — *a signing key signs at most once* — is machine-checked in Sol
+/// as `Sol.Lib.Lamport` (`at_most_one_sign`, via `Sol.Corona`): the **fourth** Corona↔Sol wire,
+/// and the **first on a primitive other than the E0451 seal**. Because Lean is not substructural,
+/// Sol models E0382 as a two-state transition system (`live → spent`) and proves `signsIn n live ≤ 1`
+/// (affine — *at most* once); the compiler's move-check is the trusted premise that forces real code
+/// to follow it. The re-mint residue (per key *value*, not *material*) is transported there too. The
+/// same wire reuses the seal skeleton for [`VerifyingKey::verify`] — one crate, both primitives.
 pub struct SigningKey {
     /// `preimages[i][b]` is the secret revealed when digest bit `i` equals `b`.
     preimages: [[u64; 2]; BITS],
