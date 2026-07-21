@@ -84,7 +84,10 @@ This flow is **intended; first exercised at the *invariant* level 2026-07-20**
 #4 for one shared invariant — the first Sol obligation actually *discharged* by a Lean
 lemma, as distinct from leaf 15 `crdt-types`, the first to merely *name* one as a residue)
 — but **no Corona *leaf* has graduated**, so there are zero leaf-level realized instances
-today. `warp-types` — the *pre-Corona ancestor*, not a
+today. A **second** invariant is wired as of 2026-07-20 — `deadline-types`' EDF test
+(`Sol.Lib.Deadline`) — and the shared acceptance-refinement is factored into
+`Sol.Lib.CoronaRefines`, used by both leaves (the promotion, earned by two unrelated
+users per corona-core's own rule). `warp-types` — the *pre-Corona ancestor*, not a
 leaf in this workspace — prefigures it: it is both a Rust crate and a Lean
 formalization that is one of Sol's test beds. Once a leaf graduates, the direction
 is **one-directional: a graduated Corona leaf contributes a Lean formalization to

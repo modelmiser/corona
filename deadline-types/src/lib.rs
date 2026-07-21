@@ -121,6 +121,11 @@ pub enum Test {
 /// Sealed (private fields, no public constructor), so it can only arrive through an
 /// admission function — the E0451 reduce-half. `Copy`, because a feasibility certificate is
 /// a *duplicable fact* (E0382 deliberately not recruited; the inverse of a linear budget).
+///
+/// The EDF admission's refinement — that it mints a certificate exactly for the
+/// schedulable sets (`Σ Cᵢ/Tᵢ ≤ 1`) — is machine-checked in Sol as `Sol.Lib.Deadline`
+/// (`admitEdf_refines`): the **second** exercised Corona↔Sol wire, sharing the
+/// acceptance-refinement skeleton `Sol.Lib.CoronaRefines` with `corona-core::Threshold`.
 #[derive(Clone, Copy, Debug)]
 pub struct Schedulable<const N: usize> {
     tasks: [(u32, u32); N],
