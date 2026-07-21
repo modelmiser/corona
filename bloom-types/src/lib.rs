@@ -104,8 +104,8 @@
 //!   key.** A real adversary who can predict an item's probe positions can craft *insertions*
 //!   that inflate the false-positive rate (a *pollution* attack, Gerbet–Kumar–Lauradoux, DSN
 //!   2015) or craft *queries* that hit set bits. Under [`BloomFilter::with_keys`] with a
-//!   **secret** `(key0, key1)`, the SipHash positions are unpredictable, foreclosing that
-//!   class. [`BloomFilter::new`] uses **fixed public** default keys — better-distributed than
+//!   **secret** `(key0, key1)`, the SipHash positions are unpredictable, defeating that
+//!   class under the standard keyed-PRF assumption. [`BloomFilter::new`] uses **fixed public** default keys — better-distributed than
 //!   the toy, but carrying no secret, so it gives an adversary who knows them the same
 //!   leverage; it is the convenience default, not the robust one. Either way the false-positive
 //!   *rate* remains a statistical claim about the modeled inputs.
@@ -332,9 +332,9 @@ impl BloomFilter {
 
     /// A fresh, empty filter with **caller-supplied SipHash keys** — the adversarially-robust
     /// path. If `key0`/`key1` are a secret the attacker does not know, they cannot predict an
-    /// item's probe positions, foreclosing the crafted-input *pollution* / false-positive
-    /// attacks (Gerbet–Kumar–Lauradoux) that a fixed public key (as [`new`](BloomFilter::new)
-    /// uses) leaves open. Two filters must share keys to [`union`](BloomFilter::union).
+    /// item's probe positions, defeating (under the standard keyed-PRF assumption) the
+    /// crafted-input *pollution* / false-positive attacks (Gerbet–Kumar–Lauradoux) that a fixed
+    /// public key (as [`new`](BloomFilter::new) uses) leaves open. Two filters must share keys to [`union`](BloomFilter::union).
     ///
     /// # Panics
     ///
@@ -429,7 +429,8 @@ impl BloomFilter {
     pub fn union(&self, other: &BloomFilter) -> Option<BloomFilter> {
         // Shape is (m_bits, k, key0, key1): probe positions are keyed, so two filters with
         // different keys map the same item to different bits — a union across keys would be a
-        // meaningless mix (and could introduce false negatives against either input's members).
+        // meaningless mix (the union keeps self's keys, so the OTHER input's members would query
+        // at different, possibly-unset positions — a false negative).
         if self.m_bits != other.m_bits
             || self.k != other.k
             || self.key0 != other.key0
