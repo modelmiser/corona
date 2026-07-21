@@ -5,6 +5,15 @@ through the same small vocabulary of compile-time primitives — sealed
 unforgeability (E0451), move-linearity (E0382), brand-unification (E0308), and
 const-eval walls (E0080) — first isolated in `warp-types` and `quorum-types`.
 
+**The point isn't coverage — it's the residue.** Each leaf reduces the part of its
+domain a type *can* hold to those primitives, then **names the part that doesn't**:
+the runtime check, the trust boundary, or the proof obligation that correctness
+actually rests on. The value is making that edge visible *up front*, as a design
+tool — so you build the check or the boundary deliberately, instead of discovering
+it in production. Not making hard things easy; making the **edges** of hard things
+visible. The eight recurring edges, and how to close each, are the
+[field guide](FIELD-GUIDE.md).
+
 Corona is the **type** face of the Radiant verification work. Its sibling **Sol**
 is the **proof** face (machine-checked Lean lemmas). The wiring — first exercised at
 the leaf level by `merkle-types` (graduated 2026-07-21, contributing `Sol.Lib.Merkle`) —
