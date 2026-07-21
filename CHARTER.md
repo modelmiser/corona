@@ -79,8 +79,12 @@ Corona and [Sol](../sol) are two faces of the same fundamentals:
   library from worked domains. Its Rust workspace (`sol-verify*`) is verification
   **tooling**, not a home for domain crates.
 
-This flow is **intended, not yet exercised** — no Corona leaf has graduated, so it
-has zero realized instances today. `warp-types` — the *pre-Corona ancestor*, not a
+This flow is **intended; first exercised at the *invariant* level 2026-07-20**
+(`corona-core::Threshold` → Sol's `Sol.Lib.Threshold` + `Sol.Corona` receiver, criterion
+#4 for one shared invariant — the first Sol obligation actually *discharged* by a Lean
+lemma, as distinct from leaf 15 `crdt-types`, the first to merely *name* one as a residue)
+— but **no Corona *leaf* has graduated**, so there are zero leaf-level realized instances
+today. `warp-types` — the *pre-Corona ancestor*, not a
 leaf in this workspace — prefigures it: it is both a Rust crate and a Lean
 formalization that is one of Sol's test beds. Once a leaf graduates, the direction
 is **one-directional: a graduated Corona leaf contributes a Lean formalization to

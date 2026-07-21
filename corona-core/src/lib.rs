@@ -25,6 +25,15 @@ pub mod gf256;
 /// A validated *k-of-n* threshold: reconstruction requires at least `k` of the
 /// `n` distributed shares. Construction is checked, so an out-of-range threshold
 /// (`k == 0`, `n == 0`, or `k > n`) is unrepresentable.
+///
+/// Its refinement — that the checked constructor accepts *exactly* the legal
+/// `(k, n)`, i.e. `constructible(impl) = legal(spec)` — is machine-checked in Sol as
+/// `Sol.Lib.Threshold` (with a `Sol.Corona` obligation-receiver façade): the
+/// **first exercised instance** of the Corona↔Sol wire (CHARTER graduation
+/// criterion #4) — for this one shared invariant, *not* a full leaf graduation
+/// (criteria 1/2/3/5 remain unmet). The `met_by` bar refines the spec's
+/// authorization relation, and the seal's `k >= 1` is what makes "authorized ⟹ at
+/// least one share" a theorem.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Threshold {
     k: u16,
