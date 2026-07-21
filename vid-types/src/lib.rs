@@ -66,8 +66,8 @@
 //! (needing `k + 2t` fragments and offering only bounded, non-adversarial
 //! integrity), while VID *rejects* corrupt fragments individually at verification
 //! (hash-based per-fragment authentication, needing only `k` good fragments —
-//! adversarial-grade exactly as strong as the hash, which in this toy is weak on
-//! purpose). The comparison is the availability-axis rerun of leaf 3's own
+//! adversarial-grade exactly as strong as the Merkle hash — now leaf 4's **graduated
+//! SHA-256**, not weak). The comparison is the availability-axis rerun of leaf 3's own
 //! "algebraic redundancy vs external commitment" distinction, resolved in the
 //! commitment's favor.
 //!
@@ -125,10 +125,14 @@
 //!
 //! ## Honest limits
 //!
-//! - **TOY backends throughout** — leaf 3's table-lookup GF(256) and leaf 4's
-//!   FNV-1a hash. A real adversary forges Merkle membership at will; the *type*
-//!   discipline is the subject. Graduation swaps the backends behind the same
-//!   seams.
+//! - **Mixed backends — but the residual toy-ness is *functional*, not a weak link.**
+//!   VID has no signature layer, so its adversarial forgery-resistance is now entirely
+//!   SHA-256-grade: the Merkle per-fragment authentication inherits leaf 4's **graduated
+//!   SHA-256**, and the AVID-H re-encode/re-hash consistency check rides the same hash.
+//!   What stays TOY is leaf 3's GF(256) erasure backend — but that is a *functional*
+//!   limit (table-lookup field, `n ≤ 255`, no beyond-bound error correction), **not** a
+//!   cryptographic forgery vector the way a toy hash would be. The *type* discipline is
+//!   the subject.
 //! - **The anchor is caller-trusted, and it is ONE anchor with three fields —
 //!   but its lie taxonomy is *narrower* than leaf 7's, by construction.**
 //!   [`DispersalAnchor::adopt`] trusts `(root_hash, k, n)` as a unit. Unlike the
@@ -239,7 +243,7 @@ pub struct FragmentPackage {
 /// with *this* geometry, never that the anchor describes the right encoding.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct DispersalAnchor {
-    root_hash: u64,
+    root_hash: merkle_types::hash::Digest,
     k: u16,
     n: u16,
 }
@@ -385,7 +389,7 @@ impl DispersalAnchor {
     /// The triple is **one anchor**: all three values are exactly as trusted as
     /// each other, and lies degrade in the documented ways (see the honest
     /// limits) — adopt them from one trusted source, never mixed.
-    pub fn adopt(root_hash: u64, k: u16, n: u16) -> Option<DispersalAnchor> {
+    pub fn adopt(root_hash: merkle_types::hash::Digest, k: u16, n: u16) -> Option<DispersalAnchor> {
         // Same validation surface the encode path implies: Threshold's
         // 1 <= k <= n, plus the GF(256) evaluation-point cap.
         Threshold::new(k, n).ok()?;
@@ -396,7 +400,7 @@ impl DispersalAnchor {
     }
 
     /// The Merkle root hash over the `n` fragments' canonical bytes.
-    pub fn root_hash(&self) -> u64 {
+    pub fn root_hash(&self) -> merkle_types::hash::Digest {
         self.root_hash
     }
 
@@ -544,7 +548,7 @@ mod tests {
         assert!(anchor.verify(&bad).is_none());
         // A tampered proof is equally rejected.
         let mut bad_proof = packages[1].clone();
-        bad_proof.proof.siblings[0] ^= 1;
+        bad_proof.proof.siblings[0][0] ^= 1;
         assert!(anchor.verify(&bad_proof).is_none());
     }
 
@@ -578,10 +582,10 @@ mod tests {
 
     #[test]
     fn invalid_adopted_geometry_is_refused() {
-        assert!(DispersalAnchor::adopt(7, 0, 5).is_none()); // k = 0
-        assert!(DispersalAnchor::adopt(7, 6, 5).is_none()); // k > n
-        assert!(DispersalAnchor::adopt(7, 2, 256).is_none()); // n > 255
-        assert!(DispersalAnchor::adopt(7, 1, 1).is_some());
+        assert!(DispersalAnchor::adopt([7u8; 32], 0, 5).is_none()); // k = 0
+        assert!(DispersalAnchor::adopt([7u8; 32], 6, 5).is_none()); // k > n
+        assert!(DispersalAnchor::adopt([7u8; 32], 2, 256).is_none()); // n > 255
+        assert!(DispersalAnchor::adopt([7u8; 32], 1, 1).is_some());
     }
 
     #[test]

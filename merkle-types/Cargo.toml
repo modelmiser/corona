@@ -1,15 +1,20 @@
 [package]
 name = "merkle-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 # usize::is_multiple_of (what clippy prefers, used in build_layers/proof) landed in 1.87.
 rust-version = "1.87"
-description = "Corona leaf 4 — Merkle inclusion proofs as typestate. TOY: a type-discipline demonstration, not production crypto."
+description = "Corona leaf 4 — Merkle inclusion proofs as typestate. Graduated: domain-separated SHA-256 (via sha2) behind the E0451/brand type discipline; see CHARTER.md for what it does and does not witness."
 license = "MIT"
 
-# Deliberately depends on nothing — not even `corona-core`. This leaf shares the
-# garden's *vocabulary* (the E0451 seal discipline), not any of the core's shared
-# *modules*: it needs neither `Threshold` (no k-of-n reconstruction) nor `gf256`
-# (a hash tree, not field arithmetic). See the "shares the discipline, not a
-# dependency" finding in lib.rs.
+# Depends only on the vetted `sha2` backend — nothing from `corona-core`. This leaf
+# shares the garden's *vocabulary* (the E0451 seal discipline + the generative
+# brand), not any of the core's shared *modules*: it needs neither `Threshold` (no
+# k-of-n reconstruction) nor `gf256` (a hash tree, not field arithmetic). See the
+# "shares the discipline, not a dependency" finding in lib.rs.
 [dependencies]
+# Graduated backend: the audited RustCrypto SHA-256 implementation replaces the
+# toy FNV-1a behind the same `hash` module seam (see CHARTER.md, graduation
+# criterion #2). `forbid(unsafe_code)` in this crate governs *our* code, not the
+# vetted dependency.
+sha2 = "0.10"

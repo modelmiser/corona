@@ -89,13 +89,15 @@
 //! - **Fixed two layers, fixed capacities.** Real XMSS^MT uses `d` layers and WOTS+;
 //!   this toy is a 2-layer hypertree over `mss-types`' Lamport/Merkle. Total capacity
 //!   is `top_capacity × bottom_capacity`, fixed at keygen.
-//! - **Inherited toy backends.** All the FNV hashing of `mss-types` (hence
-//!   `lamport-types` + `merkle-types`) is inherited; unforgeability is only as strong
-//!   as those toy hashes, i.e. not at all against a real adversary.
+//! - **Inherited backends — the Lamport layer is still TOY.** The Lamport hashing
+//!   (leaf 5) inherited via `mss-types` is still toy FNV-1a; the Merkle layer inherits leaf 4's
+//!   **graduated SHA-256**. Unforgeability is only as strong as the *weakest* link —
+//!   the toy Lamport hash — so this stays not-production against a real adversary
+//!   until `lamport-types` graduates.
 //!
 //! ## ⚠ TOY — not production crypto
 //!
-//! A type-discipline demonstration. Toy hashes, deterministic seeds, 2 fixed layers,
+//! A type-discipline demonstration. Toy Lamport hash (Merkle is graduated SHA-256), deterministic seeds, 2 fixed layers,
 //! no state persistence protocol. Not for signing anything real.
 //!
 //! ## Intended use
@@ -135,7 +137,7 @@ pub struct HyperPublicKey {
 
 impl HyperPublicKey {
     /// The top keychain's Merkle root hash (a public commitment value).
-    pub fn root_hash(&self) -> u64 {
+    pub fn root_hash(&self) -> merkle_types::hash::Digest {
         self.top.root_hash()
     }
 
@@ -156,7 +158,7 @@ pub struct HyperSignature {
     /// The bottom subtree's signature on the message.
     pub bottom_sig: MssSignature,
     /// The bottom subtree public key's Merkle root — half its anchor.
-    pub bottom_root: u64,
+    pub bottom_root: merkle_types::hash::Digest,
     /// The bottom subtree public key's capacity — the other half of its anchor.
     /// Signed (with `bottom_root`) by `top_sig`, so a lie fails top verification.
     pub bottom_capacity: usize,
@@ -183,7 +185,7 @@ pub struct HyperSignature {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedHypertreeMessage {
     digest: u64,
-    top_root: u64,
+    top_root: merkle_types::hash::Digest,
     subtrees: usize,
     subtree_index: usize,
     leaf_index: usize,
@@ -245,7 +247,7 @@ pub struct HyperKeychain {
 
 /// A bottom subtree's anchor and its certifying top signature.
 struct SubtreeCert {
-    root: u64,
+    root: merkle_types::hash::Digest,
     capacity: usize,
     top_sig: MssSignature,
 }
@@ -403,8 +405,8 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 
 /// Canonical bytes of a subtree public key's `(root, capacity)` anchor — what the top
 /// layer signs. Both signer and verifier derive it identically.
-fn anchor_bytes(root: u64, capacity: usize) -> Vec<u8> {
-    let mut v = root.to_le_bytes().to_vec();
+fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
+    let mut v = root.to_vec();
     v.extend_from_slice(&(capacity as u64).to_le_bytes());
     v
 }

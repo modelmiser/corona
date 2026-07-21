@@ -12,3 +12,6 @@ license = "MIT"
 # of `adopt_scoped`). See the "what recursive composition discovered" section in lib.rs.
 [dependencies]
 mss-types = { path = "../mss-types" }
+# For the digest type of the (graduated) Merkle root that mss re-exposes via
+# `root_hash()` — SHA-256's `[u8; 32]`, named through merkle's `hash::Digest`.
+merkle-types = { path = "../merkle-types" }

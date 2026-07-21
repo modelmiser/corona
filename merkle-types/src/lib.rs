@@ -58,8 +58,8 @@
 //! `Debug` is plain and its accessors are open. Holding one is a *typestate* fact
 //! — "this data verified against *this* root (rung 2 binds *which*) through the
 //! sole checked path" — useful for keeping verified elements distinct from
-//! unverified input. It is **not** a security guarantee on its own; see the honest
-//! limits.
+//! unverified input. It is **not** a security guarantee on its own; see the security
+//! posture.
 //!
 //! ## Rung 2 — the generative brand (provenance, closed)
 //!
@@ -92,12 +92,24 @@
 //! safe Rust. The `generativity` crate brands with lifetimes too, so it would give
 //! the same lifetime diagnostic — this is inherent to value-generative branding.
 //!
-//! ## Honest limits
+//! ## Security posture and limits
 //!
-//! - **TOY hash (see [`hash`]).** The backend is non-cryptographic FNV-1a; a real
-//!   adversary forges collisions and thus forges membership. The *type* discipline
-//!   is the subject here, not the hash's strength — graduation swaps in SHA-256
-//!   behind the same seam.
+//! This crate is **graduated** (see Corona's `CHARTER.md`): its backend is a vetted
+//! dependency, not an illustration. What that does and does not buy:
+//!
+//! - **SHA-256 backend (see [`hash`]).** The backend is domain-separated SHA-256 via
+//!   the audited `sha2` crate. Forging membership requires a SHA-256 collision — the
+//!   full computational assumption on the hash, not the trivial forgery the research
+//!   rung's FNV-1a admitted. The *type* discipline (the E0451 seal, the generative
+//!   brand) is what this crate contributes and is independent of the backend; the
+//!   graduation is precisely the swap that puts forgery-resistance on a vetted
+//!   primitive.
+//! - **Promotion, not RFC 6962.** Odd nodes are *promoted* (see the construction
+//!   note), which avoids the CVE-2012-2459 malleability but is **not** wire-compatible
+//!   with RFC 6962's leaf/node encoding or its specific tree-shape padding. A
+//!   deployment interoperating with an RFC 6962 log must not assume this layout. This
+//!   is a deliberate, documented design choice carried over from the research rung —
+//!   graduation swapped the *backend*, not the tree construction.
 //! - **The [`Root`] is caller-trusted.** [`Root::verify`] proves an element is in
 //!   *the root you hand it*. It cannot tell you that root commits the *right* set —
 //!   that trust anchor is the caller's (exactly as `vss-types`' `Commitment` is
@@ -109,13 +121,31 @@
 //!   prevent that. This is the *scope* of the guarantee, not a hole in it (and it is
 //!   why the crate itself is `#![forbid(unsafe_code)]`).
 //!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! As a **graduated** leaf, `merkle-types` contributes a Lean formalization to Sol (CHARTER.md
+//! criterion #4), and is the first *leaf-level* realized instance of the Corona↔Sol flow. `Sol.Lib.Merkle`
+//! models [`Root::verify`]'s fold over a *perfect* tree and proves, **under an explicit collision-freedom
+//! hypothesis on the node combiner** (re-exported into `Sol.Corona` as the `merkle_*` obligations), that
+//! along a **fixed index** the fold **pins the leaf VALUE and path** (`fold_pins_leaf_and_path`) — the
+//! machine-checked form of `wrong_data_mints_no_witness` and `tampered_sibling_mints_no_witness`. Its
+//! engine (`foldUp_injective`) states the honest reduction: value-binding along a fixed index **reduces to
+//! combiner injectivity** — an idealization *stronger* than the computational collision resistance SHA-256
+//! offers, which Sol *assumes* (non-vacuously — `exists_collisionFree` exhibits a Cantor pairing) and
+//! never proves. **Two things are Sol-side residue, not proved:** index *relabeling* (it changes the
+//! index, hence the fixed sides) and the equal-hashing structural-symmetry *orbit* (see [`Proof`]) — a
+//! *same-bytes* position ambiguity that *survives* collision-freedom, which the value-keyed model cannot
+//! express. (`collision_breaks_leaf_binding` witnesses the opposite: a *different-bytes* forgery a hash
+//! collision enables.) Also not modelled: odd-node promotion / non-perfect trees and the `(hash, size)`
+//! one-anchor caveat.
+//!
 //! ## Construction note
 //!
 //! Odd nodes are **promoted** (carried up a level unchanged), never duplicated. The
 //! duplicate-a-lone-node construction admits the CVE-2012-2459 malleability, where
-//! two distinct leaf multisets share a root. This toy does not claim the full
-//! RFC 6962 split; promotion is the minimal choice that avoids that specific
-//! forgery.
+//! two distinct leaf multisets share a root. This crate does not implement the full
+//! RFC 6962 split (see the security posture); promotion is the minimal choice that
+//! avoids that specific forgery.
 //!
 //! ```
 //! use merkle_types::commit_scoped;
@@ -205,7 +235,7 @@ pub struct Proof {
     pub index: usize,
     /// Sibling hashes, bottom (leaf level) to top. A *promoted* (odd-node) level
     /// contributes no entry, so this can be shorter than the tree's height.
-    pub siblings: Vec<u64>,
+    pub siblings: Vec<hash::Digest>,
 }
 
 /// A Merkle root: the public commitment to a set of leaves, carrying the generative
@@ -215,7 +245,7 @@ pub struct Proof {
 /// positions of witnesses it minted.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Root<'brand> {
-    hash: u64,
+    hash: hash::Digest,
     size: usize,
     _brand: Brand<'brand>,
 }
@@ -227,7 +257,7 @@ impl<'brand> Root<'brand> {
     }
 
     /// The root hash itself (a public commitment value).
-    pub fn hash(&self) -> u64 {
+    pub fn hash(&self) -> hash::Digest {
         self.hash
     }
 
@@ -321,13 +351,15 @@ impl<'brand> Root<'brand> {
 /// Non-redacting on purpose (membership is public, mirroring `erasure-types`'
 /// `RecoveredData`, not Shamir's redacting `Secret`). Holding one is a *typestate*
 /// fact — verified-through-the-checked-path, against the root whose brand it bears —
-/// not, on its own, a security guarantee (the backend hash is a toy). The brand
+/// not, on its own, a security guarantee: it attests the checked-path fact, but the
+/// trust anchor (that the root commits the right set) is still the caller's — see the
+/// security posture. The brand
 /// binds it to its issuing root: it cannot be presented where another root's witness
 /// is expected (see [`Root::authenticated_positions`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedLeaf<'brand> {
     index: usize,
-    leaf_hash: u64,
+    leaf_hash: hash::Digest,
     _brand: Brand<'brand>,
 }
 
@@ -338,7 +370,7 @@ impl VerifiedLeaf<'_> {
     }
 
     /// The verified element's leaf hash (the `0x00`-domain hash of its data).
-    pub fn leaf_hash(&self) -> u64 {
+    pub fn leaf_hash(&self) -> hash::Digest {
         self.leaf_hash
     }
 }
@@ -352,7 +384,7 @@ impl VerifiedLeaf<'_> {
 pub struct MerkleTree {
     /// `layers[0]` is the leaf hashes; each subsequent layer is the level above;
     /// the final layer is a single element, the root. Always non-empty.
-    layers: Vec<Vec<u64>>,
+    layers: Vec<Vec<hash::Digest>>,
 }
 
 impl MerkleTree {
@@ -360,11 +392,12 @@ impl MerkleTree {
     /// order. `None` for empty input — there is no root of nothing to commit to.
     /// Private: a branded [`Root`] is only ever handed out by [`commit_scoped`], so
     /// that its `'brand` is generative and cannot be chosen by the caller.
-    fn build_inner(leaves: &[impl AsRef<[u8]>]) -> Option<(u64, usize, Self)> {
+    fn build_inner(leaves: &[impl AsRef<[u8]>]) -> Option<(hash::Digest, usize, Self)> {
         if leaves.is_empty() {
             return None;
         }
-        let leaf_hashes: Vec<u64> = leaves.iter().map(|d| hash::leaf_hash(d.as_ref())).collect();
+        let leaf_hashes: Vec<hash::Digest> =
+            leaves.iter().map(|d| hash::leaf_hash(d.as_ref())).collect();
         let size = leaf_hashes.len();
         let layers = build_layers(leaf_hashes);
         // `build_layers` always terminates with a single-element top layer.
@@ -468,8 +501,8 @@ pub fn commit_scoped<R>(
 /// (the same tail proof, relabeled to index 1, verifies under an adopted size
 /// of 2: misattribution to a real slot, not a phantom one). Under any size lie,
 /// membership of *bytes* stays sound — nothing uncommitted ever verifies; the
-/// lie adds no acceptance channel of its own, so soundness is up to the toy
-/// hash's disclosed weakness exactly as under a true-sized root. What degrades
+/// lie adds no acceptance channel of its own, so soundness rests on the SHA-256
+/// backend's collision resistance exactly as under a true-sized root. What degrades
 /// is **position semantics** — `index()` is authenticated relative to the
 /// *adopted* shape, not the true tree, in both directions. Adopt
 /// `(hash, size)` from one trusted source as a unit, never mix a hash from one
@@ -497,19 +530,19 @@ pub fn commit_scoped<R>(
 /// ```compile_fail,E0521
 /// use merkle_types::adopt_scoped;
 ///
-/// adopt_scoped(42, 2, |root_a| {
-///     adopt_scoped(42, 2, |root_b| {
+/// adopt_scoped([0u8; 32], 2, |root_a| {
+///     adopt_scoped([0u8; 32], 2, |root_b| {
 ///         // Same (hash, size), but each scope's brand is fresh: a witness that
 ///         // root_b minted cannot be consumed by root_a. (None at runtime for a
 ///         // bogus hash — but the brand mismatch already fails to COMPILE.)
-///         if let Some(leaf) = root_b.verify(b"x", &merkle_types::Proof { index: 0, siblings: vec![0] }) {
+///         if let Some(leaf) = root_b.verify(b"x", &merkle_types::Proof { index: 0, siblings: vec![[0u8; 32]] }) {
 ///             let _ = root_a.authenticated_positions(&[leaf]);
 ///         }
 ///     });
 /// });
 /// ```
 pub fn adopt_scoped<R>(
-    hash: u64,
+    hash: hash::Digest,
     size: usize,
     body: impl for<'brand> FnOnce(Root<'brand>) -> R,
 ) -> Option<R> {
@@ -527,7 +560,7 @@ pub fn adopt_scoped<R>(
 /// Fold a level of hashes into the level above, pairing neighbours and **promoting**
 /// a lone final node unchanged (never duplicating it — see the construction note).
 /// Returns all levels, leaves first, ending in a single-element root layer.
-fn build_layers(leaf_hashes: Vec<u64>) -> Vec<Vec<u64>> {
+fn build_layers(leaf_hashes: Vec<hash::Digest>) -> Vec<Vec<hash::Digest>> {
     let mut layers = vec![leaf_hashes];
     while layers[layers.len() - 1].len() > 1 {
         let prev = &layers[layers.len() - 1];
@@ -607,7 +640,7 @@ mod tests {
     fn tampered_sibling_mints_no_witness() {
         commit_scoped(&sample(), |root, tree| {
             let mut proof = tree.proof(1).unwrap();
-            proof.siblings[0] ^= 1; // flip one bit of one sibling
+            proof.siblings[0][0] ^= 1; // flip one bit of one sibling
             assert!(root.verify(b"bob", &proof).is_none());
         })
         .unwrap();
@@ -699,7 +732,7 @@ mod tests {
             assert!(root.verify(b"bob", &short).is_none());
 
             let mut long = good.clone();
-            long.siblings.push(0xdead_beef);
+            long.siblings.push([0xde; 32]);
             assert!(root.verify(b"bob", &long).is_none());
         })
         .unwrap();
@@ -758,7 +791,9 @@ mod tests {
         })
         .unwrap();
         // A different trusted hash (one bit off) admits nothing.
-        adopt_scoped(hash ^ 1, size, |root| {
+        let mut wrong = hash;
+        wrong[0] ^= 1;
+        adopt_scoped(wrong, size, |root| {
             assert!(root.verify(b"alice", &p0).is_none());
         })
         .unwrap();
@@ -775,7 +810,7 @@ mod tests {
 
     #[test]
     fn adopting_an_empty_root_is_refused() {
-        assert!(adopt_scoped(0xdead_beef, 0, |_root| ()).is_none());
+        assert!(adopt_scoped([0xde; 32], 0, |_root| ()).is_none());
     }
 
     #[test]

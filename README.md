@@ -6,9 +6,10 @@ unforgeability (E0451), move-linearity (E0382), brand-unification (E0308), and
 const-eval walls (E0080) — first isolated in `warp-types` and `quorum-types`.
 
 Corona is the **type** face of the Radiant verification work. Its sibling **Sol**
-is the **proof** face (machine-checked Lean lemmas). The *intended* wiring — not
-yet exercised, since no leaf has graduated — is one-directional: a graduated
-Corona leaf contributes a Lean formalization to Sol. See [`CHARTER.md`](CHARTER.md).
+is the **proof** face (machine-checked Lean lemmas). The wiring — first exercised at
+the leaf level by `merkle-types` (graduated 2026-07-21, contributing `Sol.Lib.Merkle`) —
+is one-directional: a graduated Corona leaf contributes a Lean formalization to Sol.
+See [`CHARTER.md`](CHARTER.md).
 
 ## Layout
 
@@ -18,7 +19,7 @@ corona/
 ├── threshold-types/  # leaf 1 — Shamir k-of-n secret sharing as typestate (TOY)
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
-├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (TOY)
+├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (GRADUATED)
 ├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
@@ -164,9 +165,11 @@ its own. That makes leaf 4 the second leaf to use **two** garden primitives (E04
 the E0308-class brand) with still no new one. As in VSS the brand is a *lifetime*, so
 the mismatch is a lifetime error, not a literal `error[E0308]`.
 
-> ⚠ **TOY.** The hash backend is non-cryptographic FNV-1a — a real adversary forges
-> collisions and thus membership. The *type discipline* is the subject, not the
-> hash; graduation swaps in SHA-256 behind the same `leaf_hash`/`node_hash` seam.
+> ✅ **GRADUATED (2026-07-21).** The backend is now domain-separated **SHA-256** (`sha2`)
+> behind the same `leaf_hash`/`node_hash` seam — forging membership needs a SHA-256
+> collision, not the trivial FNV-1a forgery the research rung admitted. Security posture
+> + Lean formalization (`Sol.Lib.Merkle`) per the CHARTER; see the crate docs for what
+> the types do and do not witness (promotion is not RFC-6962 wire-compatible).
 
 ## Leaf 5: `lamport-types`
 
@@ -260,8 +263,9 @@ including merkle's orbit symmetry, which an adopted degenerate anchor (duplicate
 committed key bytes) carries straight into `key_index` (disclosed and
 regression-tested).
 
-> ⚠ **TOY.** Inherits both leaves' toy FNV hashes and lamport's seed caveat (a
-> retained seed re-mints the whole keychain — the linearity binds the chain *value*).
+> ⚠ **TOY.** Inherits lamport's toy FNV hash and seed caveat (a retained seed re-mints
+> the whole keychain — the linearity binds the chain *value*); its Merkle layer is now
+> leaf 4's graduated SHA-256, so the leaf stays toy via Lamport, not Merkle.
 > MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked hashing). Fixed capacity `n`.
 
 ## Leaf 8: `vid-types`
@@ -296,7 +300,8 @@ finding: the committed bytes **embed the fragment's own index**, and `verify`
 binds it to the Merkle-authenticated position — which *forecloses* the
 degenerate-anchor orbit ambiguity leaf 7 could only disclose.
 
-> ⚠ **TOY.** Inherits leaf 3's table-lookup GF(256) and leaf 4's FNV hash. The
+> ⚠ **TOY.** Inherits leaf 3's toy table-lookup GF(256); its Merkle layer is leaf 4's
+> graduated SHA-256. The
 > anchor `(root_hash, k, n)` is caller-trusted as a unit — n-lies and
 > understated k-lies are *caught* (spurious rejection at verify;
 > `InconsistentEncoding` at retrieve, with a low-degree-data truncation edge),
@@ -581,7 +586,8 @@ discharge a component's obligation, not only inherit it. The sealed
 `VerifiedHypertreeMessage` (E0451) is minted only when both links verify — four
 sole-minters firing two levels deep.
 
-> ⚠ **TOY.** Inherits all of `mss-types`' FNV hashing (hence lamport + merkle);
+> ⚠ **TOY.** Inherits `mss-types`' toy Lamport FNV hashing (its Merkle layer is leaf 4's
+> graduated SHA-256);
 > deterministic seeds; 2 fixed layers (real XMSS^MT uses `d` layers and WOTS+); no state
 > **persistence** protocol — which is the whole point of finding 3. Not for signing
 > anything real.

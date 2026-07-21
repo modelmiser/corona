@@ -1,14 +1,26 @@
-//! Toy hash backend for the Merkle tree.
+//! SHA-256 hash backend for the Merkle tree — the **graduated** backend.
 //!
-//! **⚠ TOY — NOT collision-resistant, NOT for real use.** This is 64-bit FNV-1a,
-//! a *non-cryptographic* mixing hash chosen only so the type discipline in
-//! [`crate`] has *something* to verify against. A real adversary forges collisions
-//! in it trivially. It plays exactly the role the toy `gf256` field and the toy
-//! `Z_257` group play in the other leaves: it makes the checked path *runnable*
-//! without pretending to be secure. Graduation (per the charter) swaps this module
-//! for a vetted hash (SHA-256) behind the *same* [`leaf_hash`]/[`node_hash`] seam.
+//! Per the charter's graduation criterion #2, this module is an *implementation
+//! swap behind a fixed seam*: the toy 64-bit FNV-1a that the research rung used
+//! has been replaced by domain-separated **SHA-256** (via the audited [`sha2`]
+//! crate) behind the very same [`leaf_hash`]/[`node_hash`] **seam** — the function
+//! *names* and the tree logic ([`crate::Root::verify`], [`crate::MerkleTree`], the
+//! fold, the promotion rule) are unchanged. What *did* change: the body of these two
+//! functions and — a **breaking** change for the return type — the width of the
+//! [`Digest`] they return (`u64` → `[u8; 32]`; see CHARTER.md criterion #2's caveat
+//! on the blast radius onto dependent leaves).
 //!
-//! ## Domain separation (a real correctness property, kept even in the toy)
+//! ## Security posture
+//!
+//! SHA-256 is a standardized cryptographic hash with ~128-bit collision resistance
+//! and ~256-bit preimage/second-preimage resistance. Against this backend, forging
+//! membership requires finding a hash collision — not a trivial exercise as it was
+//! against FNV-1a, but the full computational assumption on SHA-256. The *type*
+//! discipline this crate demonstrates (the E0451 seal, the generative brand) is
+//! independent of the backend; the swap is what turns a runnable illustration into
+//! something whose forgery-resistance rests on a vetted primitive.
+//!
+//! ## Domain separation (a structural property, independent of the hash)
 //!
 //! Leaf hashes and internal-node hashes are tagged with distinct prefix bytes
 //! (`0x00` for a leaf, `0x01` for an internal node). Without this, an attacker who
@@ -16,42 +28,43 @@
 //! leaf's bytes and pass verification — the classic Merkle second-preimage
 //! confusion. The tag makes the leaf and node *preimages* disjoint — the two hash
 //! functions never receive identical input bytes — so the confusion cannot arise
-//! *structurally*. (This bounds the *inputs*, not the 64-bit *outputs*: whether a
-//! `leaf_hash` can still be made to *collide* a given `node_hash` is a question of
-//! the hash's strength, and with the toy FNV-1a such collisions are findable — see
-//! the TOY banner above. Domain separation is a genuine part of the *checked path*,
-//! independent of that weakness.)
+//! *structurally*, at any hash strength. This bounds the *inputs*; whether two
+//! distinct inputs can still collide in the *output* is exactly the collision
+//! resistance SHA-256 supplies. Domain separation is a genuine part of the checked
+//! path, independent of (and complementary to) that resistance.
+//!
+//! [`sha2`]: https://docs.rs/sha2
 
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+use sha2::{Digest as _, Sha256};
 
-/// 64-bit FNV-1a over a byte string.
-fn fnv1a(bytes: &[u8]) -> u64 {
-    let mut h = FNV_OFFSET;
-    for &b in bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(FNV_PRIME);
-    }
-    h
+/// A 256-bit digest — the output of the graduated SHA-256 backend, and the width
+/// every hash in the tree carries (root, siblings, leaf hashes, internal nodes).
+pub type Digest = [u8; 32];
+
+/// SHA-256 of a byte string.
+fn sha256(bytes: &[u8]) -> Digest {
+    let mut h = Sha256::new();
+    h.update(bytes);
+    h.finalize().into()
 }
 
 /// Hash of a leaf's data, in the leaf domain (`0x00` tag).
-pub fn leaf_hash(data: &[u8]) -> u64 {
+pub fn leaf_hash(data: &[u8]) -> Digest {
     let mut buf = Vec::with_capacity(data.len() + 1);
     buf.push(0x00);
     buf.extend_from_slice(data);
-    fnv1a(&buf)
+    sha256(&buf)
 }
 
 /// Hash of an internal node from its two child hashes, in the node domain
 /// (`0x01` tag). Order matters: `node_hash(l, r) != node_hash(r, l)` in general,
 /// which is what lets a proof pin a leaf to a specific left/right position.
-pub fn node_hash(left: u64, right: u64) -> u64 {
-    let mut buf = [0u8; 17];
+pub fn node_hash(left: Digest, right: Digest) -> Digest {
+    let mut buf = [0u8; 1 + 32 + 32];
     buf[0] = 0x01;
-    buf[1..9].copy_from_slice(&left.to_be_bytes());
-    buf[9..17].copy_from_slice(&right.to_be_bytes());
-    fnv1a(&buf)
+    buf[1..33].copy_from_slice(&left);
+    buf[33..65].copy_from_slice(&right);
+    sha256(&buf)
 }
 
 #[cfg(test)]
@@ -62,18 +75,18 @@ mod tests {
     fn leaf_and_node_domains_are_disjoint() {
         // A leaf whose bytes are exactly a node's two children must NOT collide
         // with that node — the domain tags (0x00 vs 0x01) guarantee it.
-        let l = 0x1111_1111_1111_1111u64;
-        let r = 0x2222_2222_2222_2222u64;
+        let l: Digest = [0x11; 32];
+        let r: Digest = [0x22; 32];
         let mut collision_bytes = Vec::new();
-        collision_bytes.extend_from_slice(&l.to_be_bytes());
-        collision_bytes.extend_from_slice(&r.to_be_bytes());
+        collision_bytes.extend_from_slice(&l);
+        collision_bytes.extend_from_slice(&r);
         assert_ne!(leaf_hash(&collision_bytes), node_hash(l, r));
     }
 
     #[test]
     fn node_hash_is_order_sensitive() {
-        let a = 7u64;
-        let b = 9u64;
+        let a: Digest = [7; 32];
+        let b: Digest = [9; 32];
         assert_ne!(node_hash(a, b), node_hash(b, a));
     }
 }

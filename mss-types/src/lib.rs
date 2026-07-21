@@ -82,9 +82,11 @@
 //!
 //! ## Honest limits
 //!
-//! - **TOY hashes throughout** — inherited from *both* leaves (each uses its own
-//!   FNV-1a backend). A real adversary forges at will; the *type* discipline is
-//!   the subject. Graduation swaps both backends behind their existing seams.
+//! - **Mixed backends — the Lamport layer is still TOY.** The Merkle layer inherits
+//!   leaf 4's **graduated SHA-256** (leaf 4 has graduated), but the Lamport layer
+//!   (leaf 5) is still toy FNV-1a. A real adversary forges *Lamport* signatures at
+//!   will — breaking the scheme regardless of the Merkle hash — so this leaf stays
+//!   TOY until `lamport-types` graduates too; the *type* discipline is the subject.
 //! - **The [`MssPublicKey`] is caller-trusted** (as every trust anchor in the
 //!   garden is): verification proves a signature is valid *under this root*, not
 //!   that this root belongs to the right signer.
@@ -132,8 +134,8 @@
 //!   self-consistently `minted_by` the lying anchor) — and any lie can also
 //!   spuriously *reject* genuine signatures (all regression-tested). Under
 //!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
-//!   adds **no acceptance channel of its own**; membership of bytes stays sound
-//!   up to the toy hash's disclosed weakness, exactly as under an honest anchor
+//!   adds **no acceptance channel of its own**; membership of bytes stays sound —
+//!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor
 //!   — `key_index` is simply authenticated relative to the *adopted* shape, in
 //!   both directions. Never mix a hash from one source with a capacity from
 //!   another.
@@ -200,7 +202,7 @@ use merkle_types::Proof;
 /// adoption doorway costs nothing the seal ever promised.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct MssPublicKey {
-    root_hash: u64,
+    root_hash: merkle_types::hash::Digest,
     size: usize,
 }
 
@@ -276,7 +278,7 @@ pub struct MssSignature {
 pub struct VerifiedMssMessage {
     digest: u64,
     key_index: usize,
-    root_hash: u64,
+    root_hash: merkle_types::hash::Digest,
     capacity: usize,
 }
 
@@ -305,7 +307,7 @@ impl VerifiedMssMessage {
     /// **half** the provenance — two keys sharing a hash under different
     /// capacities compare equal here — so prefer [`minted_by`](Self::minted_by)
     /// for the binding check.
-    pub fn root_hash(&self) -> u64 {
+    pub fn root_hash(&self) -> merkle_types::hash::Digest {
         self.root_hash
     }
 
@@ -333,7 +335,7 @@ impl VerifiedMssMessage {
 /// `0xFF` — a side value `prg` documents as reserved for callers, outside the
 /// `{0, 1}` keygen uses — so the chain-level and key-level derivations have
 /// **disjoint input domains**. (That bounds the *inputs*; distinctness of the
-/// 64-bit *outputs* is only as strong as the toy hash, as everywhere here.
+/// 64-bit *outputs* is only as strong as the toy Lamport-derivation hash (the Merkle layer aside — now SHA-256).
 /// Deterministic derivation is the toy choice, for reproducible tests; it is
 /// also exactly what the "per chain value, not per chain material" honest limit
 /// is about.)
@@ -411,7 +413,7 @@ impl MssPublicKey {
     }
 
     /// The underlying Merkle root hash (a public commitment value).
-    pub fn root_hash(&self) -> u64 {
+    pub fn root_hash(&self) -> merkle_types::hash::Digest {
         self.root_hash
     }
 
@@ -440,13 +442,13 @@ impl MssPublicKey {
     /// two regression tests and `merkle_types::adopt_scoped`'s "one anchor"
     /// doc). Membership stays sound under any capacity lie — nothing
     /// uncommitted ever verifies (the lie adds no acceptance channel of its
-    /// own; soundness is up to the toy hash's disclosed weakness, exactly as
-    /// under an honest anchor) — but `key_index` is authenticated only
+    /// own; membership soundness now rests on the Merkle hash — leaf 4's graduated
+    /// SHA-256 — exactly as under an honest anchor) — but `key_index` is authenticated only
     /// *relative to the adopted anchor*, which is why [`VerifiedMssMessage`]
     /// records the full anchor and
     /// [`minted_by`](VerifiedMssMessage::minted_by) compares both halves. Adopt
     /// both values from one trusted source.
-    pub fn adopt(root_hash: u64, capacity: usize) -> Option<MssPublicKey> {
+    pub fn adopt(root_hash: merkle_types::hash::Digest, capacity: usize) -> Option<MssPublicKey> {
         if capacity == 0 {
             return None;
         }
@@ -528,7 +530,7 @@ mod tests {
     fn tampered_proof_does_not_verify() {
         let (chain, pk) = generate(7, 2).unwrap();
         let (mut sig, _) = chain.sign_next(b"genuine");
-        sig.proof.siblings[0] ^= 1;
+        sig.proof.siblings[0][0] ^= 1;
         assert!(pk.verify(b"genuine", &sig).is_none());
     }
 
@@ -633,7 +635,9 @@ mod tests {
         let v = verifier_pk.verify(b"over the wire", &sig).expect("genuine");
         assert_eq!(v.key_index(), 0);
         // A wrong adopted hash admits nothing.
-        let wrong = MssPublicKey::adopt(pk.root_hash() ^ 1, pk.capacity()).unwrap();
+        let mut wrong_root = pk.root_hash();
+        wrong_root[0] ^= 1;
+        let wrong = MssPublicKey::adopt(wrong_root, pk.capacity()).unwrap();
         assert!(wrong.verify(b"over the wire", &sig).is_none());
         // No key of nothing.
         assert!(MssPublicKey::adopt(pk.root_hash(), 0).is_none());

@@ -6,10 +6,11 @@
 //! executable split. Leaf 9 found the vocabulary's edge at the **wire** and drew a
 //! seam to `quorum-types` (the coordination face). This leaf finds a *different* edge
 //! and draws a seam to the garden's *other* sibling, **[Sol]** (the proof face) — the
-//! wiring the charter calls "intended, not yet exercised." It is the first leaf to
+//! wiring the charter first called "intended, not yet exercised" (since exercised — at
+//! the invariant level, then by `merkle-types`' graduation). It is the first leaf to
 //! name a concrete obligation for Sol.
 //!
-//! [Sol]: ../../active/sol
+//! [Sol]: ../../../sol
 //!
 //! ## The domain: a state-based grow-only counter (a CvRDT)
 //!
@@ -135,8 +136,9 @@
 //!   commutativity, associativity, and inflation on concrete inputs — a *stand-in* for
 //!   the Sol lemmas, and the honest reason this is a toy: property tests sample, proofs
 //!   quantify. Graduating this leaf means replacing those tests with a machine-checked
-//!   Lean proof contributed to Sol (the charter's graduation-feeds-Sol direction, made
-//!   concrete for the first time).
+//!   Lean proof contributed to Sol (the charter's graduation-feeds-Sol direction — first
+//!   realized by `merkle-types`' graduation on 2026-07-21; this leaf only *names* the
+//!   obligation, it has not graduated).
 //! - **`value` saturates.** The sum across replicas is a `u64` computed with
 //!   `saturating_add`; a real unbounded counter would carry a bignum or document the
 //!   bound. `increment` uses `checked_add` and *panics* at `u64::MAX` rather than
