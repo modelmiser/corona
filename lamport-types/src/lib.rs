@@ -376,7 +376,8 @@ mod tests {
         // agreement set. For THESE two fixed messages the digests differ in 34 positions, so
         // |A| = 30 and the step costs ~2^30. The next test drives that down by *searching* for
         // an m2 with disagreement >= 48 (|A| <= 16, ~2^16.3 including its own search); a
-        // jointly-choosing 2-query adversary pays only ~2^9 (see `hash`). The harvested material
+        // jointly-choosing 2-query adversary pays ~2^9 in HASH EVALUATIONS, but then scans
+        // ~2^26.6 triples, so in total work it is dearer than this one (see `hash`). The harvested material
         // is what makes the remaining step mechanical rather than cryptographic.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);

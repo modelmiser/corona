@@ -170,8 +170,9 @@ work (complete tasks, add children, keep siblings).
       never expressed the property that changed — coverage, not triumph; precedents are POW,
       ECASH and RATCHET, not bloom/translog; lamport's wire pre-existed its graduation, so the swap
       was testable against theorems written beforehand — no uniqueness claimed). Part 3 added — the two-signature coverage lemma and, separately,
-      `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
-      layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
+      `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`; separate
+      because it is about `accepts` where the coverage lemma is about `forgeable`, not because of
+      the message layer it carries — `Msg` is eliminable from it) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
       not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` unpredictability — what the swap bought.
       Cold review: 15 rounds, ~32 CRITICALs, none in code; R15 was the first round with zero CRITICAL. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that

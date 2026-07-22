@@ -70,7 +70,11 @@
 //!    output at 256 bits with `u64` preimages and one-wayness is still ~2⁶³; see `sha256_u64`'s
 //!    docstring), (3) by the 64-bit digest width, and (2) by the **64-bit seed** — a 2⁶³ seed
 //!    search hands over every unrevealed preimage whatever hash sits under
-//!    `prg`, so no backend could supply more than that. (3) is the one whose cap falls *below* a
+//!    `prg`, so no backend could supply more than that. ⚠ One direction only, for (1) vs (2): widening
+//!    the preimage domain alone does *not* raise (1), because the composition note below says (1)
+//!    is needed on the distribution `prg` actually produces, whose support the seed fixes at 2⁶⁴.
+//!    At these parameters the two caps merely coincide numerically; raising (1) needs the seed to
+//!    move too. (3) is the one whose cap falls *below* a
 //!    useful level, which is what leaves the scheme forgeable.
 //!
 //! **Assumed by the cost table, but not by the floor** (each moves rows that are not the
@@ -78,10 +82,12 @@
 //!
 //! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
 //!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
-//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶², row 6 to ~2⁵⁶, and
+//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶², row 6 to ~2⁵⁶,
 //!   **row 3** to ~2⁶⁰ (its first term is a `commit` scan over the `prg` image, so the optimum
-//!   moves from `k = 5–6` to `k = 6–7`) — which is why row 3's "bounded by" column names this
-//!   assumption alongside one-wayness and width.
+//!   moves from `k = 5–6` to `k = 6–7`), and — via the tied `commit`-domain route named in row
+//!   4's column — **rows 4 and 5** from ~2⁶⁴ to ~2⁶³ vk-only, since that pass need only cover
+//!   the image. Five of the seven rows, then; the two it cannot move are rows 1 and 2, which
+//!   never touch `prg`. Each row it moves names it in-column.
 //! - **[`digest`] preimage-resistant.** Collision resistance does not imply it, so rows 2 and 3
 //!   are priced against a **random-oracle** `digest` (and rows 3, 6 and 7 against a
 //!   random-function `commit`), which SHA-256 is taken to model.
@@ -101,10 +107,10 @@
 //! | Attack | Cost now | Bounded now by |
 //! |---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
-//! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
+//! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width, *and* `digest` modelled as a random oracle (collision resistance alone does not give this row) |
 //! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly (and `prg` output-uniformity, which moves it to ~2⁶⁰) |
-//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness, a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all, so widening the seed does not retire this row |
-//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` unpredictability |
+//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness *and* `prg` output-uniformity, via a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all (~2⁶³ if the `prg` image is a known 2⁶³ subset), so widening the seed does not retire this row |
+//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes; ~2⁶³ under `prg` output-uniformity); §-halved: seed entropy *and* `prg` unpredictability |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
 //! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | `commit` one-wayness *and* `prg` output-uniformity |
 //!
@@ -135,8 +141,9 @@
 //!
 //! Row 3, in outline: open `k` of the 64 **unknown-side** commitments by multi-target scan,
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
-//! positions — cost `k·2⁶⁴/64 + 2^(64−k)`. Only 64 commitments are useful targets, as the
-//! reduction above notes. The optimum is flat at `k = 5–6`, giving **~2^60.8**, with neither
+//! positions — cost `k·2⁶⁴/64 + 2^(64−k)`. Only 64 commitments are useful targets *here*, because this row
+//! is the known-message model where `m` IS fixed — unlike the reduction above, whose adversary
+//! chooses `m` after the scan and so reaches all 128. The optimum is flat at `k = 5–6`, giving **~2^60.8**, with neither
 //! term dominating — which is why this row alone is bounded by *both* one-wayness and width.
 //! (The table rounds that to ~2⁶¹.) This uses the **unique-preimage convention**, the same one
 //! rows 6 and 7 use; a 1+Poisson(1) multiplicity model would give ~2⁶⁰ instead. One convention
