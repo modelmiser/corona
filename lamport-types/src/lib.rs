@@ -71,19 +71,28 @@
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
 //!   lattice reduction solves in *seconds per target*, completely and without memory.
 //!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256
-//!   supplies one-wayness at ~2⁶³, so the cheapest break becomes the ~2³² collision
-//!   above. Load-bearing (∥ `pow`, `ecash`), and the *class* improved too — universal
-//!   forgery from the public key alone did not vanish but moved to ~2⁶³. It still does
-//!   *not* make the scheme unforgeable: the width is now the binding constraint.
+//!   supplies one-wayness at ~2⁶³, so against a **correctly-used key** the cheapest break
+//!   becomes the ~2³² collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
+//!   improved too — universal forgery from the public key alone did not vanish but moved
+//!   to ~2⁶³. It still does *not* make the scheme unforgeable.
+//! - **⚠ "Correctly-used" is doing real work, and this crate's own examples violate it.**
+//!   The ~2³² floor assumes the seed was drawn **uniformly** and discarded, and that the key
+//!   signs **at most once**. [`generate`](SigningKey::generate) enforces no entropy
+//!   contract, and every seed here — including the doctest's `0x00C0_FFEE` — is a
+//!   low-entropy literal, recoverable in **≲2²⁵**, which is *cheaper than the collision*
+//!   and defeats every other bound too (recover the seed, mint the key, sign anything).
+//!   Separately, two signatures under one key (reachable via the re-mint below) forge a
+//!   third message for **~2^16.5**, demonstrated in-crate. So the binding constraint is the
+//!   width only for a key used properly; for a key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
 //!   is the backend's job *and* the width's, and at these parameters the width loses
 //!   (~2³² above). Two orthogonal protections; this leaf supplies the first *by type*
 //!   and only partially the second *by backend*.
-//! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive
-//!   from the `u64` seed, so searching the seed recovers the entire key at ~2⁶³ — the
-//!   same order as inverting a single commitment. Real Lamport's preimages are
-//!   independent.
+//! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
+//!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
+//!   candidates — ~2⁶⁴ hash calls, two per candidate, i.e. at parity with inverting a
+//!   single commitment rather than cheaper. Real Lamport's preimages are independent.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
 //!   belongs to the right signer (the same trust-anchor caveat as every other leaf).
@@ -116,6 +125,7 @@
 //! ```
 //! use lamport_types::{SigningKey, hash};
 //!
+//! // NOTE: a 24-bit literal seed — recoverable in ~2^25. Illustrative only; see Honest limits.
 //! let (sk, vk) = SigningKey::generate(0x00C0_FFEE);
 //! let sig = sk.sign(b"launch code alpha"); // `sk` is CONSUMED here — it is one-time
 //!
@@ -385,7 +395,7 @@ mod tests {
         // with m1 on many bits to keep that set (and the search) small. `Signature.revealed`
         // is public, so assembly is pure bookkeeping — the cryptographic step is gone.
         const HAM_THRESHOLD: u32 = 48; // |agreement set| <= 16  => stage-2 <= ~2^16
-                                       // Measured expected work is ~1.2e5 hashes total (stage 1 ~2.6e4, stage 2 ~2^16).
+                                       // Measured expected work is ~9.1e4 hashes total (stage 1 ~2.6e4, stage 2 ~6.6e4 = 2^16).
                                        // 2e6 leaves the miss probability at e^-77 / e^-30 — nil — while capping the
                                        // FAILURE path at ~5s. (At 5e7 a broken `digest` burned the full cap and made
                                        // `cargo test` take 153s, drowning the genuinely informative failures.)

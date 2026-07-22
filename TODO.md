@@ -155,7 +155,10 @@ work (complete tasks, add children, keep siblings).
       was itself a wrong correction, and R2 restored the original true claim). **The other property is NOT repaired, and cold review is what
       established that:** `verify` re-derives `digest(message)`, so a signature binds to the
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
-      demonstrated offline (~2³² evaluations), now executable in-crate and key-independent. The
+      demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —
+      but only for a CORRECTLY-USED key: the crate's own literal seeds fall in ≲2²⁵ and two
+      signatures under one key forge a third for ~2^16.5, so the ~2³² floor is a claim about
+      correct usage, not about the demonstration. The
       first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap
       upgraded the CLASS of break (universal-from-public-key → existential-needing-a-signed-
       message) while the binding constraint became the **WIDTH, not the hash**; the leaf

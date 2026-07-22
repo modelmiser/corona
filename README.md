@@ -223,8 +223,10 @@ discarding the seed after keygen (a real CSPRNG key has none).
 >
 > ⚠ **Still NOT production crypto.** The other property is collision resistance of the
 > 64-bit `digest`, and `verify` binds a signature to the *digest*, so a birthday pair
-> forges at **~2³²** (demonstrated, and executable in-crate). That cap is the
-> illustrative **width**, not SHA-256 — the graduation moved which assumption carries
+> forges at **~2³²** under chosen message (demonstrated, and executable in-crate) — and
+> that holds only for a *correctly-used* key: the crate's own low-entropy example seeds
+> fall in ≲2²⁵, and two signatures under one key forge a third for ~2^16.5. That cap is
+> the illustrative **width**, not SHA-256 — the graduation moved which assumption carries
 > the weight, it did not make the scheme unforgeable. The type discipline (use-once,
 > E0382) is still the subject: it stops key *reuse*, never *forgery*.
 
@@ -293,8 +295,9 @@ regression-tested).
 > ⚠ **Research rung.** Inherits lamport's seed caveat (a retained seed re-mints
 > the whole keychain — the linearity binds the chain *value*, and no hash fixes that).
 > Both hash layers are now graduated SHA-256 (Merkle from leaf 4, Lamport from leaf 5),
-> so what keeps this leaf illustrative is the *composition* — deterministic seeds and a
-> fixed capacity `n` — not a toy hash. MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked
+> so what keeps this leaf illustrative is the *composition* — deterministic seeds, a fixed
+> capacity `n`, **and the inherited 64-bit Lamport width**, whose ~2³² forgery carries
+> straight through — not a toy hash. MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked
 > hashing).
 
 ## Leaf 8: `vid-types`

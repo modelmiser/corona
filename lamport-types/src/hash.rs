@@ -37,12 +37,12 @@
 //! invertible outright (see the calibration below) — so the "was" column is not a
 //! comparison of exponents but of a break against no break at all:
 //!
-//! | Attack | Cost | Fixed by graduation? |
+//! | Attack | Cost (hash evaluations unless noted) | Fixed by graduation? |
 //! |---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **no** — digest-width bound |
 //! | Second preimage on the digest (known-message variant of the above) | ~2⁶⁴ | no — digest-width bound |
-//! | Existential forgery from the verifying key **plus one observed signature** | ~2⁶⁰ | yes |
-//! | Total key recovery by searching the seed — *assumes a uniform 64-bit seed*, see below | ~2⁶³ | yes — seed-entropy bound |
+//! | Existential forgery from the verifying key **plus one observed (known-message) signature** | ~2⁶⁰ | yes |
+//! | Total key recovery by searching the seed — *assumes a uniform 64-bit seed*, see below | ~2⁶³ *candidates* = ~2⁶⁴ hashes (two per candidate) | yes — seed-entropy bound |
 //! | Universal forgery from the verifying key alone, on a chosen message | ~2⁶³–2⁶⁴ | yes |
 //! | Multi-target preimage — *some* preimage among the 128 commitments (not a forgery) | ~2⁵⁷ | yes |
 //! | Single-target preimage on one chosen commitment | ~2⁶³ | yes |
@@ -67,21 +67,40 @@
 //! hash calls. An earlier draft argued 2⁶⁹ "one at a time" against 2⁶³; that was a
 //! strawman — no attacker works one target at a time.)
 //!
-//! ⚠ **The ~2⁶³ key-recovery row assumes the seed is drawn uniformly.**
-//! [`SigningKey::generate`](crate::SigningKey::generate) imposes no such contract, and
-//! every seed in this crate's tests and in `mss-types` is a low-entropy literal
-//! (`42`, `0x5EED`, `0xC0FFEE`). A key generated the way the examples demonstrate is
-//! recoverable in ≲2²⁵ — **cheaper than the 2³² collision**, i.e. with a guessable seed
-//! the binding constraint is not the width but the seed. Treat the seed as key material.
+//! ⚠ **THE MODEL THIS TABLE PRICES — two assumptions, and the crate violates both in its
+//! own examples.** The costs above hold for a key that (a) was minted from a **uniformly
+//! drawn** seed, discarded after keygen, and (b) signs **at most once**. Outside that model
+//! two cheaper breaks exist, neither of them in the table:
+//!
+//! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
+//!   entropy contract, and every seed in this crate's tests, its doctest, and `mss-types` is
+//!   a low-entropy literal (`42`, `0x5EED`, `0x00C0_FFEE`). Such a key falls in **≲2²⁵** —
+//!   cheaper than the 2³² collision — and this defeats not only the key-recovery row but
+//!   *every* row marked "yes": recover the seed, mint the key, sign anything. With a
+//!   guessable seed the binding constraint is neither the hash nor the width, but the seed.
+//!   Treat the seed as key material.
+//! - **A second signature under one key.** Two signatures harvest both preimage sides
+//!   wherever their digests differ; assembling a third-message forgery from them costs
+//!   **~2^16.5** — demonstrated in-crate by
+//!   `two_harvested_signatures_forge_a_verifying_third_message`, which runs inside the test
+//!   suite in under a second. The one-time signature model excludes this by construction
+//!   (one signing query), which is why it is not a table row — but the crate reaches it via
+//!   the retained-seed re-mint, so it is not hypothetical here.
+//!
+//! So "the cheapest break is ~2³²" is a statement **about a correctly-used key**, not about
+//! this crate as its examples demonstrate it.
 //!
 //! (Calibration on the toy — a *correction of a correction*. An intermediate draft claimed
-//! FNV-1a inversion "is not free — a meet-in-the-middle at ~2³²". That was wrong, and it
-//! walked back a true statement. Over a **fixed-length** input FNV-1a is *affine in bounded
+//! FNV-1a inversion "is not free — a meet-in-the-middle at ~2³²". A 2³²-time/2³²-memory MITM
+//! *is* a valid inversion, so the figure was a true upper bound — but it is nowhere near the
+//! best attack, and presenting it as "the honest figure" walked back a true statement. Over a **fixed-length** input FNV-1a is *affine in bounded
 //! perturbations*: since `h ⊕ b` and `h` differ only in the low byte, `h ⊕ b = h + d` with
-//! `|d| ≤ 255`, so `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)`. Inversion is then a
+//! `|d| ≤ 255`, so `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)` where `h₁ = (OFFSET ⊕ 0x01)·p`. Inversion is then a
 //! dimension-8 modular knapsack with `|coefficients| ≤ 255` — lattice-reduce and enumerate
-//! the box, which is **complete** (every genuine preimage's tuple lies in it) and runs in
-//! *seconds per target in pure Python*, needing no memory. The original "trivially
+//! the box, which is **complete** (the box is a *relaxation*: each true `dₖ` lies in a
+//! 256-wide interval offset by an unknown low byte, so `[−255,255]` contains it, and the
+//! ~250 box points per target are filtered by a forward-consistency check leaving ~2) and
+//! runs in *seconds per target in pure Python*, needing no memory. The original "trivially
 //! invertible" was accurate. Same-length collisions fall out of the same enumeration for
 //! free, so the toy `digest` had no meaningful collision resistance either — the toy's
 //! cheapest break was never 2³².)
@@ -91,8 +110,9 @@
 //! Real Lamport signs a 256-bit digest across 256 positions with independent random
 //! preimages. This leaf signs 64 bits, derives all preimages from a 64-bit seed (so
 //! the entire key carries only **64 bits of joint entropy**, not 128 × 64), and
-//! truncates commitments to 64 bits. Widening is orthogonal to the FNV→SHA-256
-//! question and would change every type in the crate, so it is out of scope here and
+//! truncates commitments to 64 bits. Widening is orthogonal to the FNV→SHA-256 question
+//! and would change `BITS`, `SigningKey`, `VerifyingKey` and `Signature` (the digest width
+//! and the commitment width need not move together), so it is out of scope here and
 //! disclosed rather than fixed.
 //!
 //! ## Domain separation (a structural property, independent of the hash)
@@ -114,22 +134,34 @@
 //! bound. The graduation swaps the *hash* under `prg`, not this design choice — the
 //! seed hole is E0382's residue, below the backend's remit.
 //!
-//! Note this is a secret-prefix `H(secret ‖ data)` construction, the shape HMAC exists
-//! to fix. It is not exploitable here — length extension needs the full 256-bit state
-//! and only 64 bits are published — so the safety rests on the truncation. (The
-//! sibling `ecash-types` graduated to HMAC-SHA-256 because *its* secret authenticates
-//! a value; here the secret is only expanded.)
+//! Note this is a secret-prefix `H(secret ‖ data)` construction, the shape HMAC exists to
+//! fix. It is not exploitable here, and the *reason* is worth stating precisely because an
+//! earlier draft got it wrong: it is **not** that truncation hides the state. A length
+//! extension would yield `H(0x00 ‖ seed ‖ i ‖ side ‖ pad ‖ X)`, at least 64 bytes long —
+//! and **no role in this crate ever hashes such a string**: `prg` inputs are exactly 18
+//! bytes, `commit` exactly 9 and tagged `0x01`, `digest` tagged `0x02`. There is nothing to
+//! extend *into*. Safety therefore rests on the fixed-length, domain-separated input
+//! format; truncation is a second, independent barrier. (This matters for the widening
+//! discussed above: publishing the full 256-bit output would **not** reopen a
+//! length-extension hole.) The sibling `ecash-types` graduated to HMAC-SHA-256 because
+//! *its* secret authenticates a value; here the secret is only expanded.
 //!
 //! [`sha2`]: https://docs.rs/sha2
 
 use sha2::{Digest as _, Sha256};
 
 /// SHA-256 of a byte string, truncated to its **leading** 64 bits (`out[..8]`, read
-/// big-endian). Truncating to `n` bits gives the generic bounds *at that width* —
-/// ~2^(n−1) expected preimage, ~2^(n/2) collision — so here ~2⁶³ and **~2³²**, the cap
-/// that bounds this scheme's unforgeability. (Not "preserves preimage resistance":
-/// SHA-256's own ~2²⁵⁶ drops to ~2⁶³, and its ~2¹²⁸ collision resistance to ~2³².) See
-/// the module security posture.
+/// big-endian). Truncating to `n` bits gives the generic bounds *at that width*: **2ⁿ**
+/// expected trials for a preimage over an unbounded message domain, and ~2^(n/2) for a
+/// collision — so ~2⁶⁴ and **~2³²** here. ([`commit`] is the one role priced at ~2⁶³
+/// rather than ~2⁶⁴, for a reason specific to it and *not* a truncation rule: its domain
+/// is exactly `u64`, the same size as its range and guaranteed to contain the preimage,
+/// so it is an exhaustive search of `2⁶⁴` candidates averaging half. An earlier draft
+/// stated "~2^(n−1) expected preimage" as the generic rule, which is wrong — that figure
+/// belongs to the bounded-domain case only, and it contradicted this module's own
+/// second-preimage row at ~2⁶⁴.) Not "preserves preimage resistance": SHA-256's own
+/// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
+/// security posture.
 fn sha256_u64(bytes: &[u8]) -> u64 {
     let mut h = Sha256::new();
     h.update(bytes);
