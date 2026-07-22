@@ -91,8 +91,9 @@
 //!   and only partially the second *by backend*.
 //! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
-//!   candidates — ~2⁶⁴ hash calls, two per candidate, i.e. at parity with inverting a
-//!   single commitment rather than cheaper. Real Lamport's preimages are independent.
+//!   candidates = ~2⁶⁴ hash calls (two per candidate) — i.e. about 2× the ~2⁶³ of inverting
+//!   one commitment, but it yields *all 128* preimages instead of one. Real Lamport's
+//!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
 //!   belongs to the right signer (the same trust-anchor caveat as every other leaf).

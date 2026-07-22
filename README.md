@@ -225,7 +225,9 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > 64-bit `digest`, and `verify` binds a signature to the *digest*, so a birthday pair
 > forges at **~2³²** under chosen message (demonstrated, and executable in-crate) — and
 > that holds only for a *correctly-used* key: the crate's own low-entropy example seeds
-> fall in ≲2²⁵, and two signatures under one key forge a third for ~2^16.5. That cap is
+> fall in ≲2²⁵, and a retained seed re-mints the key so its holder signs freely (the
+> two-signature harvest costs ~2^16.5 for a chosen-message adversary, but the re-mint that
+> reaches it costs almost nothing). That cap is
 > the illustrative **width**, not SHA-256 — the graduation moved which assumption carries
 > the weight, it did not make the scheme unforgeable. The type discipline (use-once,
 > E0382) is still the subject: it stops key *reuse*, never *forgery*.

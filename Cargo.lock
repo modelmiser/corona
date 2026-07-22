@@ -147,7 +147,7 @@ dependencies = [
 
 [[package]]
 name = "hypertree-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "merkle-types",
  "mss-types",
@@ -175,7 +175,7 @@ dependencies = [
 
 [[package]]
 name = "mss-types"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "lamport-types",
  "merkle-types",

@@ -32,20 +32,20 @@
 //!    every valid signature. **Truncation to 64 bits caps this at ~2³²** (birthday),
 //!    and *that bound is a property of the width, not of SHA-256*.
 //!
-//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed).
-//! Under the **toy** every row was *seconds on a laptop*, because `commit` was
-//! invertible outright (see the calibration below) — so the "was" column is not a
-//! comparison of exponents but of a break against no break at all:
+//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed). Under
+//! the **toy** every row cost *seconds on a laptop*, because `commit` was invertible
+//! outright (see the calibration below) — so the middle column below is uniform, and the
+//! interesting question is the last one: *what bounds this row now?*
 //!
-//! | Attack | Cost (hash evaluations unless noted) | Fixed by graduation? |
-//! |---|---|---|
-//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **no** — digest-width bound |
-//! | Second preimage on the digest (known-message variant of the above) | ~2⁶⁴ | no — digest-width bound |
-//! | Existential forgery from the verifying key **plus one observed (known-message) signature** | ~2⁶⁰ | yes |
-//! | Total key recovery by searching the seed — *assumes a uniform 64-bit seed*, see below | ~2⁶³ *candidates* = ~2⁶⁴ hashes (two per candidate) | yes — seed-entropy bound |
-//! | Universal forgery from the verifying key alone, on a chosen message | ~2⁶³–2⁶⁴ | yes |
-//! | Multi-target preimage — *some* preimage among the 128 commitments (not a forgery) | ~2⁵⁷ | yes |
-//! | Single-target preimage on one chosen commitment | ~2⁶³ | yes |
+//! | Attack | Cost now (hash evaluations) | Under the toy | Bounded now by |
+//! |---|---|---|---|
+//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | seconds | **digest width** |
+//! | Second preimage on the digest (known-message variant of the above) | ~2⁶⁴ | seconds | digest width |
+//! | Existential forgery from the verifying key **plus one observed (known-message) signature** | ~2⁶⁰ | seconds | `commit` one-wayness |
+//! | Total key recovery by searching the seed — *assumes a uniform 64-bit seed*, see below | ~2⁶⁴ (2⁶³ candidates × 2 hashes) | seconds | **seed entropy** — a count the backend never enters, so this row's cost is the same under either hash |
+//! | Universal forgery from the verifying key alone, on a *given* message | ~2⁶⁴ | seconds | `commit` one-wayness |
+//! | Multi-target preimage — *some* preimage among the 128 commitments (not a forgery) | ~2⁵⁷ | seconds | `commit` one-wayness |
+//! | Single-target preimage on one chosen commitment | ~2⁶³ | seconds | `commit` one-wayness |
 //!
 //! So the swap is **load-bearing** (∥ `pow-types`, `ecash-types`) and bought more than a
 //! reshuffle: it gave the scheme **its first non-trivial security exponent**. Before, the
@@ -58,13 +58,13 @@
 //! **digest-width** bound, untouched by any backend. That is the honest summary — the
 //! binding constraint moved from the *hash* to the *width*.
 //!
-//! (Why universal forgery is ~2⁶³–2⁶⁴, not ~2⁵⁷: a *chosen*-message forgery needs the
+//! (Why universal forgery is ~2⁶⁴, not ~2⁵⁷: a *chosen*-message forgery needs the
 //! preimages for 64 **specific** `(position, bit)` commitments. One pass over the `commit`
 //! domain checking each candidate against a 64-entry table finds them all at ~2⁶⁴ — the
 //! same batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage
 //! and hence no signature. Searching the seed recovers all 128 at ~2⁶³ *candidates*, but a
-//! seed test costs two hashes to a preimage test's one, so the two routes are at parity in
-//! hash calls. An earlier draft argued 2⁶⁹ "one at a time" against 2⁶³; that was a
+//! seed test costs two hashes to a preimage test's one, so both routes land at ~2⁶⁴ hash
+//! calls — there is no ~2⁶³-hash universal forgery. An earlier draft argued 2⁶⁹ "one at a time" against 2⁶³; that was a
 //! strawman — no attacker works one target at a time.)
 //!
 //! ⚠ **THE MODEL THIS TABLE PRICES — two assumptions, and the crate violates both in its
@@ -75,17 +75,26 @@
 //! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
 //!   entropy contract, and every seed in this crate's tests, its doctest, and `mss-types` is
 //!   a low-entropy literal (`42`, `0x5EED`, `0x00C0_FFEE`). Such a key falls in **≲2²⁵** —
-//!   cheaper than the 2³² collision — and this defeats not only the key-recovery row but
-//!   *every* row marked "yes": recover the seed, mint the key, sign anything. With a
+//!   cheaper than the 2³² collision — and this defeats *every* row in the table except the
+//!   second-preimage row (a pure hash property, unreachable from the key): recover the
+//!   seed, mint the key, sign anything. With a
 //!   guessable seed the binding constraint is neither the hash nor the width, but the seed.
 //!   Treat the seed as key material.
 //! - **A second signature under one key.** Two signatures harvest both preimage sides
-//!   wherever their digests differ; assembling a third-message forgery from them costs
-//!   **~2^16.5** — demonstrated in-crate by
-//!   `two_harvested_signatures_forge_a_verifying_third_message`, which runs inside the test
-//!   suite in under a second. The one-time signature model excludes this by construction
-//!   (one signing query), which is why it is not a table row — but the crate reaches it via
-//!   the retained-seed re-mint, so it is not hypothetical here.
+//!   wherever their digests differ, and a third message covered by their union is then
+//!   forgeable. The one-time signature model excludes this by construction (one signing
+//!   query), which is why it is not a table row — but the crate reaches it, so it is not
+//!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the three
+//!   differ by orders of magnitude:
+//!   - **A 2-query chosen-message adversary** — who picks the second signed message to
+//!     maximise digest disagreement — pays **~2^16.5**, demonstrated in-crate by
+//!     `two_harvested_signatures_forge_a_verifying_third_message` (sub-second in the suite).
+//!   - **A passive observer** of two signatures on messages he did *not* choose pays
+//!     ~2³², since the agreement set is Binomial(64, ½) with median 32.
+//!   - **A retained-seed holder** — the route this crate actually demonstrates — pays
+//!     essentially **nothing**: he re-mints the key (~2⁸ hashes) and signs whatever he
+//!     likes, as `a_retained_seed_re_mints_the_key_and_forges_a_second_message` shows. The
+//!     harvest is a *weaker* attack than the hole that reaches it.
 //!
 //! So "the cheapest break is ~2³²" is a statement **about a correctly-used key**, not about
 //! this crate as its examples demonstrate it.
@@ -120,8 +129,9 @@
 //! The three roles are tagged with distinct prefix bytes — `0x00` for [`prg`] (secret
 //! derivation), `0x01` for [`commit`], `0x02` for [`digest`] — so a preimage, a
 //! commitment, and a message digest can never be confused across roles: their hash
-//! *inputs* are disjoint by construction (fixed tag, fixed field widths), at any hash
-//! strength. That bounds the *inputs* only. Whether two distinct inputs collide in the
+//! *inputs* are disjoint by construction — the leading tag byte alone suffices, since it
+//! differs across the three roles (`digest`'s input is variable-length; the other two are
+//! fixed-width) — at any hash strength. That bounds the *inputs* only. Whether two distinct inputs collide in the
 //! *output* is the collision resistance of **this truncated function** — ~2³² — not
 //! the ~2¹²⁸ of untruncated SHA-256.
 //!
@@ -156,7 +166,9 @@ use sha2::{Digest as _, Sha256};
 /// collision — so ~2⁶⁴ and **~2³²** here. ([`commit`] is the one role priced at ~2⁶³
 /// rather than ~2⁶⁴, for a reason specific to it and *not* a truncation rule: its domain
 /// is exactly `u64`, the same size as its range and guaranteed to contain the preimage,
-/// so it is an exhaustive search of `2⁶⁴` candidates averaging half. An earlier draft
+/// so it is a search of `2⁶⁴` candidates rather than an unbounded one. (~2⁶³ is the
+/// unique-preimage average and is *conservative*: under a random-function model the target
+/// has 1 + Poisson(1) preimages, giving ~2^62.6.) An earlier draft
 /// stated "~2^(n−1) expected preimage" as the generic rule, which is wrong — that figure
 /// belongs to the bounded-domain case only, and it contradicted this module's own
 /// second-preimage row at ~2⁶⁴.) Not "preserves preimage resistance": SHA-256's own
@@ -319,8 +331,10 @@ mod tests {
     ///
     /// The collision pair below was found offline by a birthday search (~2³² hash
     /// evaluations — minutes of multicore wall time; an earlier draft said "~36
-    /// core-seconds", which is below the physical floor of any SHA-256 implementation and
-    /// was a wall-vs-core units error). It is **key-independent**, so one precomputation
+    /// core-seconds", which is ~4x faster than this CPU's measured OpenSSL bulk ceiling
+    /// (2^32 >= ~153 core-seconds here) and was a wall-vs-core units error — implausible on
+    /// a CPU, though a consumer GPU does 2^32 in well under a second, so it is not any kind
+    /// of physical floor). It is **key-independent**, so one precomputation
     /// forges under every key this crate will ever mint. This is the bound the graduation does NOT
     /// close — it is a property of the width, not of SHA-256.
     #[test]
