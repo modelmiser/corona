@@ -1,11 +1,19 @@
 [package]
 name = "pow-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "MIT"
-description = "TOY typestate crate: proof of work (hashcash) — validity reduces to the E0451 seal, cost does not (Corona leaf 18)."
+description = "GRADUATED typestate crate: proof of work (hashcash) — validity reduces to the E0451 seal, cost does not (Corona leaf 18). Backend graduated from toy FNV-1a to vetted SHA-256, which is what makes 'a valid witness implies work was expended' hold at all: over a preimage-resistant hash, brute-force search is the only way to clear the target (expected 2^BITS hashes). The EFFORT residue survives the graduation — a witness reached on the first lucky try and one after 2^BITS grinds are byte-identical, so no type and no compile-time fact can witness search cost; effort is a property of the SEARCH that produced a value, not of the value. The first residue about a value's PRODUCTION HISTORY (cf. consttime-25's timing residue)."
 publish = false
 
 # Leaf 18 of the Corona garden. Standalone: imports neither corona-core nor any
 # sibling leaf — a residue-drawing leaf (cost/effort) leans on nothing in the garden.
+#
+# Graduated backend (CHARTER.md criterion #2): toy 64-bit FNV-1a -> vetted SHA-256
+# (via the audited `sha2` crate) behind the same `work_digest` seam; the seam's
+# function names are unchanged, only the body and the `Digest` output width
+# (`u64` -> `[u8; 32]`, i.e. 64- -> 256-bit difficulty range). Fan-in 0 AND fan-out 0
+# (self-contained), so the width change carries ZERO blast radius.
+# `forbid(unsafe_code)` governs *our* code, not the vetted dependency.
 [dependencies]
+sha2 = "0.10"
