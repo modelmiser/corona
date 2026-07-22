@@ -65,24 +65,16 @@
 //!   `a_digest_collision_forges_across_keys_at_the_toy_width`). That bound is a
 //!   property of the **64-bit width**, which the graduation deliberately left alone —
 //!   not of SHA-256.
-//! - **What the graduation did buy — the scheme's first non-trivial exponent.**
-//!   Unforgeability here needs **three** properties: `commit` one-way, `prg` unpredictable under
-//!   its seed (a requirement textbook Lamport lacks — this leaf derives all 128 preimages from
-//!   a seed, so a predictable `prg` hands over the unrevealed ones; inverting it on one
-//!   revealed preimage yields the whole key from a single signature), and `digest`
-//!   collision-resistant. (Two further assumptions — `prg` output-uniformity and `digest`
-//!   preimage resistance — price [`hash`]'s cost table without changing the floor.)
-//!   The toy FNV-1a failed all three **outright**: over a fixed-length input FNV is affine in
-//!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
-//!   lattice reduction solves in well under a second per target, completely and without memory.
-//!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256 supplies
-//!   `commit` one-wayness at ~2⁶³ and collision resistance up to the width; `prg`
-//!   unpredictability is *not* the backend's to supply beyond ~2⁶³ either, but for a different
-//!   reason — the **64-bit seed** caps it, since a 2⁶³ seed search yields every unrevealed
-//!   preimage whatever hash sits underneath. So against a **correctly-used key** the cheapest break becomes the ~2³²
-//!   collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
-//!   improved too — universal forgery from the public key alone did not vanish but moved
-//!   to ~2⁶⁴. It still does *not* make the scheme unforgeable.
+//! - **What the graduation did buy — the scheme's first non-trivial exponent.** Under the toy
+//!   FNV-1a the cheapest break was **total key recovery in seconds**; under SHA-256, against a
+//!   *correctly-used* key, it is the ~2³² collision above. The *class* improved with it, and
+//!   universal forgery from the public key alone moved to ~2⁶⁴ rather than vanishing.
+//!   Load-bearing (∥ `pow`, `ecash`) — and still not unforgeable.
+//!
+//!   [`hash`] is the single canonical posture: which three properties unforgeability needs,
+//!   which two further assumptions only price the cost table, which *parameter* caps each, and
+//!   why the toy failed all three. This banner does not restate that derivation — an earlier
+//!   draft did, and every round of review found the two copies disagreeing somewhere.
 //! - **⚠ "Correctly-used" is doing real work, and this crate's own examples violate it.**
 //!   The ~2³² floor assumes the seed was drawn **uniformly** and discarded, and that the key
 //!   signs **at most once**. [`generate`](SigningKey::generate) enforces no entropy
