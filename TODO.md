@@ -157,7 +157,7 @@ work (complete tasks, add children, keep siblings).
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
       demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —
       but only for a CORRECTLY-USED key: the crate's own literal seeds fall in ≲2²⁵ and two
-      signatures under one key forge a third (~2^16.5 chosen-message, ~2³² for a passive
+      signatures under one key forge a third (~2^16.3 chosen-message, ~2³² for a passive
       observer — and ~nothing for the retained-seed holder who re-mints), so the ~2³² floor is a claim about
       correct usage, not about the demonstration. The
       first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap
@@ -169,8 +169,9 @@ work (complete tasks, add children, keep siblings).
       never expressed the property that changed — coverage, not triumph; precedents are POW and
       ECASH, not bloom/translog; what is unique to lamport is that it is the only wire that
       pre-existed its own graduation). Part 3 added — the two-signature coverage lemma and, separately,
-      `collision_transfers_signature` (the ~2³² break, thin `Eq.subst`, needs a message
-      layer) — backend-independent, so OCCASIONED by the graduation, not contributed by it.
+      `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
+      layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
+      not in faithfulness, since `held` assumes the one-wayness the swap bought.
       Cold review R1: 6 CRIT + 20 MOD; R2 continued. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
       `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),

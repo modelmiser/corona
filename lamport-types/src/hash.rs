@@ -94,7 +94,7 @@
 //!
 //! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
 //!   entropy contract, and every seed in this crate's tests, its doctest, and `mss-types` is
-//!   a low-entropy literal (`42`, `0xA5A5`, `0xF0F0`, `0x00C0_FFEE`, `0xC0FFEE`). Such a key falls in **≲2²⁵**
+//!   a low-entropy literal (`1`, `42`, `0xA5A5`, `0xF0F0`, `0x00C0_FFEE`). Such a key falls in **≲2²⁵**
 //!   hash evaluations (2²⁴ candidates × 2) —
 //!   cheaper than the 2³² collision — and this defeats *every* row in the table except the
 //!   second-preimage row (a pure hash property, unreachable from the key): recover the
@@ -109,7 +109,7 @@
 //!   differ by orders of magnitude:
 //!   - **A 2-query chosen-message adversary** — who searches for a second signed message
 //!     whose digest disagreement clears a threshold (the in-crate test uses 48, verified
-//!     optimal) — pays **~2^16.5**. That *search cost* is demonstrated in-crate by
+//!     optimal) — pays **~2^16.3**. That *search cost* is demonstrated in-crate by
 //!     `two_harvested_signatures_forge_a_verifying_third_message` (sub-second in the suite),
 //!     though that test obtains its second signature by re-minting rather than by a query.
 //!   - **A passive observer** of two signatures on messages he did *not* choose pays ~2³²

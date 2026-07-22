@@ -82,7 +82,7 @@
 //!   low-entropy literal, recoverable in **≲2²⁵**, which is *cheaper than the collision*
 //!   and defeats every other bound too (recover the seed, mint the key, sign anything).
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
-//!   third message for **~2^16.5** *for a 2-query chosen-message adversary*, demonstrated
+//!   third message for **~2^16.3** *for a 2-query chosen-message adversary*, demonstrated
 //!   in-crate — a passive observer pays ~2³² at the median (~2^37.4 in expectation) and a seed
 //!   holder ~2⁸ (see [`hash`]). So the binding constraint is the
 //!   width only for a key used properly; for a key used as demonstrated, it is the seed.
@@ -357,7 +357,7 @@ mod tests {
         // opening of the vk's published commitment for its side. (Assembling a full
         // third-message signature additionally needs a message whose digest is covered. That
         // is NOT a preimage search (which would be ~2^64): it is a partial match on the <=16-bit
-        // agreement set, ~2^16.5 total — completed by the very next test. The harvested material
+        // agreement set, ~2^16.3 total — completed by the very next test. The harvested material
         // is what makes the remaining step mechanical rather than cryptographic.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);
