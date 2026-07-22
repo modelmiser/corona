@@ -168,8 +168,8 @@ work (complete tasks, add children, keep siblings).
       a claim about the BACKEND, not a fitness-for-use certificate. Sol: `Sol.Lib.Lamport`
       moved no pre-existing theorem (the model quantifies over an abstract `accepts`, so it
       never expressed the property that changed — coverage, not triumph; precedents are POW and
-      ECASH, not bloom/translog; what is unique to lamport is that it is the only wire that
-      pre-existed its own graduation). Part 3 added — the two-signature coverage lemma and, separately,
+      ECASH, not bloom/translog; lamport's wire pre-existed its graduation, so the swap
+      was testable against theorems written beforehand — no uniqueness claimed). Part 3 added — the two-signature coverage lemma and, separately,
       `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
       layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
       not in faithfulness, since `held` assumes the one-wayness the swap bought.

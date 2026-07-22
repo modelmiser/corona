@@ -358,7 +358,8 @@ mod tests {
         // opening of the vk's published commitment for its side. (Assembling a full
         // third-message signature additionally needs a message whose digest is covered. That
         // is NOT a preimage search (which would be ~2^64): it is a partial match on the <=16-bit
-        // agreement set, ~2^16.3 total — completed by the very next test. The harvested material
+        // agreement set, ~2^16.3 for THIS sequential algorithm — a jointly-choosing adversary
+        // pays ~2^9 (see `hash`) — completed by the very next test. The harvested material
         // is what makes the remaining step mechanical rather than cryptographic.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);

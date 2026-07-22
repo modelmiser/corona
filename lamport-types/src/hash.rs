@@ -58,7 +58,10 @@
 //! collision** — and universal forgery, rather than vanishing, moved to ~2⁶⁴.
 //!
 //! What graduation did **not** do is make the scheme unforgeable: the residual ~2³² is a
-//! **digest-width** bound, untouched by any backend. That is the honest summary — the
+//! **digest-width** bound, untouched by any backend. Note the ~2³² is the cost to *originate*
+//! the break — every cost ordering in these docs is stated in that convention. Because the
+//! collision is key-independent and a pair is now pinned in the tests, the *marginal* cost of
+//! forging against any key this crate mints is zero. That is the honest summary — the
 //! binding constraint moved from the *hash* to the *width*.
 //!
 //! (Why universal forgery is ~2⁶⁴, not ~2⁵⁷: a forgery on a *given* message needs the
@@ -72,7 +75,7 @@
 //! ‡ Row 3, derived: open `k` of the
 //! 64 unknown-side commitments by multi-target scan, then search for a message whose digest
 //! matches the observed one on the remaining `64−k` positions — cost `k·(2⁶⁴/T) + 2^(64−k)`.
-//! With `T = 128` preimages in the domain (the 1+Poisson(1) model derived below) the optimum
+//! With `T = 128` targets (the 128 published commitments; the 1+Poisson(1) multiplicity model is a separate matter, derived below) the optimum
 //! sits at `k = 6–7`, giving `8·2⁵⁷ ≈ 2⁶⁰`. Neither term dominates the exponent there (they
 //! sit within a small constant factor), which is why this row alone is bounded by *both*
 //! one-wayness and width.
@@ -107,14 +110,14 @@
 //!   wherever their digests differ, and a third message covered by their union is then
 //!   forgeable. The one-time signature model excludes this by construction (one signing
 //!   query), which is why it is not a table row — but the crate reaches it, so it is not
-//!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the three
-//!   differ by orders of magnitude:
+//!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the
+//!   four routes below differ by orders of magnitude:
 //!   - **A 2-query chosen-message adversary** pays **~2⁹–2¹⁰ hash evaluations**. He may
 //!     choose all three messages *jointly*, which makes this a birthday problem rather than a
 //!     sequential search: each position is covered with probability `3/4` (the two signed
 //!     digests agree there half the time), so a random triple works with probability
 //!     `(3/4)⁶⁴ = 2^-26.6`, and a pool of `N` hashed messages holds `~N³/2` triples — giving
-//!     `N ≈ 2^9.4`. This is the `q = 2` case of the curve that also prices row 1: with
+//!     `N ≈ 2^9.2`. This is the `q = 2` case of the curve that also prices row 1: with
 //!     `P = (1−2^-q)⁶⁴`, `q = 1` yields `2^32.5` (row 1's ~2³²) and `q = 2` yields `2^9.4`.
 //!     (It spends ~2^26.5 cheap mask/compare operations alongside those hashes, so in
 //!     wall-clock it is comparable to the next figure; in the table's declared unit — hash

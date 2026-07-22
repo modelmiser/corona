@@ -226,7 +226,8 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > forges at **~2³²** under chosen message (demonstrated, and executable in-crate) — and
 > that holds only for a *correctly-used* key: the crate's own low-entropy example seeds
 > fall in ≲2²⁵, and a retained seed re-mints the key so its holder signs freely (the
-> two-signature harvest costs ~2⁹–2¹⁰ hash evaluations for a chosen-message adversary
+> two-signature harvest costs ~2⁹–2¹⁰ hash evaluations for a chosen-message adversary who
+> picks all three messages jointly
 > (~2^16.3 by the crate's own sequential demo), but the re-mint that
 > reaches it costs almost nothing). That cap is
 > the illustrative **width**, not SHA-256 — the graduation moved which assumption carries
