@@ -93,7 +93,7 @@
 //! and what they still do not:
 //!
 //! - **Cryptographic forward secrecy holds** for the *chain-key compromise* threat: an
-//!   attacker who compromises `CKᵢ₊₁` learns nothing of any past `CKⱼ` or `MKⱼ` (`j ≤ i`) —
+//!   attacker who compromises `CKᵢ₊₁` cannot feasibly compute any past `CKⱼ` or `MKⱼ` (`j ≤ i`) —
 //!   under the standard assumption that the SHA-256 derivations behave as a random oracle /
 //!   PRF (preimage resistance stops chain inversion; the derivations' *independence* hides the
 //!   past message keys). This is the guarantee the toy backend lacked. **Caveat:** the
@@ -122,13 +122,16 @@
 //! inverse (a residue *named* — a SHA-256 preimage search, discharged outside Lean). What Lean
 //! proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
 //! (Which branch a held value falls in is a property of *that value* under SHA-256, and is
-//! unprovable; under a random-function heuristic a held value has a unique preimage with
-//! probability ≈0.58 and ≥2 preimages with ≈0.42 — Poisson(1) — so **both** legs are real
-//! cases, and the ≈0.58 *named* leg is if anything the common one, not a rare worst case.
-//! Preimage resistance is the operative assumption in that named leg; the ≈0.42 colliding
-//! leg is *unconditional* — information-theoretic, needing no assumption. Note the frequent
-//! conflation to avoid: SHA-256 having collisions *somewhere* does **not** make a given held
-//! value multi-preimage — most image points have exactly one preimage.)
+//! unprovable; but a held `CKᵢ₊₁` is by construction the image of its predecessor `CKᵢ`, so
+//! it always has ≥1 preimage, and under a random-function heuristic its preimage count is
+//! `1 + Poisson(1)` — a unique preimage with probability e⁻¹≈0.37, ≥2 with ≈0.63. A
+//! *traversed* value is size-biased toward more preimages; this is **not** the ≈0.58 of a
+//! *uniformly-random image point* — the conflation to avoid (SHA-256 having collisions
+//! *somewhere* is a different question again). So both legs are real, and the ≈0.63
+//! *discharged* (colliding) leg — information-theoretic, unconditional — is if anything the
+//! common one; preimage resistance is the operative assumption only in the ≈0.37 *named*
+//! (unique-preimage) leg. The number is not load-bearing: both legs are proved
+//! unconditionally in their case.)
 //!
 //! ## Honest limits
 //!

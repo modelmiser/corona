@@ -148,8 +148,9 @@ recovers it there (a residue *discharged*, bloom's sibling — stated per-value;
 a *unique-preimage* held value the past is *determined* but recovering it needs the step's left-inverse
 (`ratchet_left_inverse_recovers` exhibits that a left inverse suffices) — a SHA-256 preimage search,
 discharged *outside* Lean (a residue *named*, pow's sibling; which branch a held value falls in is a
-per-value property, unprovable — under a random-function heuristic ≈0.58 unique-preimage / ≈0.42 ≥2, so
-*both* legs are real cases and the *named* leg is if anything the common one, not a rare worst case).
+per-value property, unprovable — a held value is the image of its predecessor, so `1+Poisson(1)` preimages
+under a random-function heuristic, ≈0.37 unique / ≈0.63 ≥2 (size-biased, not the ≈0.58 of a uniform image
+point), so *both* legs are real and the *discharged* leg is if anything the common one; not load-bearing).
 The first wire whose residue is proved under one backend property and named under the other. The reduce-half `ratchet_held_reaches_all_future` also makes a prose
 limit a theorem: the held key reaches every *future* key, so forward secrecy is past-only, never
 post-compromise. (Non-hub — fan-in 0 and fan-out 0, imports nothing.)

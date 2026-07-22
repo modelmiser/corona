@@ -2,7 +2,7 @@
 name = "ratchet-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 10 (GRADUATED) — a symmetric KDF-chain ratchet: forward secrecy as move-linearity (E0382), backed by vetted SHA-256. The type stops key RETENTION; the KDF's one-wayness (SHA-256 modeled as a random oracle / PRF) stops INVERSION; memory-level secrecy remains a documented residue."
+description = "Corona leaf 10 (GRADUATED) — a symmetric KDF-chain ratchet: forward secrecy as move-linearity (E0382), backed by vetted SHA-256. The type stops key RETENTION; the KDF (SHA-256 modeled as a random oracle / PRF) blocks INVERSION of past keys; memory-level secrecy remains a documented residue."
 license = "MIT"
 
 # The only dependency is a vetted cryptographic hash: `sha2` (RustCrypto), used as the
