@@ -74,7 +74,7 @@
 //!   supplies one-wayness at ~2⁶³, so against a **correctly-used key** the cheapest break
 //!   becomes the ~2³² collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
 //!   improved too — universal forgery from the public key alone did not vanish but moved
-//!   to ~2⁶³. It still does *not* make the scheme unforgeable.
+//!   to ~2⁶⁴. It still does *not* make the scheme unforgeable.
 //! - **⚠ "Correctly-used" is doing real work, and this crate's own examples violate it.**
 //!   The ~2³² floor assumes the seed was drawn **uniformly** and discarded, and that the key
 //!   signs **at most once**. [`generate`](SigningKey::generate) enforces no entropy
@@ -82,7 +82,8 @@
 //!   low-entropy literal, recoverable in **≲2²⁵**, which is *cheaper than the collision*
 //!   and defeats every other bound too (recover the seed, mint the key, sign anything).
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
-//!   third message for **~2^16.5**, demonstrated in-crate. So the binding constraint is the
+//!   third message for **~2^16.5** *for a 2-query chosen-message adversary*, demonstrated
+//!   in-crate — a passive observer pays ~2³² and a seed holder ~2⁸ (see [`hash`]). So the binding constraint is the
 //!   width only for a key used properly; for a key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
