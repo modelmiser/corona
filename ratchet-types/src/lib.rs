@@ -114,6 +114,11 @@
 //! *injective* one it is determined but computable only with the KDF's inverse (a residue
 //! *named* — the SHA-256 preimage-resistance assumption, discharged outside Lean). What
 //! Lean proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
+//! (Naming SHA-256 in the *injective* branch is a **conservative worst case**: modeled as a
+//! random function, SHA-256's fixed-length step is generically *non*-injective — so the real
+//! backend most likely sits in the discharged branch, where forward secrecy is even stronger
+//! — but its injectivity is unprovable either way, and preimage resistance is the operative
+//! assumption in *both* branches, so the wire names it in the harder one.)
 //!
 //! ## Honest limits
 //!

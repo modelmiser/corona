@@ -341,7 +341,8 @@ work (complete tasks, add children, keep siblings).
       memory-level secrecy + seed-discard. Not HKDF/HMAC (a SHA-256 hash chain; prod
       may prefer HKDF-SHA256 behind the same seam). SHA-256 backend pinned to an
       independent oracle (python hashlib golden vectors). Rust 13 unit + 4 doctests;
-      Sol 7/8 theorems axiom-free, only held_reaches = [propext, Quot.sound]; full Sol green.
+      Sol 7/8 module theorems axiom-free (5 re-exported to the scoreboard), only held_reaches
+      = [propext, Quot.sound]; full Sol green.
       Corona code `0705a8a`, Sol wire `38f6404`. **[cold review below]**
 
 ## Now (leaf 11 — accumulator-types)

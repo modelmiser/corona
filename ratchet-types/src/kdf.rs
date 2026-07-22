@@ -18,7 +18,11 @@
 //!   This is the half the backend supplies, and the toy FNV mixing **abstained** from it
 //!   (it made no one-wayness guarantee). SHA-256's **preimage resistance** is what now
 //!   supplies it: recovering `CKᵢ` from `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a hash-preimage
-//!   search, computationally infeasible.
+//!   search, computationally infeasible — *for a full-entropy chain key*. Note the
+//!   **illustrative** [`init`] seeds the chain from only a 64-bit value, so an attacker with
+//!   any `CKⱼ` could brute-force the seed in ~2⁶⁴ and re-derive the whole chain *regardless*
+//!   of SHA-256; a real chain key is a full-entropy key-agreement output (see [`init`]'s
+//!   note), which is why the 64-bit seed is illustrative and not the graduated interface.
 //!
 //! So this swap is *load-bearing* — but in a **weaker** sense than `pow-types`' SHA-256
 //! swap. There, the toy was *provably* invertible and the leaf's own headline was
@@ -32,15 +36,18 @@
 //!
 //! Each derivation is a single domain-separated SHA-256 call, `SHA-256(tag ‖ input)`, with
 //! a distinct leading `tag` byte per role (`0x00` init, `0x01` next-chain, `0x02` message).
-//! The tags give the three roles **distinct inputs**; that their outputs for a given chain
-//! key actually differ (`MKᵢ ≠ CKᵢ₊₁`) is an empirical fact, pinned by golden vectors — *not*
-//! a consequence of collision resistance (which bounds *finding* a colliding pair, not that
-//! two chosen fixed inputs differ). That distinctness is only *necessary*, and it guards a
-//! *different* direction than forward secrecy: it stops a leaked `MKᵢ` from simply **being**
-//! `CKᵢ₊₁` and unlocking the chain **forward**. Forward secrecy proper — protecting the
-//! **past** against a **future** compromise — is the **preimage-resistance** direction: an
-//! attacker holding `CKᵢ₊₁` cannot invert to `CKᵢ` and thence to any past `MKⱼ` (`j ≤ i`).
-//! That inversion resistance is the property the graduation supplies.
+//! The security rests on the **one-wayness (preimage resistance)** of these derivations, and
+//! it is preimage resistance doing the work in *both* threat directions: an attacker holding
+//! `CKᵢ₊₁` cannot invert `next_chain` to `CKᵢ` (protecting the **past** — forward secrecy
+//! proper), and an attacker holding a leaked `MKᵢ` cannot invert `message_key` to `CKᵢ`
+//! (which would yield `CKᵢ₊₁` and the whole **future**). Domain separation contributes only
+//! a *necessary but insufficient* side condition: distinct tags give the roles distinct
+//! inputs, so a leaked `MKᵢ` is not simply `CKᵢ₊₁` outright. That the outputs actually differ
+//! (`MKᵢ ≠ CKᵢ₊₁`) for a given key is an empirical fact pinned by golden vectors — *not* a
+//! collision-resistance consequence (collision resistance bounds *finding* a colliding pair,
+//! not that two chosen fixed inputs differ). But distinctness secures nothing on its own:
+//! without one-wayness an attacker inverts either derivation regardless. The workhorse
+//! throughout is preimage resistance; distinctness merely rules out the trivial identity.
 //!
 //! This is a SHA-256 **hash chain**, *not* HKDF. A production ratchet would use
 //! HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based KDF), which adds
