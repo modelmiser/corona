@@ -223,14 +223,11 @@ property of the seam's TYPES, not of its fan-out.** (Scoped deliberately: the *v
 radius was not zero — every downstream hash value moved, which is why `mss-types` and
 `hypertree-types` take the same breaking bump — and their prose had to be rewritten twice.
 What cost nothing was recompilation.) It is also the graduation whose **cold review moved the
-thesis**, and that is the entry worth reading twice. The swap is load-bearing (∥ pow, ecash) on *two* of the
-three properties this construction needs (textbook Lamport needs two; deriving all preimages from a seed incurs a third — `prg` must be a **PRF under its seed**, not merely one-way) — `commit` one-way and `prg` a PRF, where the toy failed both **outright** — over a fixed-length input FNV-1a is affine in bounded perturbations, so inversion is a dimension-8 modular knapsack that lattice reduction solves in *seconds per target*, completely and memory-free; the toy's cheapest break was total key recovery in seconds, and an intermediate draft's "~2³² meet-in-the-middle" was a wrong correction of a true statement, and
+thesis**, and that is the entry worth reading twice. The swap is load-bearing (∥ pow, ecash) on **all three**
+properties this construction needs — the toy failed every one, though only two are supplied
+usefully — (textbook Lamport needs two; deriving all preimages from a seed incurs a third — `prg` must be a **PRF under its seed**, not merely one-way) — `commit` one-way and `prg` a PRF, where the toy failed both **outright** — over a fixed-length input FNV-1a is affine in bounded perturbations, so inversion is a dimension-8 modular knapsack that lattice reduction solves in *seconds per target*, completely and memory-free; the toy's cheapest break was total key recovery in seconds, and an intermediate draft's "~2³² meet-in-the-middle" was a wrong correction of a true statement, and
 SHA-256 supplies one-wayness at ~2⁶³. So graduation gave the scheme **its first non-trivial exponent**, not
-merely a better break-class. The *other* property is collision resistance of `digest`, and because `verify`
-re-derives `digest(message)` and checks preimages against **that**, a signature binds to the digest: at the
-illustrative 64-bit width a birthday pair forges at **~2³²**, demonstrated offline (~2³² evaluations) and now
-executable in-crate (`a_digest_collision_forges_across_keys_at_the_toy_width` — key-independent, so one
-offline precomputation forges under every key the crate mints). The first draft published "~2⁶⁴" as *the*
+merely a better break-class. The third property, collision resistance of the 64-bit `digest`, is supplied only up to the width. The first draft published "~2⁶⁴" as *the*
 security figure and never mentioned collisions; review corrected it. So the honest claim is that graduation
 upgraded the **class** of break — universal-forgery-from-the-public-key → existential-forgery-needing-a-
 signed-message — and, once the FNV calibration was corrected, gave the scheme its **first non-trivial

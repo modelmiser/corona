@@ -150,11 +150,10 @@ work (complete tasks, add children, keep siblings).
       `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
       `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
       ALL THREE properties this construction needs — though only two usefully (textbook Lamport needs two; deriving
-      all preimages from a seed incurs a third — `prg` must be a PRF under its seed, not merely one-way): `commit` and `prg` are now
-      one-way (~2⁶³), which
+      all preimages from a seed incurs a third — `prg` must be a PRF under its seed, not merely one-way): `commit` one-wayness and `prg` unpredictability are now supplied at ~2⁶³, which
       the toy made false **outright** (FNV-1a over a fixed-length input is a
       lattice-solvable dim-8 knapsack — seconds per target; R1's "~2³² meet-in-the-middle"
-      was itself a wrong correction, and R2 restored the original true claim). **The other property is NOT repaired, and cold review is what
+      was itself a wrong correction, and R2 restored the original true claim). **The third property is supplied only up to the width, and cold review is what
       established that:** `verify` re-derives `digest(message)`, so a signature binds to the
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
       demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —

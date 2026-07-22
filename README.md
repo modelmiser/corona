@@ -216,16 +216,17 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > the swap is type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no
 > **type** edits (their hash values did change, and their docs were revised).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
-> `digest`/`commit`/`prg` seam. Load-bearing on *two* of the three properties
-> unforgeability needs — `commit` and `prg` are now one-way (~2⁶³), which the toy made false
-> outright (FNV-1a is lattice-invertible in seconds). `prg` PRF-ness is a requirement
-> textbook Lamport lacks: this leaf derives all 128 preimages from a seed, so `prg` must be
-> unpredictable under it — one-wayness alone is insufficient — inverting `prg` on one revealed preimage yields the whole key from a single
-> signature. Together these are
-> the scheme's first non-trivial security exponent.
+> `digest`/`commit`/`prg` seam. Load-bearing on **all three** properties unforgeability
+> needs — the toy failed every one — though only two usefully: `commit` one-wayness and `prg`
+> unpredictability are now supplied at ~2⁶³, both of which the toy lacked outright (FNV-1a is
+> lattice-invertible in seconds). `prg` unpredictability is a requirement textbook Lamport
+> lacks: this leaf derives all 128 preimages from a seed, so `prg` must be unpredictable under
+> it (a PRF suffices) — one-wayness alone is insufficient, since inverting `prg` on one
+> revealed preimage yields the whole key from a single signature. Together these are the
+> scheme's first non-trivial security exponent.
 >
-> ⚠ **Still NOT production crypto.** The other property is collision resistance of the
-> 64-bit `digest`, and `verify` binds a signature to the *digest*, so a birthday pair
+> ⚠ **Still NOT production crypto.** The third property, collision resistance of the
+> 64-bit `digest`, is supplied only up to the width, and `verify` binds a signature to the *digest*, so a birthday pair
 > forges at **~2³²** under chosen message (demonstrated, and executable in-crate) — and
 > that holds only for a *correctly-used* key: the crate's own low-entropy example seeds
 > fall in ≲2²⁵, and a retained seed re-mints the key so its holder signs freely (the
