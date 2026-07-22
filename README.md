@@ -663,7 +663,8 @@ sole-minters firing two levels deep.
 > ⚠ **Research rung.** Both inherited hash layers are now graduated SHA-256 (Merkle from
 > leaf 4, Lamport from leaf 5's 2026-07-22 graduation, via `mss-types`), so the hash is
 > no longer the weak link — but the inherited 64-bit Lamport width still caps forgery at
-> ~2³². What keeps *this* leaf illustrative is the composition:
+> ~2³² *for a correctly-used key*; the demo's 24-bit literal root falls in ≲2²⁵, so as
+> demonstrated the seed is the weaker link. What keeps *this* leaf illustrative is the composition:
 > deterministic seeds; 2 fixed layers (real XMSS^MT uses `d` layers and WOTS+); no state
 > **persistence** protocol — which is the whole point of finding 3. Not for signing
 > anything real.

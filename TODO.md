@@ -150,9 +150,9 @@ work (complete tasks, add children, keep siblings).
       `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
       `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
       ALL THREE unforgeability properties this construction needs — though only two usefully (textbook Lamport needs two; deriving
-      all preimages from a seed incurs a third — `prg` must be a PRF under its seed, not merely one-way): `commit` one-wayness and `prg` unpredictability are now supplied at ~2⁶³, which
+      all preimages from a seed incurs a third — `prg` must be unpredictable under its seed, not merely one-way — PRF-ness only prices the cost table): `commit` one-wayness and `prg` unpredictability are now supplied at ~2⁶³, which
       the toy made false **outright** (FNV-1a over a fixed-length input is a
-      lattice-solvable dim-8 knapsack — seconds per target; R1's "~2³² meet-in-the-middle"
+      lattice-solvable dim-8 knapsack — under a second per target; R1's "~2³² meet-in-the-middle"
       was itself a wrong correction, and R2 restored the original true claim). **The third property is supplied only up to the width, and cold review is what
       established that:** `verify` re-derives `digest(message)`, so a signature binds to the
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
@@ -172,8 +172,8 @@ work (complete tasks, add children, keep siblings).
       was testable against theorems written beforehand — no uniqueness claimed). Part 3 added — the two-signature coverage lemma and, separately,
       `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
       layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
-      not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` PRF-ness — what the swap bought.
-      Cold review R1: 6 CRIT + 20 MOD; R2 continued. Four test gaps found by mutation
+      not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` unpredictability — what the swap bought.
+      Cold review: 13 rounds, ~30 CRITICALs, none in code, no two consecutive clean rounds. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
       `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),
       each now pinned and each watched failing under its mutation before acceptance.

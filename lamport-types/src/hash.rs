@@ -27,7 +27,10 @@
 //! The one-query EUF-CMA reduction: an adversary sees the verifying key and one signature on
 //! `m`, and outputs `(m*, σ*)` with `m* ≠ m`. Either `digest(m*) = digest(m)` — a **collision**
 //! — or some position `i` has `d*[i] ≠ d[i]`, so `σ*[i]` is a **preimage of the never-opened
-//! side** at `i`. The bound is `min(2³², 2⁵⁷) = 2³²`.
+//! side** at `i`. Exactly **64** commitments are never-opened (the observed signature opens the
+//! other 64, and a preimage of an opened one is worth nothing), so that branch is a 64-target
+//! scan at `2⁶⁴/64 = 2⁵⁸` — *not* the 128-target ~2⁵⁷ of table row 6. The bound is
+//! `min(2³², 2⁵⁸) = 2³²`.
 //!
 //! **Required for unforgeability:**
 //!
@@ -45,8 +48,11 @@
 //!    seed. Total key recovery from a **single observed signature**, no `commit` inversion.
 //! 3. **[`digest`] collision-resistant** — the first branch, and **the binding one**: truncation
 //!    to 64 bits caps it at ~2³² (birthday, with ~2³² storage — or ~3× the hashes memory-free
-//!    via Pollard rho). That bound is a property of the width, not of SHA-256. All three are
-//!    supplied only to the truncated width; (3) is the one whose width bound falls *below* a
+//!    via Pollard rho). That bound is a property of the width, not of SHA-256. Each of the three
+//!    is capped by a *parameter* rather than by the backend, and they are not the same parameter:
+//!    (1) by the 64-bit commitment width, (3) by the 64-bit digest width, and (2) by the **64-bit
+//!    seed** — a 2⁶³ seed search hands over every unrevealed preimage whatever hash sits under
+//!    `prg`, so no backend could supply more than that. (3) is the one whose cap falls *below* a
 //!    useful level, which is what leaves the scheme forgeable.
 //!
 //! **Assumed by the cost table, but not by the floor** (each moves rows that are not the
@@ -74,8 +80,8 @@
 //! | Attack | Cost now | Bounded now by |
 //! |---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
-//! | Second preimage on the digest (a hash property; dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
-//! | Existential forgery from the verifying key **plus one observed signature** | ~2⁶⁰ | `commit` one-wayness **and** digest width, jointly |
+//! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
+//! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly |
 //! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability |
 //! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` unpredictability |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
@@ -108,10 +114,13 @@
 //!
 //! Row 3, in outline: open `k` of the 64 **unknown-side** commitments by multi-target scan,
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
-//! positions. Only 64 commitments are useful targets — the observed signature already opens
-//! the other 64, and a preimage of an open commitment is worth nothing. The optimum sits near
-//! `k ≈ 5` at ~2⁶⁰, with neither term dominating the exponent, which is why this row alone is
-//! bounded by *both* one-wayness and width.
+//! positions — cost `k·2⁶⁴/64 + 2^(64−k)`. Only 64 commitments are useful targets, as the
+//! reduction above notes. The optimum is flat at `k = 5–6`, giving **~2^60.8**, with neither
+//! term dominating — which is why this row alone is bounded by *both* one-wayness and width.
+//! (The table rounds that to ~2⁶¹.) This uses the **unique-preimage convention**, the same one
+//! rows 6 and 7 use; a 1+Poisson(1) multiplicity model would give ~2⁶⁰ instead. One convention
+//! throughout is worth more than the better of the two figures, and an earlier draft quoted
+//! the multiplicity number beside rows priced the other way.
 //!
 //! § With one observed signature the adversary holds 64 *actual* preimages, so a seed guess
 //! is tested by one `prg` call against a revealed value rather than by `prg` + `commit`
@@ -127,7 +136,7 @@
 //! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
 //!   entropy contract, and every key seed in this crate's tests and its doctest is a
 //!   low-entropy literal (`1`, `2`, `5`, `6`, `7`, `42`, `99`, `0xA5A5`, `0xF0F0`,
-//!   `0x00C0_FFEE` — all under 24 bits); `mss-types` hands
+//!   `0x00C0_FFEE` — all **at most** 24 bits, `0x00C0_FFEE` needing exactly 24); `mss-types` hands
 //!   `generate` full-width `prg` outputs, but derives them from a literal root, so the
 //!   entropy is still the root's. Such a key falls in **≲2²⁵**
 //!   hash evaluations (2²⁴ candidates × 2 from the vk alone; **2²⁴** given one observed
@@ -151,8 +160,14 @@
 //!     `N ≈ 2^9.2`. This is the `q = 2` case of the curve that also prices row 1: with
 //!     `P = (1−2^-q)⁶⁴`, `q = 1` yields `2^32.5` (row 1's ~2³²) and `q = 2` yields `2^9.2`.
 //!     (The tuple count is q-dependent: `N²/2` pairs at `q = 1`, `N³/2` designated triples at
-//!     `q = 2`.) A simpler sequential variant — an *algorithm* cost, ~2^16, and one that
-//!     obtains its second signature by re-minting rather than by a query — is demonstrated by
+//!     `q = 2`.) ⚠ **That figure is in this table's declared unit and it inverts the true
+//!     ordering.** The joint route hashes only ~2^9.2 messages but must then examine ~N³/2 ≈
+//!     **2^26.6 designated triples**; the simpler sequential variant below costs ~2^16.3 in
+//!     *both* units. So in hash evaluations the joint route is ~2⁷ cheaper, and in total work
+//!     it is ~2¹⁰ **dearer** — the one place in these docs where the chosen unit reverses a
+//!     comparison, flagged rather than repaired, because changing the unit would misprice
+//!     every other row. That sequential variant — an *algorithm* cost, and one that obtains
+//!     its second signature by re-minting rather than by a query — is demonstrated by
 //!     `two_harvested_signatures_forge_a_verifying_third_message`, sub-second in the suite.
 //!   - **A retained-seed holder** — the route this crate actually demonstrates, and strictly
 //!     speaking not a harvest at all, since he performs none — pays
@@ -172,7 +187,7 @@
 //! the box, which is **complete** (the box is a *relaxation*: each true `dₖ` lies in a
 //! 256-wide interval offset by an unknown low byte, so `[−255,255]` contains it, and the
 //! ~250 box points per target are filtered by a forward-consistency check leaving ~2) and
-//! runs in *well under a second per target in pure Python* (measured ~0.1 s), needing no
+//! runs in **under a second per target** in pure Python, needing no
 //! memory. Same-length collisions fall out of the same enumeration for
 //! free, so the toy `digest` had no meaningful collision resistance either.)
 //!

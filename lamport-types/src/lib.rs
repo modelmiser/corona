@@ -76,8 +76,10 @@
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
 //!   lattice reduction solves in well under a second per target, completely and without memory.
 //!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256 supplies
-//!   `commit` one-wayness and `prg` unpredictability at ~2⁶³, and collision resistance up to
-//!   the width — so against a **correctly-used key** the cheapest break becomes the ~2³²
+//!   `commit` one-wayness at ~2⁶³ and collision resistance up to the width; `prg`
+//!   unpredictability is *not* the backend's to supply beyond ~2⁶³ either, but for a different
+//!   reason — the **64-bit seed** caps it, since a 2⁶³ seed search yields every unrevealed
+//!   preimage whatever hash sits underneath. So against a **correctly-used key** the cheapest break becomes the ~2³²
 //!   collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
 //!   improved too — universal forgery from the public key alone did not vanish but moved
 //!   to ~2⁶⁴. It still does *not* make the scheme unforgeable.
@@ -88,11 +90,13 @@
 //!   low-entropy literal, recoverable in **≲2²⁵**, which is *cheaper than the collision*
 //!   and defeats every other bound too (recover the seed, mint the key, sign anything).
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
-//!   third message, and how cheaply depends on the adversary: a 2-query chosen-message
-//!   adversary pays only **~2⁹–2¹⁰** hash evaluations (choosing all three messages jointly
-//!   makes it a birthday problem), a seed holder ~2⁸. [`hash`] carries the routes and the
-//!   figures; this banner does not restate them. So the binding constraint is the width only
-//!   for a key used properly; for a key used as demonstrated, it is the seed.
+//!   third message, and how cheaply depends on the adversary — cheaply enough in every case
+//!   that the ~2³² floor is irrelevant once a key signs twice. [`hash`] carries the routes,
+//!   the figures and the unit caveat that goes with them (one route is cheapest in hash
+//!   evaluations while being dearest in total work); this banner deliberately quotes no
+//!   number, because an earlier draft's two figures invited a comparison that the unit made
+//!   backwards. So the binding constraint is the width only for a key used properly; for a
+//!   key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
 //!   is the backend's job *and* the width's, and at these parameters the width loses
@@ -101,8 +105,9 @@
 //! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
 //!   candidates = ~2⁶⁴ hash calls (two per candidate) **from the verifying key alone**; given
-//!   the one signature the model grants it is ~2⁶³ hash calls, one `prg` per candidate — i.e. about 2× the ~2⁶³ of inverting
-//!   one commitment, but it yields *all 128* preimages instead of one. Real Lamport's
+//!   the one signature the model grants it is ~2⁶³ hash calls, one `prg` per candidate. So the
+//!   vk-only route is about **2×** the ~2⁶³ of inverting one commitment, and the §-halved route
+//!   *equals* it — but either yields *all 128* preimages instead of one. Real Lamport's
 //!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key

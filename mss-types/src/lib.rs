@@ -90,7 +90,9 @@
 //!   layers. **But the inherited 64-bit Lamport digest width is not**: a signature binds
 //!   to `digest(message)`, so a birthday pair forges at ~2³² (leaf 5's disclosed cap —
 //!   a property of the width, not of SHA-256), and that carries straight through this
-//!   composition. What remains illustrative is *this composition itself*: deterministic
+//!   composition. ⚠ And that is the bound for a **correctly-used** key: this crate's own
+//!   demo root is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
+//!   the weakest link is the seed, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
 //!   seeds (below), fixed capacity, and that inherited width — so `mss-types` is a
 //!   research-rung composition, **not an independently graduated leaf**; the *type*
 //!   discipline (the Merkle brand over one-time Lamport keys) is the subject.
