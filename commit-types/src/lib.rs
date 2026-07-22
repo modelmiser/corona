@@ -130,16 +130,22 @@
 //!   disagreement on concrete witnesses.
 //!
 //! **Graduation (2026-07-21) completes the wire with `Sol.Lib.Commit` Part 3** — the *reduce-half* of the
-//! duality that only becomes meaningful once the backend is a vetted hash:
+//! duality. The theorems are generic in the hash `H` (graduation changed no proof; it changed which
+//! primitive the residue is discharged to — a believed-hard SHA-256 rather than the trivially-forgeable
+//! toy FNV):
 //!
-//! - `commit_binding_reduces` — open one commitment two *distinct* ways ⟹ a hash collision. Binding
-//!   failure reduces to a collision; against the graduated SHA-256 backend that is the ~2¹²⁸ birthday
-//!   problem, not the FNV triviality it was. The twin of merkle's `merkle_collision_breaks_leaf_binding`.
-//! - `commit_binding_of_collisionFree` — the converse: a collision-free hash gives perfect binding.
-//!   Together, *binding ⟺ collision-resistance of the backend* — the residue discharged to SHA-256.
-//! - `commit_fixed_blind_leaks` — hiding's boundary, exhibited (consttime's un-typability face): fix the
-//!   blind (no type forbids it) and an injective hash leaks the value. The duality's two faces — a residue
-//!   *discharged* (binding) beside one only *named* and its failure *exhibited* (hiding) — in one leaf.
+//! - `commit_binding_reduces` — open one commitment two *distinct* ways ⟹ a hash collision (binding
+//!   failure reduces to a collision, the twin of merkle's `merkle_collision_breaks_leaf_binding`), and
+//!   `commit_binding_iff_collision` — its *genuine* converse (`collision_breaks_binding`: a collision
+//!   opens some commitment two ways) gives the real biconditional *binding fails ⟺ the hash has a
+//!   collision*. Against the graduated SHA-256 backend, exhibiting that collision is the ~2¹²⁸ birthday
+//!   problem, not the FNV triviality.
+//! - `commit_binding_of_collisionFree` — the *contrapositive* corollary (not the converse): a
+//!   collision-free hash gives perfect binding — the "vetted hash suffices" leg.
+//! - `commit_fixed_blind_links` — hiding's boundary, exhibited (consttime's un-typability face): fix the
+//!   blind (no type forbids it) and the commitment is *deterministic*, so equal values LINK — needing no
+//!   cryptographic assumption at all, exactly as the leaky-scheme test shows. The duality's two faces — a
+//!   residue *discharged* (binding) beside one only *named* and its failure *exhibited* (hiding) — one leaf.
 //!
 //! The correspondence is honest about the seam: the **match** (region-unification to decidable tag
 //! equality) is *faithful*; the brand's **freshness/unforgeability** (the `for<'brand>` non-escape) is
@@ -183,21 +189,27 @@ use core::marker::PhantomData;
 /// Per the charter's graduation criterion #2, this module is an *implementation swap
 /// behind a fixed seam*: the toy 64-bit FNV-1a that the research rung used has been
 /// replaced by domain-framed **SHA-256** (via the audited [`sha2`] crate) behind the
-/// very same [`digest_of`] seam — the function *name* and every caller
-/// ([`Commitment::verify`], [`commit`], [`commit_scoped`]) are unchanged. What *did*
-/// change: the body, and — a breaking change for the return type, carrying **zero**
-/// blast radius because this leaf has no dependents — the width of the [`Digest`] it
-/// returns (`u64` → `[u8; 32]`).
+/// very same [`digest_of`](hash::digest_of) seam — the function *name* and every caller
+/// ([`Commitment::verify`], [`commit`], [`leaky_commit`], [`ScopedCommitment::verify`],
+/// [`commit_scoped`]) are unchanged. What *did* change: the body; the removal of the toy
+/// `fnv1a` helper (private to this leaf, no external consumers); and — a breaking change
+/// for the return type, carrying **zero** blast radius because this leaf has no dependents
+/// — the width of the [`Digest`](hash::Digest) it returns (`u64` → `[u8; 32]`).
 ///
 /// ## Security posture
 ///
 /// SHA-256 is a standardized cryptographic hash with ~128-bit collision resistance
-/// and ~256-bit preimage resistance. Against this backend, forging a *second* opening
-/// of a published commitment requires finding a SHA-256 collision — not the triviality
-/// it was against FNV-1a, but the full computational assumption on SHA-256. That
-/// assumption is exactly binding's residue (crate docs, item 3): the *type* is blind
-/// to it, and the graduation's job is to hand that residue to a vetted primitive
-/// rather than a toy. `forbid(unsafe_code)` here governs *our* code, not the dependency.
+/// and ~256-bit preimage / second-preimage resistance. Two attacker games, two
+/// residues: a *malicious committer* crafting one commitment openable two ways plays
+/// the **binding** game, which is exactly finding a SHA-256 **collision** (~128-bit,
+/// the birthday bound — this is what `Sol.Lib.Commit`'s `binding_iff_collision`
+/// models); an attacker forging a *second opening of an already-published* commitment
+/// faces the harder **second-preimage** problem (~256-bit) against a fixed target.
+/// Either way, not the triviality it was against FNV-1a, but the full computational
+/// assumption on SHA-256 — which is precisely binding's residue (crate docs, item 3):
+/// the *type* is blind to it, and the graduation's job is to hand that residue to a
+/// vetted primitive rather than a toy. `forbid(unsafe_code)` here governs *our* code,
+/// not the dependency.
 ///
 /// The input is length-framed and domain-tagged (a `0x00` commitment-domain prefix,
 /// then the 8-byte value length, then the value, then the 8-byte little-endian
