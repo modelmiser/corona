@@ -42,7 +42,7 @@
 //! | Attack | Cost now (hash evaluations) | Under the toy (wall-clock) | Bounded now by |
 //! |---|---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | seconds | **digest width** |
-//! | Second preimage on the digest (known-message variant; dominated by row 3 for the same adversary) | ~2⁶⁴ | seconds | digest width |
+//! | Second preimage on the digest (known-message variant; dominated by row 3 *as a forgery route*, though not as a route to a second preimage) | ~2⁶⁴ | seconds | digest width |
 //! | Existential forgery from the verifying key **plus one observed (known-message) signature** ‡ | ~2⁶⁰ | seconds | `commit` one-wayness **and** digest width, jointly |
 //! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ (2⁶³ candidates × 2 hashes) | seconds, but by a **different route** † | **seed entropy** — the seed-search *method* costs 2⁶⁴ under either backend; what the graduation removed is the cheaper route |
 //! | Universal forgery from the verifying key alone, on a *given* message | ~2⁶⁴ | seconds | `commit` one-wayness |
@@ -61,7 +61,7 @@
 //! **digest-width** bound, untouched by any backend. That is the honest summary — the
 //! binding constraint moved from the *hash* to the *width*.
 //!
-//! (Why universal forgery is ~2⁶⁴, not ~2⁵⁷: a *chosen*-message forgery needs the
+//! (Why universal forgery is ~2⁶⁴, not ~2⁵⁷: a forgery on a *given* message needs the
 //! preimages for 64 **specific** `(position, bit)` commitments. One pass over the `commit`
 //! domain checking each candidate against a 64-entry table finds them all at ~2⁶⁴ — the
 //! same batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage
@@ -93,8 +93,10 @@
 //! two cheaper breaks exist, neither of them in the table:
 //!
 //! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
-//!   entropy contract, and every seed in this crate's tests, its doctest, and `mss-types` is
-//!   a low-entropy literal (`1`, `42`, `0xA5A5`, `0xF0F0`, `0x00C0_FFEE`). Such a key falls in **≲2²⁵**
+//!   entropy contract, and every key seed in this crate's tests and its doctest is a
+//!   low-entropy literal (`1`, `42`, `0xA5A5`, `0xF0F0`, `0x00C0_FFEE`); `mss-types` hands
+//!   `generate` full-width `prg` outputs, but derives them from a literal root, so the
+//!   entropy is still the root's. Such a key falls in **≲2²⁵**
 //!   hash evaluations (2²⁴ candidates × 2) —
 //!   cheaper than the 2³² collision — and this defeats *every* row in the table except the
 //!   second-preimage row (a pure hash property, unreachable from the key): recover the
@@ -107,11 +109,22 @@
 //!   query), which is why it is not a table row — but the crate reaches it, so it is not
 //!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the three
 //!   differ by orders of magnitude:
-//!   - **A 2-query chosen-message adversary** — who searches for a second signed message
-//!     whose digest disagreement clears a threshold (the in-crate test uses 48, verified
-//!     optimal) — pays **~2^16.3**. That *search cost* is demonstrated in-crate by
-//!     `two_harvested_signatures_forge_a_verifying_third_message` (sub-second in the suite),
-//!     though that test obtains its second signature by re-minting rather than by a query.
+//!   - **A 2-query chosen-message adversary** pays **~2⁹–2¹⁰ hash evaluations**. He may
+//!     choose all three messages *jointly*, which makes this a birthday problem rather than a
+//!     sequential search: each position is covered with probability `3/4` (the two signed
+//!     digests agree there half the time), so a random triple works with probability
+//!     `(3/4)⁶⁴ = 2^-26.6`, and a pool of `N` hashed messages holds `~N³/2` triples — giving
+//!     `N ≈ 2^9.4`. This is the `q = 2` case of the curve that also prices row 1: with
+//!     `P = (1−2^-q)⁶⁴`, `q = 1` yields `2^32.5` (row 1's ~2³²) and `q = 2` yields `2^9.4`.
+//!     (It spends ~2^26.5 cheap mask/compare operations alongside those hashes, so in
+//!     wall-clock it is comparable to the next figure; in the table's declared unit — hash
+//!     evaluations — it is far cheaper.)
+//!   - **The crate's own sequential demo** costs **~2^16.3**: pick `m₁`, search `m₂` for
+//!     digest disagreement past a threshold (48, optimal *for that algorithm*), then search
+//!     `m₃` over the residual agreement set — demonstrated by
+//!     `two_harvested_signatures_forge_a_verifying_third_message`, sub-second in the suite.
+//!     An *algorithm* cost, not the class's; it also obtains its second signature by
+//!     re-minting rather than by a query.
 //!   - **A passive observer** of two signatures on messages he did *not* choose pays ~2³²
 //!     at the *median* (the agreement set is Binomial(64, ½), median 32) — but note the
 //!     convention switch: every other figure here is an expectation, and in expectation this
@@ -127,7 +140,8 @@
 //!
 //! (Calibration on the toy. Over a **fixed-length** input FNV-1a is *affine in bounded
 //! perturbations*: since `h ⊕ b` and `h` differ only in the low byte, `h ⊕ b = h + d` with
-//! `|d| ≤ 255`, so `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)` where `h₁ = (OFFSET ⊕ 0x01)·p`. Inversion is then a
+//! `|d| ≤ 255`, so `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)` where `h₁ = (OFFSET ⊕ 0x01)·p`
+//! and `p`/`OFFSET` are FNV-1a's 64-bit prime and offset basis. Inversion is then a
 //! dimension-8 modular knapsack whose *unknowns* satisfy `|dₖ| ≤ 255` (the coefficients
 //! `p⁹⁻ᵏ mod 2⁶⁴` are full-width; it is the solution vector that is small) — lattice-reduce and enumerate
 //! the box, which is **complete** (the box is a *relaxation*: each true `dₖ` lies in a
@@ -257,8 +271,12 @@ mod tests {
     ///
     /// A mis-encoding or a backend revert leaves the *self-referential* tests passing — every
     /// test comparing `hash::commit(x)` against a stored commitment compares the hash with
-    /// itself. Only externally-pinned literals catch that class. Recompute these from an
-    /// outside oracle, or not at all.
+    /// itself. Only externally-pinned literals catch that class, and this module has **five**
+    /// such tests: these three vectors, `digest_covers_the_entire_message`,
+    /// `reserved_side_bytes_are_disjoint_from_keygen_sides`, `prg_index_field_is_full_width`,
+    /// and `a_digest_collision_forges_across_keys_at_the_toy_width` (whose pinned pair is
+    /// equally an outside artifact). Recompute any of them from an outside oracle, or not at
+    /// all.
     /// (Nuance worth keeping: an LE/BE swap does *not* break the collision test below —
     /// byte reversal is a bijection, so a collision survives it.)
     #[test]
@@ -345,7 +363,8 @@ mod tests {
     /// exactly once (E0382 fully satisfied) and the seed discarded.
     ///
     /// The collision pair below was found offline by a birthday search — ~2³² hash
-    /// evaluations, a few core-minutes here and well under a second on a consumer GPU. Because
+    /// evaluations — ~150 core-seconds of *pure hashing* here (search and storage overhead
+    /// on top), and well under a second on a consumer GPU. Because
     /// the pair is pinned below, the *marginal* cost of forging against any key this crate
     /// mints is now zero. It is **key-independent**, so one precomputation
     /// forges under every key this crate will ever mint. This is the bound the graduation does NOT

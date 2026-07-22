@@ -157,7 +157,8 @@ work (complete tasks, add children, keep siblings).
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
       demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —
       but only for a CORRECTLY-USED key: the crate's own literal seeds fall in ≲2²⁵ and two
-      signatures under one key forge a third (~2^16.3 chosen-message, ~2³² for a passive
+      signatures under one key forge a third (~2⁹–2¹⁰ for a chosen-message adversary choosing all
+      three jointly — the crate's sequential demo costs ~2^16.3 — ~2³² for a passive
       observer — and ~nothing for the retained-seed holder who re-mints), so the ~2³² floor is a claim about
       correct usage, not about the demonstration. The
       first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap
