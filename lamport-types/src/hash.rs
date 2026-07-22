@@ -2,9 +2,9 @@
 //!
 //! **⚠ NOT PRODUCTION CRYPTO.** The hash is vetted; the *parameters* are not. At this
 //! leaf's illustrative 64-bit width the scheme is **existentially forgeable under
-//! chosen message at ~2³²** (see the security posture below — this was demonstrated
-//! in ~36 core-seconds during cold review). Graduation replaced a broken *backend*,
-//! not the toy *parameters*. Do not sign anything real with this.
+//! chosen message at ~2³²** (see the security posture below; a colliding pair found
+//! offline during cold review is pinned in the tests). Graduation replaced a broken
+//! *backend*, not the toy *parameters*. Do not sign anything real with this.
 //!
 //! Per the charter's graduation criterion #2, this module is an *implementation swap
 //! behind a fixed seam*: the toy 64-bit FNV-1a that the research rung used has been
@@ -14,8 +14,9 @@
 //! [`crate::VerifyingKey::verify`]) are unchanged. The **types** are unchanged too
 //! (`u64 → u64`), unlike `merkle-types`' `u64 → [u8; 32]` graduation, so the dependent
 //! leaves (`mss-types`, and `hypertree-types` transitively) needed no type edits —
-//! this is the garden's first **hub** graduation with *zero* blast radius. Every hash
-//! *value* did change, which is why the crate takes the breaking `0.1.0 → 0.2.0` bump.
+//! this is the garden's first **hub** graduation with zero *compile-time* blast radius.
+//! Every hash *value* did change, which is why this crate and both dependents take the
+//! breaking `0.1.0 → 0.2.0` bump; the value blast radius was not zero.
 //!
 //! ## Security posture — what the swap bought, and what it did NOT
 //!
@@ -24,41 +25,66 @@
 //!
 //! 1. **[`commit`] must be one-way** — else an attacker inverts the published
 //!    commitments and forges from the verifying key alone. The toy FNV-1a failed
-//!    this. SHA-256 supplies it.
+//!    this outright. SHA-256 supplies it *at the truncated width* (~2⁶³).
 //! 2. **[`digest`] must be collision-resistant** — because `verify` re-derives
 //!    `digest(message)` and checks preimages against *that*, so a signature is bound
 //!    to the **digest**, not the message. Any two messages sharing a digest share
 //!    every valid signature. **Truncation to 64 bits caps this at ~2³²** (birthday),
 //!    and *that bound is a property of the width, not of SHA-256*.
 //!
-//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed):
+//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed).
+//! Under the **toy** every row was *seconds on a laptop*, because `commit` was
+//! invertible outright (see the calibration below) — so the "was" column is not a
+//! comparison of exponents but of a break against no break at all:
 //!
 //! | Attack | Cost | Fixed by graduation? |
 //! |---|---|---|
-//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **no** — width-bound |
-//! | Total key recovery by searching the 64-bit seed (yields *all* 128 preimages) | ~2⁶³ | no — width-bound |
-//! | Multi-target preimage — *some* preimage among the 128 commitments (not a forgery) | ~2⁵⁷ | yes (was ≤2³²) |
-//! | Single-target preimage on one chosen commitment | ~2⁶³ | yes (was ~2³²) |
-//! | Universal forgery from the verifying key alone, on a chosen message | ~2⁶³ | yes (was ~2³⁸) |
+//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **no** — digest-width bound |
+//! | Second preimage on the digest (known-message variant of the above) | ~2⁶⁴ | no — digest-width bound |
+//! | Existential forgery from the verifying key **plus one observed signature** | ~2⁶⁰ | yes |
+//! | Total key recovery by searching the seed — *assumes a uniform 64-bit seed*, see below | ~2⁶³ | yes — seed-entropy bound |
+//! | Universal forgery from the verifying key alone, on a chosen message | ~2⁶³–2⁶⁴ | yes |
+//! | Multi-target preimage — *some* preimage among the 128 commitments (not a forgery) | ~2⁵⁷ | yes |
+//! | Single-target preimage on one chosen commitment | ~2⁶³ | yes |
 //!
-//! So the swap is genuinely **load-bearing** (∥ `pow-types`, `ecash-types`) — but on a
-//! narrower claim than "unforgeable". What it changed is the *kind* of break: from
-//! **universal forgery from the public key alone, on any chosen message** (invert
-//! `commit`, mint any signature) to **existential forgery that requires a signed
-//! message and a birthday collision**. That is a real strengthening in the standard
-//! forgery hierarchy. What it did *not* change much is the cheapest exponent: the
-//! binding constraint is now the **64-bit width**, not the hash.
+//! So the swap is **load-bearing** (∥ `pow-types`, `ecash-types`) and bought more than a
+//! reshuffle: it gave the scheme **its first non-trivial security exponent**. Before, the
+//! cheapest break was total key recovery in seconds; after, the cheapest is a ~2³²
+//! existential forgery. The *class* improved too — from **universal forgery from the
+//! public key alone** to **existential forgery requiring a signed message and a
+//! collision** — and universal forgery, rather than vanishing, moved to ~2⁶³.
 //!
-//! (Why universal forgery costs ~2⁶³ and not ~2⁵⁷: forging a *chosen* message needs the
-//! preimages for 64 *specific* `(position, bit)` commitments, ~2⁶⁹ if attacked one at a
-//! time. The multi-target birthday only yields *some* preimage, which is not a
-//! signature. Searching the 64-bit seed instead recovers *all* 128 at once, so ~2⁶³
-//! dominates — an entropy bound, not a hash bound.)
+//! What graduation did **not** do is make the scheme unforgeable: the residual ~2³² is a
+//! **digest-width** bound, untouched by any backend. That is the honest summary — the
+//! binding constraint moved from the *hash* to the *width*.
 //!
-//! (Calibration on the toy: FNV-1a over a *fixed* 9-byte input is not free to invert
-//! — the honest figure is a meet-in-the-middle at ~2³², and ~2³⁸ to assemble a full
-//! 64-position forgery. "Trivially invertible" overstated it; the conclusion survives,
-//! since 2³² ≪ 2⁶³.)
+//! (Why universal forgery is ~2⁶³–2⁶⁴, not ~2⁵⁷: a *chosen*-message forgery needs the
+//! preimages for 64 **specific** `(position, bit)` commitments. One pass over the `commit`
+//! domain checking each candidate against a 64-entry table finds them all at ~2⁶⁴ — the
+//! same batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage
+//! and hence no signature. Searching the seed recovers all 128 at ~2⁶³ *candidates*, but a
+//! seed test costs two hashes to a preimage test's one, so the two routes are at parity in
+//! hash calls. An earlier draft argued 2⁶⁹ "one at a time" against 2⁶³; that was a
+//! strawman — no attacker works one target at a time.)
+//!
+//! ⚠ **The ~2⁶³ key-recovery row assumes the seed is drawn uniformly.**
+//! [`SigningKey::generate`](crate::SigningKey::generate) imposes no such contract, and
+//! every seed in this crate's tests and in `mss-types` is a low-entropy literal
+//! (`42`, `0x5EED`, `0xC0FFEE`). A key generated the way the examples demonstrate is
+//! recoverable in ≲2²⁵ — **cheaper than the 2³² collision**, i.e. with a guessable seed
+//! the binding constraint is not the width but the seed. Treat the seed as key material.
+//!
+//! (Calibration on the toy — a *correction of a correction*. An intermediate draft claimed
+//! FNV-1a inversion "is not free — a meet-in-the-middle at ~2³²". That was wrong, and it
+//! walked back a true statement. Over a **fixed-length** input FNV-1a is *affine in bounded
+//! perturbations*: since `h ⊕ b` and `h` differ only in the low byte, `h ⊕ b = h + d` with
+//! `|d| ≤ 255`, so `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)`. Inversion is then a
+//! dimension-8 modular knapsack with `|coefficients| ≤ 255` — lattice-reduce and enumerate
+//! the box, which is **complete** (every genuine preimage's tuple lies in it) and runs in
+//! *seconds per target in pure Python*, needing no memory. The original "trivially
+//! invertible" was accurate. Same-length collisions fall out of the same enumeration for
+//! free, so the toy `digest` had no meaningful collision resistance either — the toy's
+//! cheapest break was never 2³².)
 //!
 //! ## The 64-bit width is a SEPARATE toy dimension, deliberately left alone
 //!
@@ -99,9 +125,11 @@
 use sha2::{Digest as _, Sha256};
 
 /// SHA-256 of a byte string, truncated to its **leading** 64 bits (`out[..8]`, read
-/// big-endian). Truncation preserves preimage resistance at the truncated width
-/// (~2⁶³ expected) but **halves collision resistance in the exponent** (~2³²) — the
-/// cap that bounds this scheme's unforgeability. See the module security posture.
+/// big-endian). Truncating to `n` bits gives the generic bounds *at that width* —
+/// ~2^(n−1) expected preimage, ~2^(n/2) collision — so here ~2⁶³ and **~2³²**, the cap
+/// that bounds this scheme's unforgeability. (Not "preserves preimage resistance":
+/// SHA-256's own ~2²⁵⁶ drops to ~2⁶³, and its ~2¹²⁸ collision resistance to ~2³².) See
+/// the module security posture.
 fn sha256_u64(bytes: &[u8]) -> u64 {
     let mut h = Sha256::new();
     h.update(bytes);
@@ -166,11 +194,14 @@ mod tests {
     /// golden literal pins the wire contract. Each value is
     /// `SHA256(tag ‖ big-endian fields)[..8]`, read big-endian.
     ///
-    /// Cold review confirmed this test is what catches that whole class: reverting the
-    /// bodies to FNV-1a, or applying any of 8 mis-encoding mutations (LE/BE swap,
-    /// `out[24..32]`, tag swaps, field-order swaps), fails **here and nowhere else** in
-    /// the 34-crate workspace. It is therefore a single point of failure by design —
-    /// do not weaken these literals without recomputing them from an outside oracle.
+    /// Cold review confirmed this class of defect is caught **only** by externally-pinned
+    /// literals: a mis-encoding (LE/BE swap, `out[24..32]`, tag swap, field-order swap) or
+    /// a full revert to FNV-1a leaves every *structural* test in the 34-crate workspace
+    /// passing, because they all compare the hash against itself. Four tests in this
+    /// module now carry outside literals, so such a mutation fails 4–5 of them rather than
+    /// one — do not weaken any of them without recomputing from an outside oracle.
+    /// (Nuance worth keeping: an LE/BE swap does *not* break the collision test below —
+    /// byte reversal is a bijection, so a collision survives it.)
     #[test]
     fn the_backend_is_genuine_sha256() {
         // digest(b"abc")            == SHA256(0x02 ‖ "abc")[..8]
@@ -254,9 +285,11 @@ mod tests {
     /// honest signer produced for `m₁` verifies for `m₂` — with the key consumed
     /// exactly once (E0382 fully satisfied) and the seed discarded.
     ///
-    /// The collision pair below was found offline by a birthday search (~2³², about 36
-    /// core-seconds); it is **key-independent**, so one precomputation forges under
-    /// every key this crate will ever mint. This is the bound the graduation does NOT
+    /// The collision pair below was found offline by a birthday search (~2³² hash
+    /// evaluations — minutes of multicore wall time; an earlier draft said "~36
+    /// core-seconds", which is below the physical floor of any SHA-256 implementation and
+    /// was a wall-vs-core units error). It is **key-independent**, so one precomputation
+    /// forges under every key this crate will ever mint. This is the bound the graduation does NOT
     /// close — it is a property of the width, not of SHA-256.
     #[test]
     fn a_digest_collision_forges_across_keys_at_the_toy_width() {

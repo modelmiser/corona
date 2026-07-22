@@ -1,5 +1,10 @@
 //! # lamport-types — one-time signatures as typestate
 //!
+//! > **⚠ NOT PRODUCTION CRYPTO.** The hash backend is graduated (vetted SHA-256), but the
+//! > illustrative 64-bit width leaves the scheme **existentially forgeable at ~2³²** — a
+//! > colliding pair is pinned in the tests. This crate demonstrates a *type discipline*;
+//! > do not sign anything real with it. See [`hash`] for the full security posture.
+//!
 //! Corona **leaf 5**, and the first leaf whose central primitive is **not** the
 //! E0451 seal. Leaves 1–4 all encode *evidence of a fact* — a `VerifiedShare`, a
 //! `RecoveredData`, a `VerifiedLeaf`: sealed, but freely `Clone`-able, because a
@@ -56,18 +61,20 @@
 //!   vetted; the *parameters* are not. `verify` re-derives `digest(message)` and checks
 //!   preimages against *that*, so a signature is bound to the **digest**: any two
 //!   messages sharing a 64-bit digest share every signature, and a birthday search
-//!   finds such a pair in ~2³² (demonstrated in ~36 core-seconds and pinned as
+//!   finds such a pair in ~2³² (~2³² evaluations offline; pinned as
 //!   `a_digest_collision_forges_across_keys_at_the_toy_width`). That bound is a
 //!   property of the **64-bit width**, which the graduation deliberately left alone —
 //!   not of SHA-256.
-//! - **What the graduation did buy — one-wayness, hence a better *class* of break.**
+//! - **What the graduation did buy — the scheme's first non-trivial exponent.**
 //!   Unforgeability needs `commit` one-way *and* `digest` collision-resistant. The toy
-//!   FNV-1a failed the first (~2³² to invert by meet-in-the-middle, ~2³⁸ to assemble a
-//!   full forgery); SHA-256 supplies it at ~2⁶³. So the swap is load-bearing (∥ `pow`,
-//!   `ecash`) on that claim: it moves the break from **universal forgery from the
-//!   public key alone, on any chosen message** to **existential forgery needing a
-//!   signed message and a collision**. It does *not* make the scheme unforgeable, and
-//!   the cheapest exponent barely moved — the width is now the binding constraint.
+//!   FNV-1a failed the first **outright**: over a fixed-length input FNV is affine in
+//!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
+//!   lattice reduction solves in *seconds per target*, completely and without memory.
+//!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256
+//!   supplies one-wayness at ~2⁶³, so the cheapest break becomes the ~2³² collision
+//!   above. Load-bearing (∥ `pow`, `ecash`), and the *class* improved too — universal
+//!   forgery from the public key alone did not vanish but moved to ~2⁶³. It still does
+//!   *not* make the scheme unforgeable: the width is now the binding constraint.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
 //!   is the backend's job *and* the width's, and at these parameters the width loses
@@ -223,6 +230,9 @@ impl SigningKey {
 
     /// Sign `message`, **consuming** the key. Taking `self` by value is the whole
     /// point: the key is spent, so the compiler forbids a second signature (E0382).
+    ///
+    /// ⚠ Not production crypto — the resulting signature is forgeable at ~2³² via a
+    /// digest collision (crate banner).
     /// For each digest bit, the matching secret preimage is revealed.
     pub fn sign(self, message: &[u8]) -> Signature {
         let d = hash::digest(message);

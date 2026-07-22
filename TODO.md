@@ -143,6 +143,34 @@ work (complete tasks, add children, keep siblings).
       (merkle∘lamport = Merkle Signature Scheme; XMSS is the WOTS+ refinement);
       CHARTER glossary "E0382 … exactly once" → "at most once (affine)".
 
+- [x] **GRADUATED 2026-07-22 (9th graduation, SECOND HUB after merkle).** Backend swap:
+      toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the unchanged
+      `hash::digest`/`commit`/`prg` seam (criterion #2). **First hub graduation with zero
+      COMPILE-TIME blast radius** — type-preserving (`u64 → u64`) where merkle's
+      `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
+      `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
+      ONE of the two properties unforgeability needs: `commit` is now one-way (~2⁶³), which
+      the toy made false **outright** (FNV-1a over a fixed-length input is a
+      lattice-solvable dim-8 knapsack — seconds per target; R1's "~2³² meet-in-the-middle"
+      was itself a wrong correction, and R2 restored the original true claim). **The other property is NOT repaired, and cold review is what
+      established that:** `verify` re-derives `digest(message)`, so a signature binds to the
+      digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
+      demonstrated offline (~2³² evaluations), now executable in-crate and key-independent. The
+      first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap
+      upgraded the CLASS of break (universal-from-public-key → existential-needing-a-signed-
+      message) while the binding constraint became the **WIDTH, not the hash**; the leaf
+      keeps a not-for-production marker and forced the CHARTER to state that "graduated" is
+      a claim about the BACKEND, not a fitness-for-use certificate. Sol: `Sol.Lib.Lamport`
+      moved no pre-existing theorem (the model quantifies over an abstract `accepts`, so it
+      never expressed the property that changed — coverage, not triumph; precedent is POW,
+      not bloom/translog). Part 3 added — the two-signature coverage lemma and, separately,
+      `collision_transfers_signature` (the ~2³² break, thin `congrArg`, needs a message
+      layer) — backend-independent, so OCCASIONED by the graduation, not contributed by it.
+      Cold review R1: 6 CRIT + 20 MOD; R2 continued. Four test gaps found by mutation
+      (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
+      `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),
+      each now pinned and each watched failing under its mutation before acceptance.
+
 ## Now (leaf 6 — static-config-types)
 
 - [x] Seed static-config-types: the **E0080 leaf** — compile-time threshold/quorum
@@ -1499,7 +1527,7 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
   (wire-equivocation, out-of-band only), leaf 19 (perfect-hiding bijection, exhaustive over 3120 units),
   leaf 21 (space×time = prove-time table-regeneration count 2^K vs 0), leaf 3 (crafted near-codeword
   misdecode — deferred part-b, pure RS/GF(256), NO hash search), leaf 5 (full two-message forgery —
-  deferred assembly, bounded FNV preimage search, ~0.06s), leaf 7/8 (value-vs-brand provenance TRADE).
+  deferred assembly, bounded two-stage digest search — over FNV when written, over the graduated SHA-256 since 2026-07-22, ~0.06s), leaf 7/8 (value-vs-brand provenance TRADE).
   **The leaf-7/8 judgment:** the audit floated "an optional brand-scoped `MssPublicKey`," but leaf 7's
   converged thesis DECLINES exactly that (the key must stay `Copy`/wire-crossing); building it would
   construct the leaf's road-not-taken and trade a load-bearing property on converged code. Realized the

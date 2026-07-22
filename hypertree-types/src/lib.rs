@@ -586,7 +586,8 @@ mod tests {
 
         // Both are valid, at the SAME one-time (subtree, leaf) index, for DIFFERENT
         // messages — a one-time key signing twice, the reuse E0382 cannot catch across
-        // the persistence boundary (with a real hash this is the Lamport forgery hole).
+        // the persistence boundary. The hash IS real SHA-256 since leaf 5's graduation,
+        // so this is the Lamport two-signature forgery hole, live rather than hypothetical.
         assert_eq!(
             (va.subtree_index(), va.leaf_index()),
             (vb.subtree_index(), vb.leaf_index()),

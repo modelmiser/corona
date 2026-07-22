@@ -35,7 +35,7 @@ corona/
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (GRADUATED)
-├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (GRADUATED)
+├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (GRADUATED — still not production)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
@@ -212,11 +212,14 @@ keys that sign again under the same verifying key, so the guarantee is condition
 discarding the seed after keygen (a real CSPRNG key has none).
 
 > ✅ **GRADUATED (2026-07-22)** — the garden's **ninth** graduated leaf and the **second
-> hub** (after merkle), the first hub graduation with *zero* blast radius: the swap is
-> type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no edits.
+> hub** (after merkle), the first hub graduation with zero *compile-time* blast radius:
+> the swap is type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no
+> **type** edits (their hash values did change, and their docs were revised).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
 > `digest`/`commit`/`prg` seam. Load-bearing on *one* of the two properties
-> unforgeability needs — `commit` is now one-way (~2⁶³), which the toy made false.
+> unforgeability needs — `commit` is now one-way (~2⁶³), which the toy made false
+> outright (FNV-1a is lattice-invertible in seconds), so this is the scheme's first
+> non-trivial security exponent.
 >
 > ⚠ **Still NOT production crypto.** The other property is collision resistance of the
 > 64-bit `digest`, and `verify` binds a signature to the *digest*, so a birthday pair
