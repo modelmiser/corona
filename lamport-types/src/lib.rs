@@ -66,8 +66,11 @@
 //!   property of the **64-bit width**, which the graduation deliberately left alone —
 //!   not of SHA-256.
 //! - **What the graduation did buy — the scheme's first non-trivial exponent.**
-//!   Unforgeability needs `commit` one-way *and* `digest` collision-resistant. The toy
-//!   FNV-1a failed the first **outright**: over a fixed-length input FNV is affine in
+//!   Unforgeability here needs **three** properties: `commit` one-way, `prg` one-way (a
+//!   requirement textbook Lamport lacks — this leaf derives all 128 preimages from a seed, so
+//!   a predictable `prg` hands over the unrevealed ones; inverting it on one revealed preimage
+//!   yields the whole key from a single signature),
+//!   and `digest` collision-resistant. The toy FNV-1a failed the first two **outright**: over a fixed-length input FNV is affine in
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
 //!   lattice reduction solves in *seconds per target*, completely and without memory.
 //!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256

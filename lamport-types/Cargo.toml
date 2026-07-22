@@ -16,7 +16,8 @@ publish = false
 # the toy FNV-1a behind the same `hash::digest`/`commit`/`prg` seam (see CHARTER.md,
 # graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on TWO of the THREE properties this
 # construction needs: `commit` one-wayness AND `prg` one-wayness (a third requirement textbook
-# Lamport lacks, incurred by deriving all preimages from a seed) are now supplied at ~2^63; the
+# Lamport lacks, incurred by deriving all preimages from a seed — and it needs prg to be a PRF
+# under the seed, not merely one-way) are now supplied at ~2^63; the
 # toy failed both. The remaining one — collision resistance of the 64-bit `digest` — stays
 # capped at ~2^32 by the illustrative WIDTH, so the scheme is still forgeable; see `hash`.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
