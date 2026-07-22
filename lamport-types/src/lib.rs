@@ -52,19 +52,31 @@
 //!
 //! ## Honest limits (graduated backend)
 //!
-//! - **Graduated hash, but the width stays toy (see [`hash`]).** Unforgeability rests
-//!   on the commitment being one-way; the backend is now the audited **SHA-256**
-//!   (truncated to 64 bits), so `commit` *is* one-way — at **~2⁶⁴**, the toy's width,
-//!   not the ~2²⁵⁶ a real 256-bit Lamport commitment gives. Over the previous toy
-//!   FNV-1a `commit` was *invertible*, so the swap makes the leaf's core guarantee
-//!   **true where the toy made it false** — a load-bearing swap (∥ `pow`, `ecash`).
-//!   The `BITS = 64` signing width remains an illustrative dimension the graduation
-//!   deliberately leaves alone. The *type* discipline (use-once) is still the subject.
+//! - **⚠ Still NOT production crypto — forgeable at ~2³² (see [`hash`]).** The hash is
+//!   vetted; the *parameters* are not. `verify` re-derives `digest(message)` and checks
+//!   preimages against *that*, so a signature is bound to the **digest**: any two
+//!   messages sharing a 64-bit digest share every signature, and a birthday search
+//!   finds such a pair in ~2³² (demonstrated in ~36 core-seconds and pinned as
+//!   `a_digest_collision_forges_across_keys_at_the_toy_width`). That bound is a
+//!   property of the **64-bit width**, which the graduation deliberately left alone —
+//!   not of SHA-256.
+//! - **What the graduation did buy — one-wayness, hence a better *class* of break.**
+//!   Unforgeability needs `commit` one-way *and* `digest` collision-resistant. The toy
+//!   FNV-1a failed the first (~2³² to invert by meet-in-the-middle, ~2³⁸ to assemble a
+//!   full forgery); SHA-256 supplies it at ~2⁶³. So the swap is load-bearing (∥ `pow`,
+//!   `ecash`) on that claim: it moves the break from **universal forgery from the
+//!   public key alone, on any chosen message** to **existential forgery needing a
+//!   signed message and a collision**. It does *not* make the scheme unforgeable, and
+//!   the cheapest exponent barely moved — the width is now the binding constraint.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
-//!   twice with one key. It says nothing about an attacker who never had the key:
-//!   that is the hash's job (now supplied by the graduated SHA-256 backend, at ~2⁶⁴).
-//!   Two orthogonal protections; this leaf supplies the first *by type*, the second
-//!   *by backend*.
+//!   twice with one key. It says nothing about an attacker who never had the key: that
+//!   is the backend's job *and* the width's, and at these parameters the width loses
+//!   (~2³² above). Two orthogonal protections; this leaf supplies the first *by type*
+//!   and only partially the second *by backend*.
+//! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive
+//!   from the `u64` seed, so searching the seed recovers the entire key at ~2⁶³ — the
+//!   same order as inverting a single commitment. Real Lamport's preimages are
+//!   independent.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
 //!   belongs to the right signer (the same trust-anchor caveat as every other leaf).
@@ -363,7 +375,11 @@ mod tests {
         // with m1 on many bits to keep that set (and the search) small. `Signature.revealed`
         // is public, so assembly is pure bookkeeping — the cryptographic step is gone.
         const HAM_THRESHOLD: u32 = 48; // |agreement set| <= 16  => stage-2 <= ~2^16
-        const CAP: u64 = 50_000_000; // generous; expected work is ~10^5 hashes total
+                                       // Measured expected work is ~1.2e5 hashes total (stage 1 ~2.6e4, stage 2 ~2^16).
+                                       // 2e6 leaves the miss probability at e^-77 / e^-30 — nil — while capping the
+                                       // FAILURE path at ~5s. (At 5e7 a broken `digest` burned the full cap and made
+                                       // `cargo test` take 153s, drowning the genuinely informative failures.)
+        const CAP: u64 = 2_000_000;
 
         let seed = 0xF0F0;
         let (sk1, vk) = SigningKey::generate(seed);

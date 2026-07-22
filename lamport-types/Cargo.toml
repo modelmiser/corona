@@ -2,16 +2,18 @@
 name = "lamport-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 5 — Lamport one-time signatures as typestate. Graduated: SHA-256 (u64-truncated) commitment behind a fixed seam; the type discipline (E0382 move-linearity) is the subject."
+description = "Corona leaf 5 — Lamport one-time signatures as typestate. Graduated backend (SHA-256, u64-truncated) behind a fixed seam, but NOT production crypto: at the illustrative 64-bit width the scheme is existentially forgeable at ~2^32. The type discipline (E0382 move-linearity) is the subject."
 license = "MIT"
 
 # Shares the garden's *vocabulary* (the E0382 move-linearity primitive and the E0451
 # seal), not any of `corona-core`'s shared *modules*: it needs neither `Threshold` (a
 # signature is single-signer, not k-of-n) nor `gf256` (hash-based, not field arithmetic).
 [dependencies]
-# Graduated backend: the audited RustCrypto SHA-256 (truncated to 64 bits) replaces the
-# toy FNV-1a behind the same `hash::digest`/`commit`/`prg` seam (see CHARTER.md,
-# graduation criterion #2). This is a LOAD-BEARING swap (∥ pow, ecash): Lamport's
-# unforgeability rests on `commit` being one-way, which the invertible toy made FALSE.
+# Graduated backend: the widely-used RustCrypto SHA-256 (truncated to 64 bits) replaces
+# the toy FNV-1a behind the same `hash::digest`/`commit`/`prg` seam (see CHARTER.md,
+# graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ONE of the two properties
+# unforgeability needs: `commit` is now one-way (~2^63), which the toy made false. The
+# other — collision resistance of the 64-bit `digest` — stays capped at ~2^32 by the
+# illustrative WIDTH, so the scheme is still forgeable; see the `hash` module posture.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
 sha2 = "0.10"

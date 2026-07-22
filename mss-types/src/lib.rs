@@ -84,13 +84,16 @@
 //!
 //! - **Both hash backends are now graduated — the hash is no longer the weak link.**
 //!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
-//!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the audited
-//!   SHA-256 (u64-truncated, one-way at ~2⁶⁴). The earlier "a real adversary forges
-//!   *Lamport* signatures at will" break is closed at both layers. What remains
-//!   illustrative is *this composition itself*, not its hashes: deterministic seeds
-//!   (below), fixed capacity, and the 64-bit width — so `mss-types` is a research-rung
-//!   composition, **not an independently graduated leaf**; the *type* discipline
-//!   (the Merkle brand over one-time Lamport keys) is the subject.
+//!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the vetted
+//!   SHA-256 (u64-truncated, one-way at ~2⁶³). The earlier "a real adversary forges
+//!   *Lamport* signatures at will by inverting the commitments" break is closed at both
+//!   layers. **But the inherited 64-bit Lamport digest width is not**: a signature binds
+//!   to `digest(message)`, so a birthday pair forges at ~2³² (leaf 5's disclosed cap —
+//!   a property of the width, not of SHA-256), and that carries straight through this
+//!   composition. What remains illustrative is *this composition itself*: deterministic
+//!   seeds (below), fixed capacity, and that inherited width — so `mss-types` is a
+//!   research-rung composition, **not an independently graduated leaf**; the *type*
+//!   discipline (the Merkle brand over one-time Lamport keys) is the subject.
 //! - **The [`MssPublicKey`] is caller-trusted** (as every trust anchor in the
 //!   garden is): verification proves a signature is valid *under this root*, not
 //!   that this root belongs to the right signer.
@@ -152,7 +155,7 @@
 //!   `merkle-types`' documented structural-symmetry **orbit**, arriving here
 //!   through the `adopt` doorway (regression-tested). [`generate`] never mints
 //!   such an anchor — its per-key seeds are distinct by construction, so its
-//!   leaves are distinct up to toy-hash collision — but an *adopted* anchor
+//!   leaves are distinct up to a SHA-256 collision (both layers graduated) — but an *adopted* anchor
 //!   carries no such pedigree.
 //! - **MSS, not XMSS.** The standardized descendant (XMSS, RFC 8391) uses WOTS+
 //!   one-time keys and bitmasked tree hashing, not plain Lamport + plain trees.
@@ -796,7 +799,7 @@ mod tests {
         // key indices, and both witnesses honestly claim the same anchor —
         // minted_by pins WHICH anchor an index is relative to, not a unique
         // position within a degenerate one. generate() never mints such an
-        // anchor (distinct per-key seeds → distinct leaves, toy hash aside).
+        // anchor (distinct per-key seeds → distinct leaves, up to a SHA-256 collision).
         let (sk, vk) = SigningKey::generate(0xDD);
         let leaf = vk.to_bytes();
         let (root_hash, p0, p1) =

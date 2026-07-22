@@ -35,7 +35,7 @@ corona/
 ├── vss-types/        # leaf 2 — Feldman verifiable secret sharing as typestate (TOY)
 ├── erasure-types/    # leaf 3 — Reed–Solomon k-of-n erasure coding as typestate (TOY)
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (GRADUATED)
-├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (TOY)
+├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (GRADUATED)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
@@ -211,10 +211,19 @@ makes the key one-time *per value*, not per key *material* — a retained seed r
 keys that sign again under the same verifying key, so the guarantee is conditional on
 discarding the seed after keygen (a real CSPRNG key has none).
 
-> ⚠ **TOY.** Unforgeability rests on the commitment being one-way; the FNV-1a backend
-> is trivially invertible, so a real adversary forges. The type discipline (use-once)
-> is the subject, not the hash. It stops key *reuse* (E0382), not *forgery* (the hash's
-> job) — two orthogonal protections; this leaf supplies the first.
+> ✅ **GRADUATED (2026-07-22)** — the garden's **ninth** graduated leaf and the **second
+> hub** (after merkle), the first hub graduation with *zero* blast radius: the swap is
+> type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no edits.
+> Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
+> `digest`/`commit`/`prg` seam. Load-bearing on *one* of the two properties
+> unforgeability needs — `commit` is now one-way (~2⁶³), which the toy made false.
+>
+> ⚠ **Still NOT production crypto.** The other property is collision resistance of the
+> 64-bit `digest`, and `verify` binds a signature to the *digest*, so a birthday pair
+> forges at **~2³²** (demonstrated, and executable in-crate). That cap is the
+> illustrative **width**, not SHA-256 — the graduation moved which assumption carries
+> the weight, it did not make the scheme unforgeable. The type discipline (use-once,
+> E0382) is still the subject: it stops key *reuse*, never *forgery*.
 
 ## Leaf 6: `static-config-types`
 
@@ -638,8 +647,10 @@ discharge a component's obligation, not only inherit it. The sealed
 `VerifiedHypertreeMessage` (E0451) is minted only when both links verify — four
 sole-minters firing two levels deep.
 
-> ⚠ **TOY.** Inherits `mss-types`' toy Lamport FNV hashing (its Merkle layer is leaf 4's
-> graduated SHA-256);
+> ⚠ **Research rung.** Both inherited hash layers are now graduated SHA-256 (Merkle from
+> leaf 4, Lamport from leaf 5's 2026-07-22 graduation, via `mss-types`), so the hash is
+> no longer the weak link — but the inherited 64-bit Lamport width still caps forgery at
+> ~2³². What keeps *this* leaf illustrative is the composition:
 > deterministic seeds; 2 fixed layers (real XMSS^MT uses `d` layers and WOTS+); no state
 > **persistence** protocol — which is the whole point of finding 3. Not for signing
 > anything real.
