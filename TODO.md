@@ -174,7 +174,7 @@ work (complete tasks, add children, keep siblings).
       because it is about `accepts` where the coverage lemma is about `forgeable`, not because of
       the message layer it carries — `Msg` is eliminable from it) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
       not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` unpredictability — what the swap bought.
-      Cold review: 15 rounds, ~32 CRITICALs, none in code; R15 was the first round with zero CRITICAL. Four test gaps found by mutation
+      Cold review: 17 rounds, ~32 CRITICALs, none in code; R15/R16/R17 each returned zero CRITICAL. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
       `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),
       each now pinned and each watched failing under its mutation before acceptance.

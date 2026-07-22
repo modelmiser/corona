@@ -1,7 +1,8 @@
 //! # lamport-types — one-time signatures as typestate
 //!
 //! > **⚠ NOT PRODUCTION CRYPTO.** The hash backend is graduated (vetted SHA-256), but the
-//! > illustrative 64-bit width leaves the scheme **existentially forgeable at ~2³²** — a
+//! > illustrative 64-bit width leaves the scheme **existentially forgeable under chosen
+//! > message at ~2³²** (the model matters: a *known*-message adversary pays ~2⁶¹) — a
 //! > colliding pair is pinned in the tests. This crate demonstrates a *type discipline*;
 //! > do not sign anything real with it. See [`hash`] for the full security posture.
 //!
@@ -68,7 +69,7 @@
 //! - **What the graduation did buy — the scheme's first non-trivial exponent.** Under the toy
 //!   FNV-1a the cheapest break was **total key recovery in seconds**; under SHA-256, against a
 //!   *correctly-used* key, it is the ~2³² collision above. The *class* improved with it, and
-//!   universal forgery from the public key alone moved to ~2⁶⁴ rather than vanishing.
+//!   universal forgery from the public key alone moved to ~2⁶³ rather than vanishing.
 //!   Load-bearing (∥ `pow`, `ecash`) — and still not unforgeable.
 //!
 //!   [`hash`] is the single canonical posture: which three properties unforgeability needs,
@@ -96,12 +97,10 @@
 //!   and only partially the second *by backend*.
 //! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
-//!   candidates = ~2⁶⁴ hash calls (two per candidate) **from the verifying key alone**; given
-//!   the one signature the model grants it is ~2⁶³ hash calls, one `prg` per candidate. So the
-//!   vk-only route is about **2×** the ~2⁶³ of inverting one commitment, and the route that uses the
-//!   one granted signature (halved, because a seed guess is then tested by one `prg` call rather
-//!   than `prg` + `commit`)
-//!   *equals* it — but either yields *all 128* preimages instead of one. Real Lamport's
+//!   candidates. A seed test costs two hashes — unless the attacker already holds an *actual*
+//!   preimage, when it costs one; and [`hash`] sells one **from the verifying key alone** for
+//!   ~2⁵⁷, so the search is **~2⁶³ whether or not a signature is observed**. That *equals* the
+//!   ~2⁶³ of inverting a single commitment — but yields *all 128* preimages instead of one. Real Lamport's
 //!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
@@ -135,7 +134,7 @@
 //! ```
 //! use lamport_types::{SigningKey, hash};
 //!
-//! // NOTE: a 24-bit literal seed — recoverable in ~2^25. Illustrative only; see Honest limits.
+//! // NOTE: a 24-bit literal seed — recoverable in ≲2²⁵. Illustrative only; see Honest limits.
 //! let (sk, vk) = SigningKey::generate(0x00C0_FFEE);
 //! let sig = sk.sign(b"launch code alpha"); // `sk` is CONSUMED here — it is one-time
 //!
