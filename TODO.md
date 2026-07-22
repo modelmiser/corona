@@ -333,10 +333,10 @@ work (complete tasks, add children, keep siblings).
       (#5, below). **The swap is load-bearing in a WEAKER sense than pow's** — the toy
       *abstained* from the inversion guarantee (out of scope) where pow's toy made the
       leaf's headline *false*; "abstained guarantee" vs "exhibited break," a spectrum.
-      **The new wire shape**: the residue's HOME splits on whether the held key has a
-      unique preimage — a COLLIDING held key ⟹ past info-theoretically ambiguous (PROVED
-      localized, `past_ambiguous_at_collision`; global shadow `noninjective_no_past_recovery`),
-      a UNIQUE-preimage held key ⟹ determined but recoverable only by inverting SHA-256
+      **The new wire shape**: the residue's HOME splits on the held VALUE's preimage count
+      — a held value with ≥2 preimages ⟹ past info-theoretically ambiguous (PROVED
+      per-value, `past_ambiguous_at_collision`; global shadow `noninjective_no_past_recovery`),
+      a UNIQUE-preimage held value ⟹ determined but recoverable only by inverting SHA-256
       (NAMED, outside Lean). Reduce-half `held_reaches_all_future` makes a prose limit a
       theorem (FS past-only, not post-compromise). Crypto posture = the domain-separated
       SHA-256 derivations modeled as a random oracle / PRF (preimage resistance stops chain
@@ -345,7 +345,7 @@ work (complete tasks, add children, keep siblings).
       secrecy + seed-discard + the illustrative `init(u64)` capping inversion at ~2⁶⁴. Not
       HKDF/HMAC (raw chain = random-oracle heuristic; HKDF = standard-model PRF). SHA-256
       backend pinned to an independent oracle (python hashlib golden vectors). Rust 13 unit +
-      4 doctests; Sol 9/10 module theorems axiom-free (6 re-exported), only held_reaches
+      4 doctests; Sol 10/11 module theorems axiom-free (6 re-exported), only held_reaches
       = [propext, Quot.sound]; full Sol green.
       Corona code `0705a8a`, Sol wire `38f6404`. **[cold review below]**
 

@@ -115,18 +115,20 @@
 //! `Sol.Lib.Ratchet` (the garden's 15th Corona↔Sol wire). Sol proves the **structural**
 //! half — the chain is a forward-deterministic function of the root, and *the past is
 //! unrecoverable from the forward state alone* — and locates the residue's **home** by a
-//! distinction no prior wire drew: it **splits on whether the held key has a unique
-//! preimage**. At a *colliding* held key (≥2 preimages) the past is
-//! **information-theoretically** ambiguous (proved in Lean, a residue *discharged* —
-//! localized per-key, `past_ambiguous_at_collision`); at a *unique-preimage* held key it is
-//! determined but computable only with the KDF's inverse (a residue *named* — a SHA-256
-//! preimage search, discharged outside Lean). What Lean proves is backend-agnostic;
-//! SHA-256's one-wayness is the trusted boundary.
-//! (Naming SHA-256 in the *injective* branch is a **conservative worst case**: modeled as a
-//! random function, SHA-256's fixed-length step is generically *non*-injective — so the real
-//! backend most likely sits in the discharged branch, where forward secrecy is even stronger
-//! — but its injectivity is unprovable either way, and preimage resistance is the operative
-//! assumption in *both* branches, so the wire names it in the harder one.)
+//! distinction no prior wire drew: it **splits on the held value's preimage count**. At a
+//! held *value* with ≥2 preimages the past is **information-theoretically** ambiguous
+//! (proved in Lean, a residue *discharged* — stated per-value, `past_ambiguous_at_collision`);
+//! at a *unique-preimage* held value it is determined but computable only with the KDF's
+//! inverse (a residue *named* — a SHA-256 preimage search, discharged outside Lean). What Lean
+//! proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
+//! (Which branch a held value falls in is a property of *that value* under SHA-256, and is
+//! unprovable; under a random-function heuristic a held value has a unique preimage with
+//! probability ≈0.58 and ≥2 preimages with ≈0.42 — Poisson(1) — so **both** legs are real
+//! cases, and the ≈0.58 *named* leg is if anything the common one, not a rare worst case.
+//! Preimage resistance is the operative assumption in that named leg; the ≈0.42 colliding
+//! leg is *unconditional* — information-theoretic, needing no assumption. Note the frequent
+//! conflation to avoid: SHA-256 having collisions *somewhere* does **not** make a given held
+//! value multi-preimage — most image points have exactly one preimage.)
 //!
 //! ## Honest limits
 //!

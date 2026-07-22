@@ -36,7 +36,7 @@ corona/
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
-├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held key's preimages)
+├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held value's preimage count)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
@@ -413,9 +413,9 @@ graduation does *not* close (outside a KDF backend's remit).
 > is the backend-independent type discipline that was always the subject. A **weaker**
 > load-bearing swap than pow's — the toy *abstained* from the inversion guarantee where
 > pow's toy made its headline *false*. Criterion #4 contributes `Sol.Lib.Ratchet` (the
-> **15th** Corona↔Sol wire), whose residue's home splits on whether the held key has a
-> unique preimage: a *colliding* held key ⟹ the past is information-theoretically
-> ambiguous (proved, localized), a *unique-preimage* held key ⟹ determined but
+> **15th** Corona↔Sol wire), whose residue's home splits on the held *value's* preimage
+> count: a held value with ≥2 preimages ⟹ the past is information-theoretically
+> ambiguous (proved, per-value), a *unique-preimage* held value ⟹ determined but
 > recoverable only by inverting SHA-256 (named, outside Lean). Not HKDF/HMAC — a SHA-256
 > hash chain (HKDF gives the assumed PRF security in the standard model; a raw chain
 > relies on the random-oracle heuristic); a production deployment may prefer HKDF-SHA256

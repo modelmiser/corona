@@ -15,12 +15,15 @@
 //!   **backend-independent** — it held under the toy and holds now.
 //! - **Inversion** is stopped by the *KDF*: a compromise of the next chain key `CKᵢ₊₁` must
 //!   reveal no earlier `CKⱼ` or message key `MKⱼ` (`j ≤ i`). This is the half the backend
-//!   supplies, and the toy FNV mixing **abstained** from it (no one-wayness guarantee). The
-//!   graduated backend supplies it by the standard assumption for a hash-chain ratchet — that
-//!   the domain-separated SHA-256 derivations behave as a **random oracle** (equivalently, a
-//!   PRF). Under it, `CKⱼ` cannot be reached (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a
-//!   preimage search — the oracle's preimage-resistance facet), and each past
-//!   `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an *independent* oracle output that a compromised chain
+//!   supplies, and the toy FNV mixing gave **no one-wayness** — 64-bit FNV-1a is in fact
+//!   *invertible* (XOR and odd-prime multiply mod 2⁶⁴ both invert), so it actively lacked
+//!   this, not merely declined to promise it. The graduated backend supplies it by the
+//!   standard assumption for a hash-chain ratchet — that the domain-separated SHA-256
+//!   derivations behave as a **random oracle** (or, keyed by their secret input, a **PRF** —
+//!   the same pseudorandom-independent-outputs role). Under it, `CKⱼ` cannot be reached
+//!   (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a preimage search — the oracle's
+//!   preimage-resistance facet), and each past `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an *independent*
+//!   oracle output that a compromised chain
 //!   key does not correlate with. **Preimage resistance alone is necessary but not
 //!   sufficient**: hiding the past *message* keys needs the derivations' *independence* (the
 //!   PRF / random-oracle property), not merely non-invertibility of the chain. All of this is
@@ -63,8 +66,9 @@ use sha2::{Digest, Sha256};
 
 /// `SHA-256(tag ‖ input)` as a 32-byte block. The leading `tag` byte domain-separates the
 /// three derivations (distinct inputs per role); their outputs for a given chain key differ
-/// as an empirical fact pinned by the golden-vector tests, and forward secrecy rests on
-/// SHA-256 **preimage** resistance, not on that distinctness (see the module banner).
+/// as an empirical fact pinned by the golden-vector tests — a necessary side condition, not
+/// itself the forward-secrecy property (which rests on the derivations' one-wayness AND
+/// independence, the random-oracle / PRF assumption; see the module banner).
 fn hash(tag: u8, input: &[u8]) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update([tag]);
@@ -80,8 +84,10 @@ pub fn init(seed: u64) -> [u8; 32] {
 }
 
 /// The next chain key `CKᵢ₊₁ = KDF(CKᵢ, "chain")` (domain tag `0x01`). SHA-256 preimage
-/// resistance is what hides `CKᵢ` in `CKᵢ₊₁` — the cryptographic forward-secrecy the toy
-/// FNV backend did not provide.
+/// resistance is what stops *chain inversion* (`CKᵢ₊₁ ↛ CKᵢ`) — one facet of the
+/// random-oracle/PRF forward-secrecy assumption (hiding past *message* keys additionally
+/// needs the derivations' independence; see the module banner) — which the toy FNV backend,
+/// itself invertible, did not provide.
 pub fn next_chain(ck: &[u8; 32]) -> [u8; 32] {
     hash(0x01, ck)
 }
@@ -146,8 +152,9 @@ mod tests {
         // From one chain key, the next-chain and message-key derivations must differ —
         // otherwise MKᵢ would equal CKᵢ₊₁. This distinctness is a NECESSARY condition pinned
         // empirically here (distinct domain tags → distinct inputs → distinct outputs for
-        // these values); it is not the forward-secrecy workhorse (preimage resistance is —
-        // see the module banner), and it is not a collision-resistance claim.
+        // these values); it is not the forward-secrecy workhorse (the random-oracle/PRF
+        // one-wayness+independence assumption is — see the module banner), and it is not a
+        // collision-resistance claim.
         let ck = init(0x1234_5678);
         assert_ne!(next_chain(&ck), message_key(&ck));
         // Neither equals a fresh `init` from those 8 bytes read back as a seed (a different
