@@ -882,7 +882,7 @@ of reaching it (leaf 18 — cost), and now the **sequential depth** any reaching
 ∥ leaf 6 / leaf 18, the delay *parameter* still reduces: `Vdf<const T>` is walled by `1 ≤ T ≤ 63`
 (E0080) — `T = 0` is the identity map (a domain invariant), `T = 64` exceeds a conservative toy
 bound (`T ≤ 63` keeps the Wesolowski quotient `⌊2^T/ℓ⌋` in the `u64` it is derived into — a toy
-limit, not a domain impossibility the way leaf 18's `BITS ≤ 64` is). Leaf 20 is the *third* leaf to
+limit, not a domain impossibility the way leaf 18's `BITS ≤ 256` is). Leaf 20 is the *third* leaf to
 pair **E0451 + E0080**; the brand and E0382 are honestly unused.
 
 > ⚠ **TOY — the recurring garden break, the *opposite* of leaf 19's inversion.** The toy backend

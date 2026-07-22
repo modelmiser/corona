@@ -44,8 +44,8 @@
 //! The residue has a compile-time half that mirrors `static-config-types` (leaf 6) exactly.
 //! There, the k-of-n *parameter* bound `K <= N` moved to a const-eval wall while the runtime
 //! *count* stayed a runtime check. Here, the *difficulty parameter* is a const generic
-//! [`Puzzle`]`<BITS>` walled by `1 <= BITS <= 64`: requiring **65** leading zero bits from a
-//! 64-bit digest is unsatisfiable, so [`Puzzle`]`::<65>` does not **build** — the same
+//! [`Puzzle`]`<BITS>` walled by `1 <= BITS <= 256`: requiring **257** leading zero bits from a
+//! 256-bit SHA-256 digest is unsatisfiable, so [`Puzzle`]`::<257>` does not **build** — the same
 //! "a resource cannot be over-demanded" shape as leaf 6's `K <= N` (you cannot require more
 //! zero-bits than the hash has, as you cannot require more shares than exist). So the
 //! *hardness parameter* moves to compile time even though the *work* cannot. Leaf 18 is thus
@@ -68,12 +68,13 @@
 //!
 //! - `pow_validity_decidable` — a witness is admissible **iff** its digest clears the target
 //!   (`bits ≤ leadingZeros`): the E0451 decidable seal, the reduce half.
-//! - `pow_witness_is_effort_blind` — the witness reads **nothing** of the search effort (a
-//!   ∀-quantified `rfl`): the structural core of the residue.
+//! - `pow_witness_is_effort_blind` — a deliberately **thin** lemma: a `rfl` confirming the
+//!   *modeling choice* (the `Witness` type carries no effort field), true for any two-field struct's
+//!   first projection — the residue's weight is in the next two, not here.
 //! - `pow_effort_not_witness_definable` — two executions produce the byte-identical witness at
-//!   different effort, so **no `Witness → effort` function exists** (the residue as a theorem, the
-//!   analogue of consttime's `not_value_definable`); and `pow_no_effort_recovery` sharpens it to an
-//!   impossibility over *all* candidate recoverers.
+//!   different effort, so **no effort-*recovering* `Witness → Nat` can be correct** (the residue as a
+//!   theorem, the analogue of consttime's `not_value_definable`); and `pow_no_effort_recovery`
+//!   makes it precise as an impossibility over *all* candidate recoverers.
 //!
 //! The correspondence is honest about the seam: what Lean proves is the **structural** silence of the
 //! witness. The graduation's *probabilistic* work bound — that over preimage-resistant SHA-256 a valid
@@ -232,12 +233,12 @@ pub mod hash {
 
 /// A proof-of-work **puzzle**: a `challenge` and a compile-time difficulty of `BITS` leading
 /// zero bits. A nonce `x` *solves* it iff `work_digest(challenge, x)` has at least `BITS`
-/// leading zero bits (equivalently, is `< 2^(64 - BITS)`).
+/// leading zero bits (equivalently, is `< 2^(256 - BITS)`).
 ///
-/// `BITS` is a **const generic** walled by `1 <= BITS <= 64` (E0080): a `Puzzle<0>` any nonce
-/// trivially solves, and a `Puzzle<65>` no digest can ever solve (a 64-bit digest has only 64
-/// bits). Both are compile errors — the leaf-6 "a resource cannot be over-demanded" wall, here
-/// on difficulty rather than a share count.
+/// `BITS` is a **const generic** walled by `1 <= BITS <= 256` (E0080): a `Puzzle<0>` any nonce
+/// trivially solves, and a `Puzzle<257>` no digest can ever solve (a 256-bit SHA-256 digest has
+/// only 256 bits). Both are compile errors — the leaf-6 "a resource cannot be over-demanded" wall,
+/// here on difficulty rather than a share count.
 ///
 /// Construction routes through [`new`](Puzzle::new) (the `challenge` field is private, E0451),
 /// which references the wall and so forces it to evaluate for this `BITS`.
@@ -392,9 +393,10 @@ mod tests {
         let p = Puzzle::<8>::new(b"corona");
         assert_eq!(p.bits(), 8);
         assert_eq!(p.challenge(), b"corona");
-        // The tight boundaries of `1 <= BITS <= 64` build too.
+        // The tight boundaries of `1 <= BITS <= 256` build too (64 is now interior).
         assert_eq!(Puzzle::<1>::new(b"x").bits(), 1);
         assert_eq!(Puzzle::<64>::new(b"x").bits(), 64);
+        assert_eq!(Puzzle::<256>::new(b"x").bits(), 256);
     }
 
     // ---- Validity: the E0451 checked path. ----
