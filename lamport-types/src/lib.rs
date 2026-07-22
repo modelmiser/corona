@@ -74,9 +74,10 @@
 //!   and `digest` collision-resistant. The toy FNV-1a failed the first two **outright**: over a fixed-length input FNV is affine in
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
 //!   lattice reduction solves in *seconds per target*, completely and without memory.
-//!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256
-//!   supplies one-wayness at ~2⁶³, so against a **correctly-used key** the cheapest break
-//!   becomes the ~2³² collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
+//!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256 supplies
+//!   `commit` one-wayness and `prg` unpredictability at ~2⁶³, and collision resistance up to
+//!   the width — so against a **correctly-used key** the cheapest break becomes the ~2³²
+//!   collision above. Load-bearing (∥ `pow`, `ecash`), and the *class*
 //!   improved too — universal forgery from the public key alone did not vanish but moved
 //!   to ~2⁶⁴. It still does *not* make the scheme unforgeable.
 //! - **⚠ "Correctly-used" is doing real work, and this crate's own examples violate it.**
@@ -100,7 +101,8 @@
 //!   and only partially the second *by backend*.
 //! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
-//!   candidates = ~2⁶⁴ hash calls (two per candidate) — i.e. about 2× the ~2⁶³ of inverting
+//!   candidates = ~2⁶⁴ hash calls (two per candidate) **from the verifying key alone**; given
+//!   the one signature the model grants it is ~2⁶³ hash calls, one `prg` per candidate — i.e. about 2× the ~2⁶³ of inverting
 //!   one commitment, but it yields *all 128* preimages instead of one. Real Lamport's
 //!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a

@@ -21,13 +21,17 @@
 //! ## Security posture — what the swap bought, and what it did NOT
 //!
 //! Lamport's unforgeability here rests on **three** independent hash properties — textbook
-//! Lamport needs two, and this leaf adds a third by deriving all 128 preimages from a seed.
-//! The graduation repairs the first two; the third is what the width leaves open:
+//! Lamport needs two; this leaf adds `prg` (listed 2nd below) by deriving all 128 preimages
+//! from a seed.
+//! The graduation supplies **all three** — the toy failed every one — but only the first two
+//! at a useful level; the third it supplies just up to the 64-bit width, which is what leaves
+//! the scheme forgeable:
 //!
 //! 1. **[`commit`] must be one-way** — else an attacker inverts the published
 //!    commitments and forges from the verifying key alone. The toy FNV-1a failed
 //!    this outright. SHA-256 supplies it *at the truncated width* (~2⁶³).
-//! 2. **[`prg`] must be unpredictable under its seed (a PRF), not merely one-way** — else one
+//! 2. **[`prg`] must be unpredictable under its seed — not merely one-way** (a PRF suffices;
+//!    unpredictability is what is actually required) — else one
 //!    *revealed* preimage yields the others. One-wayness alone is insufficient: `prg'(s,i,b) =
 //!    SHA256(0x00‖s‖i)[..8] + b·C` for public `C` is one-way in `s`, yet a single signature
 //!    hands over every unrevealed preimage. Inverting to the seed is simply the cheapest way
@@ -37,7 +41,13 @@
 //!    18-byte input ends in 9 *known* bytes (index ‖ side), which peel backwards through
 //!    `p⁻¹` deterministically, leaving the same dimension-8 knapsack for the seed — total key
 //!    recovery from one signature, no `commit` inversion needed. SHA-256 supplies it.
-//! 3. **[`digest`] must be collision-resistant** — because `verify` re-derives
+//! 3. **[`digest`] must be collision-resistant *and* (partial-)preimage-resistant** — the
+//!    table needs both, and collision resistance does not imply the second: a 59-bit
+//!    partial-preimage oracle costing `C` yields a full collision at ~`C·2^2.5`, so collision
+//!    resistance at 2³² only forces partial-preimage ≳2^29.5, not the 2^59 row 3 assumes.
+//!    Rows 2 and 3 are therefore priced against a **random-oracle** `digest`, which SHA-256 is
+//!    taken to model; the enumerated property alone would not license them. Collision
+//!    resistance is the binding one, because `verify` re-derives
 //!    `digest(message)` and checks preimages against *that*, so a signature is bound
 //!    to the **digest**, not the message. Any two messages sharing a digest share
 //!    every valid signature. **Truncation to 64 bits caps this at ~2³²** (birthday),
@@ -59,7 +69,7 @@
 //! | Second preimage on the digest (known-message variant; dominated by row 3 *as a forgery route*, though not as a route to a second preimage) | ~2⁶⁴ | seconds | digest width |
 //! | Existential forgery from the verifying key **plus one observed (known-message) signature** ‡ | ~2⁶⁰ | seconds | `commit` one-wayness **and** digest width, jointly |
 //! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | seconds, but by a **different route** † | **seed entropy** *and* [`prg`] one-wayness |
-//! | Universal forgery from the verifying key alone, on a *given* message § | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** | seconds | `commit` one-wayness *and* seed entropy, jointly |
+//! | Universal forgery on a *given* message § | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** | seconds | `commit` one-wayness *and* seed entropy, jointly |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | seconds | `commit` one-wayness |
 //! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | seconds | `commit` one-wayness |
 //!
@@ -69,7 +79,8 @@
 //! key* (the model below — uniform discarded seed, one signature), the cheapest is a ~2³²
 //! existential forgery. The *class* improved too — from **total key recovery** (strictly
 //! stronger than universal forgery: the attacker ends up holding the key) to **existential forgery requiring a signed message and a
-//! collision** — and universal forgery, rather than vanishing, moved to ~2⁶⁴.
+//! collision** — and universal forgery, rather than vanishing, moved to ~2⁶⁴ from the
+//! verifying key alone (~2⁶³ given one observed signature, per § below).
 //!
 //! What graduation did **not** do is make the scheme unforgeable: the residual ~2³² is a
 //! **digest-width** bound, untouched by any backend. Note the ~2³² is the cost to *originate*
@@ -119,7 +130,8 @@
 //!
 //! - **A guessable seed.** [`SigningKey::generate`](crate::SigningKey::generate) imposes no
 //!   entropy contract, and every key seed in this crate's tests and its doctest is a
-//!   low-entropy literal (`1`, `42`, `0xA5A5`, `0xF0F0`, `0x00C0_FFEE`); `mss-types` hands
+//!   low-entropy literal (`1`, `2`, `5`, `6`, `7`, `42`, `99`, `0xA5A5`, `0xF0F0`,
+//!   `0x00C0_FFEE` — all under 24 bits); `mss-types` hands
 //!   `generate` full-width `prg` outputs, but derives them from a literal root, so the
 //!   entropy is still the root's. Such a key falls in **≲2²⁵**
 //!   hash evaluations (2²⁴ candidates × 2 from the vk alone; **2²⁴** given one observed
@@ -144,7 +156,7 @@
 //!     `P = (1−2^-q)⁶⁴`, `q = 1` yields `2^32.5` (row 1's ~2³²) and `q = 2` yields `2^9.2`.
 //!     (The tuple count is q-dependent: `N²/2` pairs at `q = 1`, `N³/2` designated triples at `q = 2`.)
 //!     (It spends ~2^26.5 cheap mask/compare operations alongside those hashes, so in
-//!     wall-clock it is ~9× *slower* than the next figure; in the table's declared unit — hash
+//!     wall-clock it is ~15× *slower* than the next figure (53 ns/hash vs 0.66 ns/compare); in the table's declared unit — hash
 //!     evaluations — it is far cheaper.)
 //!   - **The crate's own sequential demo** costs **~2^16.3**: pick `m₁`, search `m₂` for
 //!     digest disagreement past a threshold (48, optimal *for that algorithm*), then search
@@ -174,7 +186,8 @@
 //! the box, which is **complete** (the box is a *relaxation*: each true `dₖ` lies in a
 //! 256-wide interval offset by an unknown low byte, so `[−255,255]` contains it, and the
 //! ~250 box points per target are filtered by a forward-consistency check leaving ~2) and
-//! runs in *seconds per target in pure Python*, needing no memory. Same-length collisions fall out of the same enumeration for
+//! runs in *well under a second per target in pure Python* (measured ~0.1 s), needing no
+//! memory. Same-length collisions fall out of the same enumeration for
 //! free, so the toy `digest` had no meaningful collision resistance either.)
 //!
 //! ## The 64-bit width is a SEPARATE toy dimension, deliberately left alone
@@ -367,8 +380,10 @@ mod tests {
 
     #[test]
     fn domains_are_separated() {
-        // The same 8 bytes hashed under the three tags must differ, so a preimage,
-        // a commitment, and a digest cannot be confused across roles.
+        // A sample check that the three tags separate. NOTE: output inequality on one sample
+        // proves nothing on its own — the module's real argument is that the leading tag byte
+        // makes the three input languages disjoint, which holds unconditionally at any hash
+        // strength. This test only guards against dropping or duplicating a tag.
         let v = 0x1122_3344_5566_7788u64;
         let as_commit = commit(v);
         let as_digest = digest(&v.to_be_bytes());
