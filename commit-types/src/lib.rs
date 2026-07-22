@@ -59,9 +59,10 @@
 //!    executable — it publishes **one** narrowed `Commitment` and shows two *distinct*
 //!    openings (only the first authored) both verify against it under a `weak_verify` with the
 //!    *same re-hash-and-compare shape* as the real `verify` (the narrowed hash substituted; the
-//!    full-SHA-256 `verify` would reject both). Graduation (below) is what makes this residue *nameable as a
-//!    reduction*: on the vetted SHA-256 backend, "no second opening exists" reduces to
-//!    SHA-256 collision-resistance — a believed-hard assumption, not the triviality it
+//!    full-SHA-256 `verify` would reject both). Graduation (below) is what makes this residue *worth naming as a
+//!    reduction* — not by strengthening any theorem (the Lean reduction is backend-generic) but by
+//!    discharging the residue to a believed-hard hash: on the vetted SHA-256 backend, "no second opening
+//!    exists" reduces to SHA-256 collision-resistance, not the triviality it
 //!    was against the toy FNV-1a. For this hash commitment, binding is only ever
 //!    *computational* — a different
 //!    scheme can be *perfectly* binding (paying with only computational hiding, the
@@ -208,8 +209,9 @@ use core::marker::PhantomData;
 /// and ~256-bit preimage / second-preimage resistance. Two attacker games, two
 /// residues: a *malicious committer* crafting one commitment openable two ways plays
 /// the **binding** game, which is exactly finding a SHA-256 **collision** (~128-bit,
-/// the birthday bound — this is what `Sol.Lib.Commit`'s `binding_iff_collision`,
-/// re-exported as `commit_binding_iff_collision`, models); an attacker forging a
+/// the birthday bound). That the binding game *is* the collision game — the equivalence,
+/// not the 128-bit number — is what `Sol.Lib.Commit`'s `binding_iff_collision`
+/// (re-exported `commit_binding_iff_collision`) models. An attacker forging a
 /// *second opening of an already-published* commitment
 /// faces the harder **second-preimage** problem (~256-bit) against a fixed target.
 /// Either way, not the triviality it was against FNV-1a, but the full computational
