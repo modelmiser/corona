@@ -129,10 +129,24 @@
 //!   ∀-quantified gate-blindness legs — each gate blind to the field the other reads) plus both-ways
 //!   disagreement on concrete witnesses.
 //!
+//! **Graduation (2026-07-21) completes the wire with `Sol.Lib.Commit` Part 3** — the *reduce-half* of the
+//! duality that only becomes meaningful once the backend is a vetted hash:
+//!
+//! - `commit_binding_reduces` — open one commitment two *distinct* ways ⟹ a hash collision. Binding
+//!   failure reduces to a collision; against the graduated SHA-256 backend that is the ~2¹²⁸ birthday
+//!   problem, not the FNV triviality it was. The twin of merkle's `merkle_collision_breaks_leaf_binding`.
+//! - `commit_binding_of_collisionFree` — the converse: a collision-free hash gives perfect binding.
+//!   Together, *binding ⟺ collision-resistance of the backend* — the residue discharged to SHA-256.
+//! - `commit_fixed_blind_leaks` — hiding's boundary, exhibited (consttime's un-typability face): fix the
+//!   blind (no type forbids it) and an injective hash leaks the value. The duality's two faces — a residue
+//!   *discharged* (binding) beside one only *named* and its failure *exhibited* (hiding) — in one leaf.
+//!
 //! The correspondence is honest about the seam: the **match** (region-unification to decidable tag
 //! equality) is *faithful*; the brand's **freshness/unforgeability** (the `for<'brand>` non-escape) is
-//! *trusted* at the rustc boundary, not re-proved in Lean. Everything below — binding's collision
-//! hardness, hiding's 2-safety, the toy hash — is residue, named in Sol, modeled by no theorem.
+//! *trusted* at the rustc boundary, not re-proved in Lean. And binding's reduce-half is now modeled
+//! (Part 3), but its irreducible core — the **collision-resistance of SHA-256** itself — together with
+//! hiding's 2-safety, remains residue: named in Sol, discharged to a vetted primitive, proved by no
+//! theorem here.
 //!
 //! A witness cannot cross scopes — this does **not** compile:
 //!
