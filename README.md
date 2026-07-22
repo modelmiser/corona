@@ -398,8 +398,9 @@ Two orthogonal protections, the leaf-5 shape again: the **type** stops *retentio
 `CKⱼ`/`MKⱼ`). The toy FNV backend *abstained* from this second guarantee (which the leaf
 declared out of scope); **graduation's SHA-256** now supplies it, by modeling the
 domain-separated derivations as a **random oracle / PRF** — preimage resistance stops
-chain inversion, and the derivations' *independence* hides past message keys (preimage
-resistance alone is necessary but not sufficient). And a boundary *within* the primitive
+chain inversion (hiding deep-past keys), and the derivations' *independence* hides the
+same-step sibling `MKᵢ` from `CKᵢ₊₁` (preimage resistance alone is necessary but not
+sufficient). And a boundary *within* the primitive
 — the one genuinely new datum for the garden's map: E0382 gives **logical** forward
 secrecy (the old key is unreachable) but **not memory-level** (its bytes are not
 scrubbed — a move relocates a value, it does not zero its old home). Memory-level

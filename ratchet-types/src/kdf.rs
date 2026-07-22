@@ -20,15 +20,16 @@
 //!   this, not merely declined to promise it. The graduated backend supplies it by the
 //!   standard assumption for a hash-chain ratchet — that the domain-separated SHA-256
 //!   derivations behave as a **random oracle** (the pseudorandom-independent-outputs
-//!   assumption; the standard-model *PRF* form of it is HKDF/HMAC, **not** a raw
-//!   `SHA-256(tag ‖ ck)` — a secret-prefix hash is length-extendable, exactly why real
-//!   designs use HMAC; see the not-HKDF note below). Under it, `CKⱼ` cannot be reached
-//!   (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a preimage search — the oracle's
-//!   preimage-resistance facet), and each past `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an *independent*
-//!   oracle output that a compromised chain
+//!   assumption; its standard-model *PRF* realization is HKDF/HMAC — a raw `SHA-256(tag ‖ ck)`
+//!   chain has this only under the random-oracle heuristic, with no standard-model reduction,
+//!   which is why production designs prefer HMAC; see the not-HKDF note below). Under it,
+//!   `CKⱼ` cannot be reached (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a preimage search —
+//!   the oracle's preimage-resistance facet), and each past `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an
+//!   *independent* oracle output that a compromised chain
 //!   key does not correlate with. **Preimage resistance alone is necessary but not
-//!   sufficient**: hiding the past *message* keys needs the derivations' *independence* (the
-//!   PRF / random-oracle property), not merely non-invertibility of the chain. All of this is
+//!   sufficient**: hiding past *message* keys needs *both* — preimage resistance so a past
+//!   `CKⱼ` (and thence `MKⱼ`) cannot be reached, **and** the derivations' *independence* so the
+//!   held `CKᵢ₊₁` does not leak its same-step sibling `MKᵢ` (which shares `CKᵢ`). All of this is
 //!   *for a full-entropy chain key*: the **illustrative** [`init`] seeds from only 64 bits, so
 //!   an attacker with any `CKⱼ` can brute-force the seed in ~2⁶⁴ and re-derive the whole chain
 //!   *regardless* of SHA-256 — a real chain key is a full-entropy key-agreement output (see

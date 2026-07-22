@@ -56,9 +56,10 @@
 //!   new `CKᵢ₊₁` must learn nothing of `CKᵢ` or any past message key. That is the KDF's job,
 //!   and **since graduation this leaf supplies it**: the domain-separated SHA-256 derivations
 //!   are modeled as a **random oracle / PRF**, so the chain cannot be inverted *and* each
-//!   past message key is an independent output (see [`kdf`] for the precise argument —
-//!   preimage resistance is *necessary but not sufficient*; hiding the past *message* keys
-//!   needs the derivations' independence). The toy FNV backend it replaced *abstained* from
+//!   message key is an independent output (see [`kdf`] for the precise argument — preimage
+//!   resistance is *necessary but not sufficient*: hiding past message keys needs *both*
+//!   preimage resistance, so a past `CKⱼ` can't be reached, *and* the derivations'
+//!   independence, so `CKᵢ₊₁` doesn't leak its same-step sibling `MKᵢ`). The toy FNV backend it replaced *abstained* from
 //!   this guarantee. So this leaf now supplies **both** protections — the type stops
 //!   retention, the KDF stops inversion — where before it supplied only the first.
 //!
@@ -124,9 +125,11 @@
 //! the information-theoretic (colliding) leg honest: its ambiguity is *against the forward
 //! state alone* (an attacker who *also* sees a ciphertext under `MKⱼ` can test each candidate
 //! `CKⱼ` forward and disambiguate), and — since one cannot tell *which* held values collide —
-//! the **operative** forward-secrecy guarantee rests on the *named* (preimage-resistance) leg
-//! for every value; leg 1's information-theoretic safety is a per-value **bonus**, not the
-//! load-bearing guarantee. (Lean also models only the *chain-key* preimage structure; hiding
+//! the forward-secrecy guarantee one can *rely on* rests on the *named* (preimage-resistance)
+//! leg for every value; leg 1's information-theoretic safety is a per-value **bonus** — and one
+//! ordinary ratchet usage almost always dissolves (message keys are *used to encrypt*, so a
+//! ciphertext under `MKⱼ` normally exists and disambiguates), not a guarantee to design
+//! against. (Lean also models only the *chain-key* preimage structure; hiding
 //! the *message* keys `MKⱼ = g(CKⱼ)` is the separate RO/PRF independence assumption.)
 //! (Which branch a held value falls in is a property of *that value* under SHA-256, and is
 //! unprovable; but a held `CKᵢ₊₁` is by construction the image of its predecessor `CKᵢ`, so
@@ -136,7 +139,7 @@
 //! *uniformly-random image point* — the conflation to avoid (SHA-256 having collisions
 //! *somewhere* is a different question again). So both legs are real, and the ≈0.63
 //! *discharged* (colliding) leg — information-theoretic, unconditional — is if anything the
-//! common one; preimage resistance is the operative assumption only in the ≈0.37 *named*
+//! common one; preimage resistance is the *load-bearing* assumption only in the ≈0.37 *named*
 //! (unique-preimage) leg. The number is not load-bearing — and "both legs unconditional"
 //! refers to the two *Lean lemmas*; the *security* is unconditional only on the colliding leg.)
 //!

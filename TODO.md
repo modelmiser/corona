@@ -1895,9 +1895,11 @@ started — await an explicit go-ahead on which batch to build):**
 - [x] **Leaf 15C `crdt-types` — a real `const` block** — DONE `6f9c3f7`. exhausting a small finite model so `+`/`min`
       fail with `error[E0080]` and `max` passes. The MOST LITERAL sibling of 22's rung: both convert a
       prose "the type COULD" into a demonstrated compile fact. (Also fixes CHARTER over-claim #3.)
-- [x] **Leaf 10 `ratchet-types` — memory-level-FS witness.** DONE `e903fa1`. A test (behind a scoped `unsafe`, or a
-      `zeroize`-on-`Drop` variant) showing a moved-from `ChainKey`'s 32 bytes still linger non-zero,
-      contrasted with a scrubbing variant. Closes the leaf's self-described unique contribution.
+- [x] **Leaf 10 `ratchet-types` — memory-level-FS witness.** DONE `e903fa1`. A test (a **safe**
+      `Rc<RefCell<[u8;32]>>` *model* of the physical slot — the crate is `#![forbid(unsafe_code)]`, so
+      the real home is unobservable in safe Rust and is modeled, not reached) showing a lingering
+      (non-scrubbing) key's bytes survive disposal, contrasted with a scrub-on-`Drop` variant.
+      Closes the leaf's self-described unique contribution.
 - [x] **Leaf 14 `hypertree-types` — restore-twice reuse test.** DONE `55deb45`. A test-only private-field reconstructor
       (∥ leaf 15's `state` helper) that "restores" one keychain into two, signs two messages, shows both
       reuse the same `(subtree,leaf)` index — the reuse E0382 cannot reach across persistence. (Fixes
