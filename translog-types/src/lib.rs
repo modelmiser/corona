@@ -114,7 +114,7 @@
 //! - **Checkpoints are caller-trusted commitments.** A [`Checkpoint`]'s root commits to
 //!   *the entries this log holds*; the proof shows one is a prefix of another, not that
 //!   either commits the *right* set (exactly as `merkle-types`' `Root` is trusted).
-//! - **Append-only, fixed toy scope.** No deletion, no compaction, no signed-tree-head
+//! - **Append-only, fixed illustrative scope.** No deletion, no compaction, no signed-tree-head
 //!   signatures, no inclusion-proof surface (that is leaf 4 / leaf 11). The subject is the
 //!   *relational brand*, not transparency-log engineering.
 //! - **The seal and brands bind *safe* downstream code.** [`Consistent`]'s unforgeability
@@ -444,7 +444,10 @@ impl<'new> Checkpoint<'new> {
 /// Non-redacting on purpose (roots and sizes are public commitments, mirroring
 /// `merkle-types`' `VerifiedLeaf`). Holding one is a *typestate* fact — verified through
 /// the checked path, against the two snapshots whose brands it bears — not, on its own, a
-/// security guarantee (the backend hash is a toy).
+/// security guarantee: what it carries is the E0451/two-brand *typestate* (which two
+/// snapshots, reached through the checked fold), which is **backend-independent**; the roots
+/// it holds are still caller-trusted commitments (see the crate's Honest limits), and the
+/// fold's forgery-resistance rests on the graduated SHA-256 backend, not on this witness.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Consistent<'old, 'new> {
     old_root: Digest,
