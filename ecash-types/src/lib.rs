@@ -87,11 +87,12 @@
 //! not to move money — but its coin-tag MAC is **graduated** (charter criterion
 //! #2): the toy FNV-1a was swapped for vetted **HMAC-SHA-256** (RustCrypto
 //! `hmac`+`sha2`) behind the unchanged `hash::coin_tag`/`mint_id` seam. This is
-//! a **load-bearing** swap (∥ pow/ratchet): under the invertible FNV, an observer
-//! of one wire coin could unwind it to a forging state and mint valid tags for
-//! *any* serial for free, so the leaf's claim "a valid tag implies this mint
-//! issued the coin" was **false**; under the HMAC PRF, forging a tag for a new
-//! serial requires the mint's key, so that claim now **holds** — *up to* the
+//! a **load-bearing** swap of **pow's** flavour (an analytically-exhibited break — the
+//! removed FNV was invertible — not ratchet's abstained guarantee): under the invertible FNV, an observer of one wire coin could
+//! unwind it to a forging state and mint valid tags for *any* serial for free, so the
+//! leaf's claim "a valid tag implies this mint issued the coin" was **false**; under the
+//! HMAC PRF, forging a tag for a new serial is no longer free — it **costs ~2⁶⁴** (the
+//! key, or an online tag-guess), so that claim now **holds** — *up to* the
 //! illustrative-width residue below. The residue (∥ `ratchet`'s `init(u64)` cap,
 //! a parameter limit not the primitive's): the mint's secret is a `u64` (the MAC
 //! key), and the tag is truncated to 64 bits, so forgery-resistance is ~2⁶⁴ (was
@@ -326,8 +327,8 @@ pub struct WireCoin {
     /// The claimed tag. It passes [`Mint::redeem`]'s gates only if it
     /// equals the mint's MAC over the serial **and** the serial is in that
     /// mint value's issued range — checked nowhere else. (Under the graduated
-    /// HMAC, producing a matching MAC requires the mint's key — ~2⁶⁴ over the
-    /// illustrative secret — so an observer of coins cannot; see the crate banner.)
+    /// HMAC, producing a matching MAC costs ~2⁶⁴ — the key, or an online tag-guess
+    /// against `redeem` — so an observer of coins cannot cheaply; see the crate banner.)
     pub tag: u64,
 }
 
@@ -400,7 +401,7 @@ impl Receipt {
     /// Identity is compared as a 64-bit truncation of an HMAC of the secret — the
     /// graduated keyed PRF (the coin-tag construction at a fixed domain point), so
     /// it is one-way: an exposed `mint_id` no longer yields the secret cheaply
-    /// (the toy's ~2³² meet-in-the-middle is gone), recovering it is the ~2⁶⁴ key
+    /// (the invertible toy's cheap secret-recovery is gone), recovering it is the ~2⁶⁴ key
     /// brute-force. No path exposes one (the field is private, `Debug`-redacted,
     /// and `PartialEq` leaks only equality), so the operative identity attack
     /// *through the `Receipt` API* is the seed-guess oracle below — now also the

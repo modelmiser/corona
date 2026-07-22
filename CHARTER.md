@@ -178,7 +178,7 @@ here the mint's secret is the MAC key — and a **load-bearing** swap of a new f
 Over the *invertible* toy FNV, an observer of one wire coin could recover a forging state and mint valid
 tags for *any* serial for free, so the leaf's claim "a valid tag ⟹ this mint issued the coin" was
 **false**; HMAC-SHA-256's PRF unforgeability makes forgery require the key, so the claim now holds — a
-load-bearing repair of **pow's** flavour (an *exhibited break* the swap fixes, not ratchet's abstained
+load-bearing repair of **pow's** flavour (an *analytically-exhibited* break the swap fixes — the removed FNV was invertible — not ratchet's abstained
 guarantee). Its `Sol.Lib.Ecash` is the
 **16th wire** (a NEW wire) and formalizes the leaf's three-way structure: the tag-check reduces to a
 decidable seal (`ecash_check_decidable`, merkle/pow's checked path over a *keyed* PRF); **authenticity does

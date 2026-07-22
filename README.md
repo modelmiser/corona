@@ -35,7 +35,7 @@ corona/
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
-├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space; GRADUATED 2026-07-22 — HMAC-SHA-256, the first keyed-MAC graduation; Sol.Lib.Ecash [16th wire]: authenticity-not-witness-definable, freshness-not-compile-time)
+├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space; GRADUATED 2026-07-22 — HMAC-SHA-256, the first MAC-authentication graduation; Sol.Lib.Ecash [16th wire]: authenticity-not-witness-definable, freshness-not-compile-time)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held value's preimage count)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
@@ -377,7 +377,7 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 > mint's secret is the MAC key — the first backend that is a keyed MAC used to
 > *authenticate a value*; bloom's SipHash was keyed too, but for probe-position
 > unpredictability, not authentication, and SHA-256/`subtle` were unkeyed). This is a
-> **load-bearing** swap of **pow's** flavour (an *exhibited break*, not ratchet's
+> **load-bearing** swap of **pow's** flavour (an *analytically-exhibited* break — the removed FNV was invertible — not ratchet's
 > abstained guarantee): over the *invertible* FNV, observing one wire coin recovered the
 > keyed hash state and forged *any* serial for free, so "a valid tag ⟹ this mint issued
 > the coin" was **false**; the PRF's unforgeability makes forgery require the key, so the

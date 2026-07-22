@@ -19,10 +19,12 @@
 //! issued the coin" was simply **false**. HMAC-SHA-256 is a PRF (existentially
 //! unforgeable under chosen-message attack in the standard model, assuming
 //! SHA-256's compression is a PRF): observing valid `(serial, tag)` pairs reveals
-//! nothing about the key, so forging a tag for a *new* serial requires the key.
-//! This is a load-bearing swap of **pow's** flavour — an *exhibited break* (the toy
-//! was demonstrably forgeable-from-one-coin) that the swap repairs, not ratchet's
-//! abstained guarantee; the swap changes what the code can *claim*, not merely the
+//! nothing about the key, so forging a tag for a *new* serial is no longer free — it
+//! **costs ~2⁶⁴** work: recovering the key, or (the tag being 64-bit) an online
+//! tag-guess against `redeem`, the two avenues below. This is a load-bearing swap of
+//! **pow's** flavour — a break that was *analytically exhibited* (the removed FNV was
+//! invertible mod 2⁶⁴, so one coin recovered a forging state) that the swap repairs,
+//! not ratchet's abstained guarantee; the swap changes what the code can *claim*, not merely the
 //! strength of a residue (contrast the integrity-hash swaps merkle/commit/translog).
 //!
 //! ## Security posture and the illustrative-width residue
@@ -34,7 +36,7 @@
 //! - **The key is a `u64`.** A [`crate::Mint`]'s secret is 64-bit, so the MAC key
 //!   can be brute-forced in ~2⁶⁴ regardless of the primitive. (This is what keeps
 //!   the [`crate::Receipt::minted_by`] seed-guess oracle real — now a ~2⁶⁴
-//!   exhaustion, where the toy leaked the secret from one coin at ~2³².)
+//!   exhaustion, where the invertible toy leaked the secret far more cheaply.)
 //! - **The tag is truncated to 64 bits.** [`coin_tag`]/[`mint_id`] return the
 //!   first 8 bytes of the 256-bit HMAC output, so an existential tag-guess forgery
 //!   costs ~2⁶⁴ as well.
@@ -68,8 +70,9 @@ fn mac_u64(secret: u64, msg: &[u8]) -> u64 {
 
 /// The tag a mint attaches to a coin: HMAC-SHA-256 over the serial, keyed by the
 /// mint's secret, domain-separated with a leading `0x01`. Under the graduated PRF,
-/// producing a valid tag for a serial requires the mint's key — observing coins
-/// does not reveal it (contrast the toy; see the module banner).
+/// producing a valid tag for a serial costs ~2⁶⁴ work — the mint's key, or an online
+/// tag-guess against `redeem` — where the invertible toy leaked a forging state from
+/// one observed coin (observing coins reveals nothing about the key; see the banner).
 pub(crate) fn coin_tag(secret: u64, serial: u64) -> u64 {
     let mut msg = [0u8; 9];
     msg[0] = 0x01;

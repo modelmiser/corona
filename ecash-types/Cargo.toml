@@ -2,7 +2,7 @@
 name = "ecash-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 9 (negative space): bearer value as a linear capability — and the exact boundary where compile-time double-spend prevention ends. Graduated: the coin-tag MAC is vetted HMAC-SHA-256 (the first keyed-backend graduation); see CHARTER.md."
+description = "Corona leaf 9 (negative space): bearer value as a linear capability — and the exact boundary where compile-time double-spend prevention ends. Graduated: the coin-tag MAC is vetted HMAC-SHA-256 (the first graduation to a keyed MAC used to authenticate a value); see CHARTER.md."
 license = "MIT"
 
 [dependencies]
