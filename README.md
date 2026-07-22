@@ -374,11 +374,14 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 > ✅ **GRADUATED (2026-07-22)** — the garden's **eighth** graduated leaf, **seventh
 > non-hub**, and the **first keyed-MAC** graduation. Backend: toy FNV-1a → vetted
 > **HMAC-SHA-256** (`hmac`+`sha2`) behind the same `coin_tag`/`mint_id` seam (the
-> mint's secret is the MAC key — every prior swap was an *unkeyed* primitive). This is
-> a **load-bearing** swap (∥ pow/ratchet): over the *invertible* FNV, observing one
-> wire coin recovered the keyed hash state and forged *any* serial for free, so "a
-> valid tag ⟹ this mint issued the coin" was **false**; the PRF's unforgeability makes
-> forgery require the key, so the claim now holds — up to the illustrative ~2⁶⁴ residue
+> mint's secret is the MAC key — the first backend that is a keyed MAC used to
+> *authenticate a value*; bloom's SipHash was keyed too, but for probe-position
+> unpredictability, not authentication, and SHA-256/`subtle` were unkeyed). This is a
+> **load-bearing** swap of **pow's** flavour (an *exhibited break*, not ratchet's
+> abstained guarantee): over the *invertible* FNV, observing one wire coin recovered the
+> keyed hash state and forged *any* serial for free, so "a valid tag ⟹ this mint issued
+> the coin" was **false**; the PRF's unforgeability makes forgery require the key, so the
+> claim now holds — up to the illustrative ~2⁶⁴ residue
 > (the secret is a `u64` key and the tag is truncated to 64 bits; a real mint uses
 > ≥128-bit widths, ∥ `ratchet`'s `init(u64)` cap). `Sol.Lib.Ecash` (the **16th wire**)
 > machine-checks the split: the tag-check reduces to a decidable seal, but

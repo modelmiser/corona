@@ -20,9 +20,10 @@
 //! unforgeable under chosen-message attack in the standard model, assuming
 //! SHA-256's compression is a PRF): observing valid `(serial, tag)` pairs reveals
 //! nothing about the key, so forging a tag for a *new* serial requires the key.
-//! This is a load-bearing swap in pow's/ratchet's sense — the swap changes what
-//! the code can *claim*, not merely the strength of a residue (contrast the
-//! integrity-hash swaps merkle/commit/translog).
+//! This is a load-bearing swap of **pow's** flavour — an *exhibited break* (the toy
+//! was demonstrably forgeable-from-one-coin) that the swap repairs, not ratchet's
+//! abstained guarantee; the swap changes what the code can *claim*, not merely the
+//! strength of a residue (contrast the integrity-hash swaps merkle/commit/translog).
 //!
 //! ## Security posture and the illustrative-width residue
 //!

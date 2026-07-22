@@ -126,7 +126,7 @@
 //!   [`Mint::redeem`]'s tag and issued-range gates. "Check-passing" is what a type
 //!   could see; **authenticity** — that a valid tag was *produced by the mint*,
 //!   not forged — is a *runtime* fact resting on the graduated MAC's
-//!   unforgeability (~2⁶⁴ over the illustrative key), which the toy's free forgery
+//!   unforgeability (~2⁶⁴ — the illustrative-width forgery bound), which the toy's free forgery
 //!   denied outright and which no *type* witnesses either way (see the Sol section).
 //! - A [`Receipt`] witnesses that **a mint holding this secret accepted this
 //!   serial — one that mint value had itself issued — while it was absent
@@ -175,11 +175,14 @@
 //!
 //! - `ecash_check_decidable` — a [`Receipt`] is minted **iff** the presented tag passes the mint's MAC
 //!   gate: the E0451 seal reduces to a decidable check (merkle/pow's checked path, over a *keyed* PRF).
-//! - `ecash_authenticity_not_witness_definable` / `ecash_no_authenticity_recovery` — **the new residue**:
-//!   a presentation acquired authentically (the mint issued it) and by forgery (a key-holder recomputed
-//!   the valid tag) is byte-identical, so no `Presentation → Provenance` recovers *who produced the tag*.
-//!   Authenticity is a keyed-MAC assumption discharged to HMAC **outside Lean**, never witnessed by a
-//!   type — `pow`'s effort residue transposed from a search to a MAC. **Axiom-free.**
+//! - `ecash_authenticity_not_witness_definable` / `ecash_no_authenticity_recovery` — **the new residue**,
+//!   grounded in a *seal-passing* witness: a presentation that **passes the tag-check and mints a real
+//!   `Receipt`** (a genuine coin's data), acquired authentically (the mint issued it) and by forgery (a
+//!   key-holder recomputed the valid tag), is byte-identical and mints the **same** receipt, yet no
+//!   `Presentation → Provenance` recovers *who produced the tag*. Authenticity is a keyed-MAC assumption
+//!   discharged to HMAC **outside Lean**, never witnessed by a type — `pow`'s effort residue transposed
+//!   from a search to a MAC (and, like pow, tied to a validity corner so it is not an abstract label).
+//!   **Axiom-free.**
 //! - `ecash_freshness_not_compile_time` — the **layer-2 headline**, backend-independent: no fixed
 //!   `f : Serial → Bool` decides redeem-time freshness, because "unspent" is non-monotone (freshness
 //!   flips true→false when a serial is spent) and a compile-time fact is fixed before any spend. The MAC
@@ -253,7 +256,7 @@ use std::fmt;
 ///
 /// The `Debug` impl redacts the tag — the tag is the bearer credential, and
 /// under the graduated HMAC a log line holding it is a spendable coin (a valid
-/// tag *is* authentic up to the ~2⁶⁴ key), so redaction is load-bearing here, not
+/// tag *is* authentic up to the ~2⁶⁴ forgery bound), so redaction is load-bearing here, not
 /// theater; see the crate banner.
 pub struct Coin {
     serial: u64,
@@ -352,7 +355,7 @@ pub struct WireCoin {
 /// (different serials compare unequal regardless); since receipts cannot
 /// be injected (E0451), this only ever compares facts [`Mint::redeem`]
 /// actually minted (under the graduated MAC the presenter is authentic up to the
-/// ~2⁶⁴ key — a forgery needs it), and same-seed replicas compare equal by design
+/// ~2⁶⁴ forgery bound — key brute-force or tag-guess), and same-seed replicas compare equal by design
 /// (layer 3).
 ///
 /// Building a `Receipt` directly does not compile — the seal is pinned like
@@ -430,7 +433,7 @@ pub enum RedeemError {
     /// `DoubleSpent` therefore always implies check-passing and issued —
     /// this is the online check that layer 1's compiler cannot perform
     /// across the wire. ("Check-passing", and — under the graduated MAC —
-    /// authentic up to the ~2⁶⁴ key: reaching this variant with a forged tag
+    /// authentic up to the ~2⁶⁴ forgery bound: reaching this variant with a forged tag
     /// now requires forging the HMAC, which the toy admitted for free; the
     /// type still cannot witness the difference — see the crate banner.)
     DoubleSpent {
@@ -519,7 +522,7 @@ impl Mint {
     /// [`Coin::into_wire`].
     ///
     /// Two side channels the graduated PRF now moots for an outsider (it denies
-    /// anyone without the ~2⁶⁴ key a valid tag to probe with), leaving them
+    /// anyone short of the ~2⁶⁴ forgery bound a valid tag to probe with), leaving them
     /// exercisable only by a key-holder: a valid-tag holder learns the issued
     /// boundary *remotely* — `Forged` iff `serial ≥ next_serial` — so
     /// `next_serial` is not only the local [`Mint`]-`Debug` counter; and the
@@ -648,7 +651,7 @@ mod tests {
     /// check-passing and check-failing presentations never learn spent-set
     /// membership.
     /// ("Forged" = failing `redeem`'s checks; a valid-tag presentation, which
-    /// under the graduated HMAC requires the ~2⁶⁴ key, behaves as authentic — see
+    /// under the graduated HMAC requires paying the ~2⁶⁴ forgery bound, behaves as authentic — see
     /// the crate banner.)
     #[test]
     fn forgery_neither_burns_serials_nor_probes_the_spent_set() {
@@ -701,7 +704,7 @@ mod tests {
     /// pre-forged future serial cannot front-run (burn) the genuine coin
     /// issued later. In-crate tests compute real tags directly (they hold the
     /// secret); under the graduated HMAC an outsider cannot obtain a valid tag
-    /// without the ~2⁶⁴ key — the toy's one-observed-coin shortcut is closed —
+    /// short of the ~2⁶⁴ forgery bound — the toy's one-observed-coin shortcut is closed —
     /// so this `Ok`-implies-issued gate binds even a key-holder (see the banner).
     #[test]
     fn valid_tag_on_unissued_serial_is_refused_and_burns_nothing() {

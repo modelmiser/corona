@@ -171,12 +171,15 @@ same hash-independence bloom's graduation showed, now on the wire that first rea
 brand's two-brand grade. (Non-hub — fan-in 0 **and** fan-out 0, imports only `sha2`; the **sixth** non-hub
 graduation.)
 The **eighth**, 2026-07-22, is `ecash-types` (leaf 9, toy FNV-1a → vetted **HMAC-SHA-256** behind the
-`hash::coin_tag`/`mint_id` seam), and it is two firsts: the garden's **first keyed-MAC graduation** (every
-prior swap was an *unkeyed* primitive — SHA-256/SipHash/`subtle`; here the mint's secret is the MAC key),
-and a **load-bearing** swap of a new flavour. Over the *invertible* toy FNV, an observer of one wire coin
-could recover a forging state and mint valid tags for *any* serial for free, so the leaf's claim "a valid
-tag ⟹ this mint issued the coin" was **false**; HMAC-SHA-256's PRF unforgeability makes forgery require the
-key, so the claim now holds — the load-bearing repair, in pow's/ratchet's sense. Its `Sol.Lib.Ecash` is the
+`hash::coin_tag`/`mint_id` seam), and it is two firsts: the garden's **first keyed-MAC graduation** — the
+first whose backend is a keyed MAC used to **authenticate a value** (bloom's SipHash, wire 13, is *also*
+keyed, but keys it for probe-position unpredictability, not to authenticate; SHA-256/`subtle` were unkeyed);
+here the mint's secret is the MAC key — and a **load-bearing** swap of a new flavour.
+Over the *invertible* toy FNV, an observer of one wire coin could recover a forging state and mint valid
+tags for *any* serial for free, so the leaf's claim "a valid tag ⟹ this mint issued the coin" was
+**false**; HMAC-SHA-256's PRF unforgeability makes forgery require the key, so the claim now holds — a
+load-bearing repair of **pow's** flavour (an *exhibited break* the swap fixes, not ratchet's abstained
+guarantee). Its `Sol.Lib.Ecash` is the
 **16th wire** (a NEW wire) and formalizes the leaf's three-way structure: the tag-check reduces to a
 decidable seal (`ecash_check_decidable`, merkle/pow's checked path over a *keyed* PRF); **authenticity does
 NOT reduce** — a presentation acquired authentically and by forgery is byte-identical, so no
