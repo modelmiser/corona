@@ -44,7 +44,7 @@ corona/
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (GRADUATED — keyed SipHash; Sol.Lib.Bloom proves no-false-negatives + absence soundness, false-positive a proved contrast)
 ├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
-├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (TOY)
+├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (GRADUATED 2026-07-21 — SHA-256, Sol.Lib.Pow; the swap is load-bearing: preimage resistance is what makes validity imply work)
 ├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
 ├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
 ├── pospace-types/    # leaf 21 — proof of space: validity reduces to the seal, occupied storage does not — the first spatial residue, and a space-time tradeoff (TOY)
@@ -776,22 +776,27 @@ the split adds a residue the garden did not yet have.
   silent about the *history* of.
 
 - **∥ leaf 6, the difficulty *parameter* still reduces (E0080).** `Puzzle<const BITS>`
-  is walled by `1 ≤ BITS ≤ 64`: requiring 65 leading zero bits from a 64-bit digest is
-  unsatisfiable, so `Puzzle::<65>::new(…)` does **not build** (`error[E0080]`) — the
-  same "a resource cannot be over-demanded" shape as leaf 6's `K ≤ N`. The *hardness
+  is walled by `1 ≤ BITS ≤ 256`: requiring 257 leading zero bits from a 256-bit SHA-256
+  digest is unsatisfiable, so `Puzzle::<257>::new(…)` does **not build** (`error[E0080]`)
+  — the same "a resource cannot be over-demanded" shape as leaf 6's `K ≤ N`. The *hardness
   parameter* moves to compile time even though the *work* cannot; leaf 18 is the second
   leaf to pair **E0451 + E0080**, but where leaf 6's finding was the wall, here the wall
   is the easy half and the cost residue is the finding.
 
-> ⚠ **TOY.** Non-cryptographic FNV-1a — so validity does **not** imply work here: an
-> adversary can compute a clearing nonce *algebraically, with zero search*, and `verify`
-> mints a fully genuine `Solution` (the recurring split — the type seals validity, only
-> a one-way hash makes validity imply effort; leaves 5, 12). Even a real hash makes
-> validity imply effort only probabilistically, only for the finder, and never verifiably
-> from the witness. The witness is unbranded (challenge-digest-*detectable* via
-> `Puzzle::owns`, not brand-*enforced*). No difficulty retargeting, accumulated-work
-> chain, or Sybil economics — work's purpose (making attacks expensive) is an economic
-> assumption downstream of the type discipline.
+> ✅ **GRADUATED (2026-07-21)** — the garden's **fifth** graduated leaf, **fourth
+> non-hub** (fan-in 0 AND fan-out 0). Backend: toy FNV-1a → vetted **SHA-256** (`sha2`)
+> behind the same `work_digest` seam (digest `u64`→`[u8;32]`, difficulty range 64→256
+> bits). **The swap is load-bearing**, unlike the integrity-hash graduations: over the
+> *invertible* FNV a clearing nonce was computable *algebraically, with zero search*, so
+> "validity ⟹ work" was simply false; SHA-256's **preimage resistance** forces brute-force
+> search (expected `2^BITS`), which is what makes the leaf's central claim hold —
+> probabilistically, only for the finder. The **effort residue survives** the swap: a
+> lucky-first-try witness and a `2^BITS`-grind witness stay byte-identical, so the witness
+> still cannot certify work. Lean `Sol.Lib.Pow` (the 14th wire, the first
+> production-history residue) machine-checks the split. Remaining limits: the witness is
+> unbranded (challenge-digest-*detectable* via `Puzzle::owns` — now an injective SHA-256
+> identity); no difficulty retargeting, accumulated-work chain, or Sybil economics —
+> work's purpose is an economic assumption downstream of the type discipline.
 
 ## Leaf 19: `blindsig-types`
 

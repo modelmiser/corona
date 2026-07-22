@@ -59,6 +59,27 @@
 //! unused (a `Solution` is `Clone` evidence of a fact, not a consumable capability, and it is
 //! deliberately *unbranded* — see the limits).
 //!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! Graduation (2026-07-21) contributes `Sol.Lib.Pow` — the **14th Corona↔Sol wire** and the
+//! first residue about a value's **production history**, the sibling of `consttime-types`' timing
+//! residue (wire 12). The split is machine-checked in Lean (axiom-clean; `[propext]` on the seal,
+//! the rest axiom-free):
+//!
+//! - `pow_validity_decidable` — a witness is admissible **iff** its digest clears the target
+//!   (`bits ≤ leadingZeros`): the E0451 decidable seal, the reduce half.
+//! - `pow_witness_is_effort_blind` — the witness reads **nothing** of the search effort (a
+//!   ∀-quantified `rfl`): the structural core of the residue.
+//! - `pow_effort_not_witness_definable` — two executions produce the byte-identical witness at
+//!   different effort, so **no `Witness → effort` function exists** (the residue as a theorem, the
+//!   analogue of consttime's `not_value_definable`); and `pow_no_effort_recovery` sharpens it to an
+//!   impossibility over *all* candidate recoverers.
+//!
+//! The correspondence is honest about the seam: what Lean proves is the **structural** silence of the
+//! witness. The graduation's *probabilistic* work bound — that over preimage-resistant SHA-256 a valid
+//! witness implies (expected) `2^BITS` search, for the finder — is the residue discharged to the hash
+//! **outside Lean**, exactly as merkle's collision-resistance and commit's are.
+//!
 //! ## Security posture and limits (GRADUATED)
 //!
 //! - **Graduated backend — validity NOW implies work (for the finder), and the swap is what
