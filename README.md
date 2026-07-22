@@ -36,7 +36,7 @@ corona/
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
-├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (TOY)
+├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256; Sol.Lib.Ratchet, the residue's home splits on KDF injectivity)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
@@ -394,20 +394,30 @@ out and re-derived either — three mechanisms, not two, foreclose retention (se
 crate docs).
 
 Two orthogonal protections, the leaf-5 shape again: the **type** stops *retention*
-(E0382); a **one-way KDF** stops *inversion* (recovering `CKᵢ` from `CKᵢ₊₁` — the toy
-FNV backend gives no such guarantee, a non-cryptographic hash; no cheap inversion is
-exhibited, it simply is not one-way). And a boundary *within* the primitive — the one
-genuinely new datum for the garden's map: E0382 gives **logical** forward secrecy (the
-old key is unreachable) but **not memory-level** (its bytes are not scrubbed — a move
-relocates a value, it does not zero its old home). Memory-level secrecy needs
-`zeroize`-on-`Drop`, which the move system does not express.
+(E0382); a **one-way KDF** stops *inversion* (recovering `CKᵢ` from `CKᵢ₊₁`). The toy
+FNV backend *abstained* from this second guarantee (which the leaf declared out of
+scope); **graduation's SHA-256** now supplies it — preimage resistance makes
+`CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` non-invertible. And a boundary *within* the primitive —
+the one genuinely new datum for the garden's map: E0382 gives **logical** forward
+secrecy (the old key is unreachable) but **not memory-level** (its bytes are not
+scrubbed — a move relocates a value, it does not zero its old home). Memory-level
+secrecy needs `zeroize`-on-`Drop`, which the move system does not express — a residue
+graduation does *not* close (outside a KDF backend's remit).
 
-> ⚠ **TOY.** FNV mixing, not a one-way KDF — no *cryptographic* forward secrecy. The
-> type discipline (the retention protection) is the subject. Forward secrecy only, not
-> post-compromise security (self-healing needs fresh entropy — the DH step of the
-> *double* ratchet, echoing leaf 9's redeem-time-freshness boundary); and it is
-> conditional on discarding the deterministic root seed (leaf 5's caveat, in the FS
-> setting).
+> ✅ **GRADUATED (2026-07-21).** The KDF backend is now domain-separated **SHA-256**
+> (the audited `sha2` crate) behind the unchanged `init`/`next_chain`/`message_key`
+> seam. Cryptographic forward secrecy for the *inversion* threat now holds (SHA-256
+> preimage resistance); the *retention* protection is the backend-independent type
+> discipline that was always the subject. A **weaker** load-bearing swap than pow's —
+> the toy *abstained* from the inversion guarantee where pow's toy made its headline
+> *false*. Criterion #4 contributes `Sol.Lib.Ratchet` (the **15th** Corona↔Sol wire),
+> whose residue's home splits on KDF injectivity: non-injective ⟹ the past is
+> information-theoretically gone (proved), injective ⟹ determined but recoverable only
+> by inverting SHA-256 (named, outside Lean). Not HKDF/HMAC — a SHA-256 hash chain;
+> a production deployment may prefer HKDF-SHA256 behind the same seam. Two residues stay
+> open (not a KDF's to close): **memory-level** secrecy (needs `zeroize`) and the
+> **seed-discard** condition. Forward secrecy only, not post-compromise security
+> (self-healing needs fresh entropy — the DH step of the *double* ratchet).
 
 ## Leaf 11: `accumulator-types`
 
