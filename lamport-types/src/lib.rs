@@ -106,7 +106,9 @@
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
 //!   candidates = ~2⁶⁴ hash calls (two per candidate) **from the verifying key alone**; given
 //!   the one signature the model grants it is ~2⁶³ hash calls, one `prg` per candidate. So the
-//!   vk-only route is about **2×** the ~2⁶³ of inverting one commitment, and the §-halved route
+//!   vk-only route is about **2×** the ~2⁶³ of inverting one commitment, and the route that uses the
+//!   one granted signature (halved, because a seed guess is then tested by one `prg` call rather
+//!   than `prg` + `commit`)
 //!   *equals* it — but either yields *all 128* preimages instead of one. Real Lamport's
 //!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
@@ -188,7 +190,8 @@ const BITS: usize = 64;
 /// and the **first on a primitive other than the E0451 seal**. Because Lean is not substructural,
 /// Sol models E0382 as a two-state transition system (`live → spent`) and proves `signsIn n live ≤ 1`
 /// (affine — *at most* once); the compiler's move-check is the trusted premise that forces real code
-/// to follow it. The re-mint residue (per key *value*, not *material*) is transported there too. The
+/// to follow it. The re-mint residue (per key *value*, not *material*) is modelled there too — as a
+/// stipulated reset edge, not derived from `generate`'s determinism. The
 /// same wire reuses the seal skeleton for [`VerifyingKey::verify`] — one crate, both primitives.
 pub struct SigningKey {
     /// `preimages[i][b]` is the secret revealed when digest bit `i` equals `b`.

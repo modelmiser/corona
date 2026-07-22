@@ -27,10 +27,14 @@
 //! The one-query EUF-CMA reduction: an adversary sees the verifying key and one signature on
 //! `m`, and outputs `(m*, σ*)` with `m* ≠ m`. Either `digest(m*) = digest(m)` — a **collision**
 //! — or some position `i` has `d*[i] ≠ d[i]`, so `σ*[i]` is a **preimage of the never-opened
-//! side** at `i`. Exactly **64** commitments are never-opened (the observed signature opens the
-//! other 64, and a preimage of an opened one is worth nothing), so that branch is a 64-target
-//! scan at `2⁶⁴/64 = 2⁵⁸` — *not* the 128-target ~2⁵⁷ of table row 6. The bound is
-//! `min(2³², 2⁵⁸) = 2³²`.
+//! side** at `i`. Relative to a *fixed* `m` only 64 commitments are never-opened — but `m` is
+//! **not** fixed when the scan runs. EUF-CMA lets the adversary compute before it queries, so it
+//! scans all **128** published commitments and, on a hit at `(i, b)`, picks `m` with
+//! `digest(m)[i] = 1−b`, which *retroactively makes* that hit a never-opened side (≈2 trial
+//! messages). The never-opened set is adversary-controlled, so the branch is the 128-target scan
+//! at `2⁶⁴/128 = 2⁵⁷` — table row 6's figure. The bound is `min(2³², 2⁵⁷) = 2³²`.
+//! (Measured at reduced width: 128-vs-64 targets gives a 2.01× gap, so the adaptive adversary
+//! really does pay half. An interim draft quoted ~2⁵⁸ here, quantifying over a fixed `m`.)
 //!
 //! **Required for unforgeability:**
 //!
@@ -50,8 +54,10 @@
 //!    to 64 bits caps it at ~2³² (birthday, with ~2³² storage — or ~3× the hashes memory-free
 //!    via Pollard rho). That bound is a property of the width, not of SHA-256. Each of the three
 //!    is capped by a *parameter* rather than by the backend, and they are not the same parameter:
-//!    (1) by the 64-bit commitment width, (3) by the 64-bit digest width, and (2) by the **64-bit
-//!    seed** — a 2⁶³ seed search hands over every unrevealed preimage whatever hash sits under
+//!    (1) by the **64-bit preimage domain** (not the commitment's output width — leave `commit`'s
+//!    output at 256 bits with `u64` preimages and one-wayness is still ~2⁶³; see `sha256_u64`'s
+//!    docstring), (3) by the 64-bit digest width, and (2) by the **64-bit seed** — a 2⁶³ seed
+//!    search hands over every unrevealed preimage whatever hash sits under
 //!    `prg`, so no backend could supply more than that. (3) is the one whose cap falls *below* a
 //!    useful level, which is what leaves the scheme forgeable.
 //!
@@ -60,7 +66,10 @@
 //!
 //! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
 //!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
-//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶² and row 6 to ~2⁵⁶.
+//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶², row 6 to ~2⁵⁶, and
+//!   **row 3** to ~2⁶⁰ (its first term is a `commit` scan over the `prg` image, so the optimum
+//!   moves from `k = 5–6` to `k = 6–7`) — which is why row 3's "bounded by" column names this
+//!   assumption alongside one-wayness and width.
 //! - **[`digest`] preimage-resistant.** Collision resistance does not imply it, so rows 2 and 3
 //!   are priced against a **random-oracle** `digest` (and rows 3, 6 and 7 against a
 //!   random-function `commit`), which SHA-256 is taken to model.
@@ -81,7 +90,7 @@
 //! |---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
 //! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
-//! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly |
+//! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly (and `prg` output-uniformity, which moves it to ~2⁶⁰) |
 //! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability |
 //! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` unpredictability |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |

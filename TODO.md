@@ -150,7 +150,7 @@ work (complete tasks, add children, keep siblings).
       `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
       `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
       ALL THREE unforgeability properties this construction needs — though only two usefully (textbook Lamport needs two; deriving
-      all preimages from a seed incurs a third — `prg` must be unpredictable under its seed, not merely one-way — PRF-ness only prices the cost table): `commit` one-wayness and `prg` unpredictability are now supplied at ~2⁶³, which
+      all preimages from a seed incurs a third — `prg` must be unpredictable under its seed, not merely one-way — PRF-ness only prices the cost table): `commit` one-wayness and `prg` unpredictability now hold to ~2⁶³ (the first supplied by SHA-256, the second capped by the 64-bit SEED, not by the backend), which
       the toy made false **outright** (FNV-1a over a fixed-length input is a
       lattice-solvable dim-8 knapsack — under a second per target; R1's "~2³² meet-in-the-middle"
       was itself a wrong correction, and R2 restored the original true claim). **The third property is supplied only up to the width, and cold review is what
@@ -158,7 +158,7 @@ work (complete tasks, add children, keep siblings).
       digest, and at the illustrative 64-bit width a birthday pair forges at **~2³²** —
       demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —
       but only for a CORRECTLY-USED key: the crate's own literal seeds fall in ≲2²⁵ and two
-      signatures under one key forge a third (~2⁹–2¹⁰ for a chosen-message adversary choosing all
+      signatures under one key forge a third (~2⁹–2¹⁰ HASH EVALUATIONS — a unit that understates its total work — for a chosen-message adversary choosing all
       three jointly, and ~nothing for the retained-seed holder who re-mints), so the ~2³² floor is a claim about
       correct usage, not about the demonstration. The
       first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap

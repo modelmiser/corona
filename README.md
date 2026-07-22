@@ -218,7 +218,8 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
 > `digest`/`commit`/`prg` seam. Load-bearing on **all three** properties unforgeability
 > needs — the toy failed every one — though only two usefully: `commit` one-wayness and `prg`
-> unpredictability are now supplied at ~2⁶³, both of which the toy lacked outright (FNV-1a is
+> unpredictability now hold to ~2⁶³ — one-wayness supplied by SHA-256, unpredictability capped
+> by the 64-bit *seed* rather than by any backend — both of which the toy lacked outright (FNV-1a is
 > lattice-invertible in seconds). `prg` unpredictability is a requirement textbook Lamport
 > lacks: this leaf derives all 128 preimages from a seed, so `prg` must be unpredictable under
 > it — one-wayness alone is insufficient, since inverting `prg` on one
@@ -236,6 +237,11 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > the illustrative **width**, not SHA-256 — the graduation moved which assumption carries
 > the weight, it did not make the scheme unforgeable. The type discipline (use-once,
 > E0382) is still the subject: it stops key *reuse*, never *forgery*.
+>
+> **Sol wire:** `Sol.Lib.Lamport` — the **4th wire**, and the first to leave the E0451 seal
+> for E0382. Hash-agnostic by construction, so the graduation moved no pre-existing theorem;
+> it *occasioned* Part 3 (the two-signature coverage lemma and the digest-equality transfer),
+> all four of whose results are axiom-free.
 
 ## Leaf 6: `static-config-types`
 
