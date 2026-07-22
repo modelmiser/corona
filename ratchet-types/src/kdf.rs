@@ -19,8 +19,10 @@
 //!   *invertible* (XOR and odd-prime multiply mod 2⁶⁴ both invert), so it actively lacked
 //!   this, not merely declined to promise it. The graduated backend supplies it by the
 //!   standard assumption for a hash-chain ratchet — that the domain-separated SHA-256
-//!   derivations behave as a **random oracle** (or, keyed by their secret input, a **PRF** —
-//!   the same pseudorandom-independent-outputs role). Under it, `CKⱼ` cannot be reached
+//!   derivations behave as a **random oracle** (the pseudorandom-independent-outputs
+//!   assumption; the standard-model *PRF* form of it is HKDF/HMAC, **not** a raw
+//!   `SHA-256(tag ‖ ck)` — a secret-prefix hash is length-extendable, exactly why real
+//!   designs use HMAC; see the not-HKDF note below). Under it, `CKⱼ` cannot be reached
 //!   (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a preimage search — the oracle's
 //!   preimage-resistance facet), and each past `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an *independent*
 //!   oracle output that a compromised chain

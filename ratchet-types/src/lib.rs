@@ -120,7 +120,14 @@
 //! (proved in Lean, a residue *discharged* — stated per-value, `past_ambiguous_at_collision`);
 //! at a *unique-preimage* held value it is determined but computable only with the KDF's
 //! inverse (a residue *named* — a SHA-256 preimage search, discharged outside Lean). What Lean
-//! proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
+//! proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary. Two caveats keep
+//! the information-theoretic (colliding) leg honest: its ambiguity is *against the forward
+//! state alone* (an attacker who *also* sees a ciphertext under `MKⱼ` can test each candidate
+//! `CKⱼ` forward and disambiguate), and — since one cannot tell *which* held values collide —
+//! the **operative** forward-secrecy guarantee rests on the *named* (preimage-resistance) leg
+//! for every value; leg 1's information-theoretic safety is a per-value **bonus**, not the
+//! load-bearing guarantee. (Lean also models only the *chain-key* preimage structure; hiding
+//! the *message* keys `MKⱼ = g(CKⱼ)` is the separate RO/PRF independence assumption.)
 //! (Which branch a held value falls in is a property of *that value* under SHA-256, and is
 //! unprovable; but a held `CKᵢ₊₁` is by construction the image of its predecessor `CKᵢ`, so
 //! it always has ≥1 preimage, and under a random-function heuristic its preimage count is
@@ -130,8 +137,8 @@
 //! *somewhere* is a different question again). So both legs are real, and the ≈0.63
 //! *discharged* (colliding) leg — information-theoretic, unconditional — is if anything the
 //! common one; preimage resistance is the operative assumption only in the ≈0.37 *named*
-//! (unique-preimage) leg. The number is not load-bearing: both legs are proved
-//! unconditionally in their case.)
+//! (unique-preimage) leg. The number is not load-bearing — and "both legs unconditional"
+//! refers to the two *Lean lemmas*; the *security* is unconditional only on the colliding leg.)
 //!
 //! ## Honest limits
 //!
