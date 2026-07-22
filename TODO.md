@@ -672,6 +672,22 @@ work (complete tasks, add children, keep siblings).
       correct). Fixed by re-running with per-lens crate copies; recorded as
       [[feedback_cold_review_no_concurrent_mutation]]. translog 18 unit + 3 doctests; workspace
       250 + 53, all gates green.
+- [x] **GRADUATED 2026-07-22 (7th graduation, 6th non-hub).** Backend swap: toy FNV-1a →
+      domain-separated **SHA-256** (`sha2`) behind the unchanged `leaf_hash`/`node_hash` seam
+      (criterion #2); digest `u64`→`[u8;32]` (a breaking change contained to this standalone,
+      fan-in-0 leaf); version 0.1.0→0.2.0; security-posture section added (#3). **Completes the
+      existing 7th wire `Sol.Lib.Translog`** (the `commit`-pattern — NOT a new wire) rather than
+      contributing one, so criterion #4 was already satisfied at seed time; the wire's three
+      theorems model the brand/scope/order skeleton, **not** the hash, so the swap moves **none**
+      of them (∥ bloom's hash-independent graduation) and full Sol stays green (1958 jobs).
+      **Integrity-hash swap** (∥ merkle/commit, unlike load-bearing pow/ratchet): forging a
+      *false* consistency proof — a rewritten history passed off as an append — now requires a
+      SHA-256 collision (~128-bit), trivial before against FNV; it repairs no *claim* (the leaf
+      never held collision-resistance as a type fact), it strengthens the *discharge target* of
+      the residue the wire already named. SHA-256 backend pinned to an independent oracle (python
+      hashlib golden vectors, `the_backend_is_genuine_sha256`). translog now 20 unit + 3 doctests;
+      clippy/fmt/rustdoc -D warnings clean; workspace build recompiled only translog (zero blast
+      radius). **[cold review below]**
 
 ## Now (leaf 19 — blindsig-types)
 

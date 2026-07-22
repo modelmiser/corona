@@ -43,7 +43,7 @@ corona/
 ├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (GRADUATED — keyed SipHash; Sol.Lib.Bloom proves no-false-negatives + absence soundness, false-positive a proved contrast)
-├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (TOY)
+├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (GRADUATED 2026-07-22 — SHA-256; completes Sol.Lib.Translog, the 7th wire; forging a false consistency proof now needs a SHA-256 collision, and the swap moves no theorem)
 ├── pow-types/        # leaf 18 — proof of work (hashcash): validity reduces to the seal, cost does not — the effort residue (GRADUATED 2026-07-21 — SHA-256, Sol.Lib.Pow; the swap is load-bearing: preimage resistance is what makes validity imply work)
 ├── blindsig-types/   # leaf 19 — Chaum blind signatures: validity & one-time-ness reduce, but unlinkability is a non-relation no brand can hold (TOY)
 ├── vdf-types/        # leaf 20 — verifiable delay function (RSW + Wesolowski): validity reduces to the seal, the sequential delay does not — the first complexity-lower-bound residue (TOY)
@@ -761,11 +761,21 @@ and what they carry is precisely the timeline fact the brand cannot hold. (The b
 "promote a lone node" Merkle build reproduces RFC 6962's recursive largest-power-of-two
 split, so `merkle` / `accumulator` machinery serves consistency proofs unchanged.)
 
-> ⚠ **TOY.** FNV-1a hash (domain-separated leaf/node tags) — a real adversary forges a
-> false consistency proof. Append-only, no deletion or compaction, no signed-tree-head
-> signatures, no inclusion-proof surface. Cross-process equivocation detection (comparing
-> retained tree heads out of band — CT's "gossip" problem) stays a runtime check; the
-> relational brand is the subject, not transparency-log engineering.
+> ✅ **GRADUATED (2026-07-22)** — the garden's **seventh** graduated leaf, **sixth
+> non-hub** (fan-in 0 AND fan-out 0). Backend: toy FNV-1a → domain-separated **SHA-256**
+> (`sha2`) behind the same `leaf_hash`/`node_hash` seam (digest `u64`→`[u8; 32]`, a
+> breaking change contained to this standalone leaf). This is an **integrity-hash**
+> graduation (∥ `merkle`/`commit`, unlike the load-bearing `pow`/`ratchet`): forging a
+> *false* consistency proof — passing a rewritten history off as an append — now requires
+> a **SHA-256 collision** (~128-bit), where against the toy FNV it was trivial. The swap
+> **completes the seventh Corona↔Sol wire** rather than adding a new one (the commit-types
+> pattern): `Sol.Lib.Translog` already machine-checks the two-brand/fold split, and because
+> those theorems model the brand/scope/order skeleton — **not** the hash — the swap moves
+> **none** of them (∥ bloom's hash-independent graduation). Remaining limits: checkpoints
+> are caller-trusted root commitments; append-only, no deletion/compaction/STH-signatures,
+> no inclusion-proof surface (leaf 4 / leaf 11); cross-process equivocation (comparing
+> retained tree heads out of band — CT's "gossip" problem) stays a runtime check, and the
+> relational brand — not transparency-log engineering — is the subject.
 
 ## Leaf 18: `pow-types`
 

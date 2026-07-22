@@ -87,11 +87,30 @@
 //! catch here is a proof that does not reconstruct the claimed old root (a lied history) —
 //! [`ConsistencyError::Inconsistent`], the executable core of that check.
 //!
+//! ## Security posture (graduated)
+//!
+//! This leaf is **graduated** (charter criterion #2): the toy FNV-1a hash was swapped for
+//! domain-separated **SHA-256** (via the vetted [`sha2`](hash) crate) behind the unchanged
+//! [`hash::leaf_hash`]/[`hash::node_hash`] seam. What that swap buys, precisely: a
+//! **consistency proof** attests that one snapshot is a genuine *prefix* of another (the log
+//! only appended). Forging a *false* one — passing a rewritten history off as an append —
+//! requires colliding the RFC 6962 tree hashes, which against SHA-256 is the full ~128-bit
+//! **collision** assumption, where against the toy FNV it was trivial. This is an
+//! *integrity*-hash graduation (like `merkle`/`commit`, and unlike `pow`/`ratchet`): the swap
+//! strengthens the *discharge target* of the residue the wire already names — it does **not**
+//! repair any claim the code made, because the leaf never claimed collision-resistance as a
+//! *type* fact. The E0451 seal and the two generative brands — *which two* snapshots a
+//! [`Consistent`] relates, and that it came through the checked fold — are
+//! **backend-independent**, so the swap moves **no** Lean theorem (`Sol.Lib.Translog` models
+//! the brand/scope/order skeleton, not the hash). Domain separation (below) is a genuine part
+//! of the checked path at *any* hash strength.
+//!
 //! ## Honest limits
 //!
-//! - **TOY hash (see [`hash`]).** Non-cryptographic FNV-1a; a real adversary forges
-//!   collisions and thus a false consistency proof. The *type* discipline is the subject.
-//!   Graduation swaps in SHA-256 behind the same seam.
+//! - **Integrity, not authenticity, and only against collision.** SHA-256 makes a *false
+//!   consistency proof* infeasible to forge (a ~128-bit collision), but a [`Checkpoint`]'s
+//!   root is still a caller-trusted commitment to *whatever entries this log holds* (next
+//!   bullet); the proof relates two roots, it does not vouch for the honesty of either.
 //! - **Checkpoints are caller-trusted commitments.** A [`Checkpoint`]'s root commits to
 //!   *the entries this log holds*; the proof shows one is a prefix of another, not that
 //!   either commits the *right* set (exactly as `merkle-types`' `Root` is trusted).
@@ -127,8 +146,9 @@
 //!
 //! The *matching* is faithful (region unification ↦ tag equality); the *freshness/unforgeability* of
 //! the `for<'brand>` rank-2 brand is trusted at the boundary (as the seal's private constructor was).
-//! The RFC 6962 hash fold is abstracted to its order skeleton; its cryptographic strength and the
-//! cross-view equivocation ("gossip") are the residue below the model — no Sol theorem.
+//! The RFC 6962 hash fold is abstracted to its order skeleton; its cryptographic strength (now
+//! **SHA-256** collision resistance, after graduation) and the cross-view equivocation ("gossip")
+//! are the residue below the model — no Sol theorem, and the backend swap moved none of the three.
 //!
 //! ## Worked example
 //!
@@ -184,9 +204,9 @@
 //!
 //! ```compile_fail
 //! let _forged = translog_types::Consistent {
-//!     old_root: 0,
+//!     old_root: [0u8; 32],
 //!     old_size: 1,
-//!     new_root: 0,
+//!     new_root: [0u8; 32],
 //!     new_size: 2,
 //! };
 //! ```
@@ -198,6 +218,8 @@
 use core::marker::PhantomData;
 
 pub mod hash;
+
+use hash::Digest;
 
 /// An **invariant, generative** lifetime brand. Invariant (via the
 /// `fn(&'s ()) -> &'s ()` pointer, which puts `'s` in both argument and return
@@ -215,7 +237,7 @@ type Brand<'s> = PhantomData<fn(&'s ()) -> &'s ()>;
 #[derive(Clone, Debug, Default)]
 pub struct TransparencyLog {
     /// Entry leaf-hashes, in append order. The size *is* the version (append-only).
-    leaves: Vec<u64>,
+    leaves: Vec<Digest>,
 }
 
 impl TransparencyLog {
@@ -243,7 +265,7 @@ impl TransparencyLog {
 
     /// The current Merkle tree head (root), or `None` if the log is empty. An unbranded
     /// convenience value — the branded, comparable form is a [`Checkpoint`].
-    pub fn root(&self) -> Option<u64> {
+    pub fn root(&self) -> Option<Digest> {
         if self.leaves.is_empty() {
             None
         } else {
@@ -307,7 +329,7 @@ impl TransparencyLog {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ConsistencyProof {
     /// RFC 6962 consistency-proof node hashes, in verifier-consumption order.
-    pub hashes: Vec<u64>,
+    pub hashes: Vec<Digest>,
     /// The size of the older (prefix) tree this proof is *about*.
     pub old_size: usize,
     /// The size of the newer (extended) tree this proof is *about*.
@@ -339,14 +361,14 @@ pub enum ConsistencyError {
 /// between them; which is the prefix is decided only by [`verify_consistency`](Checkpoint::verify_consistency).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Checkpoint<'s> {
-    root: u64,
+    root: Digest,
     size: usize,
     _brand: Brand<'s>,
 }
 
 impl<'new> Checkpoint<'new> {
     /// This snapshot's Merkle root (a public commitment value).
-    pub fn root(&self) -> u64 {
+    pub fn root(&self) -> Digest {
         self.root
     }
 
@@ -425,9 +447,9 @@ impl<'new> Checkpoint<'new> {
 /// security guarantee (the backend hash is a toy).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Consistent<'old, 'new> {
-    old_root: u64,
+    old_root: Digest,
     old_size: usize,
-    new_root: u64,
+    new_root: Digest,
     new_size: usize,
     _old: Brand<'old>,
     _new: Brand<'new>,
@@ -435,7 +457,7 @@ pub struct Consistent<'old, 'new> {
 
 impl Consistent<'_, '_> {
     /// The prefix (older) snapshot's root.
-    pub fn old_root(&self) -> u64 {
+    pub fn old_root(&self) -> Digest {
         self.old_root
     }
 
@@ -445,7 +467,7 @@ impl Consistent<'_, '_> {
     }
 
     /// The extension (newer) snapshot's root.
-    pub fn new_root(&self) -> u64 {
+    pub fn new_root(&self) -> Digest {
         self.new_root
     }
 
@@ -464,7 +486,7 @@ impl Consistent<'_, '_> {
 /// construction admits CVE-2012-2459 malleability). Returns all levels, leaves first,
 /// ending in a single-element root layer. (The same construction as `merkle-types` /
 /// `accumulator-types`; it reproduces RFC 6962's recursive largest-power-of-two split.)
-fn build_layers(leaf_hashes: Vec<u64>) -> Vec<Vec<u64>> {
+fn build_layers(leaf_hashes: Vec<Digest>) -> Vec<Vec<Digest>> {
     let mut layers = vec![leaf_hashes];
     while layers[layers.len() - 1].len() > 1 {
         let prev = &layers[layers.len() - 1];
@@ -486,7 +508,7 @@ fn build_layers(leaf_hashes: Vec<u64>) -> Vec<Vec<u64>> {
 /// The Merkle tree head (root) over a non-empty slice of **leaf hashes** — RFC 6962's
 /// `MTH`. Equivalent to the recursive `hash(MTH(left) ‖ MTH(right))` split at the largest
 /// power of two, via the bottom-up promote construction (see [`build_layers`]).
-fn mth(leaf_hashes: &[u64]) -> u64 {
+fn mth(leaf_hashes: &[Digest]) -> Digest {
     debug_assert!(
         !leaf_hashes.is_empty(),
         "mth of an empty tree is undefined here"
@@ -510,7 +532,7 @@ fn largest_pow2_less_than(n: usize) -> usize {
 /// the tree over `leaves[..n]` (`1 <= m <= n <= leaves.len()`). Delegates to the recursive
 /// sub-proof with the `b = true` flag (the old tree's own hash is known to the verifier and
 /// omitted).
-fn prove_consistency(m: usize, n: usize, leaves: &[u64]) -> Vec<u64> {
+fn prove_consistency(m: usize, n: usize, leaves: &[Digest]) -> Vec<Digest> {
     debug_assert!(1 <= m && m <= n && n <= leaves.len());
     subproof(m, &leaves[..n], true)
 }
@@ -518,7 +540,7 @@ fn prove_consistency(m: usize, n: usize, leaves: &[u64]) -> Vec<u64> {
 /// RFC 6962 `SUBPROOF(m, D[0:n], b)`. `b` marks whether the sub-tree's own root hash is
 /// already known to the verifier (and so omitted). `d` is the leaf-hash slice; `1 <= m <=
 /// n = d.len()`.
-fn subproof(m: usize, d: &[u64], b: bool) -> Vec<u64> {
+fn subproof(m: usize, d: &[Digest], b: bool) -> Vec<Digest> {
     let n = d.len();
     debug_assert!(1 <= m && m <= n);
     if m == n {
@@ -544,7 +566,13 @@ fn subproof(m: usize, d: &[u64], b: bool) -> Vec<u64> {
 /// roots from the proof and requires each to match (the iterative Trillian /
 /// certificate-transparency verifier). Returns `false` on any malformation, over- or
 /// under-length proof, or root mismatch.
-fn verify_consistency_hashes(m: usize, n: usize, root1: u64, root2: u64, proof: &[u64]) -> bool {
+fn verify_consistency_hashes(
+    m: usize,
+    n: usize,
+    root1: Digest,
+    root2: Digest,
+    proof: &[Digest],
+) -> bool {
     if m > n {
         return false;
     }
@@ -627,6 +655,17 @@ fn verify_consistency_hashes(m: usize, n: usize, root1: u64, root2: u64, proof: 
 mod tests {
     use super::*;
 
+    /// Tamper a digest by flipping one bit — the `[u8; 32]` analogue of the old
+    /// `root ^ 1`, used to assert that a wrong root/proof node is rejected.
+    fn flip(mut d: Digest) -> Digest {
+        d[0] ^= 1;
+        d
+    }
+
+    /// A distinctive 32-byte sentinel for "a spurious extra proof node" (the old
+    /// `0xdead_beef`), overwhelmingly not a genuine node hash.
+    const JUNK: Digest = [0xde; 32];
+
     fn built(entries: &[&[u8]]) -> TransparencyLog {
         let mut log = TransparencyLog::new();
         for e in entries {
@@ -669,7 +708,7 @@ mod tests {
         // tamper of either root must fail. N crosses several power-of-two boundaries.
         const N: usize = 33;
         let entries: Vec<Vec<u8>> = (0..N).map(|i| format!("entry-{i}").into_bytes()).collect();
-        let leaf_hashes: Vec<u64> = entries.iter().map(|e| hash::leaf_hash(e)).collect();
+        let leaf_hashes: Vec<Digest> = entries.iter().map(|e| hash::leaf_hash(e)).collect();
         for n in 1..=N {
             let new_root = mth(&leaf_hashes[..n]);
             for m in 1..=n {
@@ -680,11 +719,11 @@ mod tests {
                     "genuine consistency m={m} n={n} must verify"
                 );
                 assert!(
-                    !verify_consistency_hashes(m, n, old_root ^ 1, new_root, &proof),
+                    !verify_consistency_hashes(m, n, flip(old_root), new_root, &proof),
                     "a wrong old root (m={m} n={n}) must fail"
                 );
                 assert!(
-                    !verify_consistency_hashes(m, n, old_root, new_root ^ 1, &proof),
+                    !verify_consistency_hashes(m, n, old_root, flip(new_root), &proof),
                     "a wrong new root (m={m} n={n}) must fail"
                 );
             }
@@ -696,7 +735,7 @@ mod tests {
         // Flipping any single proof node, dropping one, or appending a spurious one all
         // break verification — the proof carries no slack.
         const N: usize = 24;
-        let leaf_hashes: Vec<u64> = (0..N)
+        let leaf_hashes: Vec<Digest> = (0..N)
             .map(|i| hash::leaf_hash(format!("e{i}").as_bytes()))
             .collect();
         for n in 2..=N {
@@ -706,7 +745,7 @@ mod tests {
                 let proof = prove_consistency(m, n, &leaf_hashes[..n]);
                 for i in 0..proof.len() {
                     let mut bad = proof.clone();
-                    bad[i] ^= 1;
+                    bad[i] = flip(bad[i]);
                     assert!(
                         !verify_consistency_hashes(m, n, old_root, new_root, &bad),
                         "flipping proof node {i} (m={m} n={n}) must fail"
@@ -716,7 +755,7 @@ mod tests {
                 short.pop();
                 assert!(!verify_consistency_hashes(m, n, old_root, new_root, &short));
                 let mut long = proof.clone();
-                long.push(0xdead_beef);
+                long.push(JUNK);
                 assert!(!verify_consistency_hashes(m, n, old_root, new_root, &long));
             }
         }
@@ -795,7 +834,7 @@ mod tests {
             assert!(new.verify_consistency(&old, proof).is_ok());
             for i in 0..proof.hashes.len() {
                 let mut bad = proof.clone();
-                bad.hashes[i] ^= 1;
+                bad.hashes[i] = flip(bad.hashes[i]);
                 assert_eq!(
                     new.verify_consistency(&old, &bad),
                     Err(ConsistencyError::Inconsistent),
@@ -848,7 +887,7 @@ mod tests {
                 );
                 // Over-length: a spurious trailing node is rejected (slack).
                 let mut long = proof.clone();
-                long.hashes.push(0xdead_beef);
+                long.hashes.push(JUNK);
                 assert_eq!(
                     new.verify_consistency(&old, &long),
                     Err(ConsistencyError::Inconsistent),
@@ -883,7 +922,7 @@ mod tests {
             // waved through on root equality alone (the roots ARE equal here, so the
             // emptiness guard is the only thing standing between junk and an `Ok`).
             let slacked = ConsistencyProof {
-                hashes: vec![0xdead_beef],
+                hashes: vec![JUNK],
                 old_size: 3,
                 new_size: 3,
             };
@@ -915,7 +954,7 @@ mod tests {
         // A light structural pin: for m a power of two the proof omits the old root
         // (shorter), while a non-power-of-two m includes shared sub-roots. Concretely,
         // consistency(1, 4) needs 2 nodes; consistency(3, 4) needs 3.
-        let leaf_hashes: Vec<u64> = (0..4)
+        let leaf_hashes: Vec<Digest> = (0..4)
             .map(|i| hash::leaf_hash(format!("e{i}").as_bytes()))
             .collect();
         assert_eq!(prove_consistency(1, 4, &leaf_hashes).len(), 2);
@@ -953,7 +992,7 @@ mod tests {
         // The equivocation residue at the engine level: a proof presented against an old
         // root the log never had (a lied history) does not fold. The brand pins WHICH
         // snapshot; that its root is honest is the fold's job, at runtime.
-        let leaf_hashes: Vec<u64> = (0..6)
+        let leaf_hashes: Vec<Digest> = (0..6)
             .map(|i| hash::leaf_hash(format!("e{i}").as_bytes()))
             .collect();
         let (m, n) = (3usize, 6usize);
@@ -964,7 +1003,7 @@ mod tests {
             m, n, honest_old, new_root, &proof
         ));
         // A different claimed old root of the same size — rejected.
-        let lied_old = honest_old.wrapping_add(0x9e37_79b9);
+        let lied_old = flip(honest_old);
         assert!(!verify_consistency_hashes(m, n, lied_old, new_root, &proof));
     }
 

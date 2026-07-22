@@ -181,7 +181,10 @@ dependencies = [
 
 [[package]]
 name = "ratchet-types"
-version = "0.1.0"
+version = "0.2.0"
+dependencies = [
+ "sha2",
+]
 
 [[package]]
 name = "refinement-types"
@@ -238,7 +241,10 @@ version = "0.1.0"
 
 [[package]]
 name = "translog-types"
-version = "0.1.0"
+version = "0.2.0"
+dependencies = [
+ "sha2",
+]
 
 [[package]]
 name = "typenum"
