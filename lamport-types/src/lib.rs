@@ -71,7 +71,7 @@
 //!   a seed, so a predictable `prg` hands over the unrevealed ones; inverting it on one
 //!   revealed preimage yields the whole key from a single signature), and `digest`
 //!   collision-resistant. (Two further assumptions — `prg` output-uniformity and `digest`
-//!   partial-preimage resistance — price [`hash`]'s cost table without changing the floor.)
+//!   preimage resistance — price [`hash`]'s cost table without changing the floor.)
 //!   The toy FNV-1a failed all three **outright**: over a fixed-length input FNV is affine in
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
 //!   lattice reduction solves in well under a second per target, completely and without memory.
@@ -88,13 +88,11 @@
 //!   low-entropy literal, recoverable in **≲2²⁵**, which is *cheaper than the collision*
 //!   and defeats every other bound too (recover the seed, mint the key, sign anything).
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
-//!   third message. The cost depends on the adversary: a 2-query chosen-message adversary
-//!   pays only **~2⁹–2¹⁰** hash evaluations (choosing all three messages jointly makes it a
-//!   birthday problem — though its ~2^26.5 auxiliary compares make it *slower in wall clock*
-//!   than the next figure), the crate's own sequential demo costs ~2^16.3, a passive observer
-//!   pays ~2³² at the *median* (~2^37.4 in expectation — a different convention from the
-//!   others here), and a seed holder ~2⁸ (see [`hash`]). So the binding constraint is the
-//!   width only for a key used properly; for a key used as demonstrated, it is the seed.
+//!   third message, and how cheaply depends on the adversary: a 2-query chosen-message
+//!   adversary pays only **~2⁹–2¹⁰** hash evaluations (choosing all three messages jointly
+//!   makes it a birthday problem), a seed holder ~2⁸. [`hash`] carries the routes and the
+//!   figures; this banner does not restate them. So the binding constraint is the width only
+//!   for a key used properly; for a key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
 //!   is the backend's job *and* the width's, and at these parameters the width loses

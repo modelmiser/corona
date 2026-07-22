@@ -159,8 +159,7 @@ work (complete tasks, add children, keep siblings).
       demonstrated offline (~2³² evaluations), now executable in-crate and key-independent —
       but only for a CORRECTLY-USED key: the crate's own literal seeds fall in ≲2²⁵ and two
       signatures under one key forge a third (~2⁹–2¹⁰ for a chosen-message adversary choosing all
-      three jointly — the crate's sequential demo costs ~2^16.3 — ~2³² for a passive
-      observer — and ~nothing for the retained-seed holder who re-mints), so the ~2³² floor is a claim about
+      three jointly, and ~nothing for the retained-seed holder who re-mints), so the ~2³² floor is a claim about
       correct usage, not about the demonstration. The
       first draft published ~2⁶⁴ as *the* figure and never mentioned collisions. So the swap
       upgraded the CLASS of break (universal-from-public-key → existential-needing-a-signed-

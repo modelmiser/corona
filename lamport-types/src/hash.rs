@@ -55,37 +55,31 @@
 //! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
 //!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
 //!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶² and row 6 to ~2⁵⁶.
-//!   Rows 3, 5, 6 and 7 all consume a `commit`-domain search and so depend on it.
-//! - **[`digest`] (partial-)preimage-resistant.** Collision resistance does not imply it: a
-//!   58-bit partial-preimage oracle costing `C` yields a full collision at ~`C·2³`, so collision
-//!   resistance at 2³² forces only `C ≳ 2²⁹`, not the ~2⁵⁸ row 3 assumes. Rows 2 and 3 are
-//!   therefore priced against a **random-oracle** `digest` (and rows 3/6/7 against a
+//! - **[`digest`] preimage-resistant.** Collision resistance does not imply it, so rows 2 and 3
+//!   are priced against a **random-oracle** `digest` (and rows 3, 6 and 7 against a
 //!   random-function `commit`), which SHA-256 is taken to model.
 //!
 //! One composition step, stated because it is easy to miss: (1) is needed on the distribution
 //! `prg` actually produces, not on uniform `u64` — it is (2) that transfers it. The properties
 //! are independent as *assumptions*, but the argument chains 2 into 1.
 //!
-//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed). Under
-//! the **toy** every row's *goal* was reachable in seconds — rows 3–7 because `commit` was
-//! invertible outright, rows 1–2 because the same lattice enumeration inverts `digest` too
-//! once the attacker restricts to fixed-length messages (8 bytes, reproducing `commit`'s shape),
-//! which also throws off same-length collisions for free. The middle column prices
-//! the **cheapest route to that goal** under the toy, which is not always the row's own
-//! stated method — see row 4 — and the last column answers: *what bounds this row now?*
-//! Column 1 prices the **cheapest known route to the row's goal for the stated adversary**,
-//! not the cost of any particular algorithm (the distinction that made the harvest figure
-//! wrong for a whole round).
+//! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed), quoted in
+//! **hash evaluations**. Each figure prices the *cheapest known route to the row's goal for the
+//! stated adversary*, not the cost of any one algorithm — the distinction that made the harvest
+//! figure wrong for a whole round. Under the **toy** every row's goal fell in seconds: rows 3–7
+//! because `commit` was invertible outright, rows 1–2 because the same lattice enumeration
+//! inverts `digest` once the attacker restricts to fixed-length messages (8 bytes, reproducing
+//! `commit`'s shape), which throws off same-length collisions for free.
 //!
-//! | Attack | Cost now (hash evaluations) | Under the toy (wall-clock) | Bounded now by |
-//! |---|---|---|---|
-//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | seconds | **digest width** |
-//! | Second preimage on the digest (known-message variant; dominated by row 3 *as a forgery route*, though not as a route to a second preimage) | ~2⁶⁴ | seconds | digest width |
-//! | Existential forgery from the verifying key **plus one observed (known-message) signature** ‡ | ~2⁶⁰ | seconds | `commit` one-wayness **and** digest width, jointly |
-//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | seconds, but by a **different route** † | **seed entropy** *and* [`prg`] one-wayness |
-//! | Universal forgery on a *given* message § | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** | seconds | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` one-wayness |
-//! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | seconds | `commit` one-wayness *and* `prg` output-uniformity |
-//! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | seconds | `commit` one-wayness *and* `prg` output-uniformity |
+//! | Attack | Cost now | Bounded now by |
+//! |---|---|---|
+//! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
+//! | Second preimage on the digest (a hash property; dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
+//! | Existential forgery from the verifying key **plus one observed signature** | ~2⁶⁰ | `commit` one-wayness **and** digest width, jointly |
+//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability |
+//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` unpredictability |
+//! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
+//! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | `commit` one-wayness *and* `prg` output-uniformity |
 //!
 //! So the swap is **load-bearing** (∥ `pow-types`, `ecash-types`) and bought more than a
 //! reshuffle: it gave the scheme **its first non-trivial security exponent**. Before, the
@@ -112,30 +106,18 @@
 //! calls — so there is no ~2⁶³-hash universal forgery *from the verifying key alone*. Given
 //! one observed signature there is: see § below.)
 //!
-//! ‡ Row 3, derived: open `k` of the 64 **unknown-side** commitments by multi-target scan,
+//! Row 3, in outline: open `k` of the 64 **unknown-side** commitments by multi-target scan,
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
-//! positions — cost `Σ_{j<k} 2⁶⁴/(T−j) + 2^(64−k)`. Only 64 commitments are useful targets:
-//! the observed signature already opens the other 64, and a preimage of an open commitment is
-//! worth nothing. Under the plain unique-preimage convention (`T = 64`) the minimum is
-//! **~2^60.8 at k = 5**; under the 1+Poisson(1) multiplicity model those 64 targets carry ~128
-//! usable domain points, giving **~2^60.0 at k = 6**. The table quotes ~2⁶⁰, i.e. the latter. Neither term dominates the exponent there (they
-//! sit within a small constant factor), which is why this row alone is bounded by *both*
-//! one-wayness and width.
-//! (Rows 6–7 use the unique-preimage convention; row 3 as quoted uses the multiplicity one.
-//! The two differ by ~0.8 of a bit here, and the switch is flagged rather than hidden.)
+//! positions. Only 64 commitments are useful targets — the observed signature already opens
+//! the other 64, and a preimage of an open commitment is worth nothing. The optimum sits near
+//! `k ≈ 5` at ~2⁶⁰, with neither term dominating the exponent, which is why this row alone is
+//! bounded by *both* one-wayness and width.
 //!
 //! § With one observed signature the adversary holds 64 *actual* preimages, so a seed guess
 //! is tested by one `prg` call against a revealed value rather than by `prg` + `commit`
 //! against a published one — halving the work to ~2⁶³ hash evaluations, and with it the cost
 //! of universal forgery. The declared model permits this (it grants at most one signature),
 //! so ~2⁶³ is the honest figure for rows 4 and 5 there; ~2⁶⁴ is the verifying-key-only cost.
-//!
-//! † Row 4 is the one row whose stated method is backend-independent: testing a seed costs
-//! `prg` + `commit` = 2 hashes under FNV exactly as under SHA-256, so *seed search* was ~2⁶⁴
-//! then and is ~2⁶⁴ now. What made total key recovery a matter of seconds under the toy was
-//! not seed search but inverting `commit` and peeling `prg`'s 18-byte input backwards
-//! through `p⁻¹ mod 2⁶⁴` — a route SHA-256 closes. So the row's *goal* got dramatically
-//! harder while the row's *method* did not move at all.
 //!
 //! ⚠ **THE MODEL THIS TABLE PRICES — two assumptions, and the crate violates both in its
 //! own examples.** The costs above hold for a key that (a) was minted from a **uniformly
@@ -160,7 +142,7 @@
 //!   forgeable. The one-time signature model excludes this by construction (one signing
 //!   query), which is why it is not a table row — but the crate reaches it, so it is not
 //!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the
-//!   four routes below differ by orders of magnitude:
+//!   two routes below differ by orders of magnitude:
 //!   - **A 2-query chosen-message adversary** pays **~2⁹–2¹⁰ hash evaluations**. He may
 //!     choose all three messages *jointly*, which makes this a birthday problem rather than a
 //!     sequential search: each position is covered with probability `3/4` (the two signed
@@ -168,20 +150,10 @@
 //!     `(3/4)⁶⁴ = 2^-26.6`, and a pool of `N` hashed messages holds `~N³/2` triples — giving
 //!     `N ≈ 2^9.2`. This is the `q = 2` case of the curve that also prices row 1: with
 //!     `P = (1−2^-q)⁶⁴`, `q = 1` yields `2^32.5` (row 1's ~2³²) and `q = 2` yields `2^9.2`.
-//!     (The tuple count is q-dependent: `N²/2` pairs at `q = 1`, `N³/2` designated triples at `q = 2`.)
-//!     (It spends ~2^26.5 cheap mask/compare operations alongside those hashes, so in
-//!     wall-clock it is ~15× *slower* than the next figure (53 ns/hash vs 0.66 ns/compare); in the table's declared unit — hash
-//!     evaluations — it is far cheaper.)
-//!   - **The crate's own sequential demo** costs **~2^16.3**: pick `m₁`, search `m₂` for
-//!     digest disagreement past a threshold (48, optimal *for that algorithm*), then search
-//!     `m₃` over the residual agreement set — demonstrated by
+//!     (The tuple count is q-dependent: `N²/2` pairs at `q = 1`, `N³/2` designated triples at
+//!     `q = 2`.) A simpler sequential variant — an *algorithm* cost, ~2^16, and one that
+//!     obtains its second signature by re-minting rather than by a query — is demonstrated by
 //!     `two_harvested_signatures_forge_a_verifying_third_message`, sub-second in the suite.
-//!     An *algorithm* cost, not the class's; it also obtains its second signature by
-//!     re-minting rather than by a query.
-//!   - **A passive observer** of two signatures on messages he did *not* choose pays ~2³²
-//!     at the *median* (the agreement set is Binomial(64, ½), median 32) — but note the
-//!     convention switch: every other figure here is an expectation, and in expectation this
-//!     one is `E[2^|A|] = (3/2)⁶⁴ = 2^37.4`, some 43× worse.
 //!   - **A retained-seed holder** — the route this crate actually demonstrates, and strictly
 //!     speaking not a harvest at all, since he performs none — pays
 //!     essentially **nothing**: he re-mints the key (~2⁸ hashes) and signs whatever he

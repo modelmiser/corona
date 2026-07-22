@@ -19,7 +19,7 @@ publish = false
 # Lamport lacks, incurred by deriving all preimages from a seed) and `digest` collision
 # resistance. The toy failed all three. SHA-256 supplies the first two at ~2^63 and the third
 # only up to the illustrative WIDTH, capping forgery at ~2^32, so the scheme is still
-# forgeable. Two further assumptions (`prg` output-uniformity, `digest` partial-preimage
+# forgeable. Two further assumptions (`prg` output-uniformity, `digest` preimage
 # resistance) price the cost table without moving that floor; see the `hash` module posture.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
 sha2 = "0.10"
