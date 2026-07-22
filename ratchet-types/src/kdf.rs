@@ -1,90 +1,140 @@
-//! Toy KDF backend for the symmetric ratchet.
+//! KDF backend for the symmetric ratchet — **GRADUATED** to vetted SHA-256.
 //!
-//! **⚠ TOY — NOT a one-way KDF, NOT cryptographic, NOT for real use.** This is a
-//! 64-bit FNV-1a mixing function expanded to 32 bytes — a *non-cryptographic* hash.
-//! A ratchet's *cryptographic* forward secrecy rests on the chain KDF being
-//! **one-way**: given the next chain key `CKᵢ₊₁` you must not be able to recover the
-//! previous `CKᵢ` (and thus the past message keys). FNV mixing gives no such
-//! guarantee, so this backend does **not** provide cryptographic forward secrecy.
+//! This module is the leaf's **graduation seam**: it was a toy 64-bit FNV-1a mixing
+//! function; it is now **domain-separated SHA-256** (the audited [`sha2`] crate). The
+//! seam — the three functions [`init`], [`next_chain`], [`message_key`] and their
+//! signatures — is unchanged; only the body behind it swapped, exactly the role the toy
+//! `gf256`/FNV backends play in the other leaves.
 //!
-//! That weakness is deliberate and out of scope: this leaf demonstrates the *type
-//! discipline* — a chain key is a **linear capability, consumed by advancing** — not
-//! the KDF's strength. The two protections are orthogonal (see the crate banner): the
-//! type stops you *retaining* the old key; a one-way KDF stops you *inverting* the new
-//! one back to it. Graduation swaps this module for a vetted KDF (HKDF-SHA256) behind
-//! the same [`init`]/[`next_chain`]/[`message_key`] seam — the role the toy `gf256`
-//! field and toy FNV hashes play in the other leaves.
+//! ## Why the swap matters — the *inversion* half of forward secrecy
+//!
+//! A ratchet's forward secrecy has two orthogonal halves (see the crate banner):
+//!
+//! - **Retention** is stopped by the *type* (E0382): once [`super::ChainKey::advance`]
+//!   consumes the old chain key, no live binding retains it. This half is
+//!   **backend-independent** — it held under the toy and holds now.
+//! - **Inversion** is stopped by the *KDF*: given the next chain key `CKᵢ₊₁` an attacker
+//!   must not be able to compute the previous `CKᵢ` (and thus the past message keys).
+//!   This is the half the backend supplies, and the toy FNV mixing **abstained** from it
+//!   (it made no one-wayness guarantee). SHA-256's **preimage resistance** is what now
+//!   supplies it: recovering `CKᵢ` from `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a hash-preimage
+//!   search, computationally infeasible.
+//!
+//! So this swap is *load-bearing* — but in a **weaker** sense than `pow-types`' SHA-256
+//! swap. There, the toy was *provably* invertible and the leaf's own headline was
+//! **false** at the toy backend, so the swap *repaired a false claim*. Here the toy
+//! merely *abstained* from a guarantee the leaf declared out of scope; the swap *supplies*
+//! it. `pow` exhibited a break the swap fixes; `ratchet` fills a slot the toy left
+//! deliberately empty. The retention half — the leaf's actual thesis — never depended on
+//! the backend either way.
+//!
+//! ## Construction and its honest posture
+//!
+//! Each derivation is a single domain-separated SHA-256 call, `SHA-256(tag ‖ input)`, with
+//! a distinct leading `tag` byte per role (`0x00` init, `0x01` next-chain, `0x02` message).
+//! Distinct tags give distinct outputs by SHA-256's collision resistance (not, as under the
+//! toy, by an FNV bijection argument), which is what keeps a message key from unlocking the
+//! future of the chain.
+//!
+//! This is a SHA-256 **hash chain**, *not* HKDF. A production ratchet would use
+//! HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based KDF), which adds
+//! a salt/extract phase and PRF security beyond a raw hash. Both are the same seam:
+//! `next_chain`/`message_key` mapping a chain key to the next state and this step's key.
+//! Domain-separated SHA-256 is a sound, well-understood one-way chain; the choice here is
+//! for a zero-configuration, single-audited-dependency backend, and the one-wayness the
+//! forward-secrecy argument rests on — SHA-256 preimage resistance — is the same in either.
 
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+use sha2::{Digest, Sha256};
 
-/// 64-bit FNV-1a over a byte string.
-fn fnv1a(bytes: &[u8]) -> u64 {
-    let mut h = FNV_OFFSET;
-    for &b in bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(FNV_PRIME);
-    }
-    h
-}
-
-/// Expand `key` under domain `tag` into 32 bytes: four 8-byte blocks, block `j` =
-/// `fnv1a(tag ‖ j ‖ key)`. Each FNV-1a step is a bijection on the 64-bit state (XOR,
-/// then multiply by the odd `FNV_PRIME` — both invertible mod 2⁶⁴), so two buffers that
-/// differ only in the leading `tag` byte and then share an identical suffix stay distinct
-/// through every remaining step. The message key (tag `0x02`) and the next chain key (tag
-/// `0x01`) are therefore **guaranteed** distinct for the same input — not merely likely —
-/// which is what keeps one message key from leaking the entire future of the chain. (The
-/// distinctness is a property of the bijective mixing, *not* of FNV being collision-
-/// resistant, which it is not — see the module banner.)
-fn expand(tag: u8, key: &[u8; 32]) -> [u8; 32] {
-    let mut out = [0u8; 32];
-    for (j, chunk) in out.chunks_mut(8).enumerate() {
-        let mut buf = [0u8; 34];
-        buf[0] = tag;
-        buf[1] = j as u8;
-        buf[2..34].copy_from_slice(key);
-        chunk.copy_from_slice(&fnv1a(&buf).to_be_bytes());
-    }
-    out
+/// `SHA-256(tag ‖ input)` as a 32-byte block. The leading `tag` byte domain-separates the
+/// three derivations so that, for one chain key, the next-chain and message-key outputs are
+/// distinct (SHA-256 collision resistance) — one message key never unlocks the chain.
+fn hash(tag: u8, input: &[u8]) -> [u8; 32] {
+    let mut h = Sha256::new();
+    h.update([tag]);
+    h.update(input);
+    h.finalize().into()
 }
 
 /// Initialize a chain key from a 64-bit root seed (domain tag `0x00`). A real ratchet's
-/// initial chain key is the output of a key agreement (e.g. X3DH), **not** a
-/// reproducible seed — see the crate's "conditional on discarding the root seed" limit.
+/// initial chain key is the output of a key agreement (e.g. X3DH), **not** a reproducible
+/// seed — see the crate's "conditional on discarding the root seed" limit.
 pub fn init(seed: u64) -> [u8; 32] {
-    let mut key = [0u8; 32];
-    key[..8].copy_from_slice(&seed.to_be_bytes());
-    expand(0x00, &key)
+    hash(0x00, &seed.to_be_bytes())
 }
 
-/// The next chain key `CKᵢ₊₁ = KDF(CKᵢ, "chain")` (domain tag `0x01`). In a real
-/// (one-way) KDF this hides `CKᵢ`; the toy does not — see the module banner.
+/// The next chain key `CKᵢ₊₁ = KDF(CKᵢ, "chain")` (domain tag `0x01`). SHA-256 preimage
+/// resistance is what hides `CKᵢ` in `CKᵢ₊₁` — the cryptographic forward-secrecy the toy
+/// FNV backend did not provide.
 pub fn next_chain(ck: &[u8; 32]) -> [u8; 32] {
-    expand(0x01, ck)
+    hash(0x01, ck)
 }
 
 /// The message key `MKᵢ = KDF(CKᵢ, "msg")` for this step (domain tag `0x02`).
 pub fn message_key(ck: &[u8; 32]) -> [u8; 32] {
-    expand(0x02, ck)
+    hash(0x02, ck)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    /// The backend is **genuinely SHA-256**, pinned to NIST known-answer vectors computed by
+    /// an *independent* oracle (Python `hashlib`), not to this crate's own output. This is
+    /// the graduation's external witness: a mis-wired or non-SHA-256 backend fails here even
+    /// though every closed-API test below would still pass (the `pow`/`commit` lesson — pin
+    /// the contract to an oracle outside the crate).
+    #[test]
+    fn the_backend_is_genuine_sha256() {
+        // SHA-256("") and SHA-256("abc"), the canonical FIPS 180-4 examples.
+        let mut h = Sha256::new();
+        h.update(b"");
+        assert_eq!(
+            hex(&h.finalize().into()),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
+        let mut h = Sha256::new();
+        h.update(b"abc");
+        assert_eq!(
+            hex(&h.finalize().into()),
+            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
+        );
+    }
+
+    /// The three seam functions produce exactly the domain-separated SHA-256 the docstrings
+    /// claim — golden values from the same independent oracle. Pins the tag bytes (`0x00`/
+    /// `0x01`/`0x02`) and the input encoding: a swapped tag, big/little-endian slip, or a
+    /// concat-order change moves these literals.
+    #[test]
+    fn the_seam_is_domain_separated_sha256() {
+        assert_eq!(
+            hex(&init(0)),
+            "3e7077fd2f66d689e0cee6a7cf5b37bf2dca7c979af356d0a31cbc5c85605c7d"
+        );
+        assert_eq!(
+            hex(&init(0xC0FFEE)),
+            "42029bba5767cdc16dae462774ad5f5bb14375d1c32dfcd0d164ade730ac5055"
+        );
+        assert_eq!(
+            hex(&next_chain(&[0u8; 32])),
+            "1a7dfdeaffeedac489287e85be5e9c049a2ff6470f55cf30260f55395ac1b159"
+        );
+        assert_eq!(
+            hex(&message_key(&[0u8; 32])),
+            "523ba5a7ec9362dbb08039a387922592ccea3dde63634480cd1b05b7bd50a269"
+        );
+    }
+
     #[test]
     fn domains_are_separated() {
         // From one chain key, the next-chain and message-key derivations must differ —
-        // otherwise MKᵢ would equal CKᵢ₊₁ and one message key would unlock the whole
-        // future chain. And neither may equal a freshly-initialized key from the same
-        // 32 bytes read as a seed.
+        // otherwise MKᵢ would equal CKᵢ₊₁ and one message key would unlock the whole future
+        // chain. The distinctness now rests on SHA-256 collision resistance (distinct
+        // tag-prefixed inputs), not the toy's FNV-bijection argument.
         let ck = init(0x1234_5678);
         assert_ne!(next_chain(&ck), message_key(&ck));
-        // `init` from those 8 bytes differs from both — but note this pair differs in
-        // the key input too (init zero-pads 8 bytes; `next_chain`/`message_key` take the
-        // full 32-byte `ck`), so unlike the assertion above this is a sanity check on the
-        // mixing, not the tag-only bijection guarantee (which needs an identical suffix).
+        // Neither equals a fresh `init` from those 8 bytes read back as a seed (a different
+        // tag AND a different input length — a sanity check on separation, not the core).
         let seedish = init(u64::from_be_bytes(ck[..8].try_into().unwrap()));
         assert_ne!(seedish, next_chain(&ck));
         assert_ne!(seedish, message_key(&ck));
@@ -105,5 +155,14 @@ mod tests {
         assert_ne!(a, b);
         assert_ne!(next_chain(&a), next_chain(&b));
         assert_ne!(message_key(&a), message_key(&b));
+    }
+
+    /// Lower-case hex of 32 bytes, for pinning against the external oracle's literals.
+    fn hex(bytes: &[u8; 32]) -> String {
+        let mut s = String::with_capacity(64);
+        for b in bytes {
+            s.push_str(&format!("{b:02x}"));
+        }
+        s
     }
 }

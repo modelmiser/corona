@@ -53,10 +53,12 @@
 //! - **The type stops *retention*** (E0382). After [`advance`](ChainKey::advance), no
 //!   safe-code binding can reach `CKᵢ`, so no code path re-derives `MKᵢ` from the state.
 //! - **A one-way KDF stops *inversion*** (the backend). Even code that *only* holds the
-//!   new `CKᵢ₊₁` must not be able to compute `CKᵢ` back out of it. That is the KDF's
-//!   job — and the toy FNV backend makes *no such guarantee* (a non-cryptographic hash,
-//!   deliberately; see the banner — this is an *absence* of one-wayness, not an exhibited
-//!   inversion). This leaf supplies the first protection; a real KDF supplies the second.
+//!   new `CKᵢ₊₁` must not be able to compute `CKᵢ` back out of it. That is the KDF's job,
+//!   and **since graduation this leaf supplies it**: the backend is vetted SHA-256, whose
+//!   **preimage resistance** makes recovering `CKᵢ` from `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)`
+//!   infeasible (see [`kdf`]). The toy FNV backend it replaced merely *abstained* from
+//!   this guarantee. So this leaf now supplies **both** protections — the type stops
+//!   retention, SHA-256 stops inversion — where before it supplied only the first.
 //!
 //! And there is a **third** thing neither the type nor the KDF provides, called out in
 //! the honest limits below: *memory-level* forward secrecy (the old key's **bytes**
@@ -81,12 +83,40 @@
 //! the garden because it speaks the vocabulary (E0382 + E0451), not because it links a
 //! shared module.
 //!
+//! ## Security posture (graduated)
+//!
+//! This leaf is **graduated** (production-intent, [`CHARTER`](https://github.com/modelmiser/corona/blob/main/CHARTER.md)'s
+//! research→production flip): the KDF backend is vetted **SHA-256** (the audited [`sha2`]
+//! crate), no hand-rolled crypto. What the graduated types and backend jointly guarantee,
+//! and what they still do not:
+//!
+//! - **Cryptographic forward secrecy holds** for the *chain-key inversion* threat: an
+//!   attacker who compromises `CKᵢ₊₁` cannot compute any past `CKⱼ` or `MKⱼ` (`j ≤ i`),
+//!   resting on SHA-256 preimage resistance. This is the guarantee the toy backend lacked.
+//! - **Retention is forbidden by the type** (E0382 + no `Clone` + the E0451 seal), so an
+//!   *honest* program cannot itself keep the old chain key around — backend-independent.
+//! - **Not HKDF/HMAC.** The backend is a domain-separated SHA-256 hash chain, not RFC 5869
+//!   HKDF; a production deployment may prefer HKDF-SHA256 / HMAC-SHA256 (Signal's design),
+//!   swappable behind the same [`kdf`] seam. The one-wayness the forward-secrecy argument
+//!   rests on is SHA-256 preimage resistance in either case. See [`kdf`] for the full note.
+//! - The **memory-level** and **seed-discard** residues below are *not* closed by
+//!   graduation — they are outside what a KDF backend can supply.
+//!
+//! ## Machine-checked correspondence (Sol)
+//!
+//! Graduation contributes the leaf's Lean formalization to [Sol](https://github.com/modelmiser/sol),
+//! `Sol.Lib.Ratchet` (the garden's 15th Corona↔Sol wire). Sol proves the **structural**
+//! half — the chain is a forward-deterministic function of the root, and *past-key
+//! recovery is unrecoverable from the forward state alone* — and locates the residue's
+//! **home** by a distinction no prior wire drew: it **splits on whether the KDF is
+//! injective**. Over a *non-injective* chain step the past key is
+//! **information-theoretically** gone (proved in Lean, a residue *discharged*); over an
+//! *injective* one it is determined but computable only with the KDF's inverse (a residue
+//! *named* — the SHA-256 preimage-resistance assumption, discharged outside Lean). What
+//! Lean proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
+//!
 //! ## Honest limits
 //!
-//! - **TOY KDF (see [`kdf`]).** FNV mixing, not a one-way KDF — it gives no
-//!   *cryptographic* forward secrecy (the "inversion" protection above). The subject is
-//!   the type discipline (the "retention" protection), which holds regardless of the
-//!   backend.
 //! - **Logical forward secrecy, not memory-level.** E0382 guarantees no live *binding*
 //!   can reach the old chain key; it does **not** overwrite the **bytes**. A moved-from
 //!   `[u8; 32]` may linger on the stack or heap until something reuses that storage, so
@@ -199,9 +229,10 @@ pub struct ChainKey {
 }
 
 impl ChainKey {
-    /// Initialize a chain from a 64-bit root seed (toy — a real chain key is a
-    /// key-agreement output, see [`kdf::init`] and the crate's seed caveat). This is
-    /// one of the two sole minters of the sealed [`ChainKey`] (E0451).
+    /// Initialize a chain from a 64-bit root seed. The seed is an *illustrative* entry
+    /// point — a real chain key is a key-agreement output (e.g. X3DH), not a reproducible
+    /// 64-bit value (see [`kdf::init`] and the crate's seed caveat); the backend hash is
+    /// vetted SHA-256. This is one of the two sole minters of the sealed [`ChainKey`] (E0451).
     pub fn init(root_seed: u64) -> ChainKey {
         ChainKey {
             secret: kdf::init(root_seed),

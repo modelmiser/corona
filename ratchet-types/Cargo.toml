@@ -1,13 +1,15 @@
 [package]
 name = "ratchet-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 10 — a symmetric KDF-chain ratchet: forward secrecy as move-linearity (E0382), and the line between logical and memory-level secrecy. TOY, not production crypto."
+description = "Corona leaf 10 (GRADUATED) — a symmetric KDF-chain ratchet: forward secrecy as move-linearity (E0382), backed by vetted SHA-256. The type stops key RETENTION; SHA-256 preimage resistance stops INVERSION; memory-level secrecy remains a documented residue."
 license = "MIT"
 
-# Deliberately depends on nothing — not even `corona-core`. Like `merkle-types`,
-# `lamport-types`, and `ecash-types`, this leaf shares the garden's *vocabulary* (here
-# E0382 move-linearity and the E0451 seal), not any of the core's shared *modules*: a
-# hash ratchet is single-chain (no k-of-n `Threshold`) and not field arithmetic (no
-# `gf256`).
+# The only dependency is a vetted cryptographic hash: `sha2` (RustCrypto), used as the
+# graduated KDF backend behind the `kdf` module seam (was toy FNV-1a). Deliberately depends
+# on nothing else — not even `corona-core`: like `merkle-types`, `lamport-types`, and
+# `ecash-types`, this leaf shares the garden's *vocabulary* (E0382 move-linearity + the
+# E0451 seal), not any of the core's shared *modules* (a hash ratchet is single-chain — no
+# k-of-n `Threshold` — and not field arithmetic — no `gf256`).
 [dependencies]
+sha2 = "0.10"
