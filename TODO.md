@@ -173,7 +173,7 @@ work (complete tasks, add children, keep siblings).
       `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
       layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
       not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` unpredictability — what the swap bought.
-      Cold review: 13 rounds, ~30 CRITICALs, none in code, no two consecutive clean rounds. Four test gaps found by mutation
+      Cold review: 15 rounds, ~32 CRITICALs, none in code; R15 was the first round with zero CRITICAL. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
       `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),
       each now pinned and each watched failing under its mutation before acceptance.

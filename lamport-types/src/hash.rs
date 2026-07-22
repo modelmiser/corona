@@ -27,14 +27,26 @@
 //! The one-query EUF-CMA reduction: an adversary sees the verifying key and one signature on
 //! `m`, and outputs `(m*, σ*)` with `m* ≠ m`. Either `digest(m*) = digest(m)` — a **collision**
 //! — or some position `i` has `d*[i] ≠ d[i]`, so `σ*[i]` is a **preimage of the never-opened
-//! side** at `i`. Relative to a *fixed* `m` only 64 commitments are never-opened — but `m` is
-//! **not** fixed when the scan runs. EUF-CMA lets the adversary compute before it queries, so it
-//! scans all **128** published commitments and, on a hit at `(i, b)`, picks `m` with
-//! `digest(m)[i] = 1−b`, which *retroactively makes* that hit a never-opened side (≈2 trial
-//! messages). The never-opened set is adversary-controlled, so the branch is the 128-target scan
-//! at `2⁶⁴/128 = 2⁵⁷` — table row 6's figure. The bound is `min(2³², 2⁵⁷) = 2³²`.
-//! (Measured at reduced width: 128-vs-64 targets gives a 2.01× gap, so the adaptive adversary
-//! really does pay half. An interim draft quoted ~2⁵⁸ here, quantifying over a fixed `m`.)
+//! side** at `i`. This is an **extraction bound, not an attack recipe** — it says what a
+//! successful forger must have produced, and prices that generically.
+//!
+//! What it must have produced is a preimage of a never-opened commitment. Relative to a *fixed*
+//! `m` only 64 are never-opened — but `m` is **not** fixed when the scan runs: EUF-CMA lets the
+//! adversary compute before it queries, so it scans all **128** published commitments and then
+//! chooses `m` to make its hit the never-opened side. The never-opened set is adversary-
+//! controlled, so the generic cost is the 128-target scan at `2⁶⁴/128 = 2⁵⁷`, not `2⁶⁴/64`.
+//! (Measured at reduced width: 128-vs-64 targets gives a 2.01× gap.) The bound is
+//! `min(2³², 2⁵⁷) = 2³²`.
+//!
+//! As an *attack* branch 2 is strictly dominated, and by a margin worth stating because it is
+//! exact. Holding one preimage at `(i, b)`, the only new digest openable is `d ⊕ 2ⁱ`, so the
+//! adversary needs a **pair** `(m, m*)` whose digests differ in exactly position `i` — and
+//! must choose both jointly, since fixing `m` first turns `m*` into a second preimage on a
+//! specific 64-bit value (~2⁶⁴). That pair search is `N²/2 · 2⁻⁶⁴ = 1`, i.e. **~2^32.5** —
+//! *the same birthday problem as branch 1* with target `Δ = 2ⁱ` instead of `Δ = 0`, hence the
+//! same cost (verified by simulation at 16/18/20 bits). Branch 2 therefore pays branch 1's
+//! price and the 2⁵⁷ scan on top. That is why the minimum is the collision, not an accident of
+//! which term is smaller.
 //!
 //! **Required for unforgeability:**
 //!
@@ -91,7 +103,7 @@
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
 //! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width |
 //! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly (and `prg` output-uniformity, which moves it to ~2⁶⁰) |
-//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability |
+//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness, a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all, so widening the seed does not retire this row |
 //! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` unpredictability |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
 //! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | `commit` one-wayness *and* `prg` output-uniformity |
@@ -148,9 +160,11 @@
 //!   `0x00C0_FFEE` — all **at most** 24 bits, `0x00C0_FFEE` needing exactly 24); `mss-types` hands
 //!   `generate` full-width `prg` outputs, but derives them from a literal root, so the
 //!   entropy is still the root's. Such a key falls in **≲2²⁵**
-//!   hash evaluations (2²⁴ candidates × 2 from the vk alone; **2²⁴** given one observed
-//!   signature, one `prg` call per candidate) —
-//!   cheaper than the 2³² collision — and this defeats *every* row in the table except the
+//!   hash evaluations (a full 2²⁴ sweep × 2 from the vk alone; **2²⁴** given one observed
+//!   signature, one `prg` call per candidate). Note this is the **worst case**, where the
+//!   64-bit rows quote the average (2⁶³ candidates over a 2⁶⁴ space); on that convention a
+//!   24-bit seed is 2²³ candidates = 2²⁴ evaluations; the `≲` covers both readings, and either
+//!   is far cheaper than the 2³² collision. Such a seed defeats *every* row in the table except the
 //!   second-preimage row (a pure hash property, unreachable from the key): recover the
 //!   seed, mint the key, sign anything. With a
 //!   guessable seed the binding constraint is neither the hash nor the width, but the seed.
