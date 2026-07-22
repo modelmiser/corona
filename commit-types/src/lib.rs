@@ -57,8 +57,9 @@
 //!    that collapse to *one and the same* digest — the `[u8; 32]` field unchanged. The
 //!    `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged` test makes this
 //!    executable — it publishes **one** narrowed `Commitment` and shows two *distinct*
-//!    openings (only the first authored) both verify against it, exactly as the real
-//!    `verify` would. Graduation (below) is precisely what makes this residue *nameable as a
+//!    openings (only the first authored) both verify against it under a `weak_verify` with the
+//!    *same re-hash-and-compare shape* as the real `verify` (the narrowed hash substituted; the
+//!    full-SHA-256 `verify` would reject both). Graduation (below) is what makes this residue *nameable as a
 //!    reduction*: on the vetted SHA-256 backend, "no second opening exists" reduces to
 //!    SHA-256 collision-resistance — a believed-hard assumption, not the triviality it
 //!    was against the toy FNV-1a. For this hash commitment, binding is only ever
@@ -143,10 +144,14 @@
 //!   problem, not the FNV triviality.
 //! - `commit_binding_of_collisionFree` — the *contrapositive* corollary (not the converse): a
 //!   collision-free hash gives perfect binding — the "vetted hash suffices" leg.
-//! - `commit_fixed_blind_links` — hiding's boundary, exhibited (consttime's un-typability face): fix the
-//!   blind (no type forbids it) and the commitment is *deterministic*, so equal values LINK — needing no
-//!   cryptographic assumption at all, exactly as the leaky-scheme test shows. The duality's two faces — a
-//!   residue *discharged* (binding) beside one only *named* and its failure *exhibited* (hiding) — one leaf.
+//! - `commit_fixed_blind_links` — hiding's leak *mechanism*, exhibited by a **deliberately thin** lemma
+//!   (pure `congrArg`: fix the blind, `commit` is a function, so equal values LINK). It proves no crypto
+//!   fact and holds for a hiding scheme too — it only shows *why* a fixed blind links (why hiding needs a
+//!   fresh one). This face is formally **much thinner** than binding's reduction, and that asymmetry is
+//!   faithful, not a defect: binding partly *reduces* (to collision-resistance), hiding *reduces to
+//!   nothing*, so it earns only an exhibit. The duality's two faces — binding *discharged* as a genuine
+//!   reduction beside hiding only *named*, its leak mechanism *exhibited*, un-typability left as residue
+//!   (consttime's face) — formally unequal by design, one leaf.
 //!
 //! The correspondence is honest about the seam: the **match** (region-unification to decidable tag
 //! equality) is *faithful*; the brand's **freshness/unforgeability** (the `for<'brand>` non-escape) is
@@ -215,10 +220,14 @@ use core::marker::PhantomData;
 ///
 /// The input is length-framed and domain-tagged (a `0x00` commitment-domain prefix,
 /// then the 8-byte value length, then the value, then the 8-byte little-endian
-/// `blind`). The length frame makes `(value, blind)` unambiguously recoverable from
-/// the preimage; the domain tag reserves distinct prefixes for any future second use
-/// of this hash in the leaf. Neither adds collision resistance — that is SHA-256's —
-/// they only fix the *preimage*, a structural property independent of hash strength.
+/// `blind`). Note both are *belt-and-braces*, not load-bearing here: because `blind`
+/// is a fixed 8-byte **trailing** field, the preimage already splits uniquely at
+/// `len-8` without the length prefix — so the frame is a conventional habit that would
+/// matter under a variable-width blind, not a necessity for this layout. The `0x00` tag
+/// likewise separates nothing *today* (the leaf hashes in exactly one place); it only
+/// reserves a distinct prefix against a future second use of this hash. Neither adds
+/// collision resistance — that is SHA-256's — they only fix the *preimage*, a structural
+/// property independent of hash strength.
 ///
 /// [`sha2`]: https://docs.rs/sha2
 pub mod hash {
@@ -237,9 +246,10 @@ pub mod hash {
 
     /// The commitment digest of a value under a blinding factor: `SHA-256(0x00 ‖ len ‖
     /// value ‖ blind)`, with `blind` a fixed 8-byte little-endian trailing field and a
-    /// `0x00` commitment-domain tag. The length frame splits the preimage unambiguously
-    /// into `(value, blind)`; the tag domain-separates this hash from any future second
-    /// use. Both bound the *inputs* only — collision resistance is SHA-256's job.
+    /// `0x00` commitment-domain tag. The fixed trailing `blind` already splits the preimage
+    /// uniquely at `len-8`; the length frame is a conventional habit (load-bearing only under
+    /// a variable-width blind), and the tag reserves a prefix against a future second use.
+    /// All bound the *inputs* only — collision resistance is SHA-256's job.
     pub fn digest_of(value: &[u8], blind: u64) -> Digest {
         let mut buf = Vec::with_capacity(value.len() + 17);
         buf.push(0x00);
@@ -478,8 +488,9 @@ mod tests {
     /// *effective entropy* to 16 bits (keep two bytes of a real SHA-256 output, zero
     /// the rest) — the E0451 seal, and the `[u8; 32]` field, type-check *identically* —
     /// and a birthday search forges a second opening the committer never authored,
-    /// which a re-hash-and-compare `verify` (exactly as the real one) accepts for the
-    /// same commitment. At the full 256-bit width the search is infeasible: that width,
+    /// which a re-hash-and-compare check of the *same shape* as the real `verify` (the
+    /// narrowed hash substituted) accepts for the same commitment. At the full 256-bit
+    /// width the search is infeasible: that width,
     /// and nothing in the type, is where binding's hardness lives.
     #[test]
     fn narrowing_the_hash_collapses_binding_while_the_type_is_unchanged() {
@@ -529,7 +540,8 @@ mod tests {
         );
         // Publish ONE narrowed commitment (the real `Commitment` struct at its real
         // `[u8; 32]` width — only the hash's entropy is shrunk) and re-hash-and-compare
-        // against it, exactly as `Commitment::verify` does at full strength. The
+        // against it with the SAME SHAPE as `Commitment::verify` (the narrowed hash
+        // substituted; the full-SHA-256 `verify` would reject both openings). The
         // committer authored only the first opening, yet the second — which they never
         // held — verifies against the same commitment: binding has evaporated while the
         // type is unchanged. (At the full 256-bit SHA-256 width the search is infeasible;
