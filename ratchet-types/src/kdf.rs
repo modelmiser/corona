@@ -35,10 +35,12 @@
 //! The tags give the three roles **distinct inputs**; that their outputs for a given chain
 //! key actually differ (`MKᵢ ≠ CKᵢ₊₁`) is an empirical fact, pinned by golden vectors — *not*
 //! a consequence of collision resistance (which bounds *finding* a colliding pair, not that
-//! two chosen fixed inputs differ). And that distinctness is only *necessary*: what actually
-//! keeps a leaked message key from unlocking the chain is **preimage resistance** — an
-//! attacker with `MKᵢ` cannot invert to `CKᵢ` and thence compute `CKᵢ₊₁`. Preimage
-//! resistance is the one property the forward-secrecy argument rests on throughout.
+//! two chosen fixed inputs differ). That distinctness is only *necessary*, and it guards a
+//! *different* direction than forward secrecy: it stops a leaked `MKᵢ` from simply **being**
+//! `CKᵢ₊₁` and unlocking the chain **forward**. Forward secrecy proper — protecting the
+//! **past** against a **future** compromise — is the **preimage-resistance** direction: an
+//! attacker holding `CKᵢ₊₁` cannot invert to `CKᵢ` and thence to any past `MKⱼ` (`j ≤ i`).
+//! That inversion resistance is the property the graduation supplies.
 //!
 //! This is a SHA-256 **hash chain**, *not* HKDF. A production ratchet would use
 //! HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based KDF), which adds
