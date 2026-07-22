@@ -82,11 +82,15 @@
 //!
 //! ## Honest limits
 //!
-//! - **Mixed backends — the Lamport layer is still TOY.** The Merkle layer inherits
-//!   leaf 4's **graduated SHA-256** (leaf 4 has graduated), but the Lamport layer
-//!   (leaf 5) is still toy FNV-1a. A real adversary forges *Lamport* signatures at
-//!   will — breaking the scheme regardless of the Merkle hash — so this leaf stays
-//!   TOY until `lamport-types` graduates too; the *type* discipline is the subject.
+//! - **Both hash backends are now graduated — the hash is no longer the weak link.**
+//!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
+//!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the audited
+//!   SHA-256 (u64-truncated, one-way at ~2⁶⁴). The earlier "a real adversary forges
+//!   *Lamport* signatures at will" break is closed at both layers. What remains
+//!   illustrative is *this composition itself*, not its hashes: deterministic seeds
+//!   (below), fixed capacity, and the 64-bit width — so `mss-types` is a research-rung
+//!   composition, **not an independently graduated leaf**; the *type* discipline
+//!   (the Merkle brand over one-time Lamport keys) is the subject.
 //! - **The [`MssPublicKey`] is caller-trusted** (as every trust anchor in the
 //!   garden is): verification proves a signature is valid *under this root*, not
 //!   that this root belongs to the right signer.
@@ -335,7 +339,7 @@ impl VerifiedMssMessage {
 /// `0xFF` — a side value `prg` documents as reserved for callers, outside the
 /// `{0, 1}` keygen uses — so the chain-level and key-level derivations have
 /// **disjoint input domains**. (That bounds the *inputs*; distinctness of the
-/// 64-bit *outputs* is only as strong as the toy Lamport-derivation hash (the Merkle layer aside — now SHA-256).
+/// 64-bit *outputs* now rests on the graduated SHA-256 Lamport-derivation hash (the Merkle layer likewise SHA-256).
 /// Deterministic derivation is the toy choice, for reproducible tests; it is
 /// also exactly what the "per chain value, not per chain material" honest limit
 /// is about.)

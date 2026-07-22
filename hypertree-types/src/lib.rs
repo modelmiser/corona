@@ -89,15 +89,19 @@
 //! - **Fixed two layers, fixed capacities.** Real XMSS^MT uses `d` layers and WOTS+;
 //!   this toy is a 2-layer hypertree over `mss-types`' Lamport/Merkle. Total capacity
 //!   is `top_capacity × bottom_capacity`, fixed at keygen.
-//! - **Inherited backends — the Lamport layer is still TOY.** The Lamport hashing
-//!   (leaf 5) inherited via `mss-types` is still toy FNV-1a; the Merkle layer inherits leaf 4's
-//!   **graduated SHA-256**. Unforgeability is only as strong as the *weakest* link —
-//!   the toy Lamport hash — so this stays not-production against a real adversary
-//!   until `lamport-types` graduates.
+//! - **Inherited backends are now graduated at both layers.** The Lamport hashing
+//!   (leaf 5) inherited via `mss-types` has graduated to the audited **SHA-256**
+//!   (u64-truncated, one-way at ~2⁶⁴), and the Merkle layer inherits leaf 4's
+//!   **graduated SHA-256**. Unforgeability is only as strong as the *weakest* link,
+//!   and that link is no longer a toy hash. What remains illustrative is the
+//!   *composition* (deterministic seeds, 2 fixed layers, no state-persistence
+//!   protocol), so this stays a research-rung leaf — **not independently graduated** —
+//!   though the hash is no longer why.
 //!
 //! ## ⚠ TOY — not production crypto
 //!
-//! A type-discipline demonstration. Toy Lamport hash (Merkle is graduated SHA-256), deterministic seeds, 2 fixed layers,
+//! A type-discipline demonstration. Both hash layers are now graduated SHA-256;
+//! what remains illustrative is the composition — deterministic seeds, 2 fixed layers,
 //! no state persistence protocol. Not for signing anything real.
 //!
 //! ## Intended use

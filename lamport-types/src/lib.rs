@@ -50,15 +50,21 @@
 //! because it speaks the vocabulary — here E0382 and E0451 — not because it links any
 //! shared module.
 //!
-//! ## Honest limits (rung 1)
+//! ## Honest limits (graduated backend)
 //!
-//! - **TOY hash (see [`hash`]).** Unforgeability rests on the commitment being
-//!   one-way; the backend FNV-1a is trivially invertible, so a real adversary forges.
-//!   The *type* discipline (use-once) is the subject, not the hash's strength.
+//! - **Graduated hash, but the width stays toy (see [`hash`]).** Unforgeability rests
+//!   on the commitment being one-way; the backend is now the audited **SHA-256**
+//!   (truncated to 64 bits), so `commit` *is* one-way — at **~2⁶⁴**, the toy's width,
+//!   not the ~2²⁵⁶ a real 256-bit Lamport commitment gives. Over the previous toy
+//!   FNV-1a `commit` was *invertible*, so the swap makes the leaf's core guarantee
+//!   **true where the toy made it false** — a load-bearing swap (∥ `pow`, `ecash`).
+//!   The `BITS = 64` signing width remains an illustrative dimension the graduation
+//!   deliberately leaves alone. The *type* discipline (use-once) is still the subject.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key:
-//!   that is the hash's job (and the toy hash fails it). Two orthogonal protections;
-//!   this leaf supplies only the first.
+//!   that is the hash's job (now supplied by the graduated SHA-256 backend, at ~2⁶⁴).
+//!   Two orthogonal protections; this leaf supplies the first *by type*, the second
+//!   *by backend*.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
 //!   belongs to the right signer (the same trust-anchor caveat as every other leaf).
@@ -314,9 +320,9 @@ mod tests {
         // the harvest at one such position (the mechanism is identical at each): sig1 and
         // sig2 hold the preimages for bit 0 and bit 1, two DISTINCT secrets, each a valid
         // opening of the vk's published commitment for its side. (Assembling a full
-        // third-message signature additionally needs a message whose FNV digest is covered
-        // — hash-preimage search, a deeper follow-up; the harvested material is what makes
-        // that a mechanical, not cryptographic, step.)
+        // third-message signature additionally needs a message whose (SHA-256) digest is
+        // covered — hash-preimage search, a deeper follow-up; the harvested material is what
+        // makes that a mechanical, not cryptographic, step.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);
         let (sk2, _) = SigningKey::generate(seed); // the same key, re-minted (the seed hole)

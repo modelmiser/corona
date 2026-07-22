@@ -14,6 +14,10 @@ it in production. Not making hard things easy; making the **edges** of hard thin
 visible. The eight recurring edges, and how to close each, are the
 [field guide](FIELD-GUIDE.md).
 
+**Growth:** the garden may grow indefinitely as a *warehouse* of specimens; what
+readers and on-task agents should see is a small *lens* (minimal subset per
+composition or residue edge). See [`WAREHOUSE-AND-LENS.md`](WAREHOUSE-AND-LENS.md).
+
 Corona is the **type** face of the Radiant verification work. Its sibling **Sol**
 is the **proof** face (machine-checked Lean lemmas). The wiring — first exercised at
 the leaf level by `merkle-types` (graduated 2026-07-21, contributing `Sol.Lib.Merkle`),
@@ -274,10 +278,12 @@ including merkle's orbit symmetry, which an adopted degenerate anchor (duplicate
 committed key bytes) carries straight into `key_index` (disclosed and
 regression-tested).
 
-> ⚠ **TOY.** Inherits lamport's toy FNV hash and seed caveat (a retained seed re-mints
-> the whole keychain — the linearity binds the chain *value*); its Merkle layer is now
-> leaf 4's graduated SHA-256, so the leaf stays toy via Lamport, not Merkle.
-> MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked hashing). Fixed capacity `n`.
+> ⚠ **Research rung.** Inherits lamport's seed caveat (a retained seed re-mints
+> the whole keychain — the linearity binds the chain *value*, and no hash fixes that).
+> Both hash layers are now graduated SHA-256 (Merkle from leaf 4, Lamport from leaf 5),
+> so what keeps this leaf illustrative is the *composition* — deterministic seeds and a
+> fixed capacity `n` — not a toy hash. MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked
+> hashing).
 
 ## Leaf 8: `vid-types`
 
