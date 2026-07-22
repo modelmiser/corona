@@ -292,7 +292,7 @@ work (complete tasks, add children, keep siblings).
       (the L2 headline, backend-independent). 5 wire theorems (2 fully axiom-free, check_decidable
       [propext], 2 freshness [propext,Classical,Quot] standard); full Sol green (1960 jobs).
       Heavy prose reframe: ~15 "under the toy hash forgery is free" hedges → the graduated posture
-      (forgery needs the key; the check-passing/authenticity gap is now a runtime MAC assumption no
+      (forgery costs ~2⁶⁴ — the key, or an online tag-guess; the check-passing/authenticity gap is now a runtime MAC assumption no
       type witnesses). HMAC golden vectors pinned to python `hmac`. ecash 16 unit + 7 doctests;
       clippy/fmt/rustdoc -D clean; version 0.1.0→0.2.0. **[cold review below]**
 

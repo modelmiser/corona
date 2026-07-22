@@ -185,7 +185,7 @@ decidable seal (`ecash_check_decidable`, merkle/pow's checked path over a *keyed
 NOT reduce** — a presentation acquired authentically and by forgery is byte-identical, so no
 `Presentation → Provenance` recovers *who produced the tag* (`ecash_authenticity_not_witness_definable`,
 **axiom-free** — pow's effort residue transposed from a search to a MAC, the graduation making forgery
-key-hard without ever making provenance typeable); and freshness is **not** a compile-time fact
+~2⁶⁴-hard without ever making provenance typeable); and freshness is **not** a compile-time fact
 (`ecash_freshness_not_compile_time` — the leaf's layer-2 headline, backend-independent: "unspent" is
 non-monotone, CALM). The illustrative residue kept from the research rung: a 64-bit key and a 64-bit
 (truncated) tag cap forgery-resistance at ~2⁶⁴ (∥ ratchet's `init(u64)` — a *parameter* limit, a real mint

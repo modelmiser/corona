@@ -387,7 +387,7 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 > machine-checks the split: the tag-check reduces to a decidable seal, but
 > **authenticity does not** — a genuine coin and a forgery with the same valid tag are
 > byte-identical, so no type witnesses *who produced the tag* (axiom-free; the
-> graduation makes forgery key-hard, never provenance typeable) — and freshness is not a
+> graduation makes forgery ~2⁶⁴-hard, never provenance typeable) — and freshness is not a
 > compile-time fact (the layer-2 headline, backend-independent). The *scheme* stays a
 > toy: no blinding (Chaum's actual contribution), no denominations, no transfer, no
 > persistence.
