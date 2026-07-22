@@ -20,43 +20,51 @@
 //!
 //! ## Security posture — what the swap bought, and what it did NOT
 //!
-//! Lamport's unforgeability here rests on **four** independent hash properties. Textbook
-//! Lamport needs two of them; this leaf adds `prg` (listed 2nd) by deriving all 128 preimages
-//! from a seed, and the fourth is separated out because collision resistance does not imply
-//! it. The graduation supplies **all four** — the toy failed every one — and three at a
-//! useful level. The exception is (3), which it supplies only up to the 64-bit width, and
-//! that is what leaves the scheme forgeable:
+//! Unforgeability here rests on **three** hash properties. Two further assumptions price the
+//! cost table below but do **not** change the security floor — they are listed separately,
+//! because conflating them over-states what the graduation bought.
 //!
-//! 1. **[`commit`] must be one-way** — else an attacker inverts the published commitments and
-//!    forges from the verifying key alone. The toy FNV-1a failed this outright. SHA-256
-//!    supplies it *at the truncated width* (~2⁶³).
-//! 2. **[`prg`] must be a PRF under its seed** — not merely one-way, and not merely
-//!    unpredictable. *One-wayness* is plainly too weak: `prg'(s,i,b) = SHA256(0x00‖s‖i)[..8]
-//!    + b·C` for public `C` is one-way in `s`, yet one signature hands over every unrevealed
-//!    preimage. *Unpredictability* suffices for the qualitative reduction but not for the
-//!    cost table, which needs `prg`'s outputs **uniform over `u64`**: `prg''(s,i,b) =
-//!      SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet confines every
-//!    preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶² and row 6 to ~2⁵⁶. Textbook
-//!    Lamport has no such requirement (its preimages are independent CSPRNG draws); this leaf
-//!    incurs it by deriving them. The toy failed it, and as a route to a *full* break more
-//!    cheaply than it failed (1) — one solve rather than 64: `prg`'s 18-byte input ends in 9
-//!    *known* bytes (index ‖ side), which peel backwards through `p⁻¹` deterministically,
-//!    leaving the same dimension-8 knapsack for the seed, so total key recovery follows from a
-//!    **single observed signature** with no `commit` inversion at all. SHA-256 supplies it.
-//! 3. **[`digest`] must be collision-resistant** — the binding property, and the only one the
-//!    graduation supplies solely to the width. `verify` re-derives `digest(message)` and
-//!    checks preimages against *that*, so a signature is bound to the **digest**, not the
-//!    message, and any two messages sharing a digest share every valid signature.
-//!    **Truncation to 64 bits caps this at ~2³²** (birthday, and ~2³² storage — or ~3× the
-//!    hashes memory-free via Pollard rho), and *that bound is a property of the width, not of
-//!    SHA-256*.
-//! 4. **[`digest`] must be (partial-)preimage-resistant** — separated from (3) because
-//!    collision resistance does not imply it: a 59-bit partial-preimage oracle costing `C`
-//!    yields a full collision at ~`C·2^2.5`, so collision resistance at 2³² forces only
-//!    partial-preimage ≳2^29, not the ~2⁵⁸ row 3 assumes. Rows 2 and 3 are therefore priced
-//!    against a **random-oracle** `digest`, which SHA-256 is taken to model. Unlike (3), the
-//!    graduation supplies this at a useful level — it is what makes row 3 cost ~2⁶⁰ rather
-//!    than ~2⁵⁷.
+//! The one-query EUF-CMA reduction: an adversary sees the verifying key and one signature on
+//! `m`, and outputs `(m*, σ*)` with `m* ≠ m`. Either `digest(m*) = digest(m)` — a **collision**
+//! — or some position `i` has `d*[i] ≠ d[i]`, so `σ*[i]` is a **preimage of the never-opened
+//! side** at `i`. The bound is `min(2³², 2⁵⁷) = 2³²`.
+//!
+//! **Required for unforgeability:**
+//!
+//! 1. **[`commit`] one-way** — the second branch of the reduction. Else an attacker inverts the
+//!    published commitments and forges from the verifying key alone. The toy FNV-1a failed this
+//!    outright; SHA-256 supplies it *at the truncated width* (~2⁶³).
+//! 2. **[`prg`] unpredictable under its seed** — else the never-opened preimages are *derived*
+//!    from the revealed one and the second branch collapses without any inversion. One-wayness
+//!    is too weak: `prg'(s,i,b) = SHA256(0x00‖s‖i)[..8] + b·C` for public `C` is one-way in `s`
+//!    yet hands over every unrevealed preimage. Textbook Lamport has no such requirement (its
+//!    preimages are independent CSPRNG draws); this leaf incurs it by deriving them. The toy
+//!    failed it, and as a route to a *full* break more cheaply than it failed (1) — one solve
+//!    rather than 64: `prg`'s 18-byte input ends in 9 *known* bytes (index ‖ side) which peel
+//!    backwards through `p⁻¹` deterministically, leaving the same dimension-8 knapsack for the
+//!    seed. Total key recovery from a **single observed signature**, no `commit` inversion.
+//! 3. **[`digest`] collision-resistant** — the first branch, and **the binding one**: truncation
+//!    to 64 bits caps it at ~2³² (birthday, with ~2³² storage — or ~3× the hashes memory-free
+//!    via Pollard rho). That bound is a property of the width, not of SHA-256. All three are
+//!    supplied only to the truncated width; (3) is the one whose width bound falls *below* a
+//!    useful level, which is what leaves the scheme forgeable.
+//!
+//! **Assumed by the cost table, but not by the floor** (each moves rows that are not the
+//! minimum, so deleting either leaves the ~2³² headline unchanged):
+//!
+//! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
+//!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
+//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶² and row 6 to ~2⁵⁶.
+//!   Rows 3, 5, 6 and 7 all consume a `commit`-domain search and so depend on it.
+//! - **[`digest`] (partial-)preimage-resistant.** Collision resistance does not imply it: a
+//!   58-bit partial-preimage oracle costing `C` yields a full collision at ~`C·2³`, so collision
+//!   resistance at 2³² forces only `C ≳ 2²⁹`, not the ~2⁵⁸ row 3 assumes. Rows 2 and 3 are
+//!   therefore priced against a **random-oracle** `digest` (and rows 3/6/7 against a
+//!   random-function `commit`), which SHA-256 is taken to model.
+//!
+//! One composition step, stated because it is easy to miss: (1) is needed on the distribution
+//! `prg` actually produces, not on uniform `u64` — it is (2) that transfers it. The properties
+//! are independent as *assumptions*, but the argument chains 2 into 1.
 //!
 //! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed). Under
 //! the **toy** every row's *goal* was reachable in seconds — rows 3–7 because `commit` was
@@ -75,9 +83,9 @@
 //! | Second preimage on the digest (known-message variant; dominated by row 3 *as a forgery route*, though not as a route to a second preimage) | ~2⁶⁴ | seconds | digest width |
 //! | Existential forgery from the verifying key **plus one observed (known-message) signature** ‡ | ~2⁶⁰ | seconds | `commit` one-wayness **and** digest width, jointly |
 //! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | seconds, but by a **different route** † | **seed entropy** *and* [`prg`] one-wayness |
-//! | Universal forgery on a *given* message § | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** | seconds | `commit` one-wayness *and* seed entropy, jointly |
-//! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | seconds | `commit` one-wayness |
-//! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | seconds | `commit` one-wayness |
+//! | Universal forgery on a *given* message § | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** | seconds | vk-only: `commit` one-wayness *and* seed entropy (tied routes); §-halved: seed entropy *and* `prg` one-wayness |
+//! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | seconds | `commit` one-wayness *and* `prg` output-uniformity |
+//! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | seconds | `commit` one-wayness *and* `prg` output-uniformity |
 //!
 //! So the swap is **load-bearing** (∥ `pow-types`, `ecash-types`) and bought more than a
 //! reshuffle: it gave the scheme **its first non-trivial security exponent**. Before, the
@@ -248,7 +256,7 @@ use sha2::{Digest as _, Sha256};
 /// rule: each has a domain of exactly `u64` (for `prg`, with `index`/`side` fixed and known),
 /// the same size as its range and guaranteed to contain the target, so each is a search of
 /// `2⁶⁴` candidates rather than an unbounded one. (~2⁶³ is the
-/// unique-preimage average and is *conservative*: under a random-function model the target
+/// unique-preimage average and rounds the attacker's cost *up*: under a random-function model the target
 /// has 1 + Poisson(1) preimages, giving ~2^62.6.)) Not "preserves preimage resistance": SHA-256's own
 /// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
 /// security posture.

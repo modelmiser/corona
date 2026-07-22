@@ -94,8 +94,10 @@
 //!   (u64-truncated, one-way at ~2⁶³), and the Merkle layer inherits leaf 4's
 //!   **graduated SHA-256**. Unforgeability is only as strong as the *weakest* link, and
 //!   that link is no longer a toy *hash* — it is now the inherited 64-bit Lamport
-//!   digest **width**, which caps forgery at ~2³² via a birthday collision (leaf 5's
-//!   disclosed residue, unchanged by any backend). What remains illustrative is that
+//!   digest **width**, which caps forgery at ~2³² via a birthday collision *for a correctly-used
+//!   key* (leaf 5's disclosed residue, unchanged by any backend). This crate's own deterministic
+//!   seeds are below that: a 24-bit literal root falls in ≲2²⁵, so in the demonstration the
+//!   seed, not the width, is the weakest link. What remains illustrative is that
 //!   width plus the *composition* (deterministic seeds, 2 fixed layers, no
 //!   state-persistence protocol), so this stays a research-rung leaf — **not
 //!   independently graduated**.

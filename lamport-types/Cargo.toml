@@ -14,11 +14,12 @@ publish = false
 [dependencies]
 # Graduated backend: the widely-used RustCrypto SHA-256 (truncated to 64 bits) replaces
 # the toy FNV-1a behind the same `hash::digest`/`commit`/`prg` seam (see CHARTER.md,
-# graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ALL FOUR properties this
-# construction needs: `commit` one-wayness AND `prg` PRF-ness (a third requirement textbook
-# Lamport lacks, incurred by deriving all preimages from a seed) are now supplied at ~2^63.
-# The third, collision resistance of the 64-bit `digest`, is also supplied — the toy had none —
-# but only up to the illustrative WIDTH, capping it at ~2^32, so the scheme is still
-# forgeable; see the `hash` module posture.
+# graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ALL THREE unforgeability properties this
+# construction needs: `commit` one-wayness, `prg` unpredictability (a requirement textbook
+# Lamport lacks, incurred by deriving all preimages from a seed) and `digest` collision
+# resistance. The toy failed all three. SHA-256 supplies the first two at ~2^63 and the third
+# only up to the illustrative WIDTH, capping forgery at ~2^32, so the scheme is still
+# forgeable. Two further assumptions (`prg` output-uniformity, `digest` partial-preimage
+# resistance) price the cost table without moving that floor; see the `hash` module posture.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
 sha2 = "0.10"

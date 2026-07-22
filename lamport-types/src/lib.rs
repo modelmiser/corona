@@ -66,15 +66,15 @@
 //!   property of the **64-bit width**, which the graduation deliberately left alone —
 //!   not of SHA-256.
 //! - **What the graduation did buy — the scheme's first non-trivial exponent.**
-//!   Unforgeability here needs **four** properties: `commit` one-way, `prg` a PRF under its
-//!   seed — not merely one-way nor merely unpredictable (a
-//!   requirement textbook Lamport lacks — this leaf derives all 128 preimages from a seed, so
-//!   a predictable `prg` hands over the unrevealed ones; inverting it on one revealed preimage
-//!   yields the whole key from a single signature),
-//!   `digest` collision-resistant, and `digest` (partial-)preimage-resistant — separate,
-//!   since collision resistance does not imply it. The toy FNV-1a failed all four **outright**: over a fixed-length input FNV is affine in
+//!   Unforgeability here needs **three** properties: `commit` one-way, `prg` unpredictable under
+//!   its seed (a requirement textbook Lamport lacks — this leaf derives all 128 preimages from
+//!   a seed, so a predictable `prg` hands over the unrevealed ones; inverting it on one
+//!   revealed preimage yields the whole key from a single signature), and `digest`
+//!   collision-resistant. (Two further assumptions — `prg` output-uniformity and `digest`
+//!   partial-preimage resistance — price [`hash`]'s cost table without changing the floor.)
+//!   The toy FNV-1a failed all three **outright**: over a fixed-length input FNV is affine in
 //!   bounded perturbations, so inverting it is a dimension-8 modular knapsack that
-//!   lattice reduction solves in *seconds per target*, completely and without memory.
+//!   lattice reduction solves in well under a second per target, completely and without memory.
 //!   The toy's cheapest break was therefore total key recovery in seconds. SHA-256 supplies
 //!   `commit` one-wayness and `prg` unpredictability at ~2⁶³, and collision resistance up to
 //!   the width — so against a **correctly-used key** the cheapest break becomes the ~2³²
