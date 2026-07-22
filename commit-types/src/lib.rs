@@ -54,10 +54,11 @@
 //!    **width and strength**, and **the type cannot see it**: `Commitment` is the
 //!    same struct whatever the hash's *strength*, yet narrow the graduated SHA-256's
 //!    *effective entropy* to 16 bits and a birthday search finds two distinct openings
-//!    that collapse to *one and the same* `Commitment` value — the `[u8; 32]` field
-//!    unchanged. The `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged`
-//!    test makes this executable — it builds the two real `Commitment`s and shows they
-//!    are equal. Graduation (below) is precisely what makes this residue *nameable as a
+//!    that collapse to *one and the same* digest — the `[u8; 32]` field unchanged. The
+//!    `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged` test makes this
+//!    executable — it publishes **one** narrowed `Commitment` and shows two *distinct*
+//!    openings (only the first authored) both verify against it, exactly as the real
+//!    `verify` would. Graduation (below) is precisely what makes this residue *nameable as a
 //!    reduction*: on the vetted SHA-256 backend, "no second opening exists" reduces to
 //!    SHA-256 collision-resistance — a believed-hard assumption, not the triviality it
 //!    was against the toy FNV-1a. For this hash commitment, binding is only ever
@@ -202,8 +203,9 @@ use core::marker::PhantomData;
 /// and ~256-bit preimage / second-preimage resistance. Two attacker games, two
 /// residues: a *malicious committer* crafting one commitment openable two ways plays
 /// the **binding** game, which is exactly finding a SHA-256 **collision** (~128-bit,
-/// the birthday bound — this is what `Sol.Lib.Commit`'s `binding_iff_collision`
-/// models); an attacker forging a *second opening of an already-published* commitment
+/// the birthday bound — this is what `Sol.Lib.Commit`'s `binding_iff_collision`,
+/// re-exported as `commit_binding_iff_collision`, models); an attacker forging a
+/// *second opening of an already-published* commitment
 /// faces the harder **second-preimage** problem (~256-bit) against a fixed target.
 /// Either way, not the triviality it was against FNV-1a, but the full computational
 /// assumption on SHA-256 — which is precisely binding's residue (crate docs, item 3):
