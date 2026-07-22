@@ -69,8 +69,8 @@
 //!   in a `u128` and casts the Wesolowski quotient `⌊2^T/ℓ⌋` to a `u64`; `63` is the *conservative*
 //!   point where `2^T` itself still fits a `u64` (`2^63 < 2^64`), which comfortably keeps that
 //!   quotient — smaller by a factor of `ℓ ≥ 3` — in `u64` range (the quotient alone would not
-//!   overflow until `T ≥ 66`). It is *not* a domain impossibility the way leaf 18's `BITS ≤ 64` is
-//!   (there, 65 leading zero bits from a 64-bit digest is genuinely unsatisfiable); a real VDF runs
+//!   overflow until `T ≥ 66`). It is *not* a domain impossibility the way leaf 18's `BITS ≤ 256` is
+//!   (there, 257 leading zero bits from a 256-bit digest is genuinely unsatisfiable); a real VDF runs
 //!   `T` in the millions. The two walls having *different* justifications — one a domain invariant,
 //!   one a toy limit — is itself the honest nuance.
 //!

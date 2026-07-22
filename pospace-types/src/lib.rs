@@ -70,7 +70,7 @@
 //! - **The upper wall `K ≤ 20` is honestly a *toy* feasibility bound** — [`Space::materialize`] and
 //!   [`Space::prove`] build all `2^K` entries in memory to answer, so the cap keeps a demonstration
 //!   feasible (a real proof of space uses `K ≈ 30–40`). It is *not* a domain impossibility the way
-//!   leaf 18's `BITS ≤ 64` is — a bigger table is exactly what a real scheme wants. The two walls
+//!   leaf 18's `BITS ≤ 256` is — a bigger table is exactly what a real scheme wants. The two walls
 //!   having *different* justifications — one a domain invariant, one a toy limit — is itself the
 //!   honest nuance (∥ leaf 20's `T ≤ 63`).
 //!
