@@ -2,10 +2,10 @@
 name = "lamport-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 5 — Lamport one-time signatures as typestate. Graduated backend (SHA-256, u64-truncated) behind a fixed seam, but NOT production crypto: at the illustrative 64-bit width the scheme is existentially forgeable at ~2^32. The type discipline (E0382 move-linearity) is the subject."
+description = "Corona leaf 5 — Lamport one-time signatures as typestate. Graduated backend (SHA-256, u64-truncated) behind a fixed seam, but NOT production crypto: at the illustrative 64-bit width the scheme is existentially forgeable under chosen message at ~2^32. The type discipline (E0382 move-linearity) is the subject."
 license = "MIT"
 # Not for crates.io: graduated BACKEND, but the illustrative 64-bit width leaves the
-# scheme forgeable at ~2^32 (see src/hash.rs). A demonstration crate, not a dependency.
+# scheme forgeable under chosen message at ~2^32 (see src/hash.rs). A demonstration crate, not a dependency.
 publish = false
 
 # Shares the garden's *vocabulary* (the E0382 move-linearity primitive and the E0451

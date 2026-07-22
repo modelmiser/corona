@@ -133,13 +133,14 @@
 //! forging against any key this crate mints is zero. That is the honest summary — the
 //! binding constraint moved from the *hash* to the *width*.
 //!
-//! (Why universal forgery is ~2⁶⁴, not ~2⁵⁷: a forgery on a *given* message needs the
-//! preimages for 64 **specific** `(position, bit)` commitments. One pass over the `commit`
-//! domain checking each candidate against a 64-entry table finds them all at ~2⁶⁴ — the
-//! same batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage
-//! and hence no signature. Searching the seed recovers all 128 at ~2⁶³ *candidates*, and a
-//! seed test costs two hashes to a preimage test's one, so *that* route alone lands at ~2⁶⁴.
-//! But it is not the cheapest — see ‡.)
+//! (Why the two *obvious* routes to universal forgery both cost ~2⁶⁴, and why the row is
+//! nevertheless ~2⁶³: a forgery on a *given* message needs the preimages for 64 **specific**
+//! `(position, bit)` commitments. One pass over the `commit` domain checking each candidate
+//! against a 64-entry table finds them all at ~2⁶⁴ — the same batching that gives the ~2⁵⁷
+//! row, which by contrast yields only *some* preimage and hence no signature. Searching the
+//! seed recovers all 128 at ~2⁶³ *candidates*, but a seed test costs two hashes to a preimage
+//! test's one, so that route alone also lands at ~2⁶⁴. Neither is the cheapest: composing
+//! them is — see ‡, which is why the row reads ~2⁶³.)
 //!
 //! Row 3, in outline: open `k` of the 64 **unknown-side** commitments by multi-target scan,
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
@@ -287,9 +288,12 @@ use sha2::{Digest as _, Sha256};
 /// both priced at ~2⁶³ rather than ~2⁶⁴, for a reason specific to them and *not* a truncation
 /// rule: each has a domain of exactly `u64` (for `prg`, with `index`/`side` fixed and known),
 /// the same size as its range and guaranteed to contain the target, so each is a search of
-/// `2⁶⁴` candidates rather than an unbounded one. (~2⁶³ is the
-/// unique-preimage average and rounds the attacker's cost *up*: under a random-function model the target
-/// has 1 + Poisson(1) preimages, giving ~2^62.6.)) Not "preserves preimage resistance": SHA-256's own
+/// `2⁶⁴` candidates rather than an unbounded one. ~2⁶³ is the **unique-preimage average**;
+/// under a random-function model the target has 1 + Poisson(1) preimages, giving ~2^62.6.
+/// That convention rounds the attacker's cost *up* **row-by-row** — but ⚠ *not* for the ‡
+/// composite in the module posture, where this same convention is what makes the route work
+/// at all, so there it is load-bearing rather than conservative; see ‡.)
+/// Not "preserves preimage resistance": SHA-256's own
 /// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
 /// security posture.
 fn sha256_u64(bytes: &[u8]) -> u64 {
