@@ -50,7 +50,7 @@
 //! ## Shares the *discipline*, not a *dependency* (as `merkle-types` does)
 //!
 //! Like leaf 4, this leaf imports **nothing from `corona-core`** — a signature is
-//! single-signer (no k-of-n [`Threshold`](../corona_core/struct.Threshold.html)) and
+//! single-signer (no k-of-n `corona_core::Threshold`) and
 //! hash-based (no [`gf256`](../corona_core/gf256/index.html)). It is in the garden
 //! because it speaks the vocabulary — here E0382 and E0451 — not because it links any
 //! shared module.
@@ -83,7 +83,8 @@
 //!   and defeats every other bound too (recover the seed, mint the key, sign anything).
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
 //!   third message for **~2^16.5** *for a 2-query chosen-message adversary*, demonstrated
-//!   in-crate — a passive observer pays ~2³² and a seed holder ~2⁸ (see [`hash`]). So the binding constraint is the
+//!   in-crate — a passive observer pays ~2³² at the median (~2^37.4 in expectation) and a seed
+//!   holder ~2⁸ (see [`hash`]). So the binding constraint is the
 //!   width only for a key used properly; for a key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
@@ -354,9 +355,10 @@ mod tests {
         // the harvest at one such position (the mechanism is identical at each): sig1 and
         // sig2 hold the preimages for bit 0 and bit 1, two DISTINCT secrets, each a valid
         // opening of the vk's published commitment for its side. (Assembling a full
-        // third-message signature additionally needs a message whose (SHA-256) digest is
-        // covered — hash-preimage search, a deeper follow-up; the harvested material is what
-        // makes that a mechanical, not cryptographic, step.)
+        // third-message signature additionally needs a message whose digest is covered. That
+        // is NOT a preimage search (which would be ~2^64): it is a partial match on the <=16-bit
+        // agreement set, ~2^16.5 total — completed by the very next test. The harvested material
+        // is what makes the remaining step mechanical rather than cryptographic.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);
         let (sk2, _) = SigningKey::generate(seed); // the same key, re-minted (the seed hole)
@@ -397,7 +399,8 @@ mod tests {
         // with m1 on many bits to keep that set (and the search) small. `Signature.revealed`
         // is public, so assembly is pure bookkeeping — the cryptographic step is gone.
         const HAM_THRESHOLD: u32 = 48; // |agreement set| <= 16  => stage-2 <= ~2^16
-                                       // Measured expected work is ~9.1e4 hashes total (stage 1 ~2.6e4, stage 2 ~6.6e4 = 2^16).
+                                       // Expected work ~7.9e4 hashes = 2^16.3 (stage 1 ~2.6e4; stage 2 ~5.3e4 conditional
+                                       // expectation — 2^16 = 6.6e4 is its worst case, at |A| = 16). Derived, not measured.
                                        // 2e6 leaves the miss probability at e^-77 / e^-30 — nil — while capping the
                                        // FAILURE path at ~5s. (At 5e7 a broken `digest` burned the full cap and made
                                        // `cargo test` take 153s, drowning the genuinely informative failures.)
