@@ -332,6 +332,33 @@ fn rm_task_meets_deadline<const N: usize>(tasks: &[(u32, u32); N], i: usize) -> 
     }
 }
 
+/// Compile-fail: the [`Schedulable`] seal cannot be forged from outside — private fields
+/// force construction through an admission function (**E0451**).
+///
+/// ```compile_fail,E0451
+/// use deadline_types::{Schedulable, Test};
+/// // Fabricating a certificate without running any test must not compile.
+/// let forged: Schedulable<1> = Schedulable { tasks: [(9, 10)], certified_by: Test::EdfExact, _seal: () };
+/// let _ = forged;
+/// ```
+///
+/// Compile-fail: an over-utilised set trips the EDF const-eval wall (**E0080**).
+///
+/// ```compile_fail,E0080
+/// // U = 0.6 + 0.5 = 1.1 > 1: unschedulable, walled at compile time.
+/// const _: () = deadline_types::assert_schedulable_edf(&[(6, 10), (5, 10)]);
+/// ```
+///
+/// Compile-fail: a task whose WCET exceeds its deadline trips the per-task wall
+/// (**E0080**).
+///
+/// ```compile_fail,E0080
+/// // C = 11 > T = 10.
+/// const _: () = deadline_types::assert_schedulable_edf(&[(11, 10)]);
+/// ```
+#[allow(dead_code)]
+struct CompileFailDocs;
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -576,30 +603,3 @@ mod tests {
         assert!(edf_exceeds_capacity(&[(5u32, 3u32)])); // C > T
     }
 }
-
-/// Compile-fail: the [`Schedulable`] seal cannot be forged from outside — private fields
-/// force construction through an admission function (**E0451**).
-///
-/// ```compile_fail,E0451
-/// use deadline_types::{Schedulable, Test};
-/// // Fabricating a certificate without running any test must not compile.
-/// let forged: Schedulable<1> = Schedulable { tasks: [(9, 10)], certified_by: Test::EdfExact, _seal: () };
-/// let _ = forged;
-/// ```
-///
-/// Compile-fail: an over-utilised set trips the EDF const-eval wall (**E0080**).
-///
-/// ```compile_fail,E0080
-/// // U = 0.6 + 0.5 = 1.1 > 1: unschedulable, walled at compile time.
-/// const _: () = deadline_types::assert_schedulable_edf(&[(6, 10), (5, 10)]);
-/// ```
-///
-/// Compile-fail: a task whose WCET exceeds its deadline trips the per-task wall
-/// (**E0080**).
-///
-/// ```compile_fail,E0080
-/// // C = 11 > T = 10.
-/// const _: () = deadline_types::assert_schedulable_edf(&[(11, 10)]);
-/// ```
-#[allow(dead_code)]
-struct CompileFailDocs;

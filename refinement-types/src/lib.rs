@@ -253,6 +253,8 @@ impl<T, P: Predicate<T>> Refined<T, P> {
     /// not per-*function*, so code *inside* this crate could construct one directly; that it does
     /// not (only `new` does) is an upheld, auditable convention, not something the type forces.
     /// The standard sealed-newtype caveat.
+    ///
+    /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
     pub fn new(value: T) -> Option<Self> {
         if P::holds(&value) {
             Some(Refined {

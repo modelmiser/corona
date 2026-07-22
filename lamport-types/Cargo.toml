@@ -17,9 +17,10 @@ publish = false
 # graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ALL THREE unforgeability properties this
 # construction needs: `commit` one-wayness, `prg` unpredictability (a requirement textbook
 # Lamport lacks, incurred by deriving all preimages from a seed) and `digest` collision
-# resistance. The toy failed all three. SHA-256 supplies the first two at ~2^63 and the third
+# resistance. The toy failed all three. SHA-256 supplies the first at ~2^63; `prg`
+# unpredictability is capped at ~2^63 by the 64-bit SEED, not by any backend; the third holds
 # only up to the illustrative WIDTH, capping forgery at ~2^32, so the scheme is still
-# forgeable. Two further assumptions (`prg` output-uniformity, `digest` preimage
-# resistance) price the cost table without moving that floor; see the `hash` module posture.
+# forgeable. Two further assumptions (`prg` output-uniformity, `digest` modelled as a RANDOM
+# ORACLE) price the cost table without moving that floor; see the `hash` module posture.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
 sha2 = "0.10"

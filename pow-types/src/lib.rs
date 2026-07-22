@@ -734,7 +734,10 @@ mod tests {
         // challenge-only digest would let a solution transplant across challenges). Different
         // challenge OR different nonce => different digest, in general.
         assert_ne!(hash::work_digest(b"chal", 1), hash::work_digest(b"chal", 2));
-        assert_ne!(hash::work_digest(b"chal-a", 7), hash::work_digest(b"chal-b", 7));
+        assert_ne!(
+            hash::work_digest(b"chal-a", 7),
+            hash::work_digest(b"chal-b", 7)
+        );
     }
 
     #[test]

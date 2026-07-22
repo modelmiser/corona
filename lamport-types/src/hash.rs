@@ -81,8 +81,8 @@
 //!    move too. (3) is the one whose cap falls *below* a
 //!    useful level, which is what leaves the scheme forgeable.
 //!
-//! **Assumed by the cost table, but not by the floor** (each moves rows that are not the
-//! minimum, so deleting either leaves the ~2³² headline unchanged):
+//! **Assumed by the cost table, but not by the floor** (deleting either leaves the ~2³²
+//! headline unchanged — established by the figures below, not by the row-position slogan):
 //!
 //! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
 //!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
@@ -125,9 +125,9 @@
 //! |---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
 //! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width, *and* `digest` modelled as a random oracle (collision resistance alone does not give this row) |
-//! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly — *and* `digest` as a random oracle (its `2^(64−k)` term is a partial-preimage search, which collision resistance alone does not price), *and* `prg` output-uniformity, which moves it to ~2⁶⁰ |
+//! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly — *and* `digest` as a random oracle (its `2^(64−k)` term is a partial-preimage search, which collision resistance alone does not price), *and* `prg` output-uniformity, whose *failure* moves it to ~2⁶⁰ |
 //! | Total key recovery — assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** ‡ | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness *and* `prg` output-uniformity, via a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all (~2⁶³ if the `prg` image is a known 2⁶³ subset), so widening the seed does not retire this row |
-//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** ‡ | `commit` one-wayness *and* seed entropy *and* [`prg`] unpredictability (tied routes; ~2⁶³ vk-only under `prg` output-uniformity) |
+//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** ‡ | `commit` one-wayness *and* seed entropy *and* [`prg`] unpredictability (tied routes; ~2⁶³ vk-only *without* `prg` output-uniformity — see row 4) |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
 //! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | `commit` one-wayness *and* `prg` output-uniformity |
 //!
@@ -166,8 +166,8 @@
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
 //! positions — cost `k·2⁶⁴/64 + 2^(64−k)`. Only 64 commitments are useful targets *here*, because this row
 //! is the known-message model where `m` IS fixed — unlike the reduction above, whose adversary
-//! chooses `m` after the scan and so reaches all 128. The optimum is flat at `k = 5–6`, giving **~2^60.8**, with neither
-//! term dominating — which is why this row alone is bounded by *both* one-wayness and width.
+//! chooses `m` after the scan and so reaches all 128. The optimum is flat at `k = 5–6`, giving
+//! **~2^60.8** — which is why this row alone is bounded by *both* one-wayness and width.
 //! (The table rounds that to ~2⁶¹.) This uses the **unique-preimage convention**, the same one
 //! rows 6 and 7 use; a 1+Poisson(1) multiplicity model would give ~2⁶⁰ instead. One convention
 //! throughout is worth more than the better of the two figures, and an earlier draft quoted
@@ -186,8 +186,9 @@
 //! **random function**, so a commitment has 1+Poisson(1) preimages and a scan hit is genuine
 //! only ~half the time. A decoy makes the 1-hash search run the *whole* space and return
 //! nothing, so `E = p·2⁶³ + (1−p)·(2⁶⁴ + E)`: **0.5× the plain search at `p = 1`, 1.5× at
-//! `p = ½`.** Measured against the real construction at 14/16 bits: `p ≈ 0.41`, ratio **≈2.4×**.
-//! The composite is not a cheaper attack, it is a trap.
+//! `p = ½`.** Against this crate `p` measures 0.51 ± 0.02 at 14 bits — the analytic ½, since
+//! the 128 genuine preimages are matched by ~128 spurious hits. The composite is not a cheaper
+//! attack, it is a trap.
 //!
 //! ⚠ **This is where a pricing convention stops being a rounding choice, and the direction
 //! matters.** The unique-preimage convention (rows 3, 6, 7; see `sha256_u64`) was adopted
@@ -278,7 +279,7 @@
 //!
 //! The three roles are tagged with distinct prefix bytes — `0x00` for [`prg`] (secret
 //! derivation), `0x01` for [`commit`], `0x02` for [`digest`] — so a preimage, a
-//! commitment, and a message digest can never be confused across roles: their hash
+//! commitment, and a message digest cannot be confused *at the input*: their hash
 //! *inputs* are disjoint by construction — the leading tag byte alone suffices, since it
 //! differs across the three roles (`digest`'s input is variable-length; the other two are
 //! fixed-width) — at any hash strength. That bounds the *inputs* only. Whether two distinct inputs collide in the
@@ -392,7 +393,8 @@ mod tests {
     /// A mis-encoding or a backend revert leaves the *self-referential* tests passing — every
     /// test comparing `hash::commit(x)` against a stored commitment compares the hash with
     /// itself. Only externally-pinned literals catch that class, and this module has **five**
-    /// such tests: these three vectors, `digest_covers_the_entire_message`,
+    /// such tests: `the_backend_is_genuine_sha256` (these three vectors, in one test),
+    /// `digest_covers_the_entire_message`,
     /// `reserved_side_bytes_are_disjoint_from_keygen_sides`, `prg_index_field_is_full_width`,
     /// and `a_digest_collision_forges_across_keys_at_the_toy_width` (whose pinned pair is
     /// equally an outside artifact). Recompute any of them from an outside oracle, or not at

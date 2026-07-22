@@ -2082,5 +2082,27 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
 - E0080/E0382 honestly unused; explicit "no linearity claimed" note (`Opening` = evidence, not a
   use-once capability, ∥ contrast leaf 5). Two garden primitives, no new one.
 
+## Leaf 5 — lamport-types cold review, R19 (2026-07-22)
+
+- [x] **R19 run under FREEZE** — new protocol: a finding is actionable only if it shows a shipped
+      claim FALSE against code, build output or arithmetic; all else ledgered, not edited. Adopted
+      because 18 rounds of "zero CRITICAL *and* zero MODERATE" never converged: acting on a MODERATE
+      writes new unreviewed prose, which the next round finds. Revised gate: **two consecutive
+      zero-CRITICAL rounds under freeze**.
+- [x] Four blind lenses (falsification / naive-reader / Lean-faithfulness / build-truth). **The leaf
+      itself was spotless on every mechanical check** — 18+2 tests, versions consistent, per-crate
+      gates clean, 67 theorems ↔ 67 rows with a name-level bijection, all four Part 3 results
+      axiom-free. Every CRITICAL landed OUTSIDE it.
+- [x] Three published workspace gates did not pass; fixed the CODE, not the claim:
+      `clippy --workspace --all-targets -D warnings` (CompileFailDocs moved above `mod tests` in
+      deadline-types), `cargo fmt --all --check` (6 hunks), rustdoc `-D warnings` (`[E0451]` read as
+      an intra-doc link in refinement-types).
+- [x] Cost-table row 5 had the uniformity condition **inverted** (`under` where the body proves
+      `without`); rows 3/4/5 now state it one way. ‡ note's two "measured" numerals deleted —
+      re-measured `p = 0.512 ± 0.018` at 14 bits, the analytic ½.
+- [x] Records swept by name (DEVLOG, INSIGHTS, TODO in both repos). corona + sol committed.
+- [ ] **R20 under freeze** — zero CRITICAL twice consecutively opens the push gate. 30 corona / 25 sol
+      commits unpushed pending it.
+
 The garden is again a finished thought: corona-core + **26 leaves**, no review debt. Any further leaf
 is a fresh open-ended domain, not backlog. Nothing auto-starts.

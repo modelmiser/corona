@@ -281,7 +281,10 @@ impl Tracked {
     pub fn add(self, other: Tracked) -> Tracked {
         Tracked {
             value: self.value + other.value,
-            err_ulps: self.err_ulps.saturating_add(other.err_ulps).saturating_add(1),
+            err_ulps: self
+                .err_ulps
+                .saturating_add(other.err_ulps)
+                .saturating_add(1),
             _seal: (),
         }
     }
@@ -294,7 +297,10 @@ impl Tracked {
     pub fn sub(self, other: Tracked) -> Tracked {
         Tracked {
             value: self.value - other.value,
-            err_ulps: self.err_ulps.saturating_add(other.err_ulps).saturating_add(1),
+            err_ulps: self
+                .err_ulps
+                .saturating_add(other.err_ulps)
+                .saturating_add(1),
             _seal: (),
         }
     }
@@ -303,7 +309,10 @@ impl Tracked {
     pub fn mul(self, other: Tracked) -> Tracked {
         Tracked {
             value: self.value * other.value,
-            err_ulps: self.err_ulps.saturating_add(other.err_ulps).saturating_add(1),
+            err_ulps: self
+                .err_ulps
+                .saturating_add(other.err_ulps)
+                .saturating_add(1),
             _seal: (),
         }
     }
@@ -411,7 +420,9 @@ mod tests {
         // a == b == 0: genuinely undefined (0/0) — NaN, not INFINITY.
         assert!(condition_number_of_subtraction(0.0, 0.0).is_nan());
         // The step count is oblivious to all of this:
-        let sub_steps = Tracked::exact(1.0).sub(Tracked::exact(1.0 - 1e-15)).err_ulps();
+        let sub_steps = Tracked::exact(1.0)
+            .sub(Tracked::exact(1.0 - 1e-15))
+            .err_ulps();
         assert_eq!(sub_steps, 1);
     }
 
@@ -427,7 +438,7 @@ mod tests {
         assert_eq!(right.value(), 1.0); // b + c cancelled first, leaving the 1.0
         assert_ne!(left.value(), right.value());
         assert_eq!(left.err_ulps(), right.err_ulps()); // both "two additions"
-        // Accuracy depends on the ORDER (the algorithm) — leaf 31's arrow, for stability.
+                                                       // Accuracy depends on the ORDER (the algorithm) — leaf 31's arrow, for stability.
     }
 
     #[test]

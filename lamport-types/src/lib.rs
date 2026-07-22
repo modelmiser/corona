@@ -217,9 +217,16 @@ pub struct Signature {
 /// A **sealed witness** (E0451) that a message verified under a [`VerifyingKey`] —
 /// minted only by [`VerifyingKey::verify`]. Non-redacting (the digest is public).
 ///
-/// It attests a *fact* (this message checked out under that key), so — unlike the
-/// linear [`SigningKey`] — it is `Clone`-able evidence. That contrast *is* the leaf's
-/// point: the capability is spent by use; the evidence is not.
+/// It attests a *fact*, so — unlike the affine [`SigningKey`] — it is `Clone`-able
+/// evidence. That contrast *is* the leaf's point: the capability is spent by use; the
+/// evidence is not.
+///
+/// The attestation is carried by the **boundary**, not by the value: minting is possible
+/// only through [`VerifyingKey::verify`]. The value itself holds the digest and nothing
+/// else — not the key, not the message — so two witnesses minted under *different* keys
+/// compare equal, as do the witnesses for two distinct messages that share a digest (the
+/// crate pins such a pair). It is evidence at the call site, not a transportable claim
+/// about *which* key or *which* message.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedMessage {
     digest: u64,
@@ -233,8 +240,12 @@ impl VerifiedMessage {
 }
 
 impl SigningKey {
-    /// Deterministically derive a one-time key pair from `seed` (toy PRG — a real
-    /// key uses a CSPRNG; see [`hash`]).
+    /// Deterministically derive a one-time key pair from `seed`.
+    ///
+    /// A *derivation*, not a CSPRNG — an illustrative design choice the backend graduation
+    /// did not touch (see [`hash`]). `seed` **is** the key material: it must be drawn
+    /// uniformly over `u64` and discarded. A guessable seed is the cheapest break in this
+    /// crate — the doc examples' own ≲2²⁵ seeds fall *below* the ~2³² forgery floor.
     pub fn generate(seed: u64) -> (SigningKey, VerifyingKey) {
         let mut preimages = [[0u64; 2]; BITS];
         let mut commitments = [[0u64; 2]; BITS];
