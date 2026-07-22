@@ -52,11 +52,16 @@
 //!    *wholly* on the hash being injective enough that a second `(value', blind')`
 //!    colliding the digest is infeasible to find. That is a property of the hash's
 //!    **width and strength**, and **the type cannot see it**: `Commitment` is the
-//!    same struct at any digest width, yet at 16 bits a birthday search finds two
-//!    distinct openings that collapse to *one and the same* `Commitment` value. The
-//!    `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged` test makes
-//!    this executable — it builds the two real `Commitment`s and shows they are equal.
-//!    For this hash commitment, binding is only ever *computational* — a different
+//!    same struct whatever the hash's *strength*, yet narrow the graduated SHA-256's
+//!    *effective entropy* to 16 bits and a birthday search finds two distinct openings
+//!    that collapse to *one and the same* `Commitment` value — the `[u8; 32]` field
+//!    unchanged. The `narrowing_the_hash_collapses_binding_while_the_type_is_unchanged`
+//!    test makes this executable — it builds the two real `Commitment`s and shows they
+//!    are equal. Graduation (below) is precisely what makes this residue *nameable as a
+//!    reduction*: on the vetted SHA-256 backend, "no second opening exists" reduces to
+//!    SHA-256 collision-resistance — a believed-hard assumption, not the triviality it
+//!    was against the toy FNV-1a. For this hash commitment, binding is only ever
+//!    *computational* — a different
 //!    scheme can be *perfectly* binding (paying with only computational hiding, the
 //!    dual regime of the tradeoff below), just never perfectly *both*, and never in
 //!    the type — so the seal secures the **path**, never the **mathematics** underneath it.
@@ -148,7 +153,7 @@
 //!
 //! ```compile_fail,E0451
 //! // The `digest` field is private (E0451) — no path to a chosen-digest commitment.
-//! let _ = commit_types::Commitment { digest: 0xdead_beef };
+//! let _ = commit_types::Commitment { digest: [0u8; 32] };
 //! ```
 //!
 //! [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
@@ -159,41 +164,61 @@
 
 use core::marker::PhantomData;
 
-/// Toy hash backend for the commitment.
+/// SHA-256 hash backend for the commitment — the **graduated** backend.
 ///
-/// **⚠ TOY — NOT collision-resistant, NOT for real use.** This is 64-bit FNV-1a, a
-/// *non-cryptographic* mixing hash chosen only so the checked path in [`crate`] is
-/// *runnable*. It plays exactly the role the toy `gf256` field and the toy hashes in
-/// the other leaves play. Graduation (per the charter) swaps this for a vetted hash
-/// (SHA-256) behind the same [`hash::digest_of`] seam. That the toy's *narrowness* forges
-/// collisions is not an accident to hide — it is one of this leaf's residues (see
-/// the crate docs, item 3).
+/// Per the charter's graduation criterion #2, this module is an *implementation swap
+/// behind a fixed seam*: the toy 64-bit FNV-1a that the research rung used has been
+/// replaced by domain-framed **SHA-256** (via the audited [`sha2`] crate) behind the
+/// very same [`digest_of`] seam — the function *name* and every caller
+/// ([`Commitment::verify`], [`commit`], [`commit_scoped`]) are unchanged. What *did*
+/// change: the body, and — a breaking change for the return type, carrying **zero**
+/// blast radius because this leaf has no dependents — the width of the [`Digest`] it
+/// returns (`u64` → `[u8; 32]`).
+///
+/// ## Security posture
+///
+/// SHA-256 is a standardized cryptographic hash with ~128-bit collision resistance
+/// and ~256-bit preimage resistance. Against this backend, forging a *second* opening
+/// of a published commitment requires finding a SHA-256 collision — not the triviality
+/// it was against FNV-1a, but the full computational assumption on SHA-256. That
+/// assumption is exactly binding's residue (crate docs, item 3): the *type* is blind
+/// to it, and the graduation's job is to hand that residue to a vetted primitive
+/// rather than a toy. `forbid(unsafe_code)` here governs *our* code, not the dependency.
+///
+/// The input is length-framed and domain-tagged (a `0x00` commitment-domain prefix,
+/// then the 8-byte value length, then the value, then the 8-byte little-endian
+/// `blind`). The length frame makes `(value, blind)` unambiguously recoverable from
+/// the preimage; the domain tag reserves distinct prefixes for any future second use
+/// of this hash in the leaf. Neither adds collision resistance — that is SHA-256's —
+/// they only fix the *preimage*, a structural property independent of hash strength.
+///
+/// [`sha2`]: https://docs.rs/sha2
 pub mod hash {
-    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+    use sha2::{Digest as _, Sha256};
 
-    /// 64-bit FNV-1a over a byte string.
-    pub fn fnv1a(bytes: &[u8]) -> u64 {
-        let mut h = FNV_OFFSET;
-        for &b in bytes {
-            h ^= b as u64;
-            h = h.wrapping_mul(FNV_PRIME);
-        }
-        h
+    /// A 256-bit digest — the output of the graduated SHA-256 backend, and the width
+    /// every [`Commitment`](crate::Commitment) now carries.
+    pub type Digest = [u8; 32];
+
+    /// SHA-256 of a byte string.
+    fn sha256(bytes: &[u8]) -> Digest {
+        let mut h = Sha256::new();
+        h.update(bytes);
+        h.finalize().into()
     }
 
-    /// The commitment digest of a value under a blinding factor: `H(len ‖ value ‖
-    /// blind)`, with `blind` a fixed 8-byte little-endian trailing field. The length
-    /// prefix is a defensive domain-separation habit; for *this* fixed-width layout it
-    /// is strictly redundant — the trailing 8-byte `blind` already splits the buffer
-    /// unambiguously (`blind` = last 8 bytes, `value` = the rest). It is kept so the
-    /// seam matches a real hash's length-framed input after graduation.
-    pub fn digest_of(value: &[u8], blind: u64) -> u64 {
-        let mut buf = Vec::with_capacity(value.len() + 16);
+    /// The commitment digest of a value under a blinding factor: `SHA-256(0x00 ‖ len ‖
+    /// value ‖ blind)`, with `blind` a fixed 8-byte little-endian trailing field and a
+    /// `0x00` commitment-domain tag. The length frame splits the preimage unambiguously
+    /// into `(value, blind)`; the tag domain-separates this hash from any future second
+    /// use. Both bound the *inputs* only — collision resistance is SHA-256's job.
+    pub fn digest_of(value: &[u8], blind: u64) -> Digest {
+        let mut buf = Vec::with_capacity(value.len() + 17);
+        buf.push(0x00);
         buf.extend_from_slice(&(value.len() as u64).to_le_bytes());
         buf.extend_from_slice(value);
         buf.extend_from_slice(&blind.to_le_bytes());
-        fnv1a(&buf)
+        sha256(&buf)
     }
 }
 
@@ -219,7 +244,7 @@ type Brand<'brand> = PhantomData<fn(&'brand ()) -> &'brand ()>;
 /// [E0451]: https://doc.rust-lang.org/error_codes/E0451.html
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Commitment {
-    digest: u64,
+    digest: hash::Digest,
 }
 
 /// The secret material that opens a [`Commitment`]: the committed value and the
@@ -244,7 +269,7 @@ impl Commitment {
     /// The digest bytes. Exposed for inspection — and note precisely what *hiding*
     /// claims and the type cannot enforce: that these bytes reveal nothing about
     /// [`Opening::value`]. Whether that holds is a property of the hash, off the type.
-    pub fn digest(&self) -> u64 {
+    pub fn digest(&self) -> hash::Digest {
         self.digest
     }
 
@@ -289,7 +314,7 @@ pub fn leaky_commit(value: &[u8]) -> Commitment {
 /// an opening minted in the same [`commit_scoped`] scope.
 #[derive(Clone, Copy, Debug)]
 pub struct ScopedCommitment<'brand> {
-    digest: u64,
+    digest: hash::Digest,
     _brand: Brand<'brand>,
 }
 
@@ -420,20 +445,34 @@ mod tests {
         let _schemes: [fn(&[u8]) -> Commitment; 2] = [commit_fixed_blind, leaky];
     }
 
-    /// Binding's **hardness** is a collision residue, invisible to the type. Narrow the
-    /// hash to 16 bits — the E0451 seal type-checks *identically* — and a birthday
-    /// search forges a second opening the committer never authored, which a 16-bit
-    /// `verify` (re-hash-and-compare, exactly as the real one) would accept for the
-    /// same commitment.
+    /// Binding's **hardness** is a collision residue, invisible to the type. The
+    /// graduated struct carries a full 256-bit [`hash::Digest`]; narrow the hash's
+    /// *effective entropy* to 16 bits (keep two bytes of a real SHA-256 output, zero
+    /// the rest) — the E0451 seal, and the `[u8; 32]` field, type-check *identically* —
+    /// and a birthday search forges a second opening the committer never authored,
+    /// which a re-hash-and-compare `verify` (exactly as the real one) accepts for the
+    /// same commitment. At the full 256-bit width the search is infeasible: that width,
+    /// and nothing in the type, is where binding's hardness lives.
     #[test]
     fn narrowing_the_hash_collapses_binding_while_the_type_is_unchanged() {
-        // A 16-bit commitment is the same `Commitment` STRUCT, differing only in the
-        // width of `digest_of` — a runtime quantity the seal never sees.
-        fn weak_digest(value: &[u8], blind: u64) -> u16 {
-            (hash::digest_of(value, blind) & 0xFFFF) as u16
+        // Narrow the hash's EFFECTIVE entropy to 16 bits: take the real SHA-256 digest
+        // and zero all but its first two bytes. The result is still a full-width
+        // `Digest` — the very `[u8; 32]` the graduated `Commitment` carries — so the
+        // STRUCT and its width are genuinely unchanged; only the hash's image is shrunk.
+        fn weak_digest(value: &[u8], blind: u64) -> hash::Digest {
+            let full = hash::digest_of(value, blind);
+            let mut d = [0u8; 32];
+            d[0] = full[0];
+            d[1] = full[1];
+            d
+        }
+        // The 16-bit effective image — the birthday search's collision key.
+        fn weak_image(value: &[u8], blind: u64) -> u16 {
+            let d = weak_digest(value, blind);
+            u16::from_le_bytes([d[0], d[1]])
         }
 
-        // Birthday search: hash distinct openings until two collide under 16 bits.
+        // Birthday search: hash distinct openings until two collide in the 16-bit image.
         // ~2^8 tries expected; cap far above that so the test is deterministic.
         use std::collections::HashMap;
         // An opening is a (value, blind) pair; a collision is two distinct openings.
@@ -443,34 +482,35 @@ mod tests {
         for i in 0u64..1_000_000 {
             let value = format!("opening-{i}").into_bytes();
             let blind = 0xC0FFEE ^ i;
-            let d = weak_digest(&value, blind);
+            let d = weak_image(&value, blind);
             if let Some(prev) = seen.get(&d) {
                 // `i` is strictly increasing and encoded into `value`, so a stored
-                // opening at this digest is necessarily a DISTINCT one — a real collision.
+                // opening at this image is necessarily a DISTINCT one — a real collision.
                 collision = Some((prev.clone(), (value, blind)));
                 break;
             }
             seen.insert(d, (value, blind));
         }
 
-        let ((v1, r1), (v2, r2)) = collision.expect("16 bits must collide within the cap");
+        let ((v1, r1), (v2, r2)) =
+            collision.expect("16 effective bits must collide within the cap");
         assert_ne!(
             (&v1, r1),
             (&v2, r2),
             "the two openings must be genuinely distinct"
         );
-        // Publish ONE 16-bit commitment (the real `Commitment` struct — the seal never
-        // sees the digest width) and re-hash-and-compare against it, exactly as
-        // `Commitment::verify` does at full width. The committer authored only the first
-        // opening, yet the second — which they never held — verifies against the same
-        // commitment: binding has evaporated while the type is unchanged. (At 64 bits the
-        // search is infeasible; that width, and nothing in the type, is where binding's
-        // hardness lives.)
+        // Publish ONE narrowed commitment (the real `Commitment` struct at its real
+        // `[u8; 32]` width — only the hash's entropy is shrunk) and re-hash-and-compare
+        // against it, exactly as `Commitment::verify` does at full strength. The
+        // committer authored only the first opening, yet the second — which they never
+        // held — verifies against the same commitment: binding has evaporated while the
+        // type is unchanged. (At the full 256-bit SHA-256 width the search is infeasible;
+        // that width, and nothing in the type, is where binding's hardness lives.)
         let published = Commitment {
-            digest: weak_digest(&v1, r1) as u64,
+            digest: weak_digest(&v1, r1),
         };
         let weak_verify =
-            |c: &Commitment, value: &[u8], blind: u64| weak_digest(value, blind) as u64 == c.digest;
+            |c: &Commitment, value: &[u8], blind: u64| weak_digest(value, blind) == c.digest;
         assert!(
             weak_verify(&published, &v1, r1),
             "the authored opening verifies"
