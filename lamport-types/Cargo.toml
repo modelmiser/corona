@@ -14,7 +14,7 @@ publish = false
 [dependencies]
 # Graduated backend: the widely-used RustCrypto SHA-256 (truncated to 64 bits) replaces
 # the toy FNV-1a behind the same `hash::digest`/`commit`/`prg` seam (see CHARTER.md,
-# graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ALL THREE properties this
+# graduation criterion #2). LOAD-BEARING (∥ pow, ecash) on ALL FOUR properties this
 # construction needs: `commit` one-wayness AND `prg` PRF-ness (a third requirement textbook
 # Lamport lacks, incurred by deriving all preimages from a seed) are now supplied at ~2^63.
 # The third, collision resistance of the 64-bit `digest`, is also supplied — the toy had none —

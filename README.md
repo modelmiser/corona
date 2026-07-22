@@ -216,8 +216,8 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > the swap is type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no
 > **type** edits (their hash values did change, and their docs were revised).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
-> `digest`/`commit`/`prg` seam. Load-bearing on **all three** properties unforgeability
-> needs — the toy failed every one — though only two usefully: `commit` one-wayness and `prg`
+> `digest`/`commit`/`prg` seam. Load-bearing on **all four** properties unforgeability
+> needs — the toy failed every one — though only three usefully: `commit` one-wayness and `prg`
 > unpredictability are now supplied at ~2⁶³, both of which the toy lacked outright (FNV-1a is
 > lattice-invertible in seconds). `prg` unpredictability is a requirement textbook Lamport
 > lacks: this leaf derives all 128 preimages from a seed, so `prg` must be unpredictable under

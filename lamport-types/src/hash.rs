@@ -20,43 +20,49 @@
 //!
 //! ## Security posture — what the swap bought, and what it did NOT
 //!
-//! Lamport's unforgeability here rests on **three** independent hash properties — textbook
-//! Lamport needs two; this leaf adds `prg` (listed 2nd below) by deriving all 128 preimages
-//! from a seed.
-//! The graduation supplies **all three** — the toy failed every one — but only the first two
-//! at a useful level; the third it supplies just up to the 64-bit width, which is what leaves
-//! the scheme forgeable:
+//! Lamport's unforgeability here rests on **four** independent hash properties. Textbook
+//! Lamport needs two of them; this leaf adds `prg` (listed 2nd) by deriving all 128 preimages
+//! from a seed, and the fourth is separated out because collision resistance does not imply
+//! it. The graduation supplies **all four** — the toy failed every one — and three at a
+//! useful level. The exception is (3), which it supplies only up to the 64-bit width, and
+//! that is what leaves the scheme forgeable:
 //!
-//! 1. **[`commit`] must be one-way** — else an attacker inverts the published
-//!    commitments and forges from the verifying key alone. The toy FNV-1a failed
-//!    this outright. SHA-256 supplies it *at the truncated width* (~2⁶³).
-//! 2. **[`prg`] must be unpredictable under its seed — not merely one-way** (a PRF suffices;
-//!    unpredictability is what is actually required) — else one
-//!    *revealed* preimage yields the others. One-wayness alone is insufficient: `prg'(s,i,b) =
-//!    SHA256(0x00‖s‖i)[..8] + b·C` for public `C` is one-way in `s`, yet a single signature
-//!    hands over every unrevealed preimage. Inverting to the seed is simply the cheapest way
-//!    the toy failed it, yielding the entire key from a **single observed signature**. Textbook Lamport has no such
-//!    requirement (its preimages are independent CSPRNG draws); this leaf incurs it by
-//!    deriving them. The toy failed this too, and more cheaply than it failed (1): `prg`'s
-//!    18-byte input ends in 9 *known* bytes (index ‖ side), which peel backwards through
-//!    `p⁻¹` deterministically, leaving the same dimension-8 knapsack for the seed — total key
-//!    recovery from one signature, no `commit` inversion needed. SHA-256 supplies it.
-//! 3. **[`digest`] must be collision-resistant *and* (partial-)preimage-resistant** — the
-//!    table needs both, and collision resistance does not imply the second: a 59-bit
-//!    partial-preimage oracle costing `C` yields a full collision at ~`C·2^2.5`, so collision
-//!    resistance at 2³² only forces partial-preimage ≳2^29.5, not the 2^59 row 3 assumes.
-//!    Rows 2 and 3 are therefore priced against a **random-oracle** `digest`, which SHA-256 is
-//!    taken to model; the enumerated property alone would not license them. Collision
-//!    resistance is the binding one, because `verify` re-derives
-//!    `digest(message)` and checks preimages against *that*, so a signature is bound
-//!    to the **digest**, not the message. Any two messages sharing a digest share
-//!    every valid signature. **Truncation to 64 bits caps this at ~2³²** (birthday),
-//!    and *that bound is a property of the width, not of SHA-256*.
+//! 1. **[`commit`] must be one-way** — else an attacker inverts the published commitments and
+//!    forges from the verifying key alone. The toy FNV-1a failed this outright. SHA-256
+//!    supplies it *at the truncated width* (~2⁶³).
+//! 2. **[`prg`] must be a PRF under its seed** — not merely one-way, and not merely
+//!    unpredictable. *One-wayness* is plainly too weak: `prg'(s,i,b) = SHA256(0x00‖s‖i)[..8]
+//!    + b·C` for public `C` is one-way in `s`, yet one signature hands over every unrevealed
+//!    preimage. *Unpredictability* suffices for the qualitative reduction but not for the
+//!    cost table, which needs `prg`'s outputs **uniform over `u64`**: `prg''(s,i,b) =
+//!      SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet confines every
+//!    preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶² and row 6 to ~2⁵⁶. Textbook
+//!    Lamport has no such requirement (its preimages are independent CSPRNG draws); this leaf
+//!    incurs it by deriving them. The toy failed it, and as a route to a *full* break more
+//!    cheaply than it failed (1) — one solve rather than 64: `prg`'s 18-byte input ends in 9
+//!    *known* bytes (index ‖ side), which peel backwards through `p⁻¹` deterministically,
+//!    leaving the same dimension-8 knapsack for the seed, so total key recovery follows from a
+//!    **single observed signature** with no `commit` inversion at all. SHA-256 supplies it.
+//! 3. **[`digest`] must be collision-resistant** — the binding property, and the only one the
+//!    graduation supplies solely to the width. `verify` re-derives `digest(message)` and
+//!    checks preimages against *that*, so a signature is bound to the **digest**, not the
+//!    message, and any two messages sharing a digest share every valid signature.
+//!    **Truncation to 64 bits caps this at ~2³²** (birthday, and ~2³² storage — or ~3× the
+//!    hashes memory-free via Pollard rho), and *that bound is a property of the width, not of
+//!    SHA-256*.
+//! 4. **[`digest`] must be (partial-)preimage-resistant** — separated from (3) because
+//!    collision resistance does not imply it: a 59-bit partial-preimage oracle costing `C`
+//!    yields a full collision at ~`C·2^2.5`, so collision resistance at 2³² forces only
+//!    partial-preimage ≳2^29, not the ~2⁵⁸ row 3 assumes. Rows 2 and 3 are therefore priced
+//!    against a **random-oracle** `digest`, which SHA-256 is taken to model. Unlike (3), the
+//!    graduation supplies this at a useful level — it is what makes row 3 cost ~2⁶⁰ rather
+//!    than ~2⁵⁷.
 //!
 //! Concrete costs at these parameters (`BITS = 64`, `u64` preimages, `u64` seed). Under
 //! the **toy** every row's *goal* was reachable in seconds — rows 3–7 because `commit` was
 //! invertible outright, rows 1–2 because the same lattice enumeration inverts `digest` too
-//! once the attacker restricts to fixed-length messages (8 bytes, reproducing `commit`'s shape) (and throws off same-length collisions for free). The middle column prices
+//! once the attacker restricts to fixed-length messages (8 bytes, reproducing `commit`'s shape),
+//! which also throws off same-length collisions for free. The middle column prices
 //! the **cheapest route to that goal** under the toy, which is not always the row's own
 //! stated method — see row 4 — and the last column answers: *what bounds this row now?*
 //! Column 1 prices the **cheapest known route to the row's goal for the stated adversary**,

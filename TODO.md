@@ -149,7 +149,7 @@ work (complete tasks, add children, keep siblings).
       COMPILE-TIME blast radius** — type-preserving (`u64 → u64`) where merkle's
       `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
       `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
-      ALL THREE properties this construction needs — though only two usefully (textbook Lamport needs two; deriving
+      ALL FOUR properties this construction needs — though only three usefully (textbook Lamport needs two; deriving
       all preimages from a seed incurs a third — `prg` must be a PRF under its seed, not merely one-way): `commit` one-wayness and `prg` unpredictability are now supplied at ~2⁶³, which
       the toy made false **outright** (FNV-1a over a fixed-length input is a
       lattice-solvable dim-8 knapsack — seconds per target; R1's "~2³² meet-in-the-middle"
