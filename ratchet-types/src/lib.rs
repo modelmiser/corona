@@ -96,8 +96,9 @@
 //! - **Cryptographic forward secrecy holds** for the *chain-key compromise* threat: an
 //!   attacker who compromises `CKᵢ₊₁` cannot feasibly compute any past `CKⱼ` or `MKⱼ` (`j ≤ i`) —
 //!   under the standard assumption that the SHA-256 derivations behave as a random oracle /
-//!   PRF (preimage resistance stops chain inversion; the derivations' *independence* hides the
-//!   past message keys). This is the guarantee the toy backend lacked. **Caveat:** the
+//!   PRF (preimage resistance stops chain inversion and hides deep-past message keys; the
+//!   derivations' *independence* hides the same-step sibling `MKᵢ` from `CKᵢ₊₁`). This is the
+//!   guarantee the toy backend lacked. **Caveat:** the
 //!   *illustrative* `init(seed: u64)` seeds from only 64 bits, so this holds only for a
 //!   full-entropy chain key — an attacker with any `CKⱼ` brute-forces the 64-bit seed in ~2⁶⁴
 //!   *regardless* of SHA-256 (see [`kdf`] and [`ChainKey::init`]).
@@ -130,7 +131,7 @@
 //! ordinary ratchet usage almost always dissolves (message keys are *used to encrypt*, so a
 //! ciphertext under `MKⱼ` normally exists and disambiguates), not a guarantee to design
 //! against. (Lean also models only the *chain-key* preimage structure; hiding
-//! the *message* keys `MKⱼ = g(CKⱼ)` is the separate RO/PRF independence assumption.)
+//! the *message* keys `MKⱼ = g(CKⱼ)` is the separate RO/PRF assumption discharged outside Lean.)
 //! (Which branch a held value falls in is a property of *that value* under SHA-256, and is
 //! unprovable; but a held `CKᵢ₊₁` is by construction the image of its predecessor `CKᵢ`, so
 //! it always has ≥1 preimage, and under a random-function heuristic its preimage count is

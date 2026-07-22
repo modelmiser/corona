@@ -340,8 +340,8 @@ work (complete tasks, add children, keep siblings).
       (NAMED, outside Lean). Reduce-half `held_reaches_all_future` makes a prose limit a
       theorem (FS past-only, not post-compromise). Crypto posture = the domain-separated
       SHA-256 derivations modeled as a random oracle / PRF (preimage resistance stops chain
-      inversion; the derivations' independence hides past message keys — preimage resistance
-      necessary-not-sufficient). Three residues stay open (not a KDF's to close): memory-level
+      inversion + hides deep-past message keys; the derivations' independence hides the
+      same-step sibling MKᵢ — preimage resistance necessary-not-sufficient). Three residues stay open (not a KDF's to close): memory-level
       secrecy + seed-discard + the illustrative `init(u64)` capping inversion at ~2⁶⁴. Not
       HKDF/HMAC (raw chain = random-oracle heuristic; HKDF = standard-model PRF). SHA-256
       backend pinned to an independent oracle (python hashlib golden vectors). Rust 13 unit +
