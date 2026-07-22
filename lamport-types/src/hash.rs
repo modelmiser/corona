@@ -36,7 +36,11 @@
 //! chooses `m` to make its hit the never-opened side. The never-opened set is adversary-
 //! controlled, so the generic cost is the 128-target scan at `2⁶⁴/128 = 2⁵⁷`, not `2⁶⁴/64`.
 //! (Measured at reduced width: 128-vs-64 targets gives a 2.01× gap.) The bound is
-//! `min(2³², 2⁵⁷) = 2³²`.
+//! `min(2³², 2⁵⁷) = 2³²`. ⚠ Note this term is quoted under the unique-preimage convention like
+//! the rows; an *extraction* bound is a lower bound on the forger's work, so strictly it should
+//! take the cheapest generic cost, which under the implementation's 1+Poisson(1) `commit` is
+//! `2⁶⁴/257 ≈ 2⁵⁶`. Rounding it up is the wrong direction for a floor term. The `min` is 2³²
+//! either way, which is why it is flagged rather than restated.
 //!
 //! As an *attack* branch 2 is strictly dominated, and by a margin worth stating because it is
 //! exact. Holding one preimage at `(i, b)`, the only new digest openable is `d ⊕ 2ⁱ`, so the
@@ -82,15 +86,25 @@
 //!
 //! - **[`prg`]'s outputs uniform over `u64`** (i.e. a PRF, not merely unpredictable).
 //!   `prg''(s,i,b) = SHA256(0x00‖s‖i‖b)[..8] & 0x7FFF_FFFF_FFFF_FFFF` is unpredictable yet
-//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶², row 6 to ~2⁵⁶, and
+//!   confines every preimage to a known 2⁶³ subset, dropping row 7 to ~2⁶², row 6 to ~2⁵⁶,
 //!   **row 3** to ~2⁶⁰ (its first term is a `commit` scan over the `prg` image, so the optimum
-//!   moves from `k = 5–6` to `k = 6–7`). **Three** rows. Rows 1 and 2 never touch `prg`; rows 4
-//!   and 5 are already at ~2⁶³ via the ‡ composite, and a smaller image does not move a seed
-//!   search, which is what binds them. (An earlier draft said five, having priced 4 and 5 at
-//!   ~2⁶⁴ — the enumeration and the table are two views of one relation, and correcting the
-//!   table silently invalidated this list.) Each row it moves names it in-column.
-//! - **[`digest`] preimage-resistant.** Collision resistance does not imply it, so rows 2 and 3
-//!   are priced against a **random-oracle** `digest`, which SHA-256 is taken to model. (Rows 3, 6
+//!   moves from `k = 5–6` to `k = 6–7`), and — via the tied `commit`-domain route named in rows
+//!   4/5's columns — **rows 4 and 5** from ~2⁶⁴ to ~2⁶³ vk-only, since that sweep need only
+//!   cover the image. **Five** of the seven rows; only rows 1 and 2 are untouched, and they
+//!   never touch `prg`. (This count has been three and five in successive drafts. It is five,
+//!   and the flip was not a pricing error but a *convention* difference: three followed from
+//!   pricing rows 4/5 at ~2⁶³ via the ‡ composite, which holds only under the unique-preimage
+//!   convention and not against this crate's `commit` — see ‡.) Each row it moves names it
+//!   in-column.
+//! - **[`digest`] modelled as a random oracle** (rows 2 and 3 need more than collision
+//!   resistance: row 2 is a *second*-preimage row, which collision resistance *does* imply, but
+//!   its ~2⁶⁴ figure needs the oracle; row 3's `2^(64−k)` term is a partial-preimage search).
+//!   Deleting it leaves the floor at ~2³², and here are the figures so the reader can check
+//!   rather than take it: row 2 cannot fall below ~2³² because a second-preimage finder yields
+//!   a collision at no greater cost, and row 3 with a free partial preimage bottoms out at
+//!   `k = 1` → ~2⁵⁸. (The blanket "each moves rows that are not the minimum, so the headline is
+//!   unchanged" is a *non-sequitur* under composition — deleting an assumption can move a
+//!   non-minimal row below the minimum. It survives here, but by the figures, not the slogan.) (Rows 3, 6
 //!   and 7 use the **unique-preimage** convention for `commit` — see `sha256_u64` — which is the
 //!   opposite choice from a random function, not the same one; an earlier draft said
 //!   "random-function `commit`" here and contradicted both other statements of it.)
@@ -112,8 +126,8 @@
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | **digest width** |
 //! | Second preimage on the digest (**known-message**; a hash property, dominated by row 3 *as a forgery route*) | ~2⁶⁴ | digest width, *and* `digest` modelled as a random oracle (collision resistance alone does not give this row) |
 //! | Existential forgery from the verifying key **plus one observed signature**, **known-message** — the adversary does *not* choose what was signed (a chosen-message adversary is row 1, at ~2³²) | ~2⁶¹ | `commit` one-wayness **and** digest width, jointly — *and* `digest` as a random oracle (its `2^(64−k)` term is a partial-preimage search, which collision resistance alone does not price), *and* `prg` output-uniformity, which moves it to ~2⁶⁰ |
-//! | Total key recovery — assuming a uniform 64-bit seed (see below) | **~2⁶³, with or without a signature** ‡ | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness, via a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all, so widening the seed does not retire this row |
-//! | Universal forgery on a *given* message | **~2⁶³, with or without a signature** ‡ | `commit` one-wayness *and* seed entropy *and* [`prg`] unpredictability (tied routes) |
+//! | Total key recovery — assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** ‡ | **seed entropy** *and* [`prg`] unpredictability — **and** `commit` one-wayness *and* `prg` output-uniformity, via a tied route: one pass over the `commit` domain against the 128-entry table opens every commitment at ~2⁶⁴ with no seed at all (~2⁶³ if the `prg` image is a known 2⁶³ subset), so widening the seed does not retire this row |
+//! | Universal forgery on a *given* message | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** ‡ | `commit` one-wayness *and* seed entropy *and* [`prg`] unpredictability (tied routes; ~2⁶³ vk-only under `prg` output-uniformity) |
 //! | Multi-target preimage — *some* preimage among the 128 commitments, **from the verifying key alone** (a primitive cost, not a forgery; free to an adversary already holding a signature) | ~2⁵⁷ | `commit` one-wayness *and* `prg` output-uniformity |
 //! | Single-target preimage on one chosen commitment, **from the verifying key alone** (likewise not a forgery) | ~2⁶³ | `commit` one-wayness *and* `prg` output-uniformity |
 //!
@@ -123,8 +137,9 @@
 //! key* (the model below — uniform discarded seed, one signature), the cheapest is a ~2³²
 //! existential forgery. The *class* improved too — from **total key recovery** (strictly
 //! stronger than universal forgery: the attacker ends up holding the key) to **existential forgery requiring a signed message and a
-//! collision** — and universal forgery, rather than vanishing, moved to ~2⁶³ from the
-//! verifying key alone (see ‡; observing a signature does not lower it further).
+//! collision** — and universal forgery, rather than vanishing, moved to ~2⁶⁴ from the
+//! verifying key alone (~2⁶³ given one observed signature; see ‡ for why the vk-only figure
+//! does not drop to ~2⁶³ against this crate's `commit`).
 //!
 //! What graduation did **not** do is make the scheme unforgeable: the residual ~2³² is a
 //! **digest-width** bound, untouched by any backend. Note the ~2³² is the cost to *originate*
@@ -133,14 +148,19 @@
 //! forging against any key this crate mints is zero. That is the honest summary — the
 //! binding constraint moved from the *hash* to the *width*.
 //!
-//! (Why the two *obvious* routes to universal forgery both cost ~2⁶⁴, and why the row is
-//! nevertheless ~2⁶³: a forgery on a *given* message needs the preimages for 64 **specific**
-//! `(position, bit)` commitments. One pass over the `commit` domain checking each candidate
-//! against a 64-entry table finds them all at ~2⁶⁴ — the same batching that gives the ~2⁵⁷
-//! row, which by contrast yields only *some* preimage and hence no signature. Searching the
-//! seed recovers all 128 at ~2⁶³ *candidates*, but a seed test costs two hashes to a preimage
-//! test's one, so that route alone also lands at ~2⁶⁴. Neither is the cheapest: composing
-//! them is — see ‡, which is why the row reads ~2⁶³.)
+//! (Why vk-only universal forgery is ~2⁶⁴, not ~2⁵⁷: a forgery on a *given* message needs the
+//! preimages for 64 **specific** `(position, bit)` commitments. One pass over the `commit`
+//! domain checking each candidate against a 64-entry table finds them all at ~2⁶⁴ — the same
+//! batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage and hence no
+//! signature. Searching the seed recovers all 128 at ~2⁶³ *candidates*, but a seed test costs
+//! two hashes to a preimage test's one, so that route also lands at ~2⁶⁴. The two are tied, and
+//! the composition that would beat them does not survive this crate's `commit` — see ‡.)
+//!
+//! The chosen-message hybrid, stated because it is the composition a reader reaches for and
+//! nothing above rules it out: open `k` commitments, then birthday-search a message pair whose
+//! digest difference lies in the 2^k now-openable set — `k·2⁵⁷ + 2^((64−k)/2)`, minimized at
+//! **k = 0**, because the very first scan hit costs 2⁵⁷ and the whole collision search costs
+//! 2^32.5. The floor's two branches do not blend.
 //!
 //! Row 3, in outline: open `k` of the 64 **unknown-side** commitments by multi-target scan,
 //! then search for a message whose digest matches the observed one on the remaining `64−k`
@@ -153,24 +173,30 @@
 //! throughout is worth more than the better of the two figures, and an earlier draft quoted
 //! the multiplicity number beside rows priced the other way.
 //!
-//! ‡ **Why rows 4 and 5 do not distinguish vk-only from given-a-signature — a composition the
-//! table's own rows supply.** Holding an *actual* preimage, a seed guess is tested by one `prg`
+//! ‡ **Why the halving needs a signature — and a composition that looks like it removes that
+//! requirement but does not.** Holding an *actual* preimage, a seed guess is tested by one `prg`
 //! call against it rather than by `prg` + `commit` against a published commitment: the search
-//! halves to ~2⁶³. A signature hands over 64 actual preimages, so that much is obvious. But an
-//! adversary with **only the verifying key** can *buy* one — that is exactly row 6, at ~2⁵⁷ —
-//! and `2⁵⁷ + 2⁶³ ≈ 2⁶³`. So the halving needs no signature, and withholding one buys nothing.
-//! (Verified at reduced width: composing the scan with the one-call search costs 0.47× the
-//! plain two-hash seed search at 20 bits, converging to ½.) An earlier draft priced these rows
-//! at ~2⁶⁴ vk-only and stated flatly that no ~2⁶³ vk-only universal forgery existed — false,
-//! and false by composing two rows it already contained. **The lesson generalizes past this
-//! table: rows were each checked against their own definition and never against each other.**
+//! halves to ~2⁶³. A signature hands over 64 actual preimages, which is why rows 4/5 drop there.
 //!
-//! ⚠ This composite is where the **unique-preimage convention stops being a rounding choice**.
-//! It works because a scan hit is *the* preimage `prg` produced, so the seed test recognises it.
-//! Under a 1+Poisson(1) `commit` the hit is often a *different* preimage of the same commitment,
-//! the test fails, and the route loses (~1.58× the plain search). So `sha256_u64`'s remark that
-//! the convention "rounds the attacker's cost *up*" is true row-by-row and **false here** — the
-//! convention is load-bearing for a negative result, in the direction that doc says it cannot be.
+//! The tempting composition: an adversary with **only the verifying key** appears able to *buy*
+//! a preimage — row 6, at ~2⁵⁷ — giving `2⁵⁷ + 2⁶³ ≈ 2⁶³` with no signature at all. **It does
+//! not work against this crate**, and the reason is exactly the preimage-multiplicity
+//! convention. The one-call test recognises a candidate seed only if the purchased preimage is
+//! *the* one `prg` produced. `commit` here is `SHA256(0x01‖y)[..8]` over a `u64` domain — a
+//! **random function**, so a commitment has 1+Poisson(1) preimages and a scan hit is genuine
+//! only ~half the time. A decoy makes the 1-hash search run the *whole* space and return
+//! nothing, so `E = p·2⁶³ + (1−p)·(2⁶⁴ + E)`: **0.5× the plain search at `p = 1`, 1.5× at
+//! `p = ½`.** Measured against the real construction at 14/16 bits: `p ≈ 0.41`, ratio **≈2.4×**.
+//! The composite is not a cheaper attack, it is a trap.
+//!
+//! ⚠ **This is where a pricing convention stops being a rounding choice, and the direction
+//! matters.** The unique-preimage convention (rows 3, 6, 7; see `sha256_u64`) was adopted
+//! because it rounds the attacker's cost *up* — conservative for pricing a row. Using it to
+//! establish that an attack **exists** is the anti-conservative direction, and that is what an
+//! earlier draft did: it priced rows 4/5 at ~2⁶³ vk-only on the strength of this composite and
+//! deleted the vk-only/with-signature distinction. A convention chosen to be safe for upper
+//! bounds does not license an existence claim. **The rule this table now follows: a row may be
+//! priced under the convention; a route may only be asserted to WORK against the implementation.**
 //!
 //! ⚠ **THE MODEL THIS TABLE PRICES — two assumptions, and the crate violates both in its
 //! own examples.** The costs above hold for a key that (a) was minted from a **uniformly
@@ -290,9 +316,12 @@ use sha2::{Digest as _, Sha256};
 /// the same size as its range and guaranteed to contain the target, so each is a search of
 /// `2⁶⁴` candidates rather than an unbounded one. ~2⁶³ is the **unique-preimage average**;
 /// under a random-function model the target has 1 + Poisson(1) preimages, giving ~2^62.6.
-/// That convention rounds the attacker's cost *up* **row-by-row** — but ⚠ *not* for the ‡
-/// composite in the module posture, where this same convention is what makes the route work
-/// at all, so there it is load-bearing rather than conservative; see ‡.)
+/// That convention rounds the attacker's cost *up* **row-by-row** — but ⚠ *not* everywhere:
+/// two places in the module posture use it in the other direction. At ‡ it is what makes a
+/// composite route appear to work at all (and the shipped `commit`, being a random function,
+/// is on the other side — so the route does not apply); and in the extraction bound the 2⁵⁷
+/// term is rounded *up* where a lower bound wants the cheapest cost, ~2⁵⁶. Both are flagged
+/// in place; neither moves the ~2³² floor.)
 /// Not "preserves preimage resistance": SHA-256's own
 /// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
 /// security posture.

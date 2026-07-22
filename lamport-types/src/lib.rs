@@ -69,7 +69,7 @@
 //! - **What the graduation did buy — the scheme's first non-trivial exponent.** Under the toy
 //!   FNV-1a the cheapest break was **total key recovery in seconds**; under SHA-256, against a
 //!   *correctly-used* key, it is the ~2³² collision above. The *class* improved with it, and
-//!   universal forgery from the public key alone moved to ~2⁶³ rather than vanishing.
+//!   universal forgery from the public key alone moved to ~2⁶⁴ rather than vanishing.
 //!   Load-bearing (∥ `pow`, `ecash`) — and still not unforgeable.
 //!
 //!   [`hash`] is the single canonical posture: which three properties unforgeability needs,
@@ -97,10 +97,10 @@
 //!   and only partially the second *by backend*.
 //! - **The key carries 64 bits of entropy, not 128 × 64.** All 128 preimages derive from
 //!   the `u64` seed, so searching a *uniform* seed recovers the entire key at ~2⁶³
-//!   candidates. A seed test costs two hashes — unless the attacker already holds an *actual*
-//!   preimage, when it costs one; and [`hash`] sells one **from the verifying key alone** for
-//!   ~2⁵⁷, so the search is **~2⁶³ whether or not a signature is observed**. That *equals* the
-//!   ~2⁶³ of inverting a single commitment — but yields *all 128* preimages instead of one. Real Lamport's
+//!   candidates = ~2⁶⁴ hash calls (two per candidate) **from the verifying key alone**; given
+//!   the one signature the model grants, it is ~2⁶³ — one `prg` call per candidate, because a
+//!   signature hands over *genuine* preimages to test against. ([`hash`]'s ‡ note explains why
+//!   buying a preimage instead does not reproduce that halving against this crate's `commit`.) Real Lamport's
 //!   preimages are independent, so no such shortcut exists there.
 //! - **The [`VerifyingKey`] is caller-trusted.** [`VerifyingKey::verify`] proves a
 //!   message was signed under *the key you hand it*; it cannot tell you that key
