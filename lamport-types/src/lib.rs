@@ -84,8 +84,10 @@
 //!   Separately, two signatures under one key (reachable via the re-mint below) forge a
 //!   third message. The cost depends on the adversary: a 2-query chosen-message adversary
 //!   pays only **~2⁹–2¹⁰** hash evaluations (choosing all three messages jointly makes it a
-//!   birthday problem), the crate's own sequential demo costs ~2^16.3, a passive observer pays
-//!   ~2³² at the median (~2^37.4 in expectation), and a seed holder ~2⁸ (see [`hash`]). So the binding constraint is the
+//!   birthday problem — though its ~2^26.5 auxiliary compares make it *slower in wall clock*
+//!   than the next figure), the crate's own sequential demo costs ~2^16.3, a passive observer
+//!   pays ~2³² at the *median* (~2^37.4 in expectation — a different convention from the
+//!   others here), and a seed holder ~2⁸ (see [`hash`]). So the binding constraint is the
 //!   width only for a key used properly; for a key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
 //!   twice with one key. It says nothing about an attacker who never had the key: that
@@ -357,9 +359,11 @@ mod tests {
         // sig2 hold the preimages for bit 0 and bit 1, two DISTINCT secrets, each a valid
         // opening of the vk's published commitment for its side. (Assembling a full
         // third-message signature additionally needs a message whose digest is covered. That
-        // is NOT a preimage search (which would be ~2^64): it is a partial match on the <=16-bit
-        // agreement set, ~2^16.3 for THIS sequential algorithm — a jointly-choosing adversary
-        // pays ~2^9 (see `hash`) — completed by the very next test. The harvested material
+        // is NOT a preimage search (which would be ~2^64): it is a partial match on the
+        // agreement set. For THESE two fixed messages the digests differ in 34 positions, so
+        // |A| = 30 and the step costs ~2^30. The next test drives that down by *searching* for
+        // an m2 with disagreement >= 48 (|A| <= 16, ~2^16.3 including its own search); a
+        // jointly-choosing 2-query adversary pays only ~2^9 (see `hash`). The harvested material
         // is what makes the remaining step mechanical rather than cryptographic.)
         let seed = 0xA5A5;
         let (sk1, vk) = SigningKey::generate(seed);

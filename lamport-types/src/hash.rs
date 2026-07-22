@@ -20,13 +20,21 @@
 //!
 //! ## Security posture — what the swap bought, and what it did NOT
 //!
-//! Lamport's unforgeability rests on two independent hash properties, and the
-//! graduation repairs only the first:
+//! Lamport's unforgeability here rests on **three** independent hash properties — textbook
+//! Lamport needs two, and this leaf adds a third by deriving all 128 preimages from a seed.
+//! The graduation repairs the first and the third:
 //!
 //! 1. **[`commit`] must be one-way** — else an attacker inverts the published
 //!    commitments and forges from the verifying key alone. The toy FNV-1a failed
 //!    this outright. SHA-256 supplies it *at the truncated width* (~2⁶³).
-//! 2. **[`digest`] must be collision-resistant** — because `verify` re-derives
+//! 2. **[`prg`] must be one-way** — else one *revealed* preimage yields the seed and hence
+//!    the entire key, from a **single observed signature**. Textbook Lamport has no such
+//!    requirement (its preimages are independent CSPRNG draws); this leaf incurs it by
+//!    deriving them. The toy failed this too, and more cheaply than it failed (1): `prg`'s
+//!    18-byte input ends in 9 *known* bytes (index ‖ side), which peel backwards through
+//!    `p⁻¹` deterministically, leaving the same dimension-8 knapsack for the seed — total key
+//!    recovery from one signature, no `commit` inversion needed. SHA-256 supplies it.
+//! 3. **[`digest`] must be collision-resistant** — because `verify` re-derives
 //!    `digest(message)` and checks preimages against *that*, so a signature is bound
 //!    to the **digest**, not the message. Any two messages sharing a digest share
 //!    every valid signature. **Truncation to 64 bits caps this at ~2³²** (birthday),
@@ -38,13 +46,16 @@
 //! fixed-length `digest` too (and throws off same-length collisions for free). The middle column prices
 //! the **cheapest route to that goal** under the toy, which is not always the row's own
 //! stated method — see row 4 — and the last column answers: *what bounds this row now?*
+//! Column 1 prices the **cheapest known route to the row's goal for the stated adversary**,
+//! not the cost of any particular algorithm (the distinction that made the harvest figure
+//! wrong for a whole round).
 //!
 //! | Attack | Cost now (hash evaluations) | Under the toy (wall-clock) | Bounded now by |
 //! |---|---|---|---|
 //! | **EUF-CMA forgery** via [`digest`] collision (sign `m₁`, forge on colliding `m₂`) | **~2³²** | seconds | **digest width** |
 //! | Second preimage on the digest (known-message variant; dominated by row 3 *as a forgery route*, though not as a route to a second preimage) | ~2⁶⁴ | seconds | digest width |
 //! | Existential forgery from the verifying key **plus one observed (known-message) signature** ‡ | ~2⁶⁰ | seconds | `commit` one-wayness **and** digest width, jointly |
-//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ (2⁶³ candidates × 2 hashes) | seconds, but by a **different route** † | **seed entropy** — the seed-search *method* costs 2⁶⁴ under either backend; what the graduation removed is the cheaper route |
+//! | Total key recovery — *by seed search*, assuming a uniform 64-bit seed (see below) | ~2⁶⁴ from the vk alone; **~2⁶³ given one observed signature** § | seconds, but by a **different route** † | **seed entropy** *and* [`prg`] one-wayness |
 //! | Universal forgery from the verifying key alone, on a *given* message | ~2⁶⁴ | seconds | `commit` one-wayness |
 //! | Multi-target preimage — *some* preimage among the 128 commitments (a primitive cost, not a forgery) | ~2⁵⁷ | seconds | `commit` one-wayness |
 //! | Single-target preimage on one chosen commitment (likewise not a forgery) | ~2⁶³ | seconds | `commit` one-wayness |
@@ -53,8 +64,8 @@
 //! reshuffle: it gave the scheme **its first non-trivial security exponent**. Before, the
 //! cheapest break was total key recovery in seconds; after, and *against a correctly-used
 //! key* (the model below — uniform discarded seed, one signature), the cheapest is a ~2³²
-//! existential forgery. The *class* improved too — from **universal forgery from the
-//! public key alone** to **existential forgery requiring a signed message and a
+//! existential forgery. The *class* improved too — from **total key recovery** (strictly
+//! stronger than universal forgery: the attacker ends up holding the key) to **existential forgery requiring a signed message and a
 //! collision** — and universal forgery, rather than vanishing, moved to ~2⁶⁴.
 //!
 //! What graduation did **not** do is make the scheme unforgeable: the residual ~2³² is a
@@ -70,7 +81,8 @@
 //! same batching that gives the ~2⁵⁷ row, which by contrast yields only *some* preimage
 //! and hence no signature. Searching the seed recovers all 128 at ~2⁶³ *candidates*, but a
 //! seed test costs two hashes to a preimage test's one, so both routes land at ~2⁶⁴ hash
-//! calls — there is no ~2⁶³-hash universal forgery.)
+//! calls — so there is no ~2⁶³-hash universal forgery *from the verifying key alone*. Given
+//! one observed signature there is: see § below.)
 //!
 //! ‡ Row 3, derived: open `k` of the
 //! 64 unknown-side commitments by multi-target scan, then search for a message whose digest
@@ -82,6 +94,12 @@
 //! (Under the plainer unique-preimage convention used for rows 6–7 it reads ~2⁶¹; the
 //! conventions differ by ~0.8 of a bit and the table rounds, but the switch is real and
 //! is flagged here rather than hidden.)
+//!
+//! § With one observed signature the adversary holds 64 *actual* preimages, so a seed guess
+//! is tested by one `prg` call against a revealed value rather than by `prg` + `commit`
+//! against a published one — halving the work to ~2⁶³ hash evaluations, and with it the cost
+//! of universal forgery. The declared model permits this (it grants at most one signature),
+//! so ~2⁶³ is the honest figure for rows 4 and 5 there; ~2⁶⁴ is the verifying-key-only cost.
 //!
 //! † Row 4 is the one row whose stated method is backend-independent: testing a seed costs
 //! `prg` + `commit` = 2 hashes under FNV exactly as under SHA-256, so *seed search* was ~2⁶⁴
@@ -367,7 +385,7 @@ mod tests {
     ///
     /// The collision pair below was found offline by a birthday search — ~2³² hash
     /// evaluations — ~150 core-seconds of *pure hashing* here (search and storage overhead
-    /// on top), and well under a second on a consumer GPU. Because
+    /// on top), and a fraction of a second of pure hashing on a consumer GPU. Because
     /// the pair is pinned below, the *marginal* cost of forging against any key this crate
     /// mints is now zero. It is **key-independent**, so one precomputation
     /// forges under every key this crate will ever mint. This is the bound the graduation does NOT

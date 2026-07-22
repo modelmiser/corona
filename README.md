@@ -216,7 +216,7 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > the swap is type-preserving (`u64 → u64`), so `mss-types`/`hypertree-types` needed no
 > **type** edits (their hash values did change, and their docs were revised).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
-> `digest`/`commit`/`prg` seam. Load-bearing on *one* of the two properties
+> `digest`/`commit`/`prg` seam. Load-bearing on *two* of the three properties
 > unforgeability needs — `commit` is now one-way (~2⁶³), which the toy made false
 > outright (FNV-1a is lattice-invertible in seconds), so this is the scheme's first
 > non-trivial security exponent.
