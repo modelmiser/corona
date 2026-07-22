@@ -154,9 +154,9 @@
 //!   *future* serial cannot front-run the coin issued later (all
 //!   regression-tested). "Forged" here means a presentation *failing
 //!   `redeem`'s own checks* ([`RedeemError::Forged`]). Under the graduated HMAC,
-//!   crafting a **valid**-tag presentation for an issued serial requires the
-//!   mint's key (~2⁶⁴, the illustrative residue) — the free wholesale forgery the
-//!   toy admitted is foreclosed by the **MAC**, not by check ordering (ordering
+//!   crafting a **valid**-tag presentation for an issued serial costs ~2⁶⁴ (the
+//!   key, or an online tag-guess — the illustrative residue) — the free wholesale
+//!   forgery the toy admitted is foreclosed by the **MAC**, not by check ordering (ordering
 //!   only ensures a *check-failing* presentation learns nothing and burns
 //!   nothing). So a valid-tag presentation is, up to that assumption, authentic.
 //!
@@ -267,10 +267,9 @@ pub struct Coin {
 impl Coin {
     /// The coin's serial number. An observation, not a capability: knowing a
     /// serial without its tag redeems nothing — and under the graduated HMAC an
-    /// observer of coins cannot compute a serial's tag without the mint's key
-    /// (~2⁶⁴ over the illustrative secret), so the serial is a genuine
-    /// observation, not a near-credential (contrast the invertible toy; see the
-    /// banner).
+    /// observer of coins cannot produce a serial's tag short of ~2⁶⁴ work (the key,
+    /// or an online tag-guess), so the serial is a genuine observation, not a
+    /// near-credential (contrast the invertible toy; see the banner).
     pub fn serial(&self) -> u64 {
         self.serial
     }
@@ -509,8 +508,8 @@ impl Mint {
     /// first — the tag must MAC the serial under this mint's secret **and** the
     /// serial must be one this mint value has issued (so a check-failing
     /// presentation learns nothing about the spent set and burns nothing;
-    /// a valid-tag presentation — which under the graduated HMAC requires the
-    /// mint's key, ~2⁶⁴, so is authentic by that assumption — is not refused here,
+    /// a valid-tag presentation — which under the graduated HMAC costs ~2⁶⁴ to forge
+    /// (the key, or an online tag-guess), so is authentic by that assumption — is not refused here,
     /// though the type still does not witness it; see the crate
     /// banner) — then admits the serial iff this mint
     /// value has not admitted it before. First presentation wins; every later

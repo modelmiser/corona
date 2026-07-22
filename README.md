@@ -350,8 +350,8 @@ each executable:
    (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
    before the set, so `Ok` implies issued and check-failing presentations
    neither probe the spent set nor burn a serial — a *valid*-tag presentation,
-   which under the graduated HMAC requires the mint's key (~2⁶⁴), is authentic
-   by that assumption; first presentation wins).
+   which under the graduated HMAC costs ~2⁶⁴ to forge (the key, or an online
+   tag-guess), is authentic by that assumption; first presentation wins).
    No fifth compile primitive is missing: what this
    layer needs is *fresh knowledge at redeem time*, which no compile-time fact
    — fixed before the adversary acts — can supply.
@@ -372,7 +372,7 @@ exit abandons bit-strings altogether — quantum money makes the token itself
 uncopyable, breaking the bytes-premise rather than the argument.)
 
 > ✅ **GRADUATED (2026-07-22)** — the garden's **eighth** graduated leaf, **seventh
-> non-hub**, and the **first keyed-MAC** graduation. Backend: toy FNV-1a → vetted
+> non-hub**, and the **first MAC-authentication** graduation. Backend: toy FNV-1a → vetted
 > **HMAC-SHA-256** (`hmac`+`sha2`) behind the same `coin_tag`/`mint_id` seam (the
 > mint's secret is the MAC key — the first backend that is a keyed MAC used to
 > *authenticate a value*; bloom's SipHash was keyed too, but for probe-position
@@ -380,8 +380,8 @@ uncopyable, breaking the bytes-premise rather than the argument.)
 > **load-bearing** swap of **pow's** flavour (an *analytically-exhibited* break — the removed FNV was invertible — not ratchet's
 > abstained guarantee): over the *invertible* FNV, observing one wire coin recovered the
 > keyed hash state and forged *any* serial for free, so "a valid tag ⟹ this mint issued
-> the coin" was **false**; the PRF's unforgeability makes forgery require the key, so the
-> claim now holds — up to the illustrative ~2⁶⁴ residue
+> the coin" was **false**; the PRF's unforgeability makes forgery cost ~2⁶⁴ (the key, or an
+> online tag-guess), so the claim now holds — up to the illustrative ~2⁶⁴ residue
 > (the secret is a `u64` key and the tag is truncated to 64 bits; a real mint uses
 > ≥128-bit widths, ∥ `ratchet`'s `init(u64)` cap). `Sol.Lib.Ecash` (the **16th wire**)
 > machine-checks the split: the tag-check reduces to a decidable seal, but

@@ -8,8 +8,9 @@ license = "MIT"
 [dependencies]
 # Graduated backend: the audited RustCrypto HMAC-SHA-256 replaces the toy FNV-1a
 # behind the same `hash::coin_tag`/`mint_id` seam (see CHARTER.md, graduation
-# criterion #2). This is the first graduation to a *keyed* primitive — the mint's
-# secret is the MAC key. `forbid(unsafe_code)` in this crate governs *our* code,
-# not the vetted dependencies.
+# criterion #2). This is the first graduation to a keyed MAC used to *authenticate a
+# value* — the mint's secret is the MAC key (bloom's earlier SipHash graduation is keyed
+# too, but for probe-position unpredictability, not authentication).
+# `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependencies.
 hmac = "0.12"
 sha2 = "0.10"

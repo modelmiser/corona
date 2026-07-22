@@ -274,10 +274,12 @@ work (complete tasks, add children, keep siblings).
       banner exactly) for the last 11 rounds. Final: 16 unit + 7 doctests;
       workspace 122 + 29; every guarantee mutation-pinned. Convergence commit
       `1489a72`.
-- [x] **GRADUATED 2026-07-22 (8th graduation, 7th non-hub, the FIRST KEYED-MAC graduation).**
+- [x] **GRADUATED 2026-07-22 (8th graduation, 7th non-hub, the FIRST KEYED-MAC-FOR-AUTHENTICATION graduation).**
       Backend swap: toy FNV-1a → vetted **HMAC-SHA-256** (`hmac`+`sha2`) behind the unchanged
       `hash::coin_tag`/`mint_id` seam (criterion #2); the mint's secret is the MAC **key** —
-      every prior graduation swapped an *unkeyed* primitive. Kept the `u64` seam (HMAC truncated
+      the first graduation whose backend is a keyed MAC used to AUTHENTICATE a value (bloom's
+      SipHash graduation was keyed too, but for probe-position unpredictability, not authentication;
+      SHA-256/subtle were unkeyed). Kept the `u64` seam (HMAC truncated
       to 64 bits): the key is a `u64`, so effective security is ~2⁶⁴ regardless of tag width;
       widening the tag while the key stays 64-bit buys nothing — the coherent minimal graduation,
       zero struct/test widening (only the `hash.rs` body + prose). **LOAD-BEARING** (∥ pow/ratchet,

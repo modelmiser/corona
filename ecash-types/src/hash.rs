@@ -44,9 +44,10 @@
 //! So forgery-resistance is ~2⁶⁴ (the min of the two), where the toy's was ~0
 //! (free after one observed coin). A real mint uses a ≥128-bit key and a full-width
 //! tag; the swap makes the *construction* vetted, the illustrative widths stay
-//! disclosed. HMAC (not a bare secret-prefix hash) is the standard-model MAC and is
-//! what makes truncation safe here; the fixed-length messages also foreclose length
-//! extension independently.
+//! disclosed. Truncating to 64 bits is safe for *any* good PRF (a tag-guess stays
+//! ~2⁻⁶⁴); HMAC's own contribution is being a **standard-model** PRF/MAC (not an
+//! RO heuristic) and foreclosing length extension — the fixed-length messages
+//! foreclose it independently too.
 //!
 //! [`hmac`]: https://docs.rs/hmac
 //! [`sha2`]: https://docs.rs/sha2
