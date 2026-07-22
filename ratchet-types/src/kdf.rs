@@ -32,9 +32,13 @@
 //!
 //! Each derivation is a single domain-separated SHA-256 call, `SHA-256(tag ‖ input)`, with
 //! a distinct leading `tag` byte per role (`0x00` init, `0x01` next-chain, `0x02` message).
-//! Distinct tags give distinct outputs by SHA-256's collision resistance (not, as under the
-//! toy, by an FNV bijection argument), which is what keeps a message key from unlocking the
-//! future of the chain.
+//! The tags give the three roles **distinct inputs**; that their outputs for a given chain
+//! key actually differ (`MKᵢ ≠ CKᵢ₊₁`) is an empirical fact, pinned by golden vectors — *not*
+//! a consequence of collision resistance (which bounds *finding* a colliding pair, not that
+//! two chosen fixed inputs differ). And that distinctness is only *necessary*: what actually
+//! keeps a leaked message key from unlocking the chain is **preimage resistance** — an
+//! attacker with `MKᵢ` cannot invert to `CKᵢ` and thence compute `CKᵢ₊₁`. Preimage
+//! resistance is the one property the forward-secrecy argument rests on throughout.
 //!
 //! This is a SHA-256 **hash chain**, *not* HKDF. A production ratchet would use
 //! HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based KDF), which adds
@@ -47,8 +51,9 @@
 use sha2::{Digest, Sha256};
 
 /// `SHA-256(tag ‖ input)` as a 32-byte block. The leading `tag` byte domain-separates the
-/// three derivations so that, for one chain key, the next-chain and message-key outputs are
-/// distinct (SHA-256 collision resistance) — one message key never unlocks the chain.
+/// three derivations (distinct inputs per role); their outputs for a given chain key differ
+/// as an empirical fact pinned by the golden-vector tests, and forward secrecy rests on
+/// SHA-256 **preimage** resistance, not on that distinctness (see the module banner).
 fn hash(tag: u8, input: &[u8]) -> [u8; 32] {
     let mut h = Sha256::new();
     h.update([tag]);
@@ -128,9 +133,10 @@ mod tests {
     #[test]
     fn domains_are_separated() {
         // From one chain key, the next-chain and message-key derivations must differ —
-        // otherwise MKᵢ would equal CKᵢ₊₁ and one message key would unlock the whole future
-        // chain. The distinctness now rests on SHA-256 collision resistance (distinct
-        // tag-prefixed inputs), not the toy's FNV-bijection argument.
+        // otherwise MKᵢ would equal CKᵢ₊₁. This distinctness is a NECESSARY condition pinned
+        // empirically here (distinct domain tags → distinct inputs → distinct outputs for
+        // these values); it is not the forward-secrecy workhorse (preimage resistance is —
+        // see the module banner), and it is not a collision-resistance claim.
         let ck = init(0x1234_5678);
         assert_ne!(next_chain(&ck), message_key(&ck));
         // Neither equals a fresh `init` from those 8 bytes read back as a seed (a different
