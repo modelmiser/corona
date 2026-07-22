@@ -71,8 +71,9 @@
 //! - `pow_witness_is_effort_blind` — a deliberately **thin** lemma: a `rfl` confirming the
 //!   *modeling choice* (the `Witness` type carries no effort field), true for any two-field struct's
 //!   first projection — the residue's weight is in the next two, not here.
-//! - `pow_effort_not_witness_definable` — two executions produce the byte-identical witness at
-//!   different effort, so **no effort-*recovering* `Witness → Nat` can be correct** (the residue as a
+//! - `pow_effort_not_witness_definable` — two *acquisitions* (a free nonce handed to `verify` vs a
+//!   search grinding to it — **not** two deterministic `solve` runs) produce the byte-identical witness
+//!   at different effort, so **no effort-*recovering* `Witness → Nat` can be correct** (the residue as a
 //!   theorem, the analogue of consttime's `not_value_definable`); and `pow_no_effort_recovery`
 //!   makes it precise as an impossibility over *all* candidate recoverers.
 //!

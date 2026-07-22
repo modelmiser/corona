@@ -1721,6 +1721,13 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
 
 ## Now (leaf 18 — pow-types)
 
+- [x] **GRADUATED 2026-07-21** (5th graduated leaf, 4th non-hub; fan-in 0 AND fan-out 0) —
+      toy FNV-1a → vetted **SHA-256** behind the `work_digest` seam (digest `u64`→`[u8;32]`,
+      wall `1≤BITS≤256`). The swap is **load-bearing**: preimage resistance is what makes
+      "validity ⟹ work" hold at all. Lean `Sol.Lib.Pow` = the **14th wire** (the first
+      production-history residue). 16 unit + 4 doctests. Cold-reviewed to convergence.
+      *(The seed entry below records the pre-graduation research rung — its "TOY FNV-1a /
+      wall inline" details describe that superseded state.)*
 - [x] **Seed leaf 18: proof of work / hashcash** (`pow-types`) — does "computational work
       was expended" reduce to the vocabulary? → **it SPLITS, adding the garden's newest
       residue: cost/effort.** (1) *Validity reduces to E0451* — `Puzzle::verify(nonce)` is the
@@ -1737,10 +1744,10 @@ unlinkability / trust / liveness / timing / duality / scale). The candidates bel
       emergent-completion leaf 13) — sharpening *the seal witnesses the checked path and
       nothing more* (leaves 4/16) from *what math it's silent about* to *what history*.
       (3) **∥ leaf 6:** the difficulty *parameter* still reduces — `Puzzle<const BITS>` walls
-      `1≤BITS≤64` (65 leading zero bits unsatisfiable from a 64-bit digest → `Puzzle::<65>`
-      does not build; verified vs rustc `error[E0080]: evaluation panicked: … BITS must be
-      <= 64`, and `Puzzle::<0>` → `… must be >= 1`), the same "resource cannot be
-      over-demanded" shape as `K≤N`; the *hardness parameter* moves to compile time even
+      `1≤BITS≤64` (*research-rung wall; graduation widened it to 256, see the GRADUATED entry
+      above*) — 65 leading zero bits unsatisfiable from the then-64-bit digest, the same
+      "resource cannot be over-demanded" shape as `K≤N`; the *hardness parameter* moves to
+      compile time even
       though the *work* cannot. **Second leaf to pair E0451 + E0080** (leaf 6's finding was the
       wall; here the wall is the easy half, the cost residue is the finding); brand/E0382
       honestly unused. Standalone (imports nothing — a residue-drawing leaf leans on nothing in
