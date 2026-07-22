@@ -274,6 +274,25 @@ work (complete tasks, add children, keep siblings).
       banner exactly) for the last 11 rounds. Final: 16 unit + 7 doctests;
       workspace 122 + 29; every guarantee mutation-pinned. Convergence commit
       `1489a72`.
+- [x] **GRADUATED 2026-07-22 (8th graduation, 7th non-hub, the FIRST KEYED-MAC graduation).**
+      Backend swap: toy FNV-1a → vetted **HMAC-SHA-256** (`hmac`+`sha2`) behind the unchanged
+      `hash::coin_tag`/`mint_id` seam (criterion #2); the mint's secret is the MAC **key** —
+      every prior graduation swapped an *unkeyed* primitive. Kept the `u64` seam (HMAC truncated
+      to 64 bits): the key is a `u64`, so effective security is ~2⁶⁴ regardless of tag width;
+      widening the tag while the key stays 64-bit buys nothing — the coherent minimal graduation,
+      zero struct/test widening (only the `hash.rs` body + prose). **LOAD-BEARING** (∥ pow/ratchet,
+      NOT integrity-hash): the invertible toy let one observed coin recover a forging state and
+      forge any serial for free, so "valid tag ⟹ authentic" was FALSE; the PRF repairs it (up to
+      the ~2⁶⁴ illustrative key/tag residue, ∥ ratchet's `init(u64)`). New wire `Sol.Lib.Ecash`
+      (16th wire, #4): `ecash_check_decidable` (seal reduces), **`ecash_authenticity_not_witness_definable`**
+      (axiom-free — the NEW residue, pow's effort transposed to a MAC: a genuine coin and a same-tag
+      forgery are byte-identical, so provenance is un-typable), `ecash_freshness_not_compile_time`
+      (the L2 headline, backend-independent). 5 wire theorems (2 fully axiom-free, check_decidable
+      [propext], 2 freshness [propext,Classical,Quot] standard); full Sol green (1960 jobs).
+      Heavy prose reframe: ~15 "under the toy hash forgery is free" hedges → the graduated posture
+      (forgery needs the key; the check-passing/authenticity gap is now a runtime MAC assumption no
+      type witnesses). HMAC golden vectors pinned to python `hmac`. ecash 16 unit + 7 doctests;
+      clippy/fmt/rustdoc -D clean; version 0.1.0→0.2.0. **[cold review below]**
 
 ## Now (leaf 10 — ratchet-types)
 

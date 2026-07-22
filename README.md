@@ -35,7 +35,7 @@ corona/
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
 ├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
-├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space, TOY)
+├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space; GRADUATED 2026-07-22 — HMAC-SHA-256, the first keyed-MAC graduation; Sol.Lib.Ecash [16th wire]: authenticity-not-witness-definable, freshness-not-compile-time)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held value's preimage count)
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
@@ -349,8 +349,9 @@ each executable:
    spend *type-checks* and is caught instead by the mint's **spent set**
    (`Mint::redeem` — runtime, stateful, online; tag and issued-range checked
    before the set, so `Ok` implies issued and check-failing presentations
-   neither probe the spent set nor burn a serial — a *valid*-tag forgery,
-   which the toy hash admits, behaves as authentic; first presentation wins).
+   neither probe the spent set nor burn a serial — a *valid*-tag presentation,
+   which under the graduated HMAC requires the mint's key (~2⁶⁴), is authentic
+   by that assumption; first presentation wins).
    No fifth compile primitive is missing: what this
    layer needs is *fresh knowledge at redeem time*, which no compile-time fact
    — fixed before the adversary acts — can supply.
@@ -370,10 +371,23 @@ within* the taxonomy — the spent state moves into an uncopyable box; the one
 exit abandons bit-strings altogether — quantum money makes the token itself
 uncopyable, breaking the bytes-premise rather than the argument.)
 
-> ⚠ **TOY.** The coin tag is invertible FNV — not a PRF; observing one wire
-> coin recovers the keyed hash state (and, via a ~2³² time-and-memory
-> meet-in-the-middle, the secret) and forges freely. No blinding (Chaum's
-> actual contribution), no denominations, no transfer, no persistence.
+> ✅ **GRADUATED (2026-07-22)** — the garden's **eighth** graduated leaf, **seventh
+> non-hub**, and the **first keyed-MAC** graduation. Backend: toy FNV-1a → vetted
+> **HMAC-SHA-256** (`hmac`+`sha2`) behind the same `coin_tag`/`mint_id` seam (the
+> mint's secret is the MAC key — every prior swap was an *unkeyed* primitive). This is
+> a **load-bearing** swap (∥ pow/ratchet): over the *invertible* FNV, observing one
+> wire coin recovered the keyed hash state and forged *any* serial for free, so "a
+> valid tag ⟹ this mint issued the coin" was **false**; the PRF's unforgeability makes
+> forgery require the key, so the claim now holds — up to the illustrative ~2⁶⁴ residue
+> (the secret is a `u64` key and the tag is truncated to 64 bits; a real mint uses
+> ≥128-bit widths, ∥ `ratchet`'s `init(u64)` cap). `Sol.Lib.Ecash` (the **16th wire**)
+> machine-checks the split: the tag-check reduces to a decidable seal, but
+> **authenticity does not** — a genuine coin and a forgery with the same valid tag are
+> byte-identical, so no type witnesses *who produced the tag* (axiom-free; the
+> graduation makes forgery key-hard, never provenance typeable) — and freshness is not a
+> compile-time fact (the layer-2 headline, backend-independent). The *scheme* stays a
+> toy: no blinding (Chaum's actual contribution), no denominations, no transfer, no
+> persistence.
 
 ## Leaf 10: `ratchet-types`
 

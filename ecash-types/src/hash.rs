@@ -1,84 +1,125 @@
-//! Toy MAC backend for coin tags and mint identity.
+//! HMAC-SHA-256 MAC backend for coin tags and mint identity — the **graduated**
+//! backend.
 //!
-//! **⚠ TOY — NOT a PRF, NOT one-way, NOT for real use.** This is 64-bit
-//! FNV-1a, a *non-cryptographic* mixing hash. A real mint's coin tag must be a
-//! keyed PRF (HMAC-SHA-256, …) so that observing valid `(serial, tag)` pairs
-//! reveals nothing about the secret. FNV-1a's steps are invertible (odd
-//! multiplier), so an adversary who has seen one wire coin unwinds the eight
-//! known serial bytes exactly, recovering the post-secret internal state — an
-//! effective MAC key for forging *any* serial — and, with more work (a
-//! meet-in-the-middle over the eight unknown secret bytes, ~2³² time and
-//! memory), the secret itself. That weakness is deliberate and out of scope:
-//! this leaf demonstrates *where the type discipline ends*, not the MAC's
-//! strength. Graduation swaps this module for a vetted PRF behind the same
-//! [`coin_tag`]/[`mint_id`] seam — exactly the role the toy hashes play in the
-//! merkle and lamport leaves.
+//! Per the charter's graduation criterion #2, this module is an *implementation
+//! swap behind a fixed seam*: the toy 64-bit FNV-1a that the research rung used
+//! has been replaced by **HMAC-SHA-256** (via the audited RustCrypto [`hmac`] +
+//! [`sha2`] crates) behind the very same [`coin_tag`]/[`mint_id`] seam — the
+//! function *names* and every caller ([`crate::Mint::issue`],
+//! [`crate::Mint::redeem`], [`crate::Receipt::minted_by`]) are unchanged. The
+//! keyed PRF is exactly the primitive the research banner named as the graduation
+//! target.
+//!
+//! ## What the swap repairs (this is a *load-bearing* graduation)
+//!
+//! The toy FNV was **invertible** (odd multiplier): an adversary who observed one
+//! wire coin could unwind the serial's hash steps to the post-secret internal
+//! state — an effective forgery key for *any* serial — so forging was *free* after
+//! a single observation, and the leaf's claim "a valid tag implies this mint
+//! issued the coin" was simply **false**. HMAC-SHA-256 is a PRF (existentially
+//! unforgeable under chosen-message attack in the standard model, assuming
+//! SHA-256's compression is a PRF): observing valid `(serial, tag)` pairs reveals
+//! nothing about the key, so forging a tag for a *new* serial requires the key.
+//! This is a load-bearing swap in pow's/ratchet's sense — the swap changes what
+//! the code can *claim*, not merely the strength of a residue (contrast the
+//! integrity-hash swaps merkle/commit/translog).
+//!
+//! ## Security posture and the illustrative-width residue
+//!
+//! Two illustrative 64-bit widths are kept from the research rung, and are the
+//! honest residue (∥ `ratchet`'s `init(u64)` seed cap — a *parameter* limit, not
+//! the primitive's):
+//!
+//! - **The key is a `u64`.** A [`crate::Mint`]'s secret is 64-bit, so the MAC key
+//!   can be brute-forced in ~2⁶⁴ regardless of the primitive. (This is what keeps
+//!   the [`crate::Receipt::minted_by`] seed-guess oracle real — now a ~2⁶⁴
+//!   exhaustion, where the toy leaked the secret from one coin at ~2³².)
+//! - **The tag is truncated to 64 bits.** [`coin_tag`]/[`mint_id`] return the
+//!   first 8 bytes of the 256-bit HMAC output, so an existential tag-guess forgery
+//!   costs ~2⁶⁴ as well.
+//!
+//! So forgery-resistance is ~2⁶⁴ (the min of the two), where the toy's was ~0
+//! (free after one observed coin). A real mint uses a ≥128-bit key and a full-width
+//! tag; the swap makes the *construction* vetted, the illustrative widths stay
+//! disclosed. HMAC (not a bare secret-prefix hash) is the standard-model MAC and is
+//! what makes truncation safe here; the fixed-length messages also foreclose length
+//! extension independently.
+//!
+//! [`hmac`]: https://docs.rs/hmac
+//! [`sha2`]: https://docs.rs/sha2
 
-const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
-const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
 
-/// 64-bit FNV-1a over a byte string.
-fn fnv1a(bytes: &[u8]) -> u64 {
-    let mut h = FNV_OFFSET;
-    for &b in bytes {
-        h ^= b as u64;
-        h = h.wrapping_mul(FNV_PRIME);
-    }
-    h
+type HmacSha256 = Hmac<Sha256>;
+
+/// HMAC-SHA-256 under the mint `secret` (as key) over `msg`, truncated to the
+/// leaf's illustrative 64-bit width (the first 8 bytes of the 256-bit tag, big
+/// endian). See the module banner for why 64 bits is a disclosed residue, not a
+/// weakness of the primitive.
+fn mac_u64(secret: u64, msg: &[u8]) -> u64 {
+    let mut mac = HmacSha256::new_from_slice(&secret.to_be_bytes())
+        .expect("HMAC-SHA-256 accepts a key of any length");
+    mac.update(msg);
+    let tag = mac.finalize().into_bytes();
+    u64::from_be_bytes(tag[..8].try_into().expect("SHA-256 output is 32 bytes"))
 }
 
-/// The tag a mint attaches to a coin: a toy MAC over the serial under the
-/// mint's secret (domain tag `0x01`). Computable from the secret — or, in
-/// this toy, from the post-secret hash state that anyone with one observed
-/// coin can recover (see the module banner; the secret *itself* costs a
-/// further ~2³² meet-in-the-middle, but forging does not need it).
+/// The tag a mint attaches to a coin: HMAC-SHA-256 over the serial, keyed by the
+/// mint's secret, domain-separated with a leading `0x01`. Under the graduated PRF,
+/// producing a valid tag for a serial requires the mint's key — observing coins
+/// does not reveal it (contrast the toy; see the module banner).
 pub(crate) fn coin_tag(secret: u64, serial: u64) -> u64 {
-    let mut buf = [0u8; 17];
-    buf[0] = 0x01;
-    buf[1..9].copy_from_slice(&secret.to_be_bytes());
-    buf[9..17].copy_from_slice(&serial.to_be_bytes());
-    fnv1a(&buf)
+    let mut msg = [0u8; 9];
+    msg[0] = 0x01;
+    msg[1..9].copy_from_slice(&serial.to_be_bytes());
+    mac_u64(secret, &msg)
 }
 
-/// A mint's identity, derived from its secret (domain tag `0x02`). Two mints
-/// constructed from the same seed share this identity — deliberately: in a
-/// MAC-only design the secret *is* the identity (see the crate's layer-3
-/// discussion of replicas).
+/// A mint's identity, an HMAC-SHA-256 evaluation of the secret at the fixed
+/// domain point `0x02`. One-way in the secret (up to the 64-bit key brute-force
+/// above); two mints from the same seed share this identity — deliberately: in a
+/// MAC-only design the secret *is* the identity (see the crate's layer-3 replicas
+/// discussion).
 pub(crate) fn mint_id(secret: u64) -> u64 {
-    let mut buf = [0u8; 9];
-    buf[0] = 0x02;
-    buf[1..9].copy_from_slice(&secret.to_be_bytes());
-    fnv1a(&buf)
+    mac_u64(secret, &[0x02])
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    /// Pins that this module actually is 64-bit FNV-1a (a self-consistent
-    /// wrong constant would pass every behavioral test in the crate, since
-    /// they all compute expected tags through this same module).
+    /// Pins the graduated backend to independently-computed HMAC-SHA-256 golden
+    /// vectors (Python `hmac.new(secret.to_bytes(8,'big'), msg, hashlib.sha256)`,
+    /// first 8 bytes big-endian), so a silent swap to any other primitive — or a
+    /// lost domain byte, key encoding, or truncation change — fails here, not just
+    /// in the behavioral tests (which all route through this same module and would
+    /// accept a self-consistent wrong construction). `coin_tag(0x5EED, 1)` =
+    /// trunc64(HMAC(be(0x5EED), 0x01‖be(1))); `mint_id(0x5EED)` =
+    /// trunc64(HMAC(be(0x5EED), 0x02)).
     #[test]
-    fn fnv1a_matches_known_answer_vectors() {
-        assert_eq!(fnv1a(b""), FNV_OFFSET);
-        assert_eq!(fnv1a(b"a"), 0xaf63_dc4c_8601_ec8c);
-        // Oddness of the multiplier is what makes the steps invertible —
-        // the property the banner's attack narrative rests on.
-        assert_eq!(FNV_PRIME & 1, 1);
+    fn the_backend_is_genuine_hmac_sha256() {
+        assert_eq!(
+            coin_tag(0x5EED, 1),
+            0x1f1e_3f3e_ef86_3e62,
+            "coin_tag must be truncated HMAC-SHA-256, not the old FNV or a variant"
+        );
+        assert_eq!(
+            mint_id(0x5EED),
+            0x2663_e51b_d62f_da1f,
+            "mint_id must be truncated HMAC-SHA-256 at the 0x02 domain point"
+        );
     }
 
-    /// Known-answer pins for the two derivations themselves — domain byte,
-    /// buffer layout, and hash all fixed at once. A mutant that changes
-    /// either domain tag, reshapes a buffer, or bypasses the hash entirely
-    /// (`mint_id = secret` — which would silently falsify the Receipt
-    /// Debug-redaction rationale) fails here. (An inequality-only
-    /// separation test cannot pin `coin_tag`'s `0x01`: the differing buffer
-    /// lengths alone make inequality overwhelmingly likely regardless of
-    /// the tags.)
+    /// Domain separation: `coin_tag` and `mint_id` never collide by construction
+    /// even at the same key, because their messages start with distinct domain
+    /// bytes (0x01 vs 0x02) and differ in length — so no coin tag can be replayed
+    /// as an identity or vice versa (sampled across serials).
     #[test]
-    fn coin_tag_and_mint_id_known_answers_pin_the_derivations() {
-        assert_eq!(coin_tag(0x5EED, 1), 0x47d7_e9f1_9395_b9ee);
-        assert_eq!(mint_id(0x5EED), 0x0ba8_2bf5_4cc3_ad9c);
-        assert_ne!(mint_id(0x5EED), 0x5EED, "identity is hashed, never raw");
+    fn coin_and_mint_domains_are_separated() {
+        let secret = 0xABCD_1234;
+        for serial in 0..64u64 {
+            assert_ne!(coin_tag(secret, serial), mint_id(secret));
+        }
     }
 }

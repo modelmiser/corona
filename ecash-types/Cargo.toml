@@ -1,8 +1,15 @@
 [package]
 name = "ecash-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 9 (negative space): bearer value as a linear capability — and the exact boundary where compile-time double-spend prevention ends. TOY, not production crypto."
+description = "Corona leaf 9 (negative space): bearer value as a linear capability — and the exact boundary where compile-time double-spend prevention ends. Graduated: the coin-tag MAC is vetted HMAC-SHA-256 (the first keyed-backend graduation); see CHARTER.md."
 license = "MIT"
 
 [dependencies]
+# Graduated backend: the audited RustCrypto HMAC-SHA-256 replaces the toy FNV-1a
+# behind the same `hash::coin_tag`/`mint_id` seam (see CHARTER.md, graduation
+# criterion #2). This is the first graduation to a *keyed* primitive — the mint's
+# secret is the MAC key. `forbid(unsafe_code)` in this crate governs *our* code,
+# not the vetted dependencies.
+hmac = "0.12"
+sha2 = "0.10"
