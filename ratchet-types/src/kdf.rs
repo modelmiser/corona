@@ -13,16 +13,21 @@
 //! - **Retention** is stopped by the *type* (E0382): once [`super::ChainKey::advance`]
 //!   consumes the old chain key, no live binding retains it. This half is
 //!   **backend-independent** — it held under the toy and holds now.
-//! - **Inversion** is stopped by the *KDF*: given the next chain key `CKᵢ₊₁` an attacker
-//!   must not be able to compute the previous `CKᵢ` (and thus the past message keys).
-//!   This is the half the backend supplies, and the toy FNV mixing **abstained** from it
-//!   (it made no one-wayness guarantee). SHA-256's **preimage resistance** is what now
-//!   supplies it: recovering `CKᵢ` from `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a hash-preimage
-//!   search, computationally infeasible — *for a full-entropy chain key*. Note the
-//!   **illustrative** [`init`] seeds the chain from only a 64-bit value, so an attacker with
-//!   any `CKⱼ` could brute-force the seed in ~2⁶⁴ and re-derive the whole chain *regardless*
-//!   of SHA-256; a real chain key is a full-entropy key-agreement output (see [`init`]'s
-//!   note), which is why the 64-bit seed is illustrative and not the graduated interface.
+//! - **Inversion** is stopped by the *KDF*: a compromise of the next chain key `CKᵢ₊₁` must
+//!   reveal no earlier `CKⱼ` or message key `MKⱼ` (`j ≤ i`). This is the half the backend
+//!   supplies, and the toy FNV mixing **abstained** from it (no one-wayness guarantee). The
+//!   graduated backend supplies it by the standard assumption for a hash-chain ratchet — that
+//!   the domain-separated SHA-256 derivations behave as a **random oracle** (equivalently, a
+//!   PRF). Under it, `CKⱼ` cannot be reached (inverting `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)` is a
+//!   preimage search — the oracle's preimage-resistance facet), and each past
+//!   `MKⱼ = SHA-256(0x02 ‖ CKⱼ)` is an *independent* oracle output that a compromised chain
+//!   key does not correlate with. **Preimage resistance alone is necessary but not
+//!   sufficient**: hiding the past *message* keys needs the derivations' *independence* (the
+//!   PRF / random-oracle property), not merely non-invertibility of the chain. All of this is
+//!   *for a full-entropy chain key*: the **illustrative** [`init`] seeds from only 64 bits, so
+//!   an attacker with any `CKⱼ` can brute-force the seed in ~2⁶⁴ and re-derive the whole chain
+//!   *regardless* of SHA-256 — a real chain key is a full-entropy key-agreement output (see
+//!   [`init`]).
 //!
 //! So this swap is *load-bearing* — but in a **weaker** sense than `pow-types`' SHA-256
 //! swap. There, the toy was *provably* invertible and the leaf's own headline was
@@ -36,26 +41,23 @@
 //!
 //! Each derivation is a single domain-separated SHA-256 call, `SHA-256(tag ‖ input)`, with
 //! a distinct leading `tag` byte per role (`0x00` init, `0x01` next-chain, `0x02` message).
-//! The security rests on the **one-wayness (preimage resistance)** of these derivations, and
-//! it is preimage resistance doing the work in *both* threat directions: an attacker holding
-//! `CKᵢ₊₁` cannot invert `next_chain` to `CKᵢ` (protecting the **past** — forward secrecy
-//! proper), and an attacker holding a leaked `MKᵢ` cannot invert `message_key` to `CKᵢ`
-//! (which would yield `CKᵢ₊₁` and the whole **future**). Domain separation contributes only
-//! a *necessary but insufficient* side condition: distinct tags give the roles distinct
-//! inputs, so a leaked `MKᵢ` is not simply `CKᵢ₊₁` outright. That the outputs actually differ
-//! (`MKᵢ ≠ CKᵢ₊₁`) for a given key is an empirical fact pinned by golden vectors — *not* a
+//! The security is the random-oracle / PRF argument above; the domain tags give the three
+//! roles distinct inputs, a **necessary but insufficient** structural condition. It rules out
+//! the trivial degeneracy `MKᵢ = CKᵢ₊₁` (which would hand a leaked message key the next chain
+//! key outright) but secures nothing on its own — without the one-wayness/independence
+//! assumption an attacker breaks the chain regardless. That the outputs actually differ
+//! (`MKᵢ ≠ CKᵢ₊₁`) for a given key is an *empirical* fact pinned by golden vectors, *not* a
 //! collision-resistance consequence (collision resistance bounds *finding* a colliding pair,
-//! not that two chosen fixed inputs differ). But distinctness secures nothing on its own:
-//! without one-wayness an attacker inverts either derivation regardless. The workhorse
-//! throughout is preimage resistance; distinctness merely rules out the trivial identity.
+//! not that two chosen fixed inputs differ).
 //!
-//! This is a SHA-256 **hash chain**, *not* HKDF. A production ratchet would use
-//! HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based KDF), which adds
-//! a salt/extract phase and PRF security beyond a raw hash. Both are the same seam:
-//! `next_chain`/`message_key` mapping a chain key to the next state and this step's key.
-//! Domain-separated SHA-256 is a sound, well-understood one-way chain; the choice here is
-//! for a zero-configuration, single-audited-dependency backend, and the one-wayness the
-//! forward-secrecy argument rests on — SHA-256 preimage resistance — is the same in either.
+//! This is a SHA-256 **hash chain**, *not* HKDF — and the distinction is exactly the PRF
+//! assumption above. HKDF-SHA256 / HMAC-SHA256 (RFC 5869; Signal's design uses an HMAC-based
+//! KDF) provides that PRF security in the **standard model** (reducing to HMAC's PRF
+//! assumption); a raw domain-separated hash chain provides it only under the **random-oracle
+//! heuristic**. Both are the same seam — `next_chain`/`message_key` mapping a chain key to the
+//! next state and this step's key — so a production deployment may prefer HKDF for its
+//! standard-model footing; the choice here is a zero-configuration, single-audited-dependency
+//! backend whose security is the random-oracle argument stated above.
 
 use sha2::{Digest, Sha256};
 

@@ -333,15 +333,19 @@ work (complete tasks, add children, keep siblings).
       (#5, below). **The swap is load-bearing in a WEAKER sense than pow's** — the toy
       *abstained* from the inversion guarantee (out of scope) where pow's toy made the
       leaf's headline *false*; "abstained guarantee" vs "exhibited break," a spectrum.
-      **The new wire shape**: the residue's HOME splits on KDF injectivity —
-      non-injective ⟹ past info-theoretically gone (PROVED general, `noninjective_no_past_recovery`),
-      injective ⟹ determined but recoverable only by inverting SHA-256 (NAMED, outside
-      Lean). Reduce-half `held_reaches_all_future` makes a prose limit a theorem (FS is
-      past-only, never post-compromise). Two residues stay open (not a KDF's to close):
-      memory-level secrecy + seed-discard. Not HKDF/HMAC (a SHA-256 hash chain; prod
-      may prefer HKDF-SHA256 behind the same seam). SHA-256 backend pinned to an
-      independent oracle (python hashlib golden vectors). Rust 13 unit + 4 doctests;
-      Sol 7/8 module theorems axiom-free (5 re-exported to the scoreboard), only held_reaches
+      **The new wire shape**: the residue's HOME splits on whether the held key has a
+      unique preimage — a COLLIDING held key ⟹ past info-theoretically ambiguous (PROVED
+      localized, `past_ambiguous_at_collision`; global shadow `noninjective_no_past_recovery`),
+      a UNIQUE-preimage held key ⟹ determined but recoverable only by inverting SHA-256
+      (NAMED, outside Lean). Reduce-half `held_reaches_all_future` makes a prose limit a
+      theorem (FS past-only, not post-compromise). Crypto posture = the domain-separated
+      SHA-256 derivations modeled as a random oracle / PRF (preimage resistance stops chain
+      inversion; the derivations' independence hides past message keys — preimage resistance
+      necessary-not-sufficient). Three residues stay open (not a KDF's to close): memory-level
+      secrecy + seed-discard + the illustrative `init(u64)` capping inversion at ~2⁶⁴. Not
+      HKDF/HMAC (raw chain = random-oracle heuristic; HKDF = standard-model PRF). SHA-256
+      backend pinned to an independent oracle (python hashlib golden vectors). Rust 13 unit +
+      4 doctests; Sol 9/10 module theorems axiom-free (6 re-exported), only held_reaches
       = [propext, Quot.sound]; full Sol green.
       Corona code `0705a8a`, Sol wire `38f6404`. **[cold review below]**
 

@@ -53,12 +53,14 @@
 //! - **The type stops *retention*** (E0382). After [`advance`](ChainKey::advance), no
 //!   safe-code binding can reach `CKᵢ`, so no code path re-derives `MKᵢ` from the state.
 //! - **A one-way KDF stops *inversion*** (the backend). Even code that *only* holds the
-//!   new `CKᵢ₊₁` must not be able to compute `CKᵢ` back out of it. That is the KDF's job,
-//!   and **since graduation this leaf supplies it**: the backend is vetted SHA-256, whose
-//!   **preimage resistance** makes recovering `CKᵢ` from `CKᵢ₊₁ = SHA-256(0x01 ‖ CKᵢ)`
-//!   infeasible (see [`kdf`]). The toy FNV backend it replaced merely *abstained* from
+//!   new `CKᵢ₊₁` must learn nothing of `CKᵢ` or any past message key. That is the KDF's job,
+//!   and **since graduation this leaf supplies it**: the domain-separated SHA-256 derivations
+//!   are modeled as a **random oracle / PRF**, so the chain cannot be inverted *and* each
+//!   past message key is an independent output (see [`kdf`] for the precise argument —
+//!   preimage resistance is *necessary but not sufficient*; hiding the past *message* keys
+//!   needs the derivations' independence). The toy FNV backend it replaced *abstained* from
 //!   this guarantee. So this leaf now supplies **both** protections — the type stops
-//!   retention, SHA-256 stops inversion — where before it supplied only the first.
+//!   retention, the KDF stops inversion — where before it supplied only the first.
 //!
 //! And there is a **third** thing neither the type nor the KDF provides, called out in
 //! the honest limits below: *memory-level* forward secrecy (the old key's **bytes**
@@ -90,15 +92,20 @@
 //! crate), no hand-rolled crypto. What the graduated types and backend jointly guarantee,
 //! and what they still do not:
 //!
-//! - **Cryptographic forward secrecy holds** for the *chain-key inversion* threat: an
-//!   attacker who compromises `CKᵢ₊₁` cannot compute any past `CKⱼ` or `MKⱼ` (`j ≤ i`),
-//!   resting on SHA-256 preimage resistance. This is the guarantee the toy backend lacked.
+//! - **Cryptographic forward secrecy holds** for the *chain-key compromise* threat: an
+//!   attacker who compromises `CKᵢ₊₁` learns nothing of any past `CKⱼ` or `MKⱼ` (`j ≤ i`) —
+//!   under the standard assumption that the SHA-256 derivations behave as a random oracle /
+//!   PRF (preimage resistance stops chain inversion; the derivations' *independence* hides the
+//!   past message keys). This is the guarantee the toy backend lacked. **Caveat:** the
+//!   *illustrative* `init(seed: u64)` seeds from only 64 bits, so this holds only for a
+//!   full-entropy chain key — an attacker with any `CKⱼ` brute-forces the 64-bit seed in ~2⁶⁴
+//!   *regardless* of SHA-256 (see [`kdf`] and [`ChainKey::init`]).
 //! - **Retention is forbidden by the type** (E0382 + no `Clone` + the E0451 seal), so an
 //!   *honest* program cannot itself keep the old chain key around — backend-independent.
 //! - **Not HKDF/HMAC.** The backend is a domain-separated SHA-256 hash chain, not RFC 5869
 //!   HKDF; a production deployment may prefer HKDF-SHA256 / HMAC-SHA256 (Signal's design),
-//!   swappable behind the same [`kdf`] seam. The one-wayness the forward-secrecy argument
-//!   rests on is SHA-256 preimage resistance in either case. See [`kdf`] for the full note.
+//!   swappable behind the same [`kdf`] seam. HKDF provides the assumed PRF security in the
+//!   *standard model*; a raw hash chain relies on the *random-oracle heuristic*. See [`kdf`].
 //! - The **memory-level** and **seed-discard** residues below are *not* closed by
 //!   graduation — they are outside what a KDF backend can supply.
 //!
@@ -106,14 +113,15 @@
 //!
 //! Graduation contributes the leaf's Lean formalization to [Sol](https://github.com/modelmiser/sol),
 //! `Sol.Lib.Ratchet` (the garden's 15th Corona↔Sol wire). Sol proves the **structural**
-//! half — the chain is a forward-deterministic function of the root, and *past-key
-//! recovery is unrecoverable from the forward state alone* — and locates the residue's
-//! **home** by a distinction no prior wire drew: it **splits on whether the KDF is
-//! injective**. Over a *non-injective* chain step the past key is
-//! **information-theoretically** gone (proved in Lean, a residue *discharged*); over an
-//! *injective* one it is determined but computable only with the KDF's inverse (a residue
-//! *named* — the SHA-256 preimage-resistance assumption, discharged outside Lean). What
-//! Lean proves is backend-agnostic; SHA-256's one-wayness is the trusted boundary.
+//! half — the chain is a forward-deterministic function of the root, and *the past is
+//! unrecoverable from the forward state alone* — and locates the residue's **home** by a
+//! distinction no prior wire drew: it **splits on whether the held key has a unique
+//! preimage**. At a *colliding* held key (≥2 preimages) the past is
+//! **information-theoretically** ambiguous (proved in Lean, a residue *discharged* —
+//! localized per-key, `past_ambiguous_at_collision`); at a *unique-preimage* held key it is
+//! determined but computable only with the KDF's inverse (a residue *named* — a SHA-256
+//! preimage search, discharged outside Lean). What Lean proves is backend-agnostic;
+//! SHA-256's one-wayness is the trusted boundary.
 //! (Naming SHA-256 in the *injective* branch is a **conservative worst case**: modeled as a
 //! random function, SHA-256's fixed-length step is generically *non*-injective — so the real
 //! backend most likely sits in the discharged branch, where forward secrecy is even stronger
