@@ -334,7 +334,7 @@ work (complete tasks, add children, keep siblings).
       *abstained* from the inversion guarantee (out of scope) where pow's toy made the
       leaf's headline *false*; "abstained guarantee" vs "exhibited break," a spectrum.
       **The new wire shape**: the residue's HOME splits on KDF injectivity —
-      non-injective ⟹ past info-theoretically gone (PROVED, `collapse_no_past_recovery`),
+      non-injective ⟹ past info-theoretically gone (PROVED general, `noninjective_no_past_recovery`),
       injective ⟹ determined but recoverable only by inverting SHA-256 (NAMED, outside
       Lean). Reduce-half `held_reaches_all_future` makes a prose limit a theorem (FS is
       past-only, never post-compromise). Two residues stay open (not a KDF's to close):

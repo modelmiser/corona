@@ -139,12 +139,13 @@ supplies it. So the swap is load-bearing in a **weaker** sense than pow's: pow's
 headline *false* (an exhibited break the swap repairs), while ratchet's toy left a slot the swap *fills* —
 "exhibited break" vs "abstained guarantee," the two ends of a spectrum. Its `Sol.Lib.Ratchet` is the **15th
 wire**, and its residue draws a distinction no prior wire held: the residue's **home splits on KDF
-injectivity**. Over a *non-injective* step the past key is **information-theoretically** gone —
-`ratchet_collapse_no_past_recovery` *proves* no function recovers it (a residue *discharged*, bloom's
-sibling); over an *injective* step the past is *determined* but recovering it *is* left-inverting the KDF
-(`ratchet_left_inverse_is_the_only_recoverer`) — inverting SHA-256, the preimage assumption discharged
-*outside* Lean (a residue *named*, pow's sibling). The first wire whose residue is proved under one backend
-property and named under the other. The reduce-half `ratchet_held_reaches_all_future` also makes a prose
+injectivity**. Over *any non-injective* step the past key is **information-theoretically** gone —
+`ratchet_noninjective_no_past_recovery` *proves* no function recovers it, general in the step (a residue
+*discharged*, bloom's sibling; `collapse` a concrete instance); over an *injective* step the past is
+*determined* but recovering it needs the step's left-inverse (`ratchet_left_inverse_recovers` exhibits that
+a left inverse suffices) — inverting SHA-256, the preimage assumption discharged *outside* Lean (a residue
+*named*, pow's sibling). The first wire whose residue is proved under one backend property and named under
+the other. The reduce-half `ratchet_held_reaches_all_future` also makes a prose
 limit a theorem: the held key reaches every *future* key, so forward secrecy is past-only, never
 post-compromise. (Non-hub — fan-in 0 and fan-out 0, imports nothing.)
 A **second** invariant is wired as of 2026-07-20 — `deadline-types`' EDF test
