@@ -107,8 +107,8 @@ The **fourth**, also 2026-07-21, is `commit-types` (toy FNV-1a → domain-framed
 `hash::digest_of` seam), which puts **both** faces in a *single* leaf: its subject is a definitional
 **dual pair** (binding + hiding), and graduation completes its existing 8th wire with `Sol.Lib.Commit`
 Part 3 — `binding_reduces` + its genuine converse `collision_breaks_binding`, together the biconditional
-`binding_iff_collision`, **discharge** binding as an equivalence to the backend's collision-resistance
-(bloom's face — the residue now handed to vetted SHA-256, not the FNV triviality; `binding_of_collisionFree`
+`binding_iff_collision`, **discharge** binding as an equivalence to the backend's collision-*existence*
+(bloom's face — the computational collision-*resistance* is the residue now handed to vetted SHA-256, not the FNV triviality; `binding_of_collisionFree`
 is the contrapositive corollary), while `fixed_blind_links` **exhibits** hiding's leak *mechanism* — a
 *deliberately thin* `congrArg` (fix the blind and `commit` is a function, so equal values link), proving no
 cryptographic fact and holding for a hiding scheme too (consttime's un-typability face stays prose residue).

@@ -209,8 +209,9 @@ use core::marker::PhantomData;
 /// and ~256-bit preimage / second-preimage resistance. Two attacker games, two
 /// residues: a *malicious committer* crafting one commitment openable two ways plays
 /// the **binding** game, which is exactly finding a SHA-256 **collision** (~128-bit,
-/// the birthday bound). That the binding game *is* the collision game — the equivalence,
-/// not the 128-bit number — is what `Sol.Lib.Commit`'s `binding_iff_collision`
+/// the birthday bound). That the binding game *is* the collision game — the equivalence
+/// (at the level of collision *existence*; the ~128-bit *resistance* is the residue SHA-256
+/// supplies, extra-Lean), not the number — is what `Sol.Lib.Commit`'s `binding_iff_collision`
 /// (re-exported `commit_binding_iff_collision`) models. An attacker forging a
 /// *second opening of an already-published* commitment
 /// faces the harder **second-preimage** problem (~256-bit) against a fixed target.
