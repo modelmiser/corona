@@ -166,9 +166,10 @@ work (complete tasks, add children, keep siblings).
       keeps a not-for-production marker and forced the CHARTER to state that "graduated" is
       a claim about the BACKEND, not a fitness-for-use certificate. Sol: `Sol.Lib.Lamport`
       moved no pre-existing theorem (the model quantifies over an abstract `accepts`, so it
-      never expressed the property that changed — coverage, not triumph; precedent is POW,
-      not bloom/translog). Part 3 added — the two-signature coverage lemma and, separately,
-      `collision_transfers_signature` (the ~2³² break, thin `congrArg`, needs a message
+      never expressed the property that changed — coverage, not triumph; precedents are POW and
+      ECASH, not bloom/translog; what is unique to lamport is that it is the only wire that
+      pre-existed its own graduation). Part 3 added — the two-signature coverage lemma and, separately,
+      `collision_transfers_signature` (the ~2³² break, thin `Eq.subst`, needs a message
       layer) — backend-independent, so OCCASIONED by the graduation, not contributed by it.
       Cold review R1: 6 CRIT + 20 MOD; R2 continued. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
