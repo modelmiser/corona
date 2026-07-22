@@ -150,7 +150,7 @@ work (complete tasks, add children, keep siblings).
       `u64 → [u8; 32]` forced dependent edits; values did move, so `mss-types` and
       `hypertree-types` take the same `0.1.0 → 0.2.0` bump. LOAD-BEARING (∥ pow, ecash) on
       TWO of the THREE properties this construction needs (textbook Lamport needs two; deriving
-      all preimages from a seed incurs `prg` one-wayness as a third): `commit` and `prg` are now
+      all preimages from a seed incurs a third — `prg` must be a PRF under its seed, not merely one-way): `commit` and `prg` are now
       one-way (~2⁶³), which
       the toy made false **outright** (FNV-1a over a fixed-length input is a
       lattice-solvable dim-8 knapsack — seconds per target; R1's "~2³² meet-in-the-middle"
@@ -169,12 +169,12 @@ work (complete tasks, add children, keep siblings).
       keeps a not-for-production marker and forced the CHARTER to state that "graduated" is
       a claim about the BACKEND, not a fitness-for-use certificate. Sol: `Sol.Lib.Lamport`
       moved no pre-existing theorem (the model quantifies over an abstract `accepts`, so it
-      never expressed the property that changed — coverage, not triumph; precedents are POW and
-      ECASH, not bloom/translog; lamport's wire pre-existed its graduation, so the swap
+      never expressed the property that changed — coverage, not triumph; precedents are POW,
+      ECASH and RATCHET, not bloom/translog; lamport's wire pre-existed its graduation, so the swap
       was testable against theorems written beforehand — no uniqueness claimed). Part 3 added — the two-signature coverage lemma and, separately,
       `signature_transfers_along_digest_equality` (the ~2³² break, thin `Eq.subst`, needs a message
       layer) — backend-independent in PROVABILITY (so OCCASIONED by the graduation, not contributed) —
-      not in faithfulness, since `held` assumes the one-wayness the swap bought.
+      not in faithfulness, since `held` assumes `commit` one-wayness AND `prg` PRF-ness — what the swap bought.
       Cold review R1: 6 CRIT + 20 MOD; R2 continued. Four test gaps found by mutation
       (digest covered only 3 golden bytes; `prg`'s `0xFF` reserved-side contract that
       `mss-types` depends on had ZERO coverage; `prg` index pinned only at 3; CAP 50M→2M),

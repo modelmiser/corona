@@ -66,7 +66,8 @@
 //!   property of the **64-bit width**, which the graduation deliberately left alone —
 //!   not of SHA-256.
 //! - **What the graduation did buy — the scheme's first non-trivial exponent.**
-//!   Unforgeability here needs **three** properties: `commit` one-way, `prg` one-way (a
+//!   Unforgeability here needs **three** properties: `commit` one-way, `prg` a PRF under its
+//!   seed — not merely one-way (a
 //!   requirement textbook Lamport lacks — this leaf derives all 128 preimages from a seed, so
 //!   a predictable `prg` hands over the unrevealed ones; inverting it on one revealed preimage
 //!   yields the whole key from a single signature),

@@ -218,9 +218,9 @@ discarding the seed after keygen (a real CSPRNG key has none).
 > Backend: toy FNV-1a → vetted **SHA-256** (u64-truncated) behind the same
 > `digest`/`commit`/`prg` seam. Load-bearing on *two* of the three properties
 > unforgeability needs — `commit` and `prg` are now one-way (~2⁶³), which the toy made false
-> outright (FNV-1a is lattice-invertible in seconds). `prg` one-wayness is a requirement
-> textbook Lamport lacks: this leaf derives all 128 preimages from a seed, so `prg` must be a
-> PRF under it — inverting `prg` on one revealed preimage yields the whole key from a single
+> outright (FNV-1a is lattice-invertible in seconds). `prg` PRF-ness is a requirement
+> textbook Lamport lacks: this leaf derives all 128 preimages from a seed, so `prg` must be
+> unpredictable under it — one-wayness alone is insufficient — inverting `prg` on one revealed preimage yields the whole key from a single
 > signature. Together these are
 > the scheme's first non-trivial security exponent.
 >
