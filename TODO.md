@@ -2254,8 +2254,16 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
 - [ ] **Diff-composition — CONVERGED, nothing queued.** 4 rounds, 12 reactions, 4 verdict classes,
       2 rules with named conditions, 1 corrected prediction, 1 corrected finding (the fence
       rediscovery). Further rounds would be new pairs at feedstock bar, not open questions.
-- [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
-      counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
+- [x] **sol wiki drift — DONE 2026-07-22** (sol `d977c58`/`676ba9f`). Swept under FREEZE. 8 places
+      said "9 tactics" against **12 declared**; **not every "9" was wrong** — no receiver theorem
+      uses the 3 extras, so "45 obligations close with 9 tactics" is TRUE and stands. Rust receiver
+      TABLES contradicted their own (correct) summary line: omitted `div_safe_no_trap`, listed
+      `counter_mask_valid` as in-file though `Rust.lean:293` already said it moved to
+      `Sol.Lib.Bitwise.Predicates` — **the Lean file knew, the wiki never followed** (∥ the fence
+      rediscovery). Stale aggregates ("70 theorems across 5 receiver files" = no grouping in the
+      tree; "36 theorems" measures 79) DELETED subtractively. sol checker 18→20 (tactic inventory +
+      cited-name resolution), both mutation-tested; ⚠️ `#check` alone false-positives on NAMESPACES
+      (10 of the first 33).
 
 The garden is again a finished thought: corona-core + **33 leaves**, no review debt. Any further leaf
 is a fresh open-ended domain, not backlog. Nothing auto-starts.
