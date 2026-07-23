@@ -2418,7 +2418,8 @@ claim here; this section is the referent. As of the latest commit the graduation
             all" false in `Cargo.toml` **and** CHARTER, and the dependent's `Cargo.lock`
             still pinned `0.1.0`. Also: the cost table adopted lamport's and **dropped its
             multi-target row**, which bites hardest here because an epoch-versioned
-            accumulator publishes a fresh root per *snapshot* (round 5: `add` itself computes no root — an earlier version of this line said "per `add`", the very premise round 4 corrected in `hash.rs`) (~2⁴⁴ at 2²⁰ epochs, between the two
+            accumulator publishes a fresh root per *snapshot* (round 5: `add` itself computes no root — an earlier version of this line said "per `add`", the very premise round 4 corrected in `hash.rs`; round 6: the unit survived inside this same
+            sentence — it is ~2⁴⁴ at 2²⁰ **published snapshots**, not epochs) (~2⁴⁴ at 2²⁰ snapshots, between the two
             rows presented as exhaustive). Also: "~3× memory-free via Pollard-rho" prices
             **Floyd** cycle detection, not memory-freeness — over-pricing the attacker, *the
             direction that flatters the defence*.
@@ -2451,7 +2452,8 @@ claim here; this section is the referent. As of the latest commit the graduation
             dropped while the next paragraph here argues about *length*. Second unchecked
             verbatim claim, made **in the sentence announcing the fix for the first**.
             ⇒ **RESOLUTION = SUBTRACTION.** The file no longer restates the sibling's FNV
-            analysis at all. Four drafts, four errors: *the slot itself was the defect.* It
+            analysis at all. Four versions, three of them rewrites-as-fixes, all wrong (round 5
+            corrected "four drafts"; this line kept it for a round): *the slot itself was the defect.* It
             cites the source and keeps only what it can test.
             ⭐ **My infeasibility argument was backwards and flattered the defence** — six
             lines after warning about that exact direction. `node_hash` is not out of reach:
@@ -2489,12 +2491,12 @@ claim here; this section is the referent. As of the latest commit the graduation
             counterexample pinned in the main loop.
             ⭐ **The replacement assertion passed VACUOUSLY.** `retired == h ⟺ tail ≡ 0` held
             at any modulus while every input made both sides `false`; a `2⁶²` mutation
-            survived until the counterexample exercised the true branch. And one mutation
-            **still** survives — `p−1 → p−2` in the criterion, because the only known
-            agreement has `tail == 0` *exactly* and every coefficient annihilates zero.
-            Recorded in the test rather than hidden: what pins `p−1` is the separate identity
-            assertion, where that mutation *does* fail. Prose narrowed to match — the
-            criterion admits `Σ = 0` and `Σ = 2⁶³`, and **only the first has a witness.**
+            survived; adding the counterexample exercised the true branch but did **not** kill
+            that mutation, and round 6 caught this sentence claiming it had ("survived *until*
+            …"). Two more mutations survived round 5 — `p−1 → p−2` and the `2⁶²` modulus — and
+            round 5 explained the first as structural ("every coefficient annihilates zero")
+            and narrowed the prose to "the criterion admits `Σ = 0` and `Σ = 2⁶³`, and **only
+            the first has a witness**". Round 6 falsified all of that; see the round-6 entry.
             ⭐ **Third consecutive round in which a commit contradicted itself.** Round 4's
             multi-target hedge credited the **epoch gate** with blunting a hit on a superseded
             root — but `Witness::epoch` is a `pub` field an attacker rewrites, after which
@@ -2511,8 +2513,81 @@ claim here; this section is the referent. As of the latest commit the graduation
             **Strong negatives worth recording:** 30 deleted sentences traced with **0 orphaned
             dependents**, the citation target resolves exactly, sol references nothing deleted,
             and the `node_hash` dimension-8 reduction reproduced 2000/2000.
-      - [ ] **Round 6** — the round-5 fixes are new unreviewed content, and the instrument
-            audit still owes this arc a completed pass.
+      - [x] **Round 6 — NOT CLEAN, 16 CRITICAL + 14 MODERATE across three blind lenses**
+            (instrument audit, round-5 fix artifacts, Lean faithfulness). The instrument audit
+            alone ran **42 mutations** and is the most consequential lens of the arc, because
+            every "verified" claim in five prior rounds routed through the scripts it audited.
+            ⭐⭐ **`check-claims.sh` reported 19/19 and exit 0 on a workspace that does not
+            compile.** `all tests pass` grepped for `^test result: FAILED` — a string only a
+            *successfully compiled* test binary can print — with `$?` discarded and no `set -e`.
+            ***The one check asserting the code works was the one check that survived the code
+            not existing***; its failure mode and the failure it guards are disjoint.
+            ⭐⭐ **Five of the nineteen "verified claims" compared nothing** — one-argument
+            `ok "workspace members" "$members"` calls that print a number. **26% of the headline
+            figure was a print statement**, in a file written *in response to* finding a check
+            that could not fail. Also: the registry check compared COUNTS (delete `vss-types`,
+            duplicate `deadline-types` → still green, a member unrepresented); pattern loops
+            silently SHRANK the denominator when a claim stopped matching (18/18 green, wrong
+            number shipped) — the same non-result the nightly branch handles honestly as a SKIP,
+            handled dishonestly one screen away. Corona **19 → 22**, all mutation-tested.
+            ⭐ **And a check written THIS round could not fail either** — the manifest-vs-lock
+            comparison, because `cargo test` at the top of the script *rewrites `Cargo.lock`* to
+            match the manifests before the check reads it. ***A new failure shape: the
+            instrument's own preamble heals the defect ahead of the measurement.*** Found only
+            by watching it fail on purpose, where it didn't. Fixed by snapshotting the lockfile
+            before cargo runs.
+            Sol half: the script **reported 23 checks while performing 22** (a manual
+            `checks+1` beside an `ok()` that also increments — it counted twice on success);
+            the axiom checks ran BEFORE `lake build`, and `lake env` does not build, so
+            `#print axioms` answered from stale `.olean`s — **one run behind on every source
+            edit, precisely on the run where the edit was made**; the check named
+            `prose 'All four Part 3 results are axiom-free'` read no prose (rewriting the
+            sentence to "all SEVENTEEN" left it green), could not see the addition its own
+            comment promised to catch, and was named for a claim that lives only in gitignored
+            `DEVLOG.md`; and an ABSENT doc claim was reported as a verified one. Sol
+            **23 (claimed) / 22 (actual) → 22**, honestly counted, all four mutation-tested —
+            including the real hazard, a proof that still COMPILES while gaining `propext`.
+            ⭐⭐ **The crate half: round 5's MUTATION RECORD was wrong about itself.** Round 5
+            recorded `p−1 → p−2` surviving and explained it as structural. A reviewer produced a
+            second lattice witness in the OTHER residue class (`tail = 2⁶³` exactly, no zero
+            byte, every `dₖ ≠ 0`) and it dies immediately. ***"This mutation survives because …"
+            is a claim about the assertion; it was a claim about the inputs.*** Sharper still:
+            the criterion's discriminating points are `2⁶³` and `2⁶²` while an FNV `tail` is
+            pseudorandom, so **no quantity of FNV inputs could ever have pinned that
+            coefficient** — the domain was not inadequate, it was *structurally incapable*, and
+            sampling cannot fix a measure-zero target. Criterion moved to its own domain
+            (`agreement_criterion_is_pinned_on_its_own_domain`), **six mutations, six killed**,
+            surviving-mutation note DELETED rather than expanded.
+            Also: "agreements impossible at `L ≤ 2`" is false — the all-zero input agrees at
+            every length, which the file's own Boundary 1 asserts forty lines down (exhaustive
+            over all 16 843 008 inputs of 1–3 bytes: all-zero and nothing else). "Five short
+            hand-picked inputs could not reach `L = 10`" — `b"0123456789"` was already in the
+            set, so **the shipped artifact carried the wrong diagnosis while TODO/DEVLOG/INSIGHTS
+            all had it right**. "That is the only universal here" — two more in the same test.
+            The direct criterion form was justified as one "these inputs cannot discriminate",
+            implying better inputs could: **none can**, `p−1 = 2 × 549755814105` with an odd
+            cofactor makes the two forms identically the same predicate.
+            Lean half (sol `c113f5a`): the grounding note priced an **honest** `add` with the
+            **adversary's** number (~2⁻³² where the crate says ~2⁻⁶⁴, overstating the slice by
+            2³²) and claimed "the crate's prose was corrected alongside this note" — the
+            correction landed **two hours later and to a different number**. ***A claim about
+            WHEN something was fixed is as checkable as the fix.*** And the formulation retired
+            30 lines above *for being vacuous* came back as a **docstring** for a theorem that
+            does not carry it. Plus "that one alone is stated with no hypothesis on the fold"
+            (false, and its narrowing was false again), an `example` docstring asserting a gate
+            ORDER the file says is unobservable, and "what refuses a relabeled index is the
+            fold" — false for a quarter of the test it cites (index 4 is promoted at width 5
+            *and* width 3, consumes one sibling, and is refused by leftover-sibling exhaustion,
+            which the file's own disclosure counts as a distinct gate).
+            **Strong negatives, recorded so they stay recorded:** all 7 Lean theorems confirmed
+            non-vacuous by satisfiability witnesses *and* hypothesis-dropped refutations; the
+            axiom table measured, not asserted, and correct 7/7; scoreboard 72 rows, 1..72,
+            ascending, exact bijection; 30 sentences deleted in round 4 traced with **0 orphaned
+            dependents**; the `node_hash` dimension-8 reduction reproduced 2000/2000; 16 corona
+            and sol checks confirmed to fail correctly.
+      - [ ] **Round 7** — the round-6 fixes are new unreviewed content, and they are the
+            largest single round of the arc (both instruments rewritten, a test relocated to a
+            new domain, and prose corrections in five documents across two repos).
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
@@ -2538,5 +2613,6 @@ claim here; this section is the referent. As of the latest commit the graduation
   *premise* did not, and the crate said the premise. Left in place above as the historical
   record; this is the correction.
 - Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
-  `f4cb100` → `6f01c03` → `6139e19` → `0372175`; sol `80b215a` → `5198210` → `2b6b1aa` →
-  `810b5d4` → `46488bb` → `0ca3693`. **Neither repo pushed since the graduation began.**
+  `f4cb100` → `6f01c03` → `6139e19` → `0372175` → `f73811e` → `6a30948` → `6516a7b`;
+  sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` →
+  `c113f5a`. **Neither repo pushed since the graduation began.**

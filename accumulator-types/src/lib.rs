@@ -393,8 +393,12 @@ pub enum VerifyError {
     /// caught it, because the [`Witness`] is unbranded wire data.
     ///
     /// This verdict carries **no security weight** in this append-only accumulator: any `add`
-    /// changes the commitment — with overwhelming probability, at the ~2³² collision bound
-    /// of [`hash`], not as a structural fact — so the fold in [`Commit::verify`] would reject a stale
+    /// changes the commitment — with overwhelming probability, not as a structural fact; for an
+    /// *honest* `add` the governing number is the ~2⁻⁶⁴ chance that two snapshots collide, which
+    /// is the model this sentence is in. ([`hash`]'s ~2³² is the *work an adversary spends* to
+    /// force a collision — a different model, and only that one is a security bound. An earlier
+    /// version of this line cited ~2³² here, contradicting the crate header 300 lines above,
+    /// which names the distinction explicitly.) So the fold in [`Commit::verify`] would reject a stale
     /// witness on its own (its path no longer matches the new snapshot — wrong sibling
     /// count, or folding to the old root), and membership soundness rests entirely on
     /// that fold — never on the `pub epoch` field, which a caller can freely edit. The
