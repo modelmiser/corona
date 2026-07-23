@@ -2585,9 +2585,32 @@ claim here; this section is the referent. As of the latest commit the graduation
             ascending, exact bijection; 30 sentences deleted in round 4 traced with **0 orphaned
             dependents**; the `node_hash` dimension-8 reduction reproduced 2000/2000; 16 corona
             and sol checks confirmed to fail correctly.
-      - [~] **Round 7 — NOT CLEAN** (two of three lenses in; the instrument re-audit is still
-            running). Both landed lenses found the *same shape*: a round-6 correction that was
-            **stronger than the evidence**, in a direction that reads as rigour.
+      - [x] **Round 7 — NOT CLEAN, 10 CRITICAL + ~11 MODERATE across three blind lenses.** All
+            three found the *same shape*: a round-6 correction **stronger than the evidence**, in
+            the direction that reads as rigour. The instrument re-audit ran **56 mutations**;
+            the five named round-6 fixes all held, and six *new* defects did not.
+            ⭐⭐ **A check that could not fire on any path in the repo it guards.** corona's
+            line-count pattern used `[A-Za-z0-9/._]+` — **no hyphen** — and all 34 member
+            directories are hyphenated. It was named for a policy about this repo's sources and
+            structurally incapable of matching one. Round 4's `charter_rows` failed identically:
+            ***a regex over paths is a claim about the naming convention***, and it needs the same
+            evidence bar as a number. A second gap in the same pattern (`[^)]*` cannot span the
+            `)` in `check_obligations()`) hid a third case. In **sol** the pair of gaps was hiding
+            **three live violations**, all badly decayed: 477 claimed vs **2159** actual, 207 vs
+            209, 45 vs **261**. *The check had been reporting `ok` over real rot for months.*
+            ⭐ **Three fail-open holes in the check I wrote last round**, every one the
+            "absent is fine" shape I had just fixed on the sol side: a member missing from the
+            lockfile was skipped; a **deleted** `Cargo.lock` left an empty snapshot that still
+            `exists()`, so all 34 members passed; and it iterated ROOT members only — missing
+            `tools/compose-probes/Cargo.lock`, *the exact lockfile my own commit message cited as
+            the motivation*. Also `head -1` on the README counts (a second contradictory claim
+            invisible), and sol's Part-3 check passing **vacuously** when its anchor moves —
+            the vanishing-claim shape, inside the check written to replace a vanishing-claim
+            defect. Plus two landmines I shipped: equality floors that break on a *correct* added
+            sentence, and an ordinal list capping at "twelfth".
+            ⚠️ **And I broke the cheapest audit method.** Per-path detail rows wore the `  FAIL  `
+            prefix, so counting result lines no longer matched the reported total. Fixed; both
+            scripts now satisfy printed == reported in passing *and* failing runs.
             ⭐⭐ **Round 6's headline sentence was refuted by an input round 6 added in the same
             commit.** It claimed the criterion's discriminating points (`2⁶³`, `2⁶²`) were
             unreachable from FNV inputs because a `tail` is pseudorandom — "no quantity of inputs
@@ -2660,5 +2683,5 @@ claim here; this section is the referent. As of the latest commit the graduation
   record; this is the correction.
 - Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
   `f4cb100` → `6f01c03` → `6139e19` → `0372175` → `f73811e` → `6a30948` → `6516a7b` →
-  `93ec546` → `0450d79`; sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` →
-  `0ca3693` → `fe7ffc5` → `c113f5a` → `3a7162b`. **Neither repo pushed since the graduation began.**
+  `93ec546` → `0450d79` → `3ce1a53` → `0808ef9`; sol `80b215a` → `5198210` → `2b6b1aa` →
+  `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` → `c113f5a` → `3a7162b` → `48f14b4`. **Neither repo pushed since the graduation began.**
