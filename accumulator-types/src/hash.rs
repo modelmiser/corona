@@ -306,8 +306,10 @@ mod tests {
     /// are ever edited. It is a second lock on the same door, not the only one.
     #[test]
     fn fnv_recurrence_exponent_is_l_plus_one_minus_k() {
-        // The last THREE entries are lattice-found and each lands on a value of `tail` that the
-        // criterion discriminates. `Σ = 0` and `Σ = 2⁶³` agree, so the assertion below is
+        // The last THREE entries are lattice-found. Two are agreements (`Σ = 0`, `Σ = 2⁶³`) and
+        // one is not (`Σ = 2⁶²`). Only the latter two DISCRIMINATE: at `Σ = 0` every coefficient
+        // mutant agrees with the real predicate (`c·0 = 0` for any `c`), so that entry separates
+        // nothing — an earlier comment said all three landed on discriminating values. `Σ = 0` and `Σ = 2⁶³` agree, so the assertion below is
         // exercised in both directions — without them every input gave `false == false`, which
         // passes at any modulus, a vacuous check. `Σ = 2⁶²` does NOT agree, and it is what kills
         // a mutated modulus: `tail % 2⁶² == 0` would call it an agreement. Round 6 claimed no
@@ -469,8 +471,15 @@ mod tests {
 
     /// The separability gap is not a measured curiosity — it is forced. It equals
     /// `p·(d₁ − d₀)` with each `dᵢ ∈ {±1}`, so `±2p` is the only nonzero outcome.
-    /// An earlier draft shipped `0x2_0000_0366`: the right measurement, transcribed
-    /// with two hex zeros dropped.
+    /// An earlier draft shipped `0x2_0000_0366`: the right measurement, transcribed with **three**
+    /// hex zeros dropped (`0x20000000366` is eleven digits, `0x20000366` is eight). A later draft
+    /// said *two*, and guarded against `0x0000_0002_0000_0366` — a nine-digit value **no draft
+    /// ever carried**, labelled "not the dropped-digit value" while not being it.
+    ///
+    /// That guard is gone rather than corrected, and so is its sibling. Both were `assert_ne!`
+    /// against a deterministic constant already pinned by the `assert_eq!` above them: entailed,
+    /// and therefore checks that cannot fail. The one line that looked like it defended against
+    /// the historical transcription error carried no information at all.
     #[test]
     fn separability_gap_is_exactly_two_p() {
         let f = |a: u8, b: u8| fnv1a(&[a, b]);
@@ -481,7 +490,6 @@ mod tests {
         assert_ne!(gap, 0, "additive separability fails");
         assert_eq!(gap, FNV_PRIME.wrapping_mul(2), "the gap is exactly 2p");
         assert_eq!(gap, 0x0000_0200_0000_0366, "the constant the docs print");
-        assert_ne!(gap, 0x0000_0002_0000_0366, "not the dropped-digit value");
     }
 
     /// Golden vectors computed by an **independent oracle** — python's `hashlib`,

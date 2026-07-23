@@ -397,7 +397,7 @@ pub enum VerifyError {
     /// *honest* `add` the governing number is the ~2⁻⁶⁴ chance that two snapshots collide, which
     /// is the model this sentence is in. ([`hash`]'s ~2³² is the *work an adversary spends* to
     /// force a collision — a different model, and only that one is a security bound. An earlier
-    /// version of this line cited ~2³² here, contradicting the crate header 300 lines above,
+    /// version of this line cited ~2³² here, contradicting the crate header's own honest/adversarial distinction,
     /// which names the distinction explicitly.) So the fold in [`Commit::verify`] would reject a stale
     /// witness on its own (its path no longer matches the new snapshot — wrong sibling
     /// count, or folding to the old root), and membership soundness rests entirely on
@@ -852,6 +852,40 @@ mod tests {
                 commit.verify(b"alice", &rogue),
                 Err(VerifyError::NotAMember)
             );
+        })
+        .unwrap();
+    }
+
+    /// The `index >= size` guard, exercised where **only that guard** can refuse.
+    ///
+    /// `index_beyond_size_is_not_a_member` above does not reach it: its rogue witness carries
+    /// `siblings: Vec::new()`, so at size 2 the fold demands a sibling, finds none, and returns
+    /// `NotAMember` before the range check matters. Deleting the guard outright left all 22 tests
+    /// passing (cold review round 10) — the guard was load-bearing and completely uncovered, and
+    /// the test named for it was passing for a reason narrower than its name.
+    ///
+    /// A **one-leaf** accumulator isolates it: the tree has a single level, a genuine witness
+    /// carries **zero** siblings, and the fold is the identity on `leaf_hash(data)`. So `acc ==
+    /// root` holds no matter what `index` claims, and the range check is the only thing standing
+    /// between a caller and an `Included` whose index is outside the committed set. 528 such
+    /// relabelings exist across sizes 1..=12; these are the smallest.
+    #[test]
+    fn index_at_and_beyond_size_is_refused_by_the_range_guard() {
+        let acc = built(&[b"solo"]);
+        acc.snapshot_scoped(|commit, prover| {
+            let genuine = prover.witness(0).unwrap();
+            assert!(genuine.siblings.is_empty(), "one leaf means an empty path");
+            assert_eq!(commit.verify(b"solo", &genuine).unwrap().index(), 0);
+            // `size` itself is the boundary, and it was untested.
+            for wrong in [1usize, 2, 7, 64, usize::MAX] {
+                let mut relabeled = genuine.clone();
+                relabeled.index = wrong;
+                assert_eq!(
+                    commit.verify(b"solo", &relabeled),
+                    Err(VerifyError::NotAMember),
+                    "index {wrong} is outside a 1-element set and the fold cannot see it"
+                );
+            }
         })
         .unwrap();
     }
