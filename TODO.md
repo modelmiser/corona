@@ -2101,8 +2101,38 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       `without`); rows 3/4/5 now state it one way. ‡ note's two "measured" numerals deleted —
       re-measured `p = 0.512 ± 0.018` at 14 bits, the analytic ½.
 - [x] Records swept by name (DEVLOG, INSIGHTS, TODO in both repos). corona + sol committed.
-- [ ] **R20 under freeze** — zero CRITICAL twice consecutively opens the push gate. 30 corona / 25 sol
-      commits unpushed pending it.
+- [x] **R20 under freeze** — 4 CRITICAL, two of them introduced by R19's own fixes (a false
+      universal "Nothing here is axiom-free"; a `sol_overflow` count whose script had absorbed each
+      trailing `example` into the theorem above it). Fixed + ~45 stale doc claims.
+- [x] **R21, scoped to the leaf + wire** (2 lenses, not 4). 2 MAJOR: a test asserting a categorical
+      the crate's own pinned collision falsifies, and an arithmetic error introduced in R20
+      (`2⁶⁴/257 = 2^55.994` ≈ 2⁵⁶, not 2⁵⁵). Fixed, plus 4 more demonstrated-false claims.
+- [x] **ARC CLOSED — PUSHED** corona `cf1f8b8` (32 commits) / sol `970d8e6` (27). 21 rounds,
+      ~48 CRITICALs, **zero in code**. `cargo`/`lake` refuse a false theorem; prose has no refuser,
+      so its review debt is unbounded by construction. That asymmetry was the finding.
+- [x] **`tools/check-claims.sh` in both repos** (corona 12/12 + `--gates`, sol 18/18). No model,
+      nothing to drift. Found 3 stale doc-referenced Lean paths + 10 line-count claims on first run.
+      Pins test/leaf/crate counts, versions, the 67↔67 scoreboard **by name**, `#print axioms` on
+      every claimed-axiom-free result, referenced-path existence, and a no-line-counts policy.
+- [x] **`tools/pre-push` installed in both repos** (symlinked into `.git/hooks/pre-push`).
+      Mutation-tested: passes clean, blocks on a wrong count, `--no-verify` documented as the
+      deliberate escape. Pre-push not pre-commit — the guarded failure is *publishing* a false
+      claim, and per-commit would make every atomic commit pay a full workspace test run.
+- [x] **`documented_seed_set_is_exhaustive_and_all_fit_24_bits`** — the in-crate equivalent, pinning
+      the ≲2²⁵ seed enumeration via `include_str!`; mutation-tested; asserts its own extractor is
+      non-empty so it cannot pass vacuously.
+- [x] **Process decision (WAREHOUSE-AND-LENS.md, now tracked).** Its own bar table already said
+      cold-review convergence is the **graduated** bar and **rare**. Applying it to leaf 5 *and*
+      letting it spill repo-wide is what cost 21 rounds. Standing rule now: **feedstock** = compiles
+      + thesis + checker; **peer** = one round; **lens artifacts** = full panel. No agent framework
+      (LangGraph/LangChain) — orchestration was never the bottleneck, the missing piece was a checker.
+
+## Frontier — nothing auto-starts; these are candidates, not backlog
+
+- [ ] **Next graduation** (non-hub) — a leaf whose backend swap is contained. Bar: CHARTER criteria.
+- [ ] **Diff-composition** — the `∘` search over warehouse surfaces described in WAREHOUSE-AND-LENS.
+- [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
+      counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
 
 The garden is again a finished thought: corona-core + **33 leaves**, no review debt. Any further leaf
 is a fresh open-ended domain, not backlog. Nothing auto-starts.

@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# pre-push hook — run the claim checker before anything leaves this machine.
+#
+# Install (from repo root):   ln -sf ../../tools/pre-push .git/hooks/pre-push
+# Bypass once (rare, say why): git push --no-verify
+#
+# WHY pre-push and not pre-commit: what these checks guard against is PUBLISHING a false
+# claim, which happens at push. Running them per-commit would also make every atomic commit
+# pay a full `cargo test --workspace`, which fights the atomic-commit discipline.
+set -uo pipefail
+root="$(git rev-parse --show-toplevel)"
+[ -x "$root/tools/check-claims.sh" ] || exit 0
+
+printf '\n── pre-push: checking that written claims match measured reality ──\n'
+if "$root/tools/check-claims.sh" --gates; then
+  printf '── ok, pushing ──\n\n'
+  exit 0
+fi
+
+cat <<'MSG'
+
+── PUSH BLOCKED ──
+A number written in this repo's prose does not match what was measured.
+
+Fix the claim (or the code), or push with --no-verify if the mismatch is
+deliberate and explained in the commit message.
+
+Twenty-one cold-review rounds on leaf 5 produced ~48 CRITICAL findings and not
+one was in the code. This is the class of defect that dominated all of them.
+
+MSG
+exit 1
