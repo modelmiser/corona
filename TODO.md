@@ -2434,10 +2434,46 @@ claim here; this section is the referent. As of the latest commit the graduation
             own tests relabel it); and "exactly as `Sol.Lib.Lamport` did" **borrowed a
             pedigree this wire cannot have** — Lamport's wire pre-existed its graduation by a
             day, this one was committed *fourteen minutes after* the swap it discusses.
-      - [ ] **Round 4** — required even if round 3 had been clean; the gate is *two
-            consecutive*. Lenses aimed at where the defects actually keep coming from: the
-            **fix artifacts** of round 3, the rewritten crypto sections, and cross-document
-            consistency.
+      - [x] **Round 4 — NOT CLEAN, 12 CRITICAL + 15 MODERATE across three blind lenses**
+            (round-3 fix artifacts, crypto posture, cross-document consistency). ⭐⭐ **All
+            three lenses independently found the SAME shape: round 3 fixed the `.rs` file and
+            left the identical sentence standing in CHARTER, in README, or in the sibling it
+            cited.** Sharpest instance is self-refuting inside one commit — `709580b`
+            corrected `lamport-types`' `~3×` figure *and* shipped "lamport-types states the 3×
+            the same way, and is wrong the same way."
+            ⭐⭐ **The sweep failed for a reason worth remembering: I ran it against the
+            ROLLED-BACK tree.** CHARTER's accumulator graduation block did not exist at that
+            moment, so the live `~3×` instance inside it was not there to match. ***A
+            completeness sweep over a mutated tree does not error — it reports success.***
+            Re-swept against HEAD.
+            ⭐⭐ **"Quoted from there, exactly" was not a quotation** — 11 word-level
+            divergences, the load-bearing one being the source's `fixed-length` qualifier,
+            dropped while the next paragraph here argues about *length*. Second unchecked
+            verbatim claim, made **in the sentence announcing the fix for the first**.
+            ⇒ **RESOLUTION = SUBTRACTION.** The file no longer restates the sibling's FNV
+            analysis at all. Four drafts, four errors: *the slot itself was the defect.* It
+            cites the source and keeps only what it can test.
+            ⭐ **My infeasibility argument was backwards and flattered the defence** — six
+            lines after warning about that exact direction. `node_hash` is not out of reach:
+            fix the left child, the first 9 bytes fold to a constant, the remaining 8 are free
+            = the sibling's dimension-8 instance (verified 2000/2000, ~252 box points).
+            `leaf_hash` gave away *more* — variable length made `L` the attacker's free
+            parameter. And ~2⁸⁰ exceeded the generic 2⁶⁴ preimage bound, so it was never the
+            cost of the goal. *An honest "not measured" had been overshot into a false "not
+            feasible".*
+            ⇒ **NEW INSTRUMENTS (the structural half).** `tools/check-claims.sh` computed the
+            registry row count into `charter_rows` and **never read it** — a check that could
+            not fail, whose pattern also measured 33 against 34 (`numerical-accuracy` does not
+            end in `-types`), *so it would have failed had anything read it.* Now live, plus
+            graduated-rows == numbered-narrative-entries and every `(Nth graduation` ordinal
+            ≤ graduated rows. **13 → 19 checks, both new ones mutation-tested.** Sol's
+            set-based bijection was blind to ORDER (row 67 shipped after row 72 for a round):
+            **22 → 23 checks**, mutation-tested. Two prose numbers became tests — the 300
+            cross-lineage presentations (**the test first ran 246**, so the loop bounds now
+            *make* it 300 rather than the prose remembering it) and the all-zero boundary
+            where the two recurrence forms agree.
+      - [ ] **Round 5** — the round-4 fixes are again new unreviewed content, and the
+            subtraction in `hash.rs` is the largest single change any round has made.
       - ⚠️ **Working-tree incident, 2026-07-23 00:16:02.** `CHARTER.md` + `README.md` were
         rewritten in the same second by something outside this session, rolling the tree back
         to a pre-lamport-graduation state (8 `**graduated**` rows instead of 10, the ninth
@@ -2452,5 +2488,6 @@ claim here; this section is the referent. As of the latest commit the graduation
   survived (the swap is type-preserving, so it reached the dependent not at all) but the
   *premise* did not, and the crate said the premise. Left in place above as the historical
   record; this is the correction.
-- Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd`; sol `80b215a` → `5198210` →
-  `2b6b1aa` → `810b5d4`. **Neither repo pushed since the graduation began.**
+- Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
+  `f4cb100` → `6f01c03`; sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` →
+  `0ca3693`. **Neither repo pushed since the graduation began.**
