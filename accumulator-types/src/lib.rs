@@ -665,6 +665,10 @@ mod tests {
         assert_eq!(acc.add(b"c"), 3);
         assert_eq!(acc.epoch(), 3);
         assert_eq!(acc.len(), 3);
+        // Pin `is_empty()` on the NON-empty side: the empty-case assertion in
+        // `new_accumulator_is_empty_at_epoch_zero` kills `-> false`/negation but leaves the
+        // constant-`-> true` mutant alive (cold review round 13).
+        assert!(!acc.is_empty());
     }
 
     #[test]

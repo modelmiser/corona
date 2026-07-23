@@ -471,15 +471,9 @@ mod tests {
 
     /// The separability gap is not a measured curiosity — it is forced. It equals
     /// `p·(d₁ − d₀)` with each `dᵢ ∈ {±1}`, so `±2p` is the only nonzero outcome.
-    /// An earlier draft shipped `0x2_0000_0366`: the right measurement, transcribed with **three**
-    /// hex zeros dropped (`0x20000000366` is eleven digits, `0x20000366` is eight). A later draft
-    /// said *two*, and guarded against `0x0000_0002_0000_0366` — a nine-digit value **no draft
-    /// ever carried**, labelled "not the dropped-digit value" while not being it.
     ///
-    /// That guard is gone rather than corrected, and so is its sibling. Both were `assert_ne!`
-    /// against a deterministic constant already pinned by the `assert_eq!` above them: entailed,
-    /// and therefore checks that cannot fail. The one line that looked like it defended against
-    /// the historical transcription error carried no information at all.
+    /// It carries no `assert_ne!`: a guard against a deterministic constant is already
+    /// entailed by the `assert_eq!` below — a check that cannot fail.
     #[test]
     fn separability_gap_is_exactly_two_p() {
         let f = |a: u8, b: u8| fnv1a(&[a, b]);
