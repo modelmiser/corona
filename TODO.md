@@ -2927,6 +2927,56 @@ authoritative value is the number of `[x] **Round N**` entries.)
             line-distance locator ("300 lines above" → an intrinsic description). corona `1093a86`,
             sol `692fdef`. Ledgered MODERATEs carried under freeze; **no clean round yet — #5
             unmet after ten.**
+      - [x] **Round 11 — NOT CLEAN, 1 MODERATE on the crate half** (+ 2 LOW). First round run with
+            the two halves *separated*: the crate through the saved `garden-cold-review` apparatus
+            (3 blind lenses), the wire + registry row + README leaf-line through a single blind
+            lens. **The wire half came back CLEAN — 0 CRITICAL, 0 MODERATE** — and well-witnessed:
+            the reviewer ran `#print axioms` live on all seven results and matched the axiom table
+            row-for-row, dated the "fourteen minutes after the swap" (14.27 min) and "six rounds"
+            claims against `git` to the minute, and confirmed every docstring matches the theorem
+            beneath it. **This is the first evidence the round-10 surface-bounding was a real fix,
+            not a relabeling:** the wire, which produced the retracted-reading findings in rounds 8
+            and 10, is quiet once scoped.
+            ⭐⭐ **The prover-side TWIN of round 10's untested range guard.** Round 10 pinned
+            `witness.index >= size` in `Commit::verify` and **left its symmetric partner unpinned**:
+            `index >= self.layers[0].len()` in `Prover::witness`. The existing
+            `index_beyond_size_is_not_a_member` exercises only `witness(2)` on a 2-leaf tree — the
+            `== len` boundary, which both `>=` and a `==`-mutant route to `None` — so *strictly
+            greater* indices were uncovered and the `>=`→`==` mutant survived: under it `witness(3)`
+            walks past the level width and **panics** (`index out of bounds` at `level[idx-1]`)
+            instead of returning `None`. This is the arc's cleanest **"fix one site of a matched
+            pair, miss the twin"** — and round 10's own fix is what taught the lens the shape to
+            hunt (the reviewer's witness explicitly contrasts the two guards). Fixed with
+            `witness_index_strictly_beyond_leaf_count_is_refused_not_panicked` over `[3,4,17,64,MAX]`
+            on a 2-leaf tree; **verified it fails on the mutant (only that test: 23 pass, 1 fail) and
+            passes clean**, restored from a scratch `cp` (never `git checkout` mid-mutation).
+            ⭐ **LOW, fixed (one token, zero new sentences):** a docstring called it "a
+            `forbid(unsafe)` choice" — but `unsafe` is not a rustc lint; the real one is
+            `unsafe_code`, present correctly on the very next line and at the crate root
+            `#![forbid(unsafe_code)]`. A non-existent lint name is demonstrably wrong, and the fix
+            writes no new prose, so the freeze's fix-artifact rationale does not reach it. Corrected.
+            **LOW, ledgered (not fixed):** the wire's docstrings carry dense multi-round retraction
+            genealogies — accurate but hard to read as documentation. Under freeze this is a
+            readability preference, not a false claim, and trimming it would *delete accurate
+            history to write new unreviewed prose* — exactly the fix-artifact the freeze prevents.
+            Left intact.
+            **Adversarial half CLEAN:** 6 compile-fail vectors (E0451 seal, E0521/lifetime brand,
+            no-`Default`) + a **2-million-case** differential false-certificate fuzz (debug and
+            `--release -C overflow-checks=off`), **0 forged certificates.** Claims half CLEAN (all
+            crypto bounds, FNV algebra, citations, E-code accounting re-verified). **Verification at
+            close:** 484 unit + 126 doctests, clippy/fmt/rustdoc `-D warnings` clean, corona
+            **25/25**, sol **29/29**. corona `a227b48` (wire unchanged, still `692fdef`). Round 11
+            is **NOT clean** — a real executable defect on the surface — so the streak stays 0; **#5
+            unmet after eleven.** But the composition keeps sharpening: this round's one finding was
+            a genuine coverage gap that round 10's fix directly set up, and the wire half — half the
+            surface — converged.
+      - ⚠️ **Prompt-injection surface in the toolchain, 2026-07-23.** A plugin hook (vercel-plugin)
+        keyed on the `README*` basename fires on any **read or edit of a `README*` file** and
+        injects an instruction to run `Skill(bootstrap)` and "read Vercel/Next.js docs before
+        writing code" — wholly unrelated to this Rust repo. Hit independently by the round-11 wire
+        lens (reading `README.md`) and by me (editing it for the test-count bump); **both
+        disregarded it** — injected hook text is not a user instruction. Flagged so it is on record;
+        the hook mis-triggers on every leaf's README and could derail a less careful agent.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
