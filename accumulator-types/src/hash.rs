@@ -5,7 +5,9 @@
 //! criterion #2: an implementation swap, not a rewrite — the module and function
 //! *names* stay, what fills them changes). The swap is **type-preserving**
 //! (`u64 → u64`), so unlike `merkle-types`' `u64 → [u8; 32]` graduation it forces
-//! no dependent edits — and this leaf has no dependents to force. Values do move,
+//! no dependent edits — and this leaf has no dependent that *names the seam's type*
+//! (`tools/compose-probes` does depend on the crate, but only through `Accumulator`
+//! and `Included`, so the type-preserving swap reached it not at all). Values do move,
 //! hence `0.1.0 → 0.2.0`.
 //!
 //! ## What the swap bought, and what it did not
@@ -13,12 +15,26 @@
 //! **Bought — one-wayness, and collisions demoted from *constructed* to *searched*.**
 //! 64-bit FNV-1a is cheaply invertible, but not because "a mixing function is
 //! invertible by construction" — that would be a non-sequitur (each SHA-256 round is
-//! a bijection on its state too). The real reason is algebraic, and `lamport-types`
-//! states it for the same function: over fixed-length input the final state is an
-//! affine form `c₀ + Σ cᵢ·bᵢ mod 2⁶⁴` whose unknowns are single bytes, i.e. a
-//! low-dimensional **modular knapsack** that lattice reduction plus a small
-//! enumeration solves in seconds. SHA-256 removes that structure and gives the
-//! construction its first non-trivial preimage assumption.
+//! a bijection on its state too). The reason is algebraic, and `lamport-types` states
+//! it precisely for the same function; quote it rather than paraphrase, because the
+//! change of variables is the whole content. FNV-1a is affine **in bounded
+//! perturbations**, not in the input bytes: since `h ⊕ b` and `h` differ only in the
+//! low byte, `h ⊕ b = h + d` with `|d| ≤ 255`, so over fixed-length input
+//! `h_L = OFFSET·p^L + Σₖ dₖ·p^(L−k) (mod 2⁶⁴)`. The unknowns are the **state-dependent
+//! `dₖ`**, and inverting is a dimension-8 modular knapsack whose *solution vector* is
+//! small — lattice-reduce over a relaxed box, then filter by forward consistency to
+//! recover actual bytes. Seconds.
+//!
+//! It is **not** affine in the bytes themselves, and this file previously said it was:
+//! additive separability `f(1,1) + f(0,0) ≡ f(1,0) + f(0,1)` fails outright (measured
+//! difference `0x2_0000_0366` on the two-byte case, and on 200000/200000 random
+//! inputs). The offset basis has low byte `0x25`, so `h ⊕ 0x01` *decrements* rather
+//! than increments — the very first byte breaks the identity. Two wrong justifications
+//! have now occupied this slot; the fix was to stop compressing the sibling file and
+//! carry its formulation verbatim.
+//!
+//! SHA-256 removes that structure and gives the construction its first non-trivial
+//! preimage assumption.
 //!
 //! Note what did *not* become true: "distinct data hash to distinct leaves" is false
 //! for SHA-256-truncated-to-64 as well, unconditionally, by pigeonhole on an
@@ -28,8 +44,10 @@
 //! **Not bought — the CEILING, which is the WIDTH.** A Merkle root binds its contents
 //! only as well as the hash resists **collisions** — the attacker picks both sides —
 //! and this seam is 64 bits wide. A birthday search over a truncated SHA-256 finds a
-//! colliding pair in **~2³²** evaluations (√(π/2)·2³², memory-free via Pollard-rho),
-//! offline and key-independently; two leaves that collide are interchangeable under
+//! colliding pair in **~2³²** evaluations — `√(π/2)·2³² ≈ 1.25·2³²` with ~2³² storage,
+//! or **~3× that** memory-free via Pollard-rho, whose cycle detection costs extra
+//! evaluations per step (`lamport-types` states the same figure the same way). Offline
+//! and key-independent either way; two leaves that collide are interchangeable under
 //! any root containing one.
 //!
 //! Be exact about which attack costs what, because the two differ by 2³²:

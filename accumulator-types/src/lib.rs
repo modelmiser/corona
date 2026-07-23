@@ -70,7 +70,11 @@
 //! This accumulator is **append-only** (no deletion), so its version *is* its
 //! element count: `epoch == len`. A consequence worth stating plainly, in the one
 //! direction that holds: **within a single accumulator**, epoch-staleness implies
-//! root-staleness — any `add` changes the commitment, so
+//! root-staleness. The **converse fails**: `Accumulator` is `Clone`, so two forks of one
+//! ancestor reach the *same* epoch with *different* roots, and a witness can be
+//! epoch-fresh against one fork while root-stale against the other. Within one
+//! accumulator, though, any `add` changes the commitment (with overwhelming probability
+//! — the ~2³² bound of [`hash`], not a structural fact), so
 //! [`Commit::verify`]'s fold would *already* reject a stale witness on its own: its
 //! authentication path no longer matches the new snapshot, either because it carries
 //! the wrong *number* of siblings for the new size (caught at the sibling-count check)
@@ -97,7 +101,7 @@
 //!   [`hash::leaf_hash`]/[`hash::node_hash`] seam. That removes the toy's outright
 //!   break — 64-bit FNV-1a inverts by lattice reduction over a small modular
 //!   knapsack, in seconds — so the achieved bound really did move, from effectively
-//!   zero bits to ~2³². What the swap **cannot** do is raise the *ceiling the width
+//!   zero bits to 32. What the swap **cannot** do is raise the *ceiling the width
 //!   imposes*: this structure binds an **ordered list** (`add` appends, duplicates
 //!   allowed, `Witness.index` is authenticated) only as well as the hash resists
 //!   **collisions** — the attacker picks both sides — and a birthday search over a
@@ -109,7 +113,10 @@
 //!   still not production crypto, for that reason.
 //! - **The [`Commit`] is caller-trusted.** [`Commit::verify`] proves membership in
 //!   *the snapshot you hold*; it cannot tell you that snapshot commits the *right*
-//!   set (exactly as `merkle-types`' `Root` is trusted).
+//!   set. Weaker than `merkle-types`' residue, not the same: a `Root` can be *adopted*
+//!   out of band, so it may be a stranger's; a `Commit` has one construction site inside
+//!   `snapshot_scoped` and no adoption doorway, so the residue here is only "did **you**
+//!   add the right elements".
 //! - **Append-only, fixed scope.** No deletion, no consistency proofs, no witness
 //!   compaction (a real Merkle Mountain Range / Certificate-Transparency log adds
 //!   these). The point is the epoch/brand typestate, not accumulator engineering.
@@ -256,8 +263,11 @@ impl Accumulator {
     /// unbranded values may escape — a [`Witness`], a `u64`, a `usize`, and also a
     /// [`Prover`], which is `Clone` and carries no brand. That last one is not an
     /// oversight: an escaped `Prover` mints only genuine witnesses for the epoch it was
-    /// frozen at, and those then fail the freshness check or the fold against any later
-    /// snapshot. The rule is *unbranded*, not *small*; treat the list as examples.
+    /// frozen at. Those are accepted by any snapshot at the **same epoch** — correct, since
+    /// such snapshots carry an identical commitment — and rejected by the freshness check
+    /// or the fold at any later **epoch**. Say *epoch*, not *snapshot*: this leaf's own
+    /// headline datum is that a snapshot is strictly finer than an epoch, so "any later
+    /// snapshot" would be the wrong quantifier. The rule is *unbranded*, not *small*; treat the list as examples.
     pub fn snapshot_scoped<R>(
         &self,
         body: impl for<'epoch> FnOnce(Commit<'epoch>, &Prover) -> R,
@@ -313,7 +323,9 @@ pub struct Witness {
 /// The prover-side working state of a frozen snapshot: every tree level, retained so
 /// it can emit a [`Witness`] for any leaf, plus the snapshot's epoch. **Unbranded** —
 /// witnesses are public data, so the prover may be used freely inside the
-/// [`snapshot_scoped`](Accumulator::snapshot_scoped) closure that owns it.
+/// [`snapshot_scoped`](Accumulator::snapshot_scoped) closure that owns it — and, being
+/// `Clone` and unbranded, it may also **escape** that closure. See `snapshot_scoped`'s
+/// docs for why that is harmless.
 #[derive(Clone, Debug)]
 pub struct Prover {
     /// `layers[0]` is the leaf hashes; each subsequent layer is the level above; the
@@ -371,7 +383,8 @@ pub enum VerifyError {
     /// caught it, because the [`Witness`] is unbranded wire data.
     ///
     /// This verdict carries **no security weight** in this append-only accumulator: any `add`
-    /// changes the commitment, so the fold in [`Commit::verify`] would reject a stale
+    /// changes the commitment — with overwhelming probability, at the ~2³² collision bound
+    /// of [`hash`], not as a structural fact — so the fold in [`Commit::verify`] would reject a stale
     /// witness on its own (its path no longer matches the new snapshot — wrong sibling
     /// count, or folding to the old root), and membership soundness rests entirely on
     /// that fold — never on the `pub epoch` field, which a caller can freely edit. The

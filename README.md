@@ -43,7 +43,7 @@ corona/
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space; GRADUATED 2026-07-22 — HMAC-SHA-256, the first MAC-authentication graduation; Sol.Lib.Ecash [16th wire]: authenticity-not-witness-definable, freshness-not-compile-time)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held value's preimage count)
-├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (TOY)
+├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (GRADUATED)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
 ├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
@@ -517,11 +517,17 @@ incoming *request* (`Witness`) cannot — so the brand guards the answer's prove
 never the question's freshness, and the wire is exactly where the reduction stops. Two
 garden primitives (E0451 + brand), no new one.
 
-> ⚠ **TOY.** FNV-1a hash (domain-separated leaf/node tags), append-only, no deletion,
-> no consistency proofs or witness compaction (a real Merkle Mountain Range /
-> Certificate-Transparency log adds these). Because there is no deletion the epoch
-> equals the element count, so staleness-by-epoch and staleness-by-root coincide — the
-> explicit epoch check just makes staleness a named, total, hash-independent verdict.
+> ⚠ **GRADUATED 2026-07-22, still not production crypto.** Domain-separated SHA-256
+> (`sha2`) truncated to `u64` behind the unchanged `leaf_hash`/`node_hash` seam. The
+> swap removes the toy's outright break but not the **ceiling the width imposes**: a
+> root binds only as well as the hash resists collisions, and a 64-bit seam yields a
+> ~2³² birthday bound (a fixed target is dearer — ~2⁶⁴ second-preimage). Append-only,
+> no deletion, no consistency proofs or witness compaction (a real Merkle Mountain
+> Range / Certificate-Transparency log adds these). Because there is no deletion the
+> epoch equals the element count, so **within one accumulator** epoch-staleness implies
+> root-staleness — but `Accumulator` is `Clone`, so two forks reach one epoch with
+> different roots and the converse fails. The explicit epoch check makes staleness a
+> named, total, hash-independent verdict; it carries no security weight.
 > The type discipline (the epoch brand) is the subject, not accumulator engineering.
 
 ## Leaf 12: `frost-types`
