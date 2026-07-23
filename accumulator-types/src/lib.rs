@@ -917,6 +917,57 @@ mod tests {
         .unwrap();
     }
 
+    /// `Prover::epoch()` reports the version of the snapshot the prover belongs to.
+    ///
+    /// A pure getter that no test read until now (cold review round 12): `witness()` stamps
+    /// `self.epoch` directly rather than routing through the getter, so mutating the getter's body
+    /// left all tests green. Pinned against the sibling `Commit::epoch()` (independently covered)
+    /// and the known post-add version.
+    #[test]
+    fn prover_epoch_reports_its_snapshots_version() {
+        let mut acc = Accumulator::new();
+        for e in [b"a".as_ref(), b"b", b"c"] {
+            acc.add(e);
+        }
+        let version = acc.epoch();
+        acc.snapshot_scoped(|commit, prover| {
+            assert_eq!(
+                prover.epoch(),
+                commit.epoch(),
+                "prover and commit share one epoch"
+            );
+            assert_eq!(
+                prover.epoch(),
+                version,
+                "the epoch is the snapshot's version"
+            );
+        })
+        .unwrap();
+    }
+
+    /// A one-leaf accumulator's root **is** the lone leaf's hash — a value pin for `Commit::root()`.
+    ///
+    /// `root()` was *called* by `root_changes_on_every_add`, yet its mutant survived (cold review
+    /// round 12): that test asserts only that roots at distinct epochs *differ*, and adding a
+    /// constant to every root preserves every inequality — the getter was exercised, but only up to
+    /// a distinctness relation the mutation respects. This pins it to an actual value: with a single
+    /// leaf the tree has one level and the fold is the identity, so the root equals the 0x00-domain
+    /// `leaf_hash` of the sole element, which a verified [`Included`] exposes.
+    #[test]
+    fn single_leaf_root_is_the_lone_leaf_hash() {
+        let acc = built(&[b"solo"]);
+        acc.snapshot_scoped(|commit, prover| {
+            let genuine = prover.witness(0).unwrap();
+            let included = commit.verify(b"solo", &genuine).unwrap();
+            assert_eq!(
+                commit.root(),
+                included.leaf_hash(),
+                "one leaf: the root is that leaf's hash, no folding in between"
+            );
+        })
+        .unwrap();
+    }
+
     #[test]
     fn root_changes_on_every_add() {
         // The append-only property behind staleness-by-root: each epoch has a
