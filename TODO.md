@@ -2267,3 +2267,21 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
 
 The garden is again a finished thought: corona-core + **33 leaves**, no review debt. Any further leaf
 is a fresh open-ended domain, not backlog. Nothing auto-starts.
+
+## Manual-compensation sweep — 2026-07-22 (`200314b`)
+
+- [x] **Swept both repos for the SIGNATURE OF MANUAL COMPENSATION** ("verified against the
+      compiler directly", "checked by hand", "keep in sync", "not enforced", "only by nightly")
+      after the same structural failure appeared TWICE in one day: the fence documented in 4
+      leaves and never generalized, and `Rust.lean:293` knowing what the sol wiki didn't.
+      **sol's own tree: ZERO hits** (every match was vendored Mathlib under `.lake/`) — a clean
+      negative. **corona: 5 leaves** (arq, consttime, ecash, ratchet, swap) each saying the
+      `,EXXXX` fence "is checked only by nightly rustdoc" with failures "verified against the
+      compiler directly".
+- [x] **Those notes were accurate this morning; `de6a8d2` made them STALE.** The gate now runs the
+      nightly sweep, so the codes ARE enforced here — leaving 5 leaves telling readers otherwise
+      is *the same defect one turn later*: knowledge recorded locally while the policy moved.
+      Each note now points at the gate instead of at hand-verification.
+- [x] Corrected mid-edit: the first draft claimed the gate runs "on every push". It **SKIPs when
+      no nightly toolchain is installed** — deliberately, and loudly. The notes now say so.
+      *A claim that is false on someone else's machine is still false.*
