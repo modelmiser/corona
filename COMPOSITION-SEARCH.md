@@ -218,9 +218,60 @@ Note what did **not** happen: zero reactions needed a new rung. Round 1 already 
 this is not a success metric, and round 2 confirms it — three of the five zero-rung
 reactions are glue or unmediated.
 
+## Round 3 — testing the seam rule instead of restating it
+
+Round 2's rule was an **induction from three cases**, which is a hypothesis. The test: can a
+**third crate** mint the lost witness, with *zero changes to either parent*? If yes, the
+witness loss was never forced — it was a composition leaf nobody had written.
+
+The seam types live in the probe crate's **library**, so the binaries exercising them are
+genuinely foreign code and the E0451 seal is real (`fail_i/j/k`, all three **E0451**).
+
+| Seam | Recovered? | How |
+|---|---|---|
+| **C** `translog ∘ lamport` | **yes, fully** | minted *inside* the brand scope |
+| **E** `arq ∘ erasure` | **partially** | ARQ never witnessed the coordinate |
+| **H** `sigma ∘ commit` | **yes, fully** | the binding predicate is recomputable |
+
+### The prediction that was wrong
+
+I expected **C** to fail: `Consistent<'old, 'new>` is doubly branded and cannot leave
+`consistency_scoped`, so it looked like the case where no seam type could exist. It is the
+cleanest recovery of the three. `SignedConsistency` carries **no lifetime**, so it is an
+unbranded value and may escape — and minting it *inside* the closure, where the branded
+witness lives, lets **the brand's conclusion out without letting the brand out**.
+
+That is the whole answer to round 2's puzzle. A brand does not prevent evidence from
+escaping; it prevents *the brand* from escaping. Anything derivable inside the scope can leave
+in a seal of its own.
+
+### H recovers with no residue
+
+`prove_bound` re-derives the challenge from `(statement, commitment, context)` itself and
+accepts only if the response verifies against **that** challenge. The probe shows the same
+response failing under a different context, so the binding is *checked*, not asserted. This
+works because the predicate is recomputable from public data.
+
+### E recovers only what ARQ actually witnessed
+
+A `Fragment` is `(index, value)`; ARQ's `Delivered` carries `(seq, payload)`, and `seq` is a
+position **within its own stream** — a fresh `Receiver` accepts only `seq == 0`, so a
+per-fragment stream cannot carry the erasure index at all. `decode_from_delivered` therefore
+takes the index from the caller, and the residue is **executable**: swap two indices and every
+`Delivered` is still genuine, the seal still mints, and the bytes come back
+`[179, 249, 33]` instead of `[104, 105, 33]`.
+
+> **The rule, corrected.** Round 2 said *a composition that must carry evidence needs the seam
+> to have a type of its own*. Round 3 keeps that and removes the fatalism: **witness loss at a
+> seam is never forced by the type system.** Three for three, a third party recovered it
+> without touching either parent. What bounds the recovery is not the seam — it is **what the
+> parents' witnesses actually contain**. E is partial not because a seam type is weak, but
+> because ARQ authenticates a symbol and never authenticates its coordinate. A seam type is a
+> lens, not a source: it can carry any fact across, and it can invent none.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # eight reactions and eight rejections
+tools/compose-probes/probe.sh      # eleven reactions and eleven rejections
 ```

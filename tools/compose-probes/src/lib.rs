@@ -22,3 +22,5 @@
 //! snippet fenced ```` ```compile_fail,E0599 ```` still passes when it fails with E0382 —
 //! mutation-tested and confirmed here, which is how this file came to be rewritten. The
 //! fence was decorative, so the check moved somewhere it is real.
+
+pub mod seam;

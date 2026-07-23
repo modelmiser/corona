@@ -2209,9 +2209,30 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       because the checker's pattern only knew "N unordered leaf pairs" — the exact
       grep-every-synonym failure from the ecash arc. Pattern broadened, mutation-tested; 3
       occurrences now checked. Checker 16→17.
-- [ ] **Diff-composition, round 3** — candidate, not backlog. Either build `translog ∘ mss` (still
-      the only result indicating a real leaf) or test the seam rule directly: does giving a seam its
-      own type recover the witness in E or H?
+- [x] **Diff-composition, round 3 — DONE 2026-07-22. The seam rule TESTED, and my prediction was
+      WRONG.** Round 2's rule was an induction from 3 cases; round 3 asked whether a THIRD CRATE can
+      mint the lost witness with ZERO changes to either parent. Seam types live in the probe crate's
+      LIBRARY so the bins are genuinely foreign code and the E0451 seal is real (fail_i/j/k all E0451).
+      **All three recovered.** I predicted **C would FAIL** — `Consistent<'old,'new>` is doubly branded
+      and cannot leave `consistency_scoped`. It is the CLEANEST recovery: `SignedConsistency` carries
+      **no lifetime**, so it is an unbranded value that may escape, and minting it INSIDE the closure
+      lets **the brand's CONCLUSION out without letting the BRAND out**. That answers round 2's puzzle
+      outright — a brand does not stop evidence escaping, it stops *the brand* escaping. **H** recovers
+      with NO residue (`prove_bound` re-derives the challenge itself and rejects the same response under
+      a different context — checked, not asserted) because the predicate is recomputable from public
+      data. **E** recovers only PARTIALLY, and the residue is executable: a `Fragment` is
+      `(index, value)` but ARQ's `Delivered` carries `(seq, payload)` where `seq` is a position within
+      its OWN stream (a fresh `Receiver` accepts only `seq == 0`), so the index is caller-supplied —
+      swap two indices, every `Delivered` stays genuine, the seal still mints, bytes come back
+      `[179,249,33]` not `[104,105,33]`.
+      **RULE CORRECTED: witness loss at a seam is NEVER forced by the type system.** What bounds the
+      recovery is not the seam but **what the parents' witnesses actually contain**. E is partial
+      because ARQ authenticates a symbol and never authenticates its coordinate. *A seam type is a
+      LENS, not a SOURCE: it can carry any fact across and can invent none.* 11 reactions + 11
+      rejections in `probe.sh`.
+- [ ] **Diff-composition, round 4** — candidate, not backlog. The seam rule now predicts: give
+      `arq-types` a way to witness a coordinate and E's residue closes. That is a rung on a converged
+      leaf, so it is a deliberate act, not momentum.
 - [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
       counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
 

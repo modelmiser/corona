@@ -37,6 +37,12 @@ name = "f_consttime_x_threshold"
 name = "g_bloom_x_accumulator"
 [[bin]]
 name = "h_sigma_x_commit"
+[[bin]]
+name = "i_seam_e"
+[[bin]]
+name = "j_seam_h"
+[[bin]]
+name = "k_seam_c"
 
 [[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
@@ -61,6 +67,15 @@ name = "fail_g_absence_is_not_inclusion"
 required-features = ["negatives"]
 [[bin]]
 name = "fail_h_two_commitments_collide_by_name_only"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_i_seam_e_is_sealed"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_j_seam_h_is_sealed"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_k_seam_c_is_sealed"
 required-features = ["negatives"]
 
 [dependencies]
