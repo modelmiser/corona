@@ -2879,9 +2879,54 @@ authoritative value is the number of `[x] **Round N**` entries.)
             simply do not gate **this leaf's** criterion #5, because they are not what graduated.
             A *scoping* of #5, not a weakening: it is the scope CHARTER's own sentence names and
             never defined. Declared before round 10's results, so it cannot be fitted to them.
-      - [ ] **Round 10** — first round scoped to the graduated surface, under FREEZE. Findings
-            outside the surface are still reported and fixed; they are recorded separately and do
-            not count against #5.
+      - [x] **Round 10 — NOT CLEAN, 4 CRITICAL on the surface** (2 crate + 2 wire) + 12 MODERATE
+            ledgered. First round scoped to the graduated surface, and the first to put a lens on
+            the **crate alone** rather than the prose about it. That relocation found the arc's
+            **first defect in executable territory** — nine rounds of prose review never reached it.
+            ⭐⭐ **A load-bearing range guard with zero test coverage.** `Commit::verify` refuses
+            `index >= size` before folding, and **deleting that guard left all 22 tests passing.**
+            The test *named* `index_beyond_size_is_not_a_member` builds its rogue witness with
+            `siblings: Vec::new()`, so the fold refuses it for a **missing sibling** and never
+            reaches the range check — it passes for a reason narrower than its name, this arc's
+            signature defect, now found in the crate's own suite after doctests, shell checks, and
+            an order-blind bijection. Without the guard, 528 out-of-range relabelings across sizes
+            1..=12 mint an `Included` whose index is outside the committed set. Fixed with
+            `index_at_and_beyond_size_is_refused_by_the_range_guard`, isolating the guard at size 1
+            where the fold is the identity; verified it FAILS on guard removal while the old test
+            still passes.
+            ⭐⭐ **A guard against a value that never shipped.** `separability_gap_is_exactly_two_p`
+            asserted `gap != 0x0000_0002_0000_0366`, labelled as the historical dropped-digit error.
+            The actual historical error was `0x2_0000_0366` — a **different number, three zeros
+            dropped, not two**. The line defended against a value no draft ever carried, and both
+            `assert_ne!`s were **entailed by the `assert_eq!` above them** — checks that cannot
+            fail. Deleted rather than corrected (a correct-but-entailed assertion is still dead), and
+            the "two hex zeros" prose fixed to "three".
+            ⭐ **The retracted reading reappeared one file over.** `Sol/Corona.lean` still billed
+            `accumulator_stale_is_rejected_by_every_fold` as "NEW DATUM dir. 2 / the brand's
+            intra-primitive boundary" — the exact reading retracted in the wire round 8, resurfaced
+            in the scoreboard under different wording. The retracted-phrase sweep missed it because
+            **it greps strings, not claims.** Fixed to what the theorem states: a stale witness is
+            refused by every fold, hash-independently.
+            ⭐ **A count that dated the phrase to before it existed.** The wire said the positive
+            direction had been "claimed for eight rounds"; the phrase entered round 2 (`5198210`)
+            and was retracted round 8, so it lived **six** rounds and did not exist in round 1.
+            Fixed to "six rounds".
+            ⛔ **REJECTED CRITICAL (verified, not deferred):** a lens argued the `2⁶²` witness
+            `[56,244,40,39,5,183,25,254,11,15]` was inert — exercising a vacuous branch, killing a
+            mutation that "cannot be applied to the test". **False, checked both directions:** a
+            mutation *substitutes* the `tail % 2⁶²` modulus, and removing the witness lets that
+            mutation SURVIVE. The comment was right; the witness is load-bearing. One sub-claim of
+            theirs held — the `Σ=0` recurrence entry discriminates nothing — and was fixed
+            (`fnv_recurrence` comment: "each lands on a value that discriminates" is false for that
+            row).
+            **Composition shift, not just a lower count.** Round 8→9→10 on the surface went
+            3 → 2 → 4, but round 10's were found by reading **code** for the first time; the range
+            guard is a genuine coverage gap, not a fix artifact of a prior round. **Verification at
+            close:** 483 unit + 126 doctests across 68 suites, clippy/fmt/rustdoc `-D warnings`
+            clean, corona **25/25**, sol **29/29**, `lake build` 1962 jobs. Removed the last
+            line-distance locator ("300 lines above" → an intrinsic description). corona `1093a86`,
+            sol `692fdef`. Ledgered MODERATEs carried under freeze; **no clean round yet — #5
+            unmet after ten.**
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
