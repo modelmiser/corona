@@ -1,4 +1,4 @@
-//! # accumulator-types — an append-only Merkle accumulator, generatively branded per epoch
+//! # accumulator-types — an append-only Merkle accumulator, generatively branded per snapshot
 //!
 //! Corona **leaf 11**. Every prior leaf that used the **E0308-class brand**
 //! (`vss-types`, `merkle-types`, `mss-types`, and `vid-types`, which reuses merkle's
