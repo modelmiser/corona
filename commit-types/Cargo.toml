@@ -13,8 +13,11 @@ description = "Corona leaf 26 (GRADUATED) — a cryptographic commitment (hash-b
 # research rung used is replaced by domain-framed **SHA-256** (via the audited
 # `sha2` crate) behind the same `hash::digest_of` seam — the seam's module and
 # function names are unchanged; only the body and the `Digest` output width
-# (`u64` -> `[u8; 32]`) change. Because commit-types is a NO-DEPENDENT leaf, the
-# output-type widening carries **zero** blast radius (contrast the merkle hub).
+# (`u64` -> `[u8; 32]`) change. The output-type widening carries **zero** blast radius
+# across the LEAF graph — no other leaf depends on this one (contrast the merkle hub).
+# Scoped deliberately: `tools/compose-probes` was added later by the composition search
+# and does path-depend on this crate, so the unqualified "NO-DEPENDENT leaf" this
+# comment carried until 2026-07-23 was false. See src/lib.rs for the same correction.
 # `forbid(unsafe_code)` in this crate governs *our* code, not the vetted dependency.
 [dependencies]
 sha2 = "0.10"

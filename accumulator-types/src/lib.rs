@@ -1,7 +1,8 @@
 //! # accumulator-types — an append-only Merkle accumulator, generatively branded per epoch
 //!
 //! Corona **leaf 11**. Every prior leaf that used the **E0308-class brand**
-//! (`vss-types`, `merkle-types`, `mss-types`) pointed it at one thing: *provenance*
+//! (`vss-types`, `merkle-types`, `mss-types`, and `vid-types`, which reuses merkle's
+//! brand to pen an intermediate rather than introducing its own) pointed it at *provenance*
 //! — "which commitment / which root minted this witness." This leaf points the same
 //! primitive at a new axis, *time*, and asks:
 //!
@@ -73,8 +74,10 @@
 //! root-staleness. The **converse fails**: `Accumulator` is `Clone`, so two forks of one
 //! ancestor reach the *same* epoch with *different* roots, and a witness can be
 //! epoch-fresh against one fork while root-stale against the other. Within one
-//! accumulator, though, any `add` changes the commitment (with overwhelming probability
-//! — the ~2³² bound of [`hash`], not a structural fact), so
+//! accumulator, though, any `add` changes the commitment (with overwhelming probability,
+//! not as a structural fact — for *honest* adds the governing number is the ~2⁻⁶⁴ chance
+//! two snapshots collide, while [`hash`]'s ~2³² is what an *adversary* must spend to force
+//! one; two different models, and only the second is a security bound), so
 //! [`Commit::verify`]'s fold would *already* reject a stale witness on its own: its
 //! authentication path no longer matches the new snapshot, either because it carries
 //! the wrong *number* of siblings for the new size (caught at the sibling-count check)
@@ -596,6 +599,50 @@ mod tests {
             acc.add(e);
         }
         acc
+    }
+
+    /// Pins the number `snapshot_scoped`'s docs state in prose: **300 cross-lineage
+    /// same-epoch presentations, 0 accepted**. `Accumulator` is `Clone`, so two forks of
+    /// one ancestor reach the same epoch with different roots — the converse this crate's
+    /// header refutes — and a witness fresh against one fork must still be refused by the
+    /// other. The refusal comes from the fold, never from the epoch compare, which is why
+    /// the count belongs to a test rather than to a sentence.
+    #[test]
+    fn three_hundred_cross_lineage_same_epoch_presentations_are_all_rejected() {
+        // 25 base sizes x 12 divergences = exactly 300 presentations, so the number in
+        // the prose is the loop bounds rather than a remembered measurement.
+        let mut rejected = 0usize;
+        let mut accepted = 0usize;
+        for n in 1..=25usize {
+            let base_elems: Vec<Vec<u8>> =
+                (0..n).map(|i| format!("base-{i}").into_bytes()).collect();
+            let refs: Vec<&[u8]> = base_elems.iter().map(|v| v.as_slice()).collect();
+            let base = built(&refs);
+            // A fork sharing the ancestor's epoch but not its contents.
+            let mut fork = base.clone();
+            let mut base = base;
+            for idx in 0..12 {
+                fork.add(format!("fork-{idx}").as_bytes());
+                base.add(format!("cont-{idx}").as_bytes());
+                assert_eq!(base.epoch(), fork.epoch(), "forks must stay epoch-aligned");
+                let witness = base
+                    .snapshot_scoped(|_c, prover| prover.witness(0))
+                    .expect("non-empty")
+                    .expect("index 0 exists");
+                let verdict = fork.snapshot_scoped(|commit, _p| {
+                    commit.verify(base_elems[0].as_slice(), &witness).is_ok()
+                });
+                match verdict {
+                    Some(true) => accepted += 1,
+                    _ => rejected += 1,
+                }
+            }
+        }
+        assert_eq!(accepted, 0, "no cross-lineage witness may be accepted");
+        assert_eq!(
+            rejected, 300,
+            "the docs claim exactly 300 presentations, all rejected"
+        );
     }
 
     #[test]

@@ -2,7 +2,7 @@
 name = "accumulator-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 11 — an append-only Merkle accumulator with witness staleness: the brand widened from provenance to snapshot identity (E0308), and the line where freshness stops reducing. Graduated: domain-separated SHA-256 (via sha2), u64-truncated, behind the unchanged hash seam. The 64-bit seam caps root-binding at a ~2^32 birthday bound — still not production crypto. See CHARTER.md."
+description = "Corona leaf 11 — an append-only Merkle accumulator with witness staleness: the brand widened from provenance to snapshot identity (E0308-class, realized as a generative lifetime, so the literal diagnostic is E0521), and the line where freshness stops reducing. Graduated: domain-separated SHA-256 (via sha2), u64-truncated, behind the unchanged hash seam. The 64-bit seam caps root-binding at a ~2^32 birthday bound — still not production crypto. See CHARTER.md."
 license = "MIT"
 
 # Graduated backend: the audited RustCrypto SHA-256 replaces the toy FNV-1a behind

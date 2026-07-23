@@ -39,8 +39,31 @@ m=re.search(r'members\s*=\s*\[(.*?)\]', s, re.S)
 print(len(re.findall(r'"([^"]+)"', m.group(1))))
 PY
 )
-charter_rows=$(grep -cE '^\| *`?[a-z0-9-]+-types`? *\||^\| *`?corona-core`? *\|' CHARTER.md || true)
 ok "workspace members" "$members"
+
+# The CHARTER registry must have a row per workspace member. This was a DEAD variable for
+# months: computed into `charter_rows` and never compared, so nothing guarded the registry
+# while three separate ordinal claims drifted (round 4, 2026-07-23). Its old pattern also
+# measured 33 against 34 members, because `numerical-accuracy` does not end in `-types` —
+# an instrument that would have failed if it had ever been read.
+charter_rows=$(grep -cE '^\| *`?[a-z0-9-]+`? *\| *(research \(toy\)|\*\*graduated\*\*) *\|' CHARTER.md || true)
+cmp_n "CHARTER registry rows == workspace leaves" "$charter_rows" "$((members - 1))"
+
+# Graduation bookkeeping: the count of `**graduated**` rows, the ordinal the newest row
+# claims, and the numbered narrative ("The **first**… **tenth**") must agree. Round 4 found
+# the narrative one entry short of the registry with no instrument to catch it.
+grad_rows=$(grep -cE '^\| *`?[a-z0-9-]+`? *\| *\*\*graduated\*\* *\|' CHARTER.md || true)
+ordinals="first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth"
+narrative=0
+for o in $ordinals; do
+  grep -qE "^The \*\*$o\*\*|^The \*\*$o leaf-level\*\*" CHARTER.md && narrative=$((narrative+1)) || break
+done
+cmp_n "graduated rows == numbered narrative entries" "$grad_rows" "$narrative"
+# and every "(Nth graduation" claim in the registry must be <= the number of graduated rows
+for c in $(grep -ohE '\(([0-9]+)(st|nd|rd|th) graduation' CHARTER.md | grep -oE '[0-9]+' | sort -un); do
+  [ "$c" -le "$grad_rows" ] && ok "ordinal '${c}th graduation' <= graduated rows" "$c <= $grad_rows" \
+                            || bad "ordinal '${c}th graduation'" "<= $grad_rows" "$c"
+done
 # leaf-count claims in prose must equal members-1 (corona-core is not a leaf)
 # CANONICAL docs only. TODO/DEVLOG/INSIGHTS are append-only logs: a past-tense count in a
 # dated entry is correct BECAUSE it was true then. Only present-tense assertions can drift.
