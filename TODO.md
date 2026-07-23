@@ -2158,7 +2158,12 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       mutations (wrong code, negative made to compile) are killed. check-claims 12→15 (the leaves
       claim now scoped to the new doc, plus the pair count checked as DERIVED, C(leaves,2)).
 - [x] **GARDEN-WIDE: the `compile_fail,EXXXX` fence was never enforced — FIXED 2026-07-22.**
-      Found while building the composition probes, from a mutation that SURVIVED. On stable,
+      Found while building the composition probes, from a mutation that SURVIVED — but this was
+      REDISCOVERY: `arq-types` (2026-07-19), `ecash-types`, `ratchet-types` and `swap-types` already
+      documented the nightly-only enforcement and compensated BY HAND ("verified against the compiler
+      directly"). The false fence was in `vid-types`, one of the 29 leaves that never mentioned it.
+      ⇒ the finding is not "nobody knew" but **knowing did not help**: recorded 4×, never promoted to
+      a doc, a policy or a check; manual compensation does not outlive its author's attention. On stable,
       rustdoc parses a doctest's error code and **ignores** it: a fence reading `E0599` passes
       on a snippet failing `E0382` (mutation-tested both ways). Only `cargo +nightly test --doc`
       enforces it. This matters because the fenced doctest is the garden's central evidentiary
