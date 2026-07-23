@@ -3089,6 +3089,40 @@ authoritative value is the number of `[x] **Round N**` entries.)
             — streak stays 0 — and the lesson resets the convergence bar: the wire needs fresh
             *differently-angled* lenses, not repetitions of the same checklist. **#5 unmet after
             fourteen.**
+      - [x] **Round 15 — NOT CLEAN, 1 crate coverage gap** (+ 3 LOW ledgered). **Wire CLEAN on the
+            SHARPENED check.** Acting on round 14's lesson, the wire lens was re-aimed at the exact
+            blind spot: cross-check every scoreboard row's characterization against the theorem's own
+            statement AND source docstring. It did so for all five rows (68-72) and found them
+            consistent — row 72, the thrice-buggy one, now verbatim-matches "the epoch gate is total
+            and fold-independent". **This is a materially stronger clean than r11-13**: the wire is
+            now clean on the very axis where its defect class lived, not merely on axiom counts. Its
+            lone LOW (`README` "the epoch brand") the lens **could not demonstrate false** — it names
+            the lifetime literally called `'epoch` (lib.rs uses "`'epoch` brand" throughout), so
+            unlike r14's "branded *per epoch*" it is true; ledgered, not touched. (Freeze cuts both
+            ways: act on demonstrable falsity, not on an epoch-mention's surface.)
+            ⚠️ **Crate "mutation-tight" was premature a THIRD time — collection structural mutants.**
+            All three crate lenses reported CLEAN (correctness "mutation-tight", adversarial 11
+            vectors + 662k fuzz, claims clean) — but the correctness lens's own "no non-equivalent
+            mutant survives" was too shallow again. `authenticated_indices` (a Vec-returning read) was
+            tested **only at N=1**, and a one-element slice is invariant under reversal and
+            truncation, so the `.rev()` and `.take(1)` structural mutants **survived** (verified both
+            do). Round 13 had called this function tight on **value** mutants alone. Pinned with
+            `authenticated_indices_preserves_order_and_count` — a non-palindromic 3-slice `[0,2,4]`
+            asserting exact order+count; both mutants now killed (26 pass / 1 fail each). ⇒ **Lesson
+            (compounding): for a collection-returning fn, value mutants do not exhaust the
+            non-equivalent set — apply STRUCTURAL operators (rev/take/skip) too.** (cf. is_empty
+            r12→r13: same shape, different operator class missed.)
+            **Two LOWs ledgered (freeze, not demonstrably false):** the `forbid(unsafe_code)`
+            parenthetical (reviewer confirms the *meaning* is correct, only dense — and it is the
+            passage r11 already touched, so re-touching is a ratchet); `"See CHARTER.md"` resolving
+            to the workspace root not the crate dir (a garden-wide convention, unpublished crate).
+            **Verification:** 27 crate unit + 2 doctests (**487** workspace), clippy/fmt/rustdoc
+            clean, corona **25/25**, sol **29/29** (wire unchanged, `d750da9`). corona `455270b`.
+            Round 15 **NOT clean** — streak stays 0 — but the two halves are now on opposite
+            trajectories the arc can reason about: **the wire is clean on its own defect axis; the
+            crate's only remaining findings are ever-narrower mutation-operator classes I keep
+            under-sampling.** Next: close the structural-mutant class DECISIVELY (audit + a workflow
+            correctness-lens patch) so r16 cannot surface another. **#5 unmet after fifteen.**
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
