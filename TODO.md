@@ -2770,7 +2770,27 @@ referent for the round count.)
             account is exact. 438 coefficient × 70 modulus mutant sweep: survivors are exactly the
             7 coefficients `≡ 2 (mod 4)`, sole modulus survivor `2⁶³`, **no mutant separated only
             outside `{2⁶³, 2⁶²}`** — the two-point enumeration is genuinely complete.
-      - [ ] **Round 9** — round 8's fixes, under FREEZE.
+      - ⚠️ **What the freeze does to the terminating condition — written before round 9's results,
+            same reason the freeze itself was.** CHARTER's #5 says "cold review converges (2 clean
+            rounds)" and never defines *clean*. The de-facto garden standard across ~30 arcs is
+            **0 CRITICAL + 0 MODERATE**. ⇒ ***Under the freeze that standard is unreachable by
+            construction***, because ledgered MODERATEs are deliberately not fixed and so recur on
+            every subsequent round's read of the same artifact. A protocol that permanently
+            preserves a class of finding cannot terminate against a bar that counts it.
+            So one of two things must be true, and it should be said out loud rather than
+            discovered at round 15: either **this arc's terminating condition is two consecutive
+            rounds with zero demonstrably-false claims**, or the freeze must be lifted before the
+            arc can close. I am taking the first, and recording that this **is** a change to how #5
+            is measured — the same change `lamport-types` made at round 19 and never reflected in
+            CHARTER. It is disambiguating my own protocol, not amending CHARTER; CHARTER's text is
+            untouched and the enforcement note above states the contradiction for the owner to
+            resolve. Stating it now, before the round-9 lenses report, so it cannot be tuned to
+            whatever they found.
+      - [ ] **Round 9** — round 8's fixes; a repo-wide sweep for more decayed numeric claims (round
+            8 found five by widening one population, and there is no reason to think that
+            population was special); and an audit of the freeze **triage itself** — of round 8's
+            20 ledgered MODERATEs, is any actually false, and did any of the 14 "CRITICAL" fixes
+            touch something merely imprecise? The freeze is only as good as that classification.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
