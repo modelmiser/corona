@@ -2306,3 +2306,39 @@ is a fresh open-ended domain, not backlog. Nothing auto-starts.
       a new composition worth exposing — and the reaction plus the COMPOSITION-SEARCH section IS
       that exposure. *Promotion is a deliberate act, not momentum; on this evidence it is not
       earned.* 13 reactions + 13 rejections.
+
+## Next graduation — candidate survey, 2026-07-22 (analysis only, nothing built)
+
+Same discipline as the leaf-34 decision: run the cheap analysis as the decision procedure for
+the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
+
+- [x] **Surveyed all ungraduated (0.1.0) leaves for a contained backend swap.** They split into
+      three classes, and only the first is a graduation in CHARTER's sense (criterion #2, a
+      *vetted backend* behind an *unchanged seam*):
+      1. **Toy HASH, drop-in vetted replacement exists** → `accumulator-types` (FNV-1a in
+         `hash.rs`). This is the merkle/translog/lamport pattern.
+      2. **Toy GROUP, no drop-in** → `vss`, `frost`, `sigma`, `vdf`, `pospace`, `blindsig`.
+         Replacing a toy prime-order/RSA group means adopting a real EC or RSA dependency: a
+         **design decision, not a swap**. Not a next-graduation candidate; would need its own
+         scoping.
+      3. **No crypto backend to vet** → `threshold`/`erasure` (GF(256) is genuine arithmetic, a
+         pedagogical *size* not a placeholder), `unit`, `numerical-accuracy`.
+- [ ] **CANDIDATE: `accumulator-types` (leaf 11) — toy FNV-1a → SHA-256, u64-truncated.**
+      - **Seam is type-preserving.** `hash::leaf_hash(&[u8]) -> u64` and
+        `hash::node_hash(u64, u64) -> u64` — a `u64 → u64` swap, i.e. **lamport's zero
+        COMPILE-TIME blast radius shape**, not merkle's `u64 → [u8; 32]`. Values still move, so
+        it is a `0.1.0 → 0.2.0` bump.
+      - **Zero dependents — verified twice.** No crate declares a path-dep on it and no `.rs`
+        imports `accumulator_types`. (A first grep matched `translog-types/Cargo.toml`; reading
+        it showed a PROSE MENTION in a comment, not a dependency. translog depends only on
+        `sha2`.)
+      - **Cold-review converged** (leaf 11, 3 rounds, R2+R3 clean, zero code findings).
+      - **Criterion #4 is the real work: there is NO `Sol.Lib.Accumulator` wire yet.** Every one
+        of the 9 graduated leaves has a wire; accumulator would need a new one. That, not the
+        hash swap, is the substance of this graduation.
+      - **Do this in a session where agents are available.** The mechanical half (golden vectors
+        from an independent oracle, mutation tests, gates) needs no panel — today's lesson is that
+        checkers beat panels for facts. But the lamport graduation's cold review is what caught
+        the ~2³² birthday bound after the first draft published ~2⁶⁴ and never mentioned
+        collisions. That was a substantive CRYPTO-POSTURE finding from review, not prose polish.
+        The security-posture section is where a cold reader earns their keep.
