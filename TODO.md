@@ -3152,6 +3152,46 @@ authoritative value is the number of `[x] **Round N**` entries.)
             — no edits; a clean *re-review*, which is what a streak round must be). **#5: streak 1 of 2
             after sixteen. Round 17 is the confirmation round — if clean, #5 is EARNED and both repos
             push.**
+      - [x] **Round 17 — NOT CLEAN, 1 MODERATE (crate). ⛔ RETRACTS round 16's "clean": streak was
+            never really 1.** The confirmation round found a demonstrably-false claim that had been
+            latent since **round 13** and survived the r14/r15/**r16** claims lenses.
+            ⛔⛔ **The r13 "subtraction" was not pure — it ADDED a false sentence.** Deleting the
+            separability digit-history in r13, I wrote "It carries no `assert_ne!`: … a check that
+            cannot fail." **False the moment written:** the test body has `assert_ne!(gap, 0)` two
+            lines below — and that assert IS entailed by `assert_eq!(gap, 2p)` (2p ≠ 0), i.e. a check
+            that cannot fail, the *exact* anti-pattern the sentence claimed to have avoided. The
+            docstring contradicted its own test body. ⇒ **This is the crate's OWN false-convergence,
+            mirroring the wire's at r14:** three consecutive claims lenses (r14/15/16) never
+            cross-checked a docstring's claim about its test's contents against the body, so a flat
+            self-contradiction rode through — and r16's "first whole-surface-clean round" therefore
+            **contained a demonstrably-false claim the lens missed. Streak resets to 0; it was never
+            legitimately 1.**
+            **Fix = PURE subtraction (the discipline r13 violated):** deleted the false paragraph,
+            the entailed `assert_ne!` (r10's anti-pattern), AND a third redundant `assert_eq!` whose
+            message "the constant the docs print" went stale when r13 removed that printed constant —
+            the test now carries the forced-2p math + one computed `assert_eq!`, nothing added.
+            **Apparatus patch:** the workflow **claims** lens now must cross-check every docstring
+            claim about a test/fn's OWN contents ("carries no X", "pins Y", "omits Z") against the
+            body — the check that would have caught this in r13 (∥ the r15 structural-mutant patch and
+            the wire's row⇄docstring angle: each false-convergence closed by adding the specific check
+            that saw through it).
+            **⇒ LESSON (durable): a "subtraction" that adds ANY replacement sentence is new content
+            that can be false — true subtraction DELETES and adds nothing** ([[feedback_fix_is_new_content]]
+            sharpened). And: **"clean" is only as strong as the specific check the lens ran** — a
+            round is not a convergence datum on axes no lens exercised.
+            **Ledgered (freeze, not demonstrably false):** crate LOW — verify's two cheap guards
+            (freshness-first, index≥size-second) can be REORDERED without a test failing, changing
+            `Stale`↔`NotAMember` for a doubly-malformed witness; the correctness lens itself rated it
+            a *documented-immaterial* survivor (the crate's `VerifyError` doc says "do not read Stale
+            vs NotAMember as a trust boundary"), so it is contract-equivalent, not a defect. Wire LOWs
+            — `CHARTER`/`README` "per-epoch"/"epoch brand" (adjectival NAMING of the `'epoch` lifetime,
+            reviewer-rated defensible — distinct from r14's adverbial-granularity title, which was
+            false and fixed); a 3-deep nested parenthetical at `Accumulator.lean:44` (readability).
+            **Verification:** 27 crate unit + 2 doctests, clippy/fmt/rustdoc clean, corona **25/25**,
+            sol **29/29**. corona `1c361b6`, sol `d750da9`. Adversarial NO BREAK (9 vectors + 2M fuzz);
+            correctness mutation-tight; wire CLEAN a 3rd time on the row⇄docstring check. **#5: streak
+            0 after seventeen. The graduated surface changed (hash.rs), so r18 starts a fresh streak
+            on the new frozen text.**
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
