@@ -3123,6 +3123,35 @@ authoritative value is the number of `[x] **Round N**` entries.)
             crate's only remaining findings are ever-narrower mutation-operator classes I keep
             under-sampling.** Next: close the structural-mutant class DECISIVELY (audit + a workflow
             correctness-lens patch) so r16 cannot surface another. **#5 unmet after fifteen.**
+      - ⭐ **Round 16 — CLEAN. FIRST WHOLE-SURFACE-CLEAN ROUND. Streak 1/2.** Both halves clean, and
+            clean on the exact axes the arc's last findings lived:
+            • **Crate** — all three lenses CLEAN under the **patched** correctness lens (now mandating
+            STRUCTURAL mutants on collection-returning fns + BOTH constant mutants on bools). It ran
+            **60+ non-equivalent mutants across lib.rs + hash.rs, all empirically killed**; adversarial
+            NO BREAK (6 vectors + **2.5M**-check fuzz); claims CLEAN. Before the round I closed the
+            structural class myself: confirmed `authenticated_indices` pinned (r15) and that
+            `witness`'s sibling-vector order is caught by the member round-trip (an `insert(0)`
+            reversal kills 4 tests), then patched the workflow so the lens stops under-sampling.
+            • **Wire** — CLEAN a SECOND consecutive round on the row⇄docstring cross-check, live axiom
+            build again, row 72 consistent with statement + both docstrings. Two independent lenses on
+            the defect axis = the wire's real convergence.
+            **Ledgered LOWs (freeze, NOT demonstrably false):**
+            (1) crate `hash.rs:60,72-79` — the FNV knapsack cryptanalysis is written present-tense
+            ("both shipped functions", "inverting node_hash") though the shipped hashes are SHA-256.
+            **Judged a precision slip within a correctly-FRAMED section, not a bare false claim:** the
+            header (18-37) explicitly scopes the whole section to the retired FNV toy ("what the swap
+            bought", "only what this crate can check"), and the reviewer rated it LOW + "mitigated by
+            section context". Contrast r14's title, which was an UNFRAMED summary asserting "per epoch"
+            → acted on. **Rule applied: framing present + 1st occurrence ⇒ ledger; if r17 re-flags this
+            same section, that is occurrence 2 ⇒ subtract/reframe** (∥ separability slot r10→r13).
+            (2) wire `README:46` — "the epoch brand", again explicitly declared NOT false by a second
+            independent lens (names the `'epoch` lifetime). A recurring-but-cleared LOW is the healthy
+            end state, not a defect to fix.
+            **Verification:** 27 crate unit + 2 doctests (487 workspace), clippy/fmt/rustdoc clean,
+            corona **25/25**, sol **29/29**. corona `455270b`, sol `d750da9` (both UNCHANGED this round
+            — no edits; a clean *re-review*, which is what a streak round must be). **#5: streak 1 of 2
+            after sixteen. Round 17 is the confirmation round — if clean, #5 is EARNED and both repos
+            push.**
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
