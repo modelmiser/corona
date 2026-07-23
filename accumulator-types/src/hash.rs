@@ -26,8 +26,9 @@
 //! shifted exponent, shipped under the word "verbatim"; then a *genuine* restatement, still
 //! shipped under "quoted exactly" while dropping the source's `fixed-length` qualifier.
 //! (The crate's original text is not among them — it said "invertible by construction",
-//! which cites nothing and is rebutted two paragraphs above as a non-sequitur. An earlier
-//! version of this sentence counted four by folding that in.)
+//! which cites nothing and is rebutted in the paragraph immediately above as a non-sequitur. An
+//! earlier version of this sentence counted four by folding that in, and said "two paragraphs
+//! above", which lands on a heading.)
 //! **The slot itself was the defect.** A summary of someone else's argument is a claim
 //! with no checker on it, and this one had three owners in three rounds.
 //!
@@ -43,17 +44,30 @@
 //!   input"). The true statement is algebraic:
 //!   `documented − retired = (p−1)·Σₖ dₖ·p^(L−k)`, and `gcd(p−1, 2⁶⁴) = 2`, so the forms
 //!   agree **iff `Σₖ dₖ·p^(L−k) ≡ 0 (mod 2⁶³)`** — itself a knapsack in the same `dₖ`.
-//!   That admits two classes, `Σ = 0` and `Σ = 2⁶³`, and **only the first has a known
-//!   witness**: `b"h\x1f\x07\x05\x1e&:\x0f\xd9\x05"` (no zero byte, every `dₖ ≠ 0`,
-//!   `Σ = 0` exactly) makes both forms equal, found by lattice reduction at `L = 10`.
-//!   Agreements are impossible at `L ≤ 2` and become available around `L ≈ 8–9`. `fnv_recurrence_exponent_is_l_plus_one_minus_k` asserts the identity, the
-//!   agreement criterion, and that counterexample. (Both shipped functions prepend a tag, so the tagged instantiation replaces
+//!   That admits two classes, `Σ = 0` and `Σ = 2⁶³`, and **both have witnesses**, each found by
+//!   lattice reduction at `L = 10` and each pinned as a case:
+//!   `b"h\x1f\x07\x05\x1e&:\x0f\xd9\x05"` has `Σ = 0` exactly, and
+//!   `[74, 81, 241, 16, 56, 222, 224, 193, 82, 209]` has `Σ = 2⁶³` exactly. Neither contains a
+//!   zero byte and both have every `dₖ ≠ 0`. (An earlier draft said only the first class had a
+//!   known witness; the second turned up as soon as anyone looked for it, and it is what pins
+//!   the `p−1` in the criterion.)
+//!   The all-zero input agrees at **every** length, so no length is agreement-free — an earlier
+//!   draft said "impossible at `L ≤ 2`" while this file's own boundary case asserts the opposite.
+//!   Agreements with a *nonzero* `dₖ` are what need length: exhaustively over all 16 843 008
+//!   inputs of 1–3 bytes the all-zero input is the only agreement at all, and they become
+//!   available around `L ≈ 8–9` (`256^L` inputs against a `2⁶³` congruence).
+//!   `fnv_recurrence_exponent_is_l_plus_one_minus_k` asserts the identity, the
+//!   agreement criterion, and both witnesses. (Both shipped functions prepend a tag, so the tagged instantiation replaces
 //!   `OFFSET` with `(OFFSET ⊕ tag)·p` and runs `L` over the payload; the untagged form
 //!   above is the one the test pins.)
 //!
-//! - **Both of this crate's hashes reduce to the same dimension-8 *shape* — three distinct
-//!   instances of it, differing only in the base constant — so neither was ever out of
-//!   reach.** An earlier draft claimed `node_hash`'s 17-byte input made the
+//! - **Both of this crate's hashes reduce to the same dimension-8 *shape*, each by its own
+//!   route, so neither was ever out of reach.** (Earlier drafts put a count on the instances —
+//!   first "the same instance", then "three distinct instances differing only in the base
+//!   constant". Neither survives the file's own individuation: if instances differ by base
+//!   constant, then `node_hash` alone is a `2⁶⁴`-member family, one per fixed left child. The
+//!   *shape* is what is shared; counting instances adds nothing and was wrong twice.) An
+//!   earlier draft claimed `node_hash`'s 17-byte input made the
 //!   enumeration "not feasible at all" at ~2⁸⁰ — **false, and false in the direction that
 //!   flatters the defence.** An attacker inverting `node_hash` fixes the left child: the
 //!   first 9 bytes `0x01 ‖ be8(l)` fold to a *constant* state, leaving `be8(r)`'s 8 bytes
@@ -94,9 +108,10 @@
 //! the `1.25·2³²` figure with negligible memory **and** linear speedup in the processor
 //! count. Quoting ~3× as the *memory-free* price over-prices the attacker — the direction
 //! that flatters the defence, which is the one to be careful about. (`lamport-types`
-//! carried the same phrasing and was corrected in `709580b`, the round-3 commit — which
-//! predates this paragraph's current wording, so the two are not in lockstep: lamport still
-//! lacks the Brent refinement above.)
+//! carried the same phrasing and was corrected in `709580b`, the round-3 commit. It carries
+//! Brent and van Oorschot–Wiener too; what it does not carry is the *quantified* Brent
+//! refinement above — the teleporting tortoise and the ~1.5× figure. An earlier version of this
+//! parenthetical said lamport "still lacks the Brent refinement", which overstates the gap.)
 //! Offline and key-independent throughout; two leaves that collide are interchangeable
 //! under any root containing one.
 //!
@@ -121,9 +136,14 @@
 //! the freshness check passes and the fold refuses on the root. An earlier draft of this
 //! paragraph credited the epoch gate and called it "the leaf's headline residue" — which
 //! contradicts this crate's own [`crate::VerifyError::Stale`] doc ("carries no security
-//! weight … never on the `pub epoch` field") and the test two files down that says the
-//! refusal comes from the fold. Wrong mechanism, and wrong in the direction that flatters
-//! the defence.
+//! weight … never on the `pub epoch` field"). Wrong mechanism, and wrong in the direction that
+//! flatters the defence. (That draft also cited "the test two files down" — this crate has
+//! exactly two source files, so the phrase resolves to nothing, and the test it meant,
+//! `three_hundred_cross_lineage_same_epoch_presentations_are_all_rejected` in `lib.rs`, asserts
+//! only that verification fails: it never distinguishes `Stale` from `NotAMember`, and it covers
+//! cross-lineage presentation rather than the superseded-root case this row is about. The
+//! statement above rests on the `Stale` doc and on `Witness`'s field visibility, both checkable
+//! in this crate — not on that test.)
 //! An earlier draft of this file omitted the row entirely, presenting the outer two as
 //! exhaustive; `lamport-types` carries the row too, though as a *primitive* cost rather
 //! than a forgery, and its own centrepiece is the ~2³² collision row.
@@ -225,8 +245,11 @@ mod tests {
         acc
     }
 
-    /// The docs state `h_L = OFFSET·p^L + Σₖ dₖ·p^(L+1−k)` (1-based `k`). **That is the
-    /// only universal here, and it is what this test asserts first.**
+    /// The docs state `h_L = OFFSET·p^L + Σₖ dₖ·p^(L+1−k)` (1-based `k`), and that is what this
+    /// test asserts first. (An earlier version called it "the only universal here", which the
+    /// body contradicts twice: the algebraic identity below is labelled *universal* in so many
+    /// words, and the agreement biconditional holds for all inputs too. What is *not* universal
+    /// is the agreement itself — the intended contrast, drawn the wrong way.)
     ///
     /// The retired `p^(L−k)` form is a *different instance*, but "it always disagrees" is
     /// **false**, and two earlier versions of this comment said otherwise — first
@@ -238,21 +261,35 @@ mod tests {
     /// The real characterisation is algebraic and is asserted below:
     /// `documented − retired = (p−1)·Σₖ dₖ·p^(L−k)`, and since `gcd(p−1, 2⁶⁴) = 2`, the two
     /// forms agree **iff `Σₖ dₖ·p^(L−k) ≡ 0 (mod 2⁶³)`** — a modular knapsack in the very
-    /// `dₖ` this module is about. Solutions are impossible at `L ≤ 2`, become available
-    /// around `L ≈ 8–9` (`256^L` inputs against a `2⁶³` congruence) and are abundant by
-    /// `L = 10`, where `b"h\x1f\x07\x05\x1e&:\x0f\xd9\x05"` — **no zero byte, every
-    /// `dₖ ≠ 0`** — makes both forms equal. It is pinned as a case, because a cold reviewer
-    /// found it by lattice reduction and it would have broken the previous assertion.
+    /// `dₖ` this module is about. The all-zero input satisfies it at every length (Boundary 1
+    /// below); an earlier version of this comment said "impossible at `L ≤ 2`" while that
+    /// boundary case, forty lines down, asserted the opposite. Exhaustive enumeration of all
+    /// 16 843 008 inputs of 1–3 bytes returns the all-zero input and nothing else. Agreements
+    /// with a *nonzero* `dₖ` become available around `L ≈ 8–9` (`256^L` inputs against a `2⁶³`
+    /// congruence) and are abundant by `L = 10`, where two are pinned below — one per residue
+    /// class of the criterion.
     ///
-    /// ⚠ The lesson worth keeping: this test was **mutation-tested** when written, and
-    /// three mutations were killed. Mutation testing shows a test detects changes to the
-    /// *code*; it says nothing about whether the test's *input domain* is adequate to the
-    /// claim in its doc comment. Five short hand-picked inputs could not reach `L = 10`.
+    /// ⚠ The lesson worth keeping, and it cost two rounds. This test was **mutation-tested**
+    /// when written and three mutations were killed; its doc comment still stated a false
+    /// universal ("they agree iff the input is all-zero"), which a cold reviewer broke with a
+    /// ten-byte input found by lattice reduction — the same knapsack this module is about.
+    /// Mutation testing shows a test detects changes to the *code*; it is silent on whether the
+    /// test's *input domain* is adequate to the claim in its doc comment. The diagnosis printed
+    /// here for a round was wrong too: it blamed short inputs, but `b"0123456789"` was already
+    /// in the set, so the domain **did** reach `L = 10`. Length was never the obstacle.
+    ///
+    /// Which is why the criterion is no longer tested through FNV inputs at all. Its
+    /// discriminating points are `2⁶³` and `2⁶²`, and an FNV `tail` is pseudorandom, so it
+    /// essentially never lands on a power of two: **no quantity of inputs here could have pinned
+    /// the coefficient.** That domain was not merely inadequate, it was structurally incapable.
+    /// `agreement_criterion_is_pinned_on_its_own_domain` varies `t` directly; this test keeps
+    /// the FNV half.
     #[test]
     fn fnv_recurrence_exponent_is_l_plus_one_minus_k() {
-        // The last entry is the round-5 counterexample: it makes `retired == h`, so the
-        // agreement assertion below is exercised in BOTH directions. Without it every input
-        // gave `false == false`, which passes at any modulus — a vacuous check.
+        // The last TWO entries are the lattice-found agreements, one per residue class of the
+        // criterion (`Σ = 0` and `Σ = 2⁶³`). They make `retired == h`, so the agreement
+        // assertion below is exercised in both directions; without them every input gave
+        // `false == false`, which passes at any modulus — a vacuous check.
         for input in [
             &b"a"[..],
             &b"ab"[..],
@@ -260,6 +297,7 @@ mod tests {
             &b"alice"[..],
             &b"0123456789"[..],
             &[104u8, 31, 7, 5, 30, 38, 58, 15, 217, 5][..],
+            &[74u8, 81, 241, 16, 56, 222, 224, 193, 82, 209][..],
         ] {
             let l = input.len() as u32;
             let mut h = FNV_OFFSET;
@@ -286,15 +324,13 @@ mod tests {
                 FNV_PRIME.wrapping_sub(1).wrapping_mul(tail),
                 "doc - ret must equal (p-1) * sum(d_k p^(L-k))"
             );
-            // ...hence the forms agree EXACTLY when (p-1)*tail vanishes mod 2^64. Asserted
-            // in this direct form rather than as `tail % 2^63 == 0`, which these inputs
-            // cannot discriminate (tail = 0 mod 2^63 implies tail = 0 mod 2^62).
-            //
-            // MUTATION RECORD, so the next reader does not over-trust this line: replacing
-            // the criterion's `p-1` by `p-2` does NOT fail, because the only agreement case
-            // known here has `tail == 0` exactly, and every coefficient annihilates 0. What
-            // pins the `p-1` is the identity assertion above, where that same mutation DOES
-            // fail. Two assertions, one pinned coefficient — not two independent ones.
+            // ...hence the forms agree EXACTLY when (p-1)*tail vanishes mod 2^64. An earlier
+            // comment said this direct form was chosen over `tail % 2^63 == 0` because "these
+            // inputs cannot discriminate" the two — which implies better inputs could. NO input
+            // can: p-1 = 2 * 549755814105 with the cofactor ODD, so (p-1)*t == 0 mod 2^64 is
+            // *identically* t == 0 mod 2^63. The two are the same predicate and the choice
+            // between them is presentational. What pins the coefficient is
+            // `agreement_criterion_is_pinned_on_its_own_domain`, which varies `t` directly.
             assert_eq!(
                 retired == h,
                 FNV_PRIME.wrapping_sub(1).wrapping_mul(tail) == 0,
@@ -311,17 +347,70 @@ mod tests {
             let _ = l;
             assert_eq!(base, h, "both forms collapse to the base term here");
         }
-        // Boundary 2: agreement WITHOUT any zero byte. Found by lattice reduction in cold
-        // review round 5; it falsified this test's previous doc comment, so it is pinned.
-        {
-            let input: &[u8] = &[104, 31, 7, 5, 30, 38, 58, 15, 217, 5];
+        // Boundary 2: agreements WITHOUT any zero byte, one per residue class of the criterion.
+        // Both found by lattice reduction in cold review (rounds 5 and 6). The first falsified
+        // this test's doc comment; the second falsified the claim that only `Σ = 0` had a
+        // witness — shipped as a fact about the lattice when it was a report on how hard anyone
+        // had looked.
+        for (input, want_tail) in [
+            (&[104u8, 31, 7, 5, 30, 38, 58, 15, 217, 5][..], 0u64),
+            (
+                &[74u8, 81, 241, 16, 56, 222, 224, 193, 82, 209][..],
+                1u64 << 63,
+            ),
+        ] {
             let (h, ds, base, l) = decompose(input);
-            assert!(!input.contains(&0), "the counterexample has no zero byte");
+            assert!(!input.contains(&0), "the witness has no zero byte");
             assert!(ds.iter().all(|d| *d != 0), "and every dk is non-zero");
-            let retired = ds.iter().enumerate().fold(base, |acc, (i, d)| {
+            let tail = ds.iter().enumerate().fold(0u64, |acc, (i, d)| {
                 acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32 - 1)))
             });
-            assert_eq!(retired, h, "yet the retired form agrees here");
+            assert_eq!(tail, want_tail, "and it sits in the intended residue class");
+            assert_eq!(
+                base.wrapping_add(tail),
+                h,
+                "yet the retired form agrees here"
+            );
+        }
+    }
+
+    /// The agreement criterion, tested on **its own domain** rather than through FNV.
+    ///
+    /// `fnv_recurrence_exponent_is_l_plus_one_minus_k` cannot pin this. Its `tail` values come
+    /// out of an FNV walk and are pseudorandom, while the criterion's discriminating points are
+    /// exactly `2⁶³` (where a wrong coefficient stops annihilating) and `2⁶²` (where a wrong
+    /// modulus starts accepting). A pseudorandom `u64` hits neither — 2000 random draws separate
+    /// none of the mutations below. That is why an earlier version of this file could only
+    /// *record* a surviving mutation and explain it as structural. It was not structural; it was
+    /// a domain that could never reach the witnesses.
+    ///
+    /// Sampling would not fix it either, since the discriminating set has measure ~0. The points
+    /// are enumerated on purpose.
+    #[test]
+    fn agreement_criterion_is_pinned_on_its_own_domain() {
+        // p-1 = 2 * (odd), so multiplying by it costs exactly one bit of headroom:
+        // (p-1)*t == 0 mod 2^64  <=>  t == 0 mod 2^63. Both halves asserted, not assumed.
+        assert_eq!(FNV_PRIME.wrapping_sub(1) % 2, 0, "p-1 must be even");
+        assert_eq!(
+            (FNV_PRIME.wrapping_sub(1) / 2) % 2,
+            1,
+            "and its cofactor must be odd, or the equivalence below shifts"
+        );
+        for t in [
+            0u64,
+            1 << 63,
+            1 << 62,
+            (1 << 63) | (1 << 62),
+            1,
+            u64::MAX,
+            0x8000_0000_0000_0001,
+            0x4000_0000_0000_0001,
+        ] {
+            assert_eq!(
+                FNV_PRIME.wrapping_sub(1).wrapping_mul(t) == 0,
+                t % (1 << 63) == 0,
+                "(p-1)*t == 0 must be exactly t == 0 mod 2^63, at t = {t:#x}"
+            );
         }
     }
 
