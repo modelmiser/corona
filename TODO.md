@@ -3054,6 +3054,41 @@ authoritative value is the number of `[x] **Round N**` entries.)
             slot that had defied correction twice. **#5 unmet after thirteen. Wire converged (3
             rounds); the crate's open question for round 14 is whether the correctness lens, now that
             the accessor class is fully drained, finds anything at all.**
+      - [x] **Round 14 — NOT CLEAN, but the halves inverted: crate essentially clean, WIRE found a
+            real defect.** For the first time the crate came back with **all three lenses CLEAN** —
+            correctness reported **mutation-tight** (every non-equivalent mutant across all functions
+            killed, golden hashes match an independent oracle, worked example re-derived by hand),
+            adversarial NO BREAK (9 vectors + **4M**-case fuzz), claims CLEAN. The accessor draining
+            and separability deletion worked: the correctness lens ran dry. ⚠️ **But "clean crate"
+            was not quite true.** The claims lens filed as **LOW** a title that is *demonstrably
+            false*: `lib.rs:1` read "generatively branded **per epoch**", while the brand doc
+            (203-205), `Cargo.toml`'s description ("snapshot identity"), and the leaf's whole
+            `same_epoch_distinct_scopes` datum say the brand is **per snapshot instance, finer than
+            the epoch** ("two snapshots at one epoch get brands that never unify"). The freeze acts on
+            demonstrable falsity, not on the reviewer's severity label — fixed to "per snapshot".
+            (Second crate LOW ledgered: `Cargo.toml`/`hash.rs` say "See CHARTER.md", which lives at
+            the workspace root, not in the crate — a locality nit, not false; the crate is unpublished.)
+            ⛔⛔ **RETRACTION: the wire was NOT converged.** I recorded "wire converged (3 rounds)"
+            after rounds 11-13. Round 14's wire lens — a *fourth* independent reader — found a
+            **CRITICAL**: `Sol/Corona.lean` row 72 ended "the content is that staleness is a **named**,
+            total verdict", while the **same file's docstring 87 lines above** (1104-1106) says "Nor
+            is it 'a *named* verdict' … naming is precisely what it cannot express", and the model's
+            `verify` returns bare `none` for a stale witness AND a non-member alike (so it *provably*
+            cannot name "Stale"). A **MODERATE** twin sat in the source docstring (`Accumulator.lean:289`,
+            "named, total, hash-independent verdict") against its own disclosure (i) ("cannot express
+            the named verdict"). **This is the THIRD finding on this one theorem's "content" clause**
+            (r8 retracted "NEW DATUM dir. 2"; r10 caught it resurface in the scoreboard; r14 catches
+            "named" in both). Dropped "named": the row now matches the docstring's authoritative "the
+            epoch gate is total and fold-independent". ⇒ **Three "clean" rounds is not convergence
+            when the reviewers share a blind spot.** Rounds 11-13's lenses all checked axiom counts,
+            git dates, quantifier shapes — none cross-checked the scoreboard row's "content" claim
+            against the source docstring. The failure mode is [[feedback_claimed_verification_never_run]]
+            at the *review* level: correlated verifiers certifying the same unchecked sentence.
+            **Verification:** crate 26 unit + 2 doctests, clippy/fmt/rustdoc clean, corona **25/25**;
+            `lake build` clean, sol **29/29**. corona `b5d1b95`, sol `d750da9`. Round 14 **NOT clean**
+            — streak stays 0 — and the lesson resets the convergence bar: the wire needs fresh
+            *differently-angled* lenses, not repetitions of the same checklist. **#5 unmet after
+            fourteen.**
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
