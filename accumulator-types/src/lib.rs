@@ -59,7 +59,7 @@
 //! So this leaf uses **two** garden primitives (E0451 seal + the E0308-class brand)
 //! and introduces no new one — and it records where the brand's reach ends. As in
 //! `vss-types` / `merkle-types`, the brand is realized as an invariant, generative
-//! *lifetime* (a `forbid(unsafe)` choice that costs the crate no dependency of its own —
+//! *lifetime* (a `forbid(unsafe_code)` choice that costs the crate no dependency of its own —
 //! the leaf does now link `sha2` for its hash, and `forbid(unsafe_code)` governs *our*
 //! code, not that vetted dependency), so a cross-snapshot
 //! mismatch surfaces as a **lifetime error** (E0521-class), not a literal
@@ -884,6 +884,33 @@ mod tests {
                     commit.verify(b"solo", &relabeled),
                     Err(VerifyError::NotAMember),
                     "index {wrong} is outside a 1-element set and the fold cannot see it"
+                );
+            }
+        })
+        .unwrap();
+    }
+
+    /// The **prover-side** twin of the range guard above, on the *emit* path.
+    ///
+    /// `Prover::witness` refuses `index >= self.layers[0].len()` before walking the tree.
+    /// `index_beyond_size_is_not_a_member` exercises only `witness(2)` on a 2-leaf tree — the
+    /// `== len` boundary, which both `>=` and a `==`-mutant route to `None`, so the *strictly
+    /// greater* case was unpinned and the `>=`→`==` mutant survived round 10's suite (cold review
+    /// round 11). Under that mutant `witness(3)` does not return early; it walks to `level[idx±1]`
+    /// with `idx` past the level width and **panics** (`index out of bounds`). Round 10 pinned the
+    /// symmetric guard in `Commit::verify` but not this one — one site of a matched pair.
+    ///
+    /// Strictly-greater indices must all yield `None`, hash-independently.
+    #[test]
+    fn witness_index_strictly_beyond_leaf_count_is_refused_not_panicked() {
+        let acc = built(&[b"alice", b"bob"]);
+        acc.snapshot_scoped(|_commit, prover| {
+            // len == 2; `witness(2)` (the `==` boundary) is covered elsewhere. These are all `>`,
+            // the branch a `==`-mutant would drop into the tree walk and panic on.
+            for beyond in [3usize, 4, 17, 64, usize::MAX] {
+                assert!(
+                    prover.witness(beyond).is_none(),
+                    "index {beyond} is past a 2-leaf set; the guard must refuse it, not walk"
                 );
             }
         })
