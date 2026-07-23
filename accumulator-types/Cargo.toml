@@ -1,11 +1,17 @@
 [package]
 name = "accumulator-types"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 11 — an append-only Merkle accumulator with witness staleness: the brand widened from provenance to snapshot identity (E0308), and the line where freshness stops reducing. TOY, not production crypto."
+description = "Corona leaf 11 — an append-only Merkle accumulator with witness staleness: the brand widened from provenance to snapshot identity (E0308), and the line where freshness stops reducing. Graduated: domain-separated SHA-256 (via sha2), u64-truncated, behind the unchanged hash seam. The 64-bit seam caps root-binding at a ~2^32 birthday bound — still not production crypto. See CHARTER.md."
 license = "MIT"
 
-# Deliberately depends on nothing — not even `corona-core`. Like `merkle-types`,
+# Graduated backend: the audited RustCrypto SHA-256 replaces the toy FNV-1a behind
+# the same `hash` module seam (CHARTER.md, graduation criterion #2). The swap is
+# TYPE-PRESERVING (u64 -> u64), so it forces no dependent edits — and this leaf has
+# no dependents to force. `forbid(unsafe_code)` governs *our* code, not the vetted
+# dependency.
+#
+# Otherwise depends on nothing — not even `corona-core`. Like `merkle-types`,
 # `lamport-types`, `ecash-types`, and `ratchet-types`, this leaf shares the garden's
 # *vocabulary* (here the E0308-class brand and the E0451 seal), not any of the core's
 # shared *modules*: an accumulator's membership is a yes/no fact (no k-of-n
@@ -14,3 +20,4 @@ license = "MIT"
 # not its *code* — the append-only, epoch-versioned framing is the subject, and
 # importing merkle's per-adoption brand would tangle it with this leaf's per-epoch one.
 [dependencies]
+sha2 = "0.10"

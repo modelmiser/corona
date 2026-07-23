@@ -65,7 +65,7 @@
 //!
 //! ## What "staleness" means here, and its honest simplification
 //!
-//! This toy is **append-only** (no deletion), so the accumulator's version *is* its
+//! This accumulator is **append-only** (no deletion), so its version *is* its
 //! element count: `epoch == len`. A consequence worth stating plainly: staleness by
 //! *epoch* and staleness by *root* coincide — any `add` changes the commitment, so
 //! [`Commit::verify`]'s fold would *already* reject a stale witness on its own: its
@@ -77,7 +77,7 @@
 //! catch something the fold misses; it is there to make staleness a **named, total,
 //! hash-independent** runtime verdict — the executable locus of the freshness
 //! residue. The two notions only come *apart* with deletions (a dynamic accumulator,
-//! where a witness can survive some updates and be *updated* across others); this toy
+//! where a witness can survive some updates and be *updated* across others); this leaf
 //! omits that, and the typestate story is identical either way: the witness carries a
 //! version, and checking it is runtime.
 //!
@@ -89,13 +89,21 @@
 //!
 //! ## Honest limits
 //!
-//! - **TOY hash (see [`hash`]).** Non-cryptographic FNV-1a; a real adversary forges
-//!   collisions and thus membership. The *type* discipline is the subject, not the
-//!   hash. Graduation swaps in SHA-256 behind the same seam.
+//! - **GRADUATED backend, but a 64-BIT SEAM (see [`hash`]).** The hash is now
+//!   domain-separated SHA-256 (`sha2`), truncated to `u64` behind the unchanged
+//!   [`hash::leaf_hash`]/[`hash::node_hash`] seam. That removes the toy's outright
+//!   break — FNV-1a is invertible by construction and collisions are *produced*, not
+//!   searched — but it does **not** move the number that bounds this leaf: a root
+//!   binds a set only as well as the hash resists **collisions**, and a birthday
+//!   search over a 64-bit digest succeeds in **~2³²** evaluations, offline and
+//!   key-independently. Two colliding leaves are interchangeable under any root
+//!   containing one. The binding constraint is the **width**, not the backend;
+//!   widening to `[u8; 32]` would move it, and this swap did not. Still not
+//!   production crypto.
 //! - **The [`Commit`] is caller-trusted.** [`Commit::verify`] proves membership in
 //!   *the snapshot you hold*; it cannot tell you that snapshot commits the *right*
 //!   set (exactly as `merkle-types`' `Root` is trusted).
-//! - **Append-only, fixed toy scope.** No deletion, no consistency proofs, no witness
+//! - **Append-only, fixed scope.** No deletion, no consistency proofs, no witness
 //!   compaction (a real Merkle Mountain Range / Certificate-Transparency log adds
 //!   these). The point is the epoch/brand typestate, not accumulator engineering.
 //! - **The seal and brand bind *safe* downstream code.** [`Included`]'s
@@ -351,7 +359,7 @@ pub enum VerifyError {
     /// This is the **runtime freshness residue**: no compile-time fact could have
     /// caught it, because the [`Witness`] is unbranded wire data.
     ///
-    /// This verdict carries **no security weight** in this append-only toy: any `add`
+    /// This verdict carries **no security weight** in this append-only accumulator: any `add`
     /// changes the commitment, so the fold in [`Commit::verify`] would reject a stale
     /// witness on its own (its path no longer matches the new snapshot — wrong sibling
     /// count, or folding to the old root), and membership soundness rests entirely on
@@ -493,7 +501,8 @@ impl<'epoch> Commit<'epoch> {
 /// Non-redacting on purpose (membership is public, mirroring `merkle-types`'
 /// `VerifiedLeaf`, not Shamir's redacting `Secret`). Holding one is a *typestate* fact
 /// — verified-through-the-checked-path, against the snapshot whose brand it bears —
-/// not, on its own, a security guarantee (the backend hash is a toy). The brand binds
+/// not, on its own, a security guarantee (the backend is SHA-256 truncated to 64 bits, so
+/// root-binding rests on a ~2³² birthday bound — see [`hash`]). The brand binds
 /// it to its issuing snapshot: it cannot be presented where another snapshot's witness
 /// is expected (see [`Commit::authenticated_indices`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
