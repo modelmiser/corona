@@ -234,8 +234,14 @@ else bad "manifest versions == Cargo.lock" "identical" "$lockmis"; fi
 say "no line-count claims for source files"
 # Round 7: the character class had NO HYPHEN — and every one of this workspace's 34 member
 # directories contains one (`corona-core`, `*-types`, `numerical-accuracy`). The check was named
-# for a policy about THIS repo's sources and was structurally incapable of matching one; a real
-# claim about `corona-core/src/lib.rs` sailed through green. The `charter_rows` pattern failed the
+# for a policy about THIS repo's sources and could not match a repo-relative path to one.
+# Two corrections to an earlier version of this comment, both round 9. It said "structurally
+# incapable of matching one" -- false: a basename-only claim (`lib.rs` (412 lines)) matched the old
+# pattern fine, and only the repo-relative spelling was unreachable. And it said "a real claim
+# about `corona-core/src/lib.rs` sailed through green" -- no such claim has ever existed here; a
+# search of all 168 commits touching README/CHARTER finds none. That example came from a scratch
+# PROBE written to demonstrate the gap, and was then written up as repo history. ***A probe is
+# evidence about the instrument, never about the corpus.*** The `charter_rows` pattern failed the
 # same way in round 4. A regex over paths is a claim about the naming convention, and this repo's
 # convention is hyphens.
 lc=$(grep -rnE '`[A-Za-z0-9/._-]+\.(rs|lean)`[^`]{0,80}\([0-9]{2,4} lines\)' README.md CHARTER.md 2>/dev/null || true)

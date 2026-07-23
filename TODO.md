@@ -2670,9 +2670,15 @@ referent for the round count.)
             against code, build output, git history, or arithmetic. Every MODERATE is **ledgered,
             not fixed.**
             Why, with the numbers. CRITICALs by round: 7, 12, 2, 16, 10. That looks
-            non-convergent, but it is two series superimposed. **Pre-existing** defects are
-            falling (round 6: 10, round 7: 4) — a backlog, and round 6 spiked because it audited
-            the *instruments* for the first time, opening a domain that had never been reviewed.
+            non-convergent, but it is two series superimposed. **Pre-existing** defects looked like
+            a draining backlog (round 6: 10, round 7: 4), round 6 having spiked because it audited
+            the *instruments* for the first time. ⛔ **Round 9: that premise is FALSE, and round 8's
+            own data refutes it** — five of round 8's CRITICALs are sol theorem counts dating to
+            `e604b36`, **2026-04-16**, three months before this arc, and sol's `head -1` predates it
+            too, so round 8's pre-existing count is **≥ 6** against round 7's 4. The backlog is not
+            draining; the reviews keep reaching further back. (The freeze's *conclusion* survives
+            and is arguably strengthened — what fails is the "backlog is draining" premise, which
+            was ledgered in round 8 as merely "argued from n=2" when n=3 was already in hand.)
             The number that is **flat is the one that matters: 6 defects introduced by the
             previous round, in each of rounds 6 and 7.** ⇒ ***This is not a discovery process
             failing to terminate; it is a generation process running at the same rate as the
@@ -2749,7 +2755,10 @@ referent for the round count.)
             violations — the two cannot both be true); "the crate builds exactly that object"
             (it builds `epoch := 99`, not `a.epoch + 1`); and two mutation-sweep sentences missing
             a load-bearing "only".
-            **LEDGERED, NOT FIXED (freeze):** corona's line-count pattern kept 1 of sol's 3
+            **LEDGERED, NOT FIXED (freeze)** — the header above says 20 MODERATE and this list carries
+            **15**; the difference is duplicates across the three lenses, which was not stated and
+            should have been. The ledger is the freeze's entire audit trail, so a count it cannot
+            reconcile is a defect in the protocol, not bookkeeping: corona's line-count pattern kept 1 of sol's 3
             alternatives and scopes to 2 files; the widened `[^`]{0,80}` cannot span a backtick;
             corona's test-count check is README-only; the leaf-count check matches 1 claim in 1 of
             3 scanned files; `FIELD-GUIDE.md` and `WAREHOUSE-AND-LENS.md` are canonical and

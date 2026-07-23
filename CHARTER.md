@@ -72,8 +72,8 @@ A crate is always on exactly one track, stated in its own README:
 > *no other garden leaf* depends on this one, which is what determines whether a graduation
 > forces edits elsewhere in the garden. They do **not** mean the crate has no dependents at
 > all: `tools/compose-probes`, built later by the composition search, path-depends on
-> sixteen leaves — accumulator, arq, bloom, commit, consttime, crdt, dp, ecash, erasure,
-> lamport, mss, sigma, swap, threshold, translog and unit — and a graduation can still force
+> seventeen leaves — accumulator, arq, bloom, commit, consttime, crdt, dp, ecash, erasure,
+> lamport, mss, numerical-accuracy, sigma, swap, threshold, translog and unit — and a graduation can still force
 > a `Cargo.lock` bump there. Two leaves shipped the *unqualified* form ("this leaf has no
 > dependents", "a NO-DEPENDENT leaf") and both were false; they are corrected in
 > `accumulator-types` and `commit-types`. **The tooling created dependents that the leaves'

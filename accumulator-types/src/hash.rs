@@ -399,8 +399,12 @@ mod tests {
 
     /// The agreement criterion, tested on **its own domain** rather than through FNV.
     ///
-    /// The criterion is discriminated by exactly two values of `t` — `2⁶³` and `2⁶²` — and this
-    /// test enumerates both rather than hoping an input reaches them. Swept over coefficient and
+    /// Two values of `t` — `2⁶³` and `2⁶²` — suffice to discriminate every mutant of the
+    /// criterion, and this test enumerates both rather than hoping an input reaches them. (An
+    /// earlier version said the criterion is "discriminated by exactly two values", which is
+    /// false: the mutant `c := 0` is separated at `t = 1` and `t = 3·2⁶¹` among cofinitely many
+    /// others. The true and weaker statement — no mutant separated *only* outside `{2⁶³, 2⁶²}` —
+    /// is the one below, and this sentence was the stronger phrasing it retires.) Swept over coefficient and
     /// modulus mutants, the only survivors are coefficients `≡ 2 (mod 4)`, which denote the same
     /// predicate; no mutant is separated *only* by a point outside `{2⁶³, 2⁶²}` — the word "only" is
     /// load-bearing and an earlier version omitted it, making the sentence literally false (421 of
