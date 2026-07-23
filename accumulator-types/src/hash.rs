@@ -10,21 +10,42 @@
 //!
 //! ## What the swap bought, and what it did not
 //!
-//! **Bought — one-wayness and collision *finding* by construction.** FNV-1a is a
-//! non-cryptographic mixing function: it is invertible by construction and
-//! collisions are produced directly rather than searched for, so "distinct data
-//! hash to distinct leaves" was false *outright*, not merely at the birthday bound.
-//! SHA-256 gives the construction its first non-trivial preimage assumption.
+//! **Bought — one-wayness, and collisions demoted from *constructed* to *searched*.**
+//! 64-bit FNV-1a is cheaply invertible, but not because "a mixing function is
+//! invertible by construction" — that would be a non-sequitur (each SHA-256 round is
+//! a bijection on its state too). The real reason is algebraic, and `lamport-types`
+//! states it for the same function: over fixed-length input the final state is an
+//! affine form `c₀ + Σ cᵢ·bᵢ mod 2⁶⁴` whose unknowns are single bytes, i.e. a
+//! low-dimensional **modular knapsack** that lattice reduction plus a small
+//! enumeration solves in seconds. SHA-256 removes that structure and gives the
+//! construction its first non-trivial preimage assumption.
 //!
-//! **Not bought — the binding constraint, which is the WIDTH.** A Merkle root binds
-//! a set only as well as the hash resists **collisions**, and this seam is 64 bits
-//! wide. A birthday search over a truncated SHA-256 finds a colliding pair in
-//! **~2³²** evaluations, key-independently and offline; two leaves that collide are
-//! interchangeable under any root that contains one. **So the graduation upgraded
-//! the *class* of break — from "forge a collision directly" to "search ~2³² for
-//! one" — while the number that bounds the leaf stayed a property of the seam's
-//! width, not of the hash.** Widening to `[u8; 32]` would move it; swapping the
-//! backend did not. This leaf keeps its not-for-production marker.
+//! Note what did *not* become true: "distinct data hash to distinct leaves" is false
+//! for SHA-256-truncated-to-64 as well, unconditionally, by pigeonhole on an
+//! unbounded domain. Collisions did not stop existing; they stopped being
+//! *exhibitable* and started costing a search.
+//!
+//! **Not bought — the CEILING, which is the WIDTH.** A Merkle root binds its contents
+//! only as well as the hash resists **collisions** — the attacker picks both sides —
+//! and this seam is 64 bits wide. A birthday search over a truncated SHA-256 finds a
+//! colliding pair in **~2³²** evaluations (√(π/2)·2³², memory-free via Pollard-rho),
+//! offline and key-independently; two leaves that collide are interchangeable under
+//! any root containing one.
+//!
+//! Be exact about which attack costs what, because the two differ by 2³²:
+//!
+//! | Attacker's goal | Generic cost here |
+//! |---|---|
+//! | find *some* colliding pair, choosing both sides (equivocation over a tree they build) | **~2³²** |
+//! | hit a **fixed** target — a `node_hash` from an honest tree — with a chosen `leaf_hash` | **~2⁶⁴** (second-preimage) |
+//!
+//! **So the graduation changed the *class* of break — from "produce a collision
+//! directly" to "search ~2³² for one" — and that is a real move in the exponent, from
+//! effectively zero bits to 32. What it did not do is raise the CEILING the width
+//! imposes:** no backend behind a `u64` seam can exceed ~2³² collision resistance.
+//! Widening to `[u8; 32]` would raise it; swapping the backend cannot. And ~2³²
+//! SHA-256 evaluations is seconds on a GPU — this leaf keeps its not-for-production
+//! marker for that reason, not as a formality.
 //!
 //! That is the same shape `lamport-types` recorded at its graduation, for the same
 //! reason: a `u64` seam truncates whatever fills it.
@@ -35,15 +56,20 @@
 //! (`0x00` for a leaf, `0x01` for an internal node). Without this, an attacker who
 //! controls leaf data could present an *internal* node's two children as a single
 //! leaf's bytes and pass verification — the classic Merkle second-preimage
-//! confusion (CVE-2012-2459's neighbourhood). The tag makes the leaf and node
+//! confusion. (**Not** CVE-2012-2459 — that is the Bitcoin duplicate-lone-node
+//! *malleability*, which this crate cites correctly in `lib.rs` where it belongs; the
+//! apt reference for these 0x00/0x01 prefixes is RFC 6962 §2.1, which adopts them for
+//! exactly this reason.) The tag makes the leaf and node
 //! *preimages* disjoint — the two hash functions never receive identical input
 //! bytes — so the confusion cannot arise **at the input**, structurally and
 //! independently of the backend's strength.
 //!
-//! It does **not** bound the *outputs*: whether some `leaf_hash` can be made to
-//! equal a given `node_hash` is exactly the ~2³² collision question above. Domain
-//! separation and collision resistance close different doors, and only the first is
-//! a structural fact.
+//! It does **not** bound the *outputs*. Whether some `leaf_hash` can be made to equal
+//! a `node_hash` is a hash-strength question, and which one depends on who chooses
+//! the target: against a **fixed** node hash it is a second-preimage problem at ~2⁶⁴,
+//! and only when the attacker picks both sides does it fall to the ~2³² birthday
+//! bound. Domain separation and collision resistance close different doors, and only
+//! the first is a structural fact.
 
 use sha2::{Digest, Sha256};
 
@@ -102,9 +128,12 @@ mod tests {
     }
 
     #[test]
-    fn leaf_and_node_domains_are_disjoint() {
-        // A leaf whose bytes are exactly a node's two children must NOT collide
-        // with that node — the domain tags (0x00 vs 0x01) guarantee it.
+    fn leaf_and_node_outputs_differ_on_a_sampled_pair() {
+        // The tags guarantee the two functions never receive the same INPUT. They
+        // guarantee nothing about outputs: colliding (leaf, node) pairs exist
+        // unconditionally by pigeonhole and are findable at ~2³². This asserts
+        // output inequality on one sampled pair — a regression guard on the tag
+        // bytes, not evidence that a leaf can never collide a node.
         let l = 0x1111_1111_1111_1111u64;
         let r = 0x2222_2222_2222_2222u64;
         let mut collision_bytes = Vec::new();

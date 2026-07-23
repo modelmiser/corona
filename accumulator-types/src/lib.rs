@@ -58,7 +58,9 @@
 //! So this leaf uses **two** garden primitives (E0451 seal + the E0308-class brand)
 //! and introduces no new one — and it records where the brand's reach ends. As in
 //! `vss-types` / `merkle-types`, the brand is realized as an invariant, generative
-//! *lifetime* (the zero-dependency, `forbid(unsafe)` choice), so a cross-snapshot
+//! *lifetime* (a `forbid(unsafe)` choice that costs the crate no dependency of its own —
+//! the leaf does now link `sha2` for its hash, and `forbid(unsafe_code)` governs *our*
+//! code, not that vetted dependency), so a cross-snapshot
 //! mismatch surfaces as a **lifetime error** (E0521-class), not a literal
 //! `error[E0308]`; a literal E0308 would need nominal *type* brands, un-mintable
 //! fresh per runtime value in safe Rust.
@@ -66,8 +68,9 @@
 //! ## What "staleness" means here, and its honest simplification
 //!
 //! This accumulator is **append-only** (no deletion), so its version *is* its
-//! element count: `epoch == len`. A consequence worth stating plainly: staleness by
-//! *epoch* and staleness by *root* coincide — any `add` changes the commitment, so
+//! element count: `epoch == len`. A consequence worth stating plainly, in the one
+//! direction that holds: **within a single accumulator**, epoch-staleness implies
+//! root-staleness — any `add` changes the commitment, so
 //! [`Commit::verify`]'s fold would *already* reject a stale witness on its own: its
 //! authentication path no longer matches the new snapshot, either because it carries
 //! the wrong *number* of siblings for the new size (caught at the sibling-count check)
@@ -92,14 +95,18 @@
 //! - **GRADUATED backend, but a 64-BIT SEAM (see [`hash`]).** The hash is now
 //!   domain-separated SHA-256 (`sha2`), truncated to `u64` behind the unchanged
 //!   [`hash::leaf_hash`]/[`hash::node_hash`] seam. That removes the toy's outright
-//!   break — FNV-1a is invertible by construction and collisions are *produced*, not
-//!   searched — but it does **not** move the number that bounds this leaf: a root
-//!   binds a set only as well as the hash resists **collisions**, and a birthday
-//!   search over a 64-bit digest succeeds in **~2³²** evaluations, offline and
-//!   key-independently. Two colliding leaves are interchangeable under any root
-//!   containing one. The binding constraint is the **width**, not the backend;
-//!   widening to `[u8; 32]` would move it, and this swap did not. Still not
-//!   production crypto.
+//!   break — 64-bit FNV-1a inverts by lattice reduction over a small modular
+//!   knapsack, in seconds — so the achieved bound really did move, from effectively
+//!   zero bits to ~2³². What the swap **cannot** do is raise the *ceiling the width
+//!   imposes*: this structure binds an **ordered list** (`add` appends, duplicates
+//!   allowed, `Witness.index` is authenticated) only as well as the hash resists
+//!   **collisions** — the attacker picks both sides — and a birthday search over a
+//!   64-bit digest succeeds in **~2³²** evaluations, offline and key-independently.
+//!   Two colliding leaves are interchangeable under any root containing one. Note the
+//!   *fixed-target* case is dearer: hitting an honest tree's `node_hash` with a chosen
+//!   leaf is a second-preimage problem at ~2⁶⁴. No `u64`-seam backend beats ~2³²;
+//!   widening to `[u8; 32]` would. And ~2³² SHA-256 evaluations is seconds on a GPU —
+//!   still not production crypto, for that reason.
 //! - **The [`Commit`] is caller-trusted.** [`Commit::verify`] proves membership in
 //!   *the snapshot you hold*; it cannot tell you that snapshot commits the *right*
 //!   set (exactly as `merkle-types`' `Root` is trusted).
@@ -246,7 +253,11 @@ impl Accumulator {
     /// for every `'epoch`, so it cannot smuggle a branded [`Included`] out (the return
     /// type `R` may not mention `'epoch`), and two `snapshot_scoped` calls — even on
     /// the same accumulator at the same epoch — receive brands that never unify. Only
-    /// unbranded values (a [`Witness`], a `u64`, a `usize`) may escape.
+    /// unbranded values may escape — a [`Witness`], a `u64`, a `usize`, and also a
+    /// [`Prover`], which is `Clone` and carries no brand. That last one is not an
+    /// oversight: an escaped `Prover` mints only genuine witnesses for the epoch it was
+    /// frozen at, and those then fail the freshness check or the fold against any later
+    /// snapshot. The rule is *unbranded*, not *small*; treat the list as examples.
     pub fn snapshot_scoped<R>(
         &self,
         body: impl for<'epoch> FnOnce(Commit<'epoch>, &Prover) -> R,
