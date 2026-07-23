@@ -208,11 +208,16 @@
 //!
 //! ```compile_fail,E0451
 //! let forged = vid_types::AvailableData {
-//!     bytes: vec![1, 2, 3], // ERROR[E0451]: fields are private
-//!     // (`anchor`, the struct's other field, is equally private — no
-//!     // combination of initializers compiles.)
+//!     bytes: vec![1, 2, 3],  // ERROR[E0451]: field `bytes` is private
+//!     anchor: todo!(),       // ERROR[E0451]: field `anchor` is private
 //! };
 //! ```
+//!
+//! Both fields are named on purpose. *Omitting* one is also rejected, but with a different
+//! and **uncoded** diagnostic — "cannot construct `AvailableData` with struct literal syntax
+//! due to private fields" — so a snippet that leaves `anchor` out does not demonstrate E0451
+//! at all. That distinction is invisible on stable, where rustdoc parses a doctest's error
+//! code and ignores it; only `cargo +nightly test --doc` enforces the fence.
 
 #![forbid(unsafe_code)]
 

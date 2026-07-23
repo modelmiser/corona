@@ -2157,6 +2157,22 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       negatives are now real `required-features` bins whose exact code `probe.sh` greps; both
       mutations (wrong code, negative made to compile) are killed. check-claims 12→15 (the leaves
       claim now scoped to the new doc, plus the pair count checked as DERIVED, C(leaves,2)).
+- [x] **GARDEN-WIDE: the `compile_fail,EXXXX` fence was never enforced — FIXED 2026-07-22.**
+      Found while building the composition probes, from a mutation that SURVIVED. On stable,
+      rustdoc parses a doctest's error code and **ignores** it: a fence reading `E0599` passes
+      on a snippet failing `E0382` (mutation-tested both ways). Only `cargo +nightly test --doc`
+      enforces it. This matters because the fenced doctest is the garden's central evidentiary
+      device — 58 fences, and the whole thesis is "the compiler rejects this, *with this code*".
+      Ran the first enforced sweep: **125/126 passed, one real false claim** — `vid-types`
+      claimed `E0451` on a snippet whose actual diagnostic is the UNCODED "cannot construct
+      `AvailableData` with struct literal syntax due to private fields", because it initialized
+      only one of two private fields. Naming BOTH yields the claimed E0451 (verified); fixed
+      there, with a note on the distinction. Now 126/126 under enforcement. Added a
+      `check-claims.sh --gates` step that runs the nightly sweep, SKIPs loudly (and without
+      counting itself verified) when no nightly toolchain exists; mutation-tested on a real
+      fence in a third leaf. Checker 15→16. **The general lesson, third instance this week:
+      an evidentiary device has to be watched failing, or it is decoration** — the fences were
+      correct 57/58 times, which is exactly why nobody noticed the one that wasn't.
 - [ ] **Diff-composition, round 2** — candidate, not backlog. The five named-but-unattempted
       pairs, or build `translog ∘ mss` (the only round-1 result that indicates a real leaf).
 - [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the

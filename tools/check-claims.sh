@@ -77,6 +77,22 @@ if [ "${1:-}" = "--gates" ]; then
     && ok "cargo fmt --all --check" "clean" || bad "fmt" "clean" "FAILED"
   RUSTDOCFLAGS="-D warnings" cargo doc --workspace --no-deps >/dev/null 2>&1 \
     && ok "rustdoc -D warnings" "clean" || bad "rustdoc" "clean" "FAILED"
+
+  # The garden pins its compile-fail evidence with ```compile_fail,EXXXX fences.
+  # On STABLE, rustdoc parses that code and IGNORES it: a fence reading
+  # E0599 passes on a snippet failing E0382 (mutation-tested). Only nightly enforces it.
+  # Found one live mismatch on first run (vid-types claimed E0451 on a snippet whose real
+  # diagnostic is the UNCODED "cannot construct ... due to private fields").
+  if rustup toolchain list 2>/dev/null | grep -q '^nightly-'; then
+    cargo +nightly test --workspace --doc --no-fail-fast >/tmp/nightlydoc 2>&1 \
+      && ok "doctest error-code fences (nightly enforces)" "all match" \
+      || bad "doctest error-code fences" "all match" \
+             "$(grep -m1 'expected error codes' /tmp/nightlydoc || echo 'see /tmp/nightlydoc')"
+  else
+    # Deliberately does NOT increment `checks`: a skipped check must not be counted as a
+    # verified one in the "N/N claims verified" line, or the checker lies about itself.
+    printf '  SKIP  %-52s %s\n' "doctest error-code fences" "no nightly toolchain — codes UNCHECKED"
+  fi
 fi
 
 say ""
