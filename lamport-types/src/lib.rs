@@ -86,8 +86,8 @@
 //!   third message, and how cheaply depends on the adversary — cheaply enough in every case
 //!   that the ~2³² floor is irrelevant once a key signs twice. [`hash`] carries the routes,
 //!   the figures and the unit caveat that goes with them (one route is cheapest in hash
-//!   evaluations while being dearest in total work); this banner deliberately quotes no
-//!   number, because an earlier draft's two figures invited a comparison that the unit made
+//!   evaluations while being dearest in total work); this banner quotes no figure for
+//!   those two routes, because an earlier draft's two figures invited a comparison that the unit made
 //!   backwards. So the binding constraint is the width only for a key used properly; for a
 //!   key used as demonstrated, it is the seed.
 //! - **The type stops key *reuse*, not *forgery*.** E0382 guarantees you cannot sign
@@ -515,8 +515,10 @@ mod tests {
     }
 
     #[test]
-    fn a_signature_verifies_only_its_own_message() {
-        // Sign one message; it verifies for that message and no other. (The one-time
+    fn a_signature_does_not_verify_for_these_other_messages() {
+        // Sign one message; it verifies for that message and not for these three others.
+        // NOT "and no other": any message sharing its 64-bit digest shares the signature —
+        // see `a_digest_collision_forges_across_keys_at_the_toy_width`. (The one-time
         // rule — no second `sign` — is enforced by the compiler, exercised in the
         // crate-level `compile_fail` doctest.)
         let (sk, vk) = SigningKey::generate(7);

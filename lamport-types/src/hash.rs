@@ -223,8 +223,9 @@
 //!   wherever their digests differ, and a third message covered by their union is then
 //!   forgeable. The one-time signature model excludes this by construction (one signing
 //!   query), which is why it is not a table row — but the crate reaches it, so it is not
-//!   hypothetical. Its cost depends entirely on *which* adversary you mean, and the
-//!   two routes below differ by orders of magnitude:
+//!   hypothetical. Its cost depends entirely on *which* adversary you mean. The two
+//!   routes below differ by orders of magnitude in *total work* — but only by ~2–4× in the
+//!   **hash evaluations** this table quotes, which is the unit caveat below in miniature:
 //!   - **A 2-query chosen-message adversary** pays **~2⁹–2¹⁰ hash evaluations**. He may
 //!     choose all three messages *jointly*, which makes this a birthday problem rather than a
 //!     sequential search: each position is covered with probability `3/4` (the two signed
@@ -324,9 +325,9 @@ use sha2::{Digest as _, Sha256};
 /// route appear to work at all (the shipped `commit`, being a random function, is on the
 /// other side — so the route does not apply); in the extraction bound, where the 2⁵⁷ term
 /// wants the cheapest cost, ~2⁵⁶; and in the floor argument above, which reads row 6's
-/// up-rounded ~2⁵⁷ (~2⁵⁶ under the shipped `commit`, and ~2⁵⁵ against 257 targets) as a lower
+/// up-rounded ~2⁵⁷ (~2⁵⁶ under the shipped `commit`) as a lower
 /// bound. No enumeration here is claimed complete — the rule is the check, not the list.
-/// None of the three moves the ~2³² floor; the smallest is still 2²³ above it.)
+/// None of the three moves the ~2³² floor; the smallest is still 2²⁴ above it.)
 /// Not "preserves preimage resistance": SHA-256's own
 /// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
 /// security posture.
@@ -389,8 +390,9 @@ mod tests {
     /// The backend is genuine SHA-256, pinned against an **independent** oracle
     /// (Python `hashlib`, not this module) — the mutation-ratchet cure (leaf 18): the
     /// three seam functions are the sole producers *and* consumers of their outputs
-    /// inside the crate, so a self-consistent mis-encoding of a domain tag, a field
-    /// order, or the endianness would pass every structural test. Only an external
+    /// inside the crate, so a self-consistent mis-encoding of a field
+    /// order or the endianness would pass every structural test (a mis-encoded *tag* is the
+    /// one member `domains_are_separated` catches without a literal). Only an external
     /// golden literal pins the wire contract. Each value is
     /// `SHA256(tag ‖ big-endian fields)[..8]`, read big-endian.
     ///
@@ -417,10 +419,11 @@ mod tests {
 
     /// `digest` covers the **whole** message, pinned externally over 100 bytes.
     ///
-    /// Without this, truncating the hashed span (e.g. `&message[..16]`) passes the
-    /// entire workspace — a total break of signature semantics (any two messages
-    /// agreeing on a prefix would share signatures), invisible to every other test,
-    /// because the other golden vector's message is only 3 bytes long.
+    /// Without this, truncating the hashed span (`&message[..message.len().min(16)]`)
+    /// passes the entire workspace bar this test — a total break of signature semantics
+    /// (any two messages agreeing on a prefix would share signatures), invisible to every
+    /// other test. Measured: 17 passed, 1 failed. (The unguarded `&message[..16]` is a
+    /// different mutant: it panics on short inputs and fails 12 tests.)
     #[test]
     fn digest_covers_the_entire_message() {
         let long: Vec<u8> = (0..100u8).collect();
@@ -514,5 +517,51 @@ mod tests {
                 "the collision forges a message the key never signed (seed {seed})"
             );
         }
+    }
+
+    /// The `≲2²⁵` posture above enumerates every seed this crate hands to
+    /// [`crate::SigningKey::generate`] and calls them all at most 24 bits. Prose cannot stay
+    /// exhaustive by itself — twenty rounds of review here found stale counts repeatedly — so
+    /// this pins it: adding a `generate(<new literal>)` anywhere in the crate fails this test.
+    ///
+    /// Scope is honest: it checks *literal* arguments. `generate(seed)` with a bound variable
+    /// is invisible to it, and the enumeration's completeness over those is still prose.
+    #[test]
+    fn documented_seed_set_is_exhaustive_and_all_fit_24_bits() {
+        const DOCUMENTED: [u64; 10] = [1, 2, 5, 6, 7, 42, 99, 0xA5A5, 0xF0F0, 0x00C0_FFEE];
+        let sources = concat!(include_str!("lib.rs"), include_str!("hash.rs"));
+
+        let mut found = Vec::new();
+        for tail in sources.split("SigningKey::generate(").skip(1) {
+            let arg: String = tail.chars().take_while(|c| *c != ')').collect();
+            let arg = arg.trim().replace('_', "");
+            let parsed = match arg.strip_prefix("0x") {
+                Some(hex) => u64::from_str_radix(hex, 16).ok(),
+                None => arg.parse::<u64>().ok(),
+            };
+            if let Some(v) = parsed {
+                found.push(v);
+            }
+        }
+
+        // Validate the instrument before believing it: a silently-empty extractor would
+        // make this test pass forever while checking nothing.
+        assert!(
+            found.len() >= 8,
+            "extractor found only {} literal seeds — the instrument is broken, not the claim",
+            found.len()
+        );
+        for v in &found {
+            assert!(
+                DOCUMENTED.contains(v),
+                "seed {v:#x} is used but absent from the documented enumeration"
+            );
+            assert!(v.leading_zeros() >= 40, "seed {v:#x} exceeds 24 bits");
+        }
+        assert_eq!(
+            0x00C0_FFEE_u64.leading_zeros(),
+            40,
+            "the doctest seed must need exactly 24 bits, as the posture states"
+        );
     }
 }
