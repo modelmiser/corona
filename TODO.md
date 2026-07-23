@@ -2347,9 +2347,13 @@ the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
 
 **Read this row before believing CHARTER's.** CHARTER's accumulator row defers its convergence
 claim here; this section is the referent. As of the latest commit the graduation has criteria
-#1–#4 done and **#5 unclaimed** — seven rounds run, *none clean*. (This line read "two rounds"
-for five rounds after that stopped being true, in the very document CHARTER designates as the
-referent for the round count.)
+#1–#4 done and **#5 unclaimed** — **nine rounds run, none clean**. (This line read "two rounds"
+for five rounds after that stopped being true; then round 8 wrote "seven" in the same commit that
+marked round 8 `[x]`. Four wrong values in a row, in the document CHARTER designates as the
+referent for the round count — and each correction was written while the next round was already
+underway, which is the actual mechanism: **a count that changes on the same cadence as the edits
+correcting it can never be right at rest.** It is now derived below rather than restated: the
+authoritative value is the number of `[x] **Round N**` entries.)
 
 - [x] **Criterion #2 — backend swap.** `hash.rs`: toy FNV-1a → domain-separated SHA-256
       truncated to leading 8 bytes big-endian, behind the *same* `leaf_hash`/`node_hash` seam.
@@ -2795,11 +2799,66 @@ referent for the round count.)
             untouched and the enforcement note above states the contradiction for the owner to
             resolve. Stating it now, before the round-9 lenses report, so it cannot be tuned to
             whatever they found.
-      - [ ] **Round 9** — round 8's fixes; a repo-wide sweep for more decayed numeric claims (round
-            8 found five by widening one population, and there is no reason to think that
-            population was special); and an audit of the freeze **triage itself** — of round 8's
-            20 ledgered MODERATEs, is any actually false, and did any of the 14 "CRITICAL" fixes
-            touch something merely imprecise? The freeze is only as good as that classification.
+      - [x] **Round 9 — NOT CLEAN, 17 CRITICAL across three lenses** (round-8 fix artifacts; a
+            repo-wide decayed-number sweep; an audit of the freeze **triage itself**). The two new
+            lens types both outperformed prose review, and the round retracted two things I had
+            been repeating.
+            ⛔⛔ **RETRACTION: "the headline was right and every constituent was wrong" is FALSE.**
+            Round 8's best-liked finding — that `36 machine-checked theorems across three files`
+            tracked reality (4+20+12) while its bullets drifted to 32 — describes a history that
+            did not happen. **Two commits ever touched those lines**, and the first wrote headline
+            *and* bullets on **2026-04-16**, when **none of the three files existed** (created
+            04-22 and 04-27). Nothing drifted; the numbers were never true; the headline's 36 is
+            coincidence. ⇒ The real class, which I had no name for: ***anticipatory
+            documentation*** — prose written from a plan rather than a measurement. **It is
+            invisible to every "has this decayed?" instrument, because a drift-checker assumes a
+            true origin.** The only test that finds it compares the claim's timestamp against the
+            artifact's.
+            ⛔ **RETRACTION: the round-8 CHARTER enforcement note had its premise backwards.** It
+            said #5 was "recorded for exactly one of the ten graduated rows". **Seven of ten
+            record it in the registry itself**, and an eighth (`lamport`) has a 21-round record in
+            this file that the same note cites fifteen lines later. The false sentence was doing
+            the note's rhetorical work. What survives is narrower and still sufficient: six
+            siblings record #5 as *converged*, this row records it unmet, so the registry is not
+            uniformly unassessed — **it is inconsistent, and this row is the inconsistent one.**
+            ⭐⭐ **A probe written up as repo history**, the sixth instance of that class: the
+            checker claimed "a real claim about `corona-core/src/lib.rs` sailed through green" —
+            **no such claim exists in any of the 168 commits** touching README/CHARTER. It came
+            from a scratch probe demonstrating the hyphen gap. ***A probe is evidence about the
+            instrument, never about the corpus.***
+            ⭐ **The triage audit — the first lens to check my classification rather than my
+            prose — confirmed 11 of 15 ledger items and found the failures clustered exactly where
+            the ledger stops describing instruments and starts making claims of its own.** Two
+            items filed as "imprecise" were flatly false, one of them refuted by my own
+            parenthetical beside it. ⇒ **The freeze does not remove the failure mode, it relocates
+            it into the ledger — and nothing checks the ledger.**
+            ⭐ **A tautology inflating a headline.** `Sol/CUDA.lean`'s `merge_covers` is
+            `a ||| b = a ||| b := rfl` while its docstring promised a coverage property. Counted in
+            "17 theorems", present in **zero** breakdowns — the scoreboard that would have exposed
+            it is the one place it was omitted from. Flagged in place; 17 declarations now = 17
+            rows, one carrying no obligation.
+            ⭐ **The check I "hardened" in round 8 still passed with nothing verified.** `n_cited`
+            counted `#check` lines *the script itself had just written* — evidence the probes were
+            GENERATED, never that they RAN. With `lake` absent from `PATH` it still printed
+            `ok … 33 probed, 0 missing`. Closed with a sentinel Lean must actually evaluate; and
+            the sentinel's own expected output was wrong on first write (Lean renders `ℕ`, not
+            `Nat`) — *written from memory instead of measured*, caught by the check itself.
+            Also: eight more decayed counts in sol docs (Bitwise 7/12/5 → 4/8/3; "12 obligation
+            classes" matching neither the sum 18 nor the page's own dedup table of 5; Rust "5
+            classes" where four documents say 6); CHARTER's compose-probes list said sixteen leaves
+            and enumerated sixteen where the manifest has **seventeen**, `numerical-accuracy`
+            missing; a citation of `Ecash.freshness_not_compile_time` for a `∀ f, ∃ …` shape whose
+            conclusion is `False` (the right sibling, `no_authenticity_recovery`, was thirty lines
+            above); a bullet still advertising "monotonicity" in a file with none; and the fourth
+            consecutive wrong round-count, now **derived** from the `[x]` entries rather than
+            restated in two documents.
+            **Strong negatives:** the sweep enumerated **~160 countable claims** across both repos
+            and **~145 measured correct** — the corpus is not rotten, it has unmaintained corners
+            with no instrument reaching them. All five round-8 count corrections re-verified, and
+            `^theorem` confirmed the right convention (0 `lemma`, 0 `private theorem`, 0 attributed
+            theorems in those files). All round-8 mutations re-killed independently. `merge_covers`
+            aside, every CUDA/Rust/Verilog receiver breakdown checks out.
+      - [ ] **Round 10** — round 9's fixes, under FREEZE.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
