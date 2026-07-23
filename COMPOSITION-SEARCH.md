@@ -311,9 +311,49 @@ monotone. Leaf 9: a spent set. Leaf 11: an epoch. Here: absence, which `add` des
 that only accumulate ride through any composition; facts that can be *revoked* need a clock,
 and no seal is a clock.
 
+## Reaction M — `translog ∘ mss`, and a leaf declined
+
+Round 1 filed this pair as **"indicated, not built"**: `translog ∘ lamport` works but is capacity
+1, and `mss-types` is the leaf that lifts the bound. The garden's rule is that reactions are
+cheap and leaves are expensive, so the decision procedure for a would-be leaf 34 is to **run the
+reaction first** and let it earn the promotion.
+
+It composes with **zero rungs**. Three results:
+
+- **Capacity is lifted but still bounded.** `generate(seed, 2)` signs two heads and then
+  `sign_next` hands back `None` — the keychain height *is* the log's checkpoint budget, and
+  running out is executable, not hypothetical.
+- **The signer supplies a clock the log does not.** Each `VerifiedMssMessage` carries a
+  `key_index`, strictly increasing, independent of the log's `size`. Signing two heads from one
+  chain state is **E0382** — precisely the fork that index reuse causes.
+- **And the residue: the pair has two clocks and binds neither.** `m_translog_x_mss` signs the
+  *identical* checkpoint at `key_index` 0 and again at 1, and **both verify**. Nothing relates
+  the log's `size` to the signer's slot.
+
+### Why this is not a ninth residue edge, and not leaf 34
+
+The two-clocks residue is not new. Leaf 14 (`hypertree` = `mss ∘ mss`) found that composing
+**stateful** leaves needs **coordinated** linear state, and threaded two counters in lockstep
+inside one move to get it. Reaction M is the same finding from the other side: this is what you
+get when the parents' counters are *not* threaded together. One result, two faces — so it
+belongs in the composition record, not as a ninth edge in a field guide that has eight.
+
+And the leaf is declined, on the garden's own "Default no":
+
+| Test | Verdict |
+|---|---|
+| Does composition demand new API? | **No** — zero rungs. Leaf 7 exists because `mss` *demanded* two rungs; this demands none. |
+| New primitive question? | **No** — E0382 + E0451 + an inherited brand, all answered. |
+| New residue edge? | **No** — leaf 14's, observed negatively. |
+| New composition worth exposing? | **Yes** — and the reaction plus this section *is* the exposure. |
+
+WAREHOUSE-AND-LENS says a new composition should "expose the minimal subset". That is a
+reaction and a lens entry, which now exist. Promotion to a peer leaf is "a deliberate act, not
+momentum", and on this evidence the act is not yet earned.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # twelve reactions and twelve rejections
+tools/compose-probes/probe.sh      # thirteen reactions and thirteen rejections
 ```

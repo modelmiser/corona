@@ -2285,3 +2285,24 @@ is a fresh open-ended domain, not backlog. Nothing auto-starts.
 - [x] Corrected mid-edit: the first draft claimed the gate runs "on every push". It **SKIPs when
       no nightly toolchain is installed** — deliberately, and loudly. The notes now say so.
       *A claim that is false on someone else's machine is still false.*
+
+## Reaction M + leaf-34 decision — 2026-07-22
+
+- [x] **`translog ∘ mss` reaction RUN** (round 1 filed it "indicated, not built"). Composes with
+      **ZERO rungs**. (1) Capacity lifted but still BOUNDED — `generate(seed,2)` signs two heads,
+      then `sign_next` returns `None`; the keychain height IS the log's checkpoint budget,
+      executable. (2) The signer supplies a clock the log doesn't: `key_index` strictly
+      increasing, independent of `size`; signing two heads from one chain state is E0382 —
+      exactly the fork index-reuse causes. (3) **RESIDUE: the pair has TWO CLOCKS and binds
+      neither** — `m_translog_x_mss` signs the IDENTICAL checkpoint at `key_index` 0 and again at
+      1 and **both verify**.
+- [x] **NOT a ninth FIELD-GUIDE edge.** The two-clocks residue is **leaf 14's finding from the
+      other side**: `hypertree` (= `mss ∘ mss`) found composing STATEFUL leaves needs COORDINATED
+      linear state and threaded two counters in lockstep; M shows what you get when they are not
+      threaded. One result, two faces — belongs in the composition record, not as a 9th edge.
+- [x] **LEAF 34 DECLINED**, on the garden's own "Default no": composition demands no new API
+      (zero rungs — leaf 7 exists because `mss` DEMANDED two); no new primitive question (E0382 +
+      E0451 + inherited brand, all answered); no new residue edge (leaf 14's, negatively). It IS
+      a new composition worth exposing — and the reaction plus the COMPOSITION-SEARCH section IS
+      that exposure. *Promotion is a deliberate act, not momentum; on this evidence it is not
+      earned.* 13 reactions + 13 rejections.

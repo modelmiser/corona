@@ -45,6 +45,8 @@ name = "j_seam_h"
 name = "k_seam_c"
 [[bin]]
 name = "l_seam_g"
+[[bin]]
+name = "m_translog_x_mss"
 
 [[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
@@ -82,6 +84,9 @@ required-features = ["negatives"]
 [[bin]]
 name = "fail_l_seam_g_is_sealed"
 required-features = ["negatives"]
+[[bin]]
+name = "fail_m_keychain_is_linear"
+required-features = ["negatives"]
 
 [dependencies]
 unit-types = { path = "../../unit-types" }
@@ -101,3 +106,4 @@ bloom-types = { path = "../../bloom-types" }
 accumulator-types = { path = "../../accumulator-types" }
 sigma-types = { path = "../../sigma-types" }
 commit-types = { path = "../../commit-types" }
+mss-types = { path = "../../mss-types" }
