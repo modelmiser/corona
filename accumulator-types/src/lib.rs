@@ -698,6 +698,26 @@ mod tests {
         .unwrap();
     }
 
+    /// `authenticated_indices` maps a slice of branded `Included`s to their indices, in order.
+    ///
+    /// Exercised only at N=1 before (cold review round 15) — and a one-element slice is invariant
+    /// under both reversal and truncation, so the `.rev()` (reorder) and `.take(1)` (drop the rest)
+    /// mutants survived the whole suite. A non-palindromic multi-element slice pins order AND count.
+    #[test]
+    fn authenticated_indices_preserves_order_and_count() {
+        let acc = built(&[b"alice", b"bob", b"carol", b"dave", b"erin"]);
+        acc.snapshot_scoped(|commit, prover| {
+            let at = |i: usize, d: &[u8]| commit.verify(d, &prover.witness(i).unwrap()).unwrap();
+            let picks = [at(0, b"alice"), at(2, b"carol"), at(4, b"erin")];
+            assert_eq!(
+                commit.authenticated_indices(&picks),
+                vec![0, 2, 4],
+                "indices return in slice order, all of them — not reversed, not truncated"
+            );
+        })
+        .unwrap();
+    }
+
     #[test]
     fn single_element_snapshot() {
         let acc = built(&[b"only"]);
