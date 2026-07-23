@@ -2656,7 +2656,29 @@ claim here; this section is the referent. As of the latest commit the graduation
             non-vacuous both directions; axiom table 7/7; scoreboard 72/72; all four git-timeline
             claims verified to the minute; every provenance claim round 6 made about earlier
             drafts verified true against the actual commits.
-      - [ ] **Round 8** — round 7's fixes, and the instrument re-audit's findings when it lands.
+      - ⛔ **FREEZE DECLARED before round 8's results were seen** (2026-07-23, deliberately in
+            that order — declaring it *after* reading findings would be motivated by what they
+            said). From round 8 on: **only a demonstrably-FALSE claim is actionable** — false
+            against code, build output, git history, or arithmetic. Every MODERATE is **ledgered,
+            not fixed.**
+            Why, with the numbers. CRITICALs by round: 7, 12, 2, 16, 10. That looks
+            non-convergent, but it is two series superimposed. **Pre-existing** defects are
+            falling (round 6: 10, round 7: 4) — a backlog, and round 6 spiked because it audited
+            the *instruments* for the first time, opening a domain that had never been reviewed.
+            The number that is **flat is the one that matters: 6 defects introduced by the
+            previous round, in each of rounds 6 and 7.** ⇒ ***This is not a discovery process
+            failing to terminate; it is a generation process running at the same rate as the
+            detector.*** Fixing a MODERATE writes new unreviewed prose, and new unreviewed prose
+            is where every CRITICAL in this arc has come from.
+            The `lamport-types` arc (21 rounds) closed exactly this way, and the note from it
+            says so: *"zero-C-AND-zero-M never converged"*. That discipline was available the
+            whole time and was not applied here — rounds 3 through 7 all acted on MODERATEs.
+            Also recorded, because it is the arc's single most useful statistic: **in 7 rounds,
+            across ~60 findings, ZERO have been in code.** `cargo` and `lake` refuse a false
+            theorem; nothing refuses a false sentence. The instruments now do, for 46 claims.
+      - [ ] **Round 8** — round 7's fixes, an instrument audit asking whether each check can SEE
+            its population (not merely whether it fires), and a graduation-criteria audit. First
+            round under FREEZE.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
