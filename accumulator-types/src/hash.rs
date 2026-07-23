@@ -263,7 +263,10 @@ mod tests {
     /// forms agree **iff `Σₖ dₖ·p^(L−k) ≡ 0 (mod 2⁶³)`** — a modular knapsack in the very
     /// `dₖ` this module is about. The all-zero input satisfies it at every length (Boundary 1
     /// below); an earlier version of this comment said "impossible at `L ≤ 2`" while that
-    /// boundary case, forty lines down, asserted the opposite. Exhaustive enumeration of all
+    /// boundary case, in this same test, asserted the opposite. (That version also carried a
+    /// line-distance — "forty lines down" — which was 63 lines when written and 74 when last
+    /// corrected. Three locator claims in this file have now been wrong; they are being written
+    /// as references rather than distances.) Exhaustive enumeration of all
     /// 16 843 008 inputs of 1–3 bytes returns the all-zero input and nothing else. Agreements
     /// with a *nonzero* `dₖ` become available around `L ≈ 8–9` (`256^L` inputs against a `2⁶³`
     /// congruence) and are abundant by `L = 10`, where two are pinned below — one per residue
@@ -278,18 +281,32 @@ mod tests {
     /// here for a round was wrong too: it blamed short inputs, but `b"0123456789"` was already
     /// in the set, so the domain **did** reach `L = 10`. Length was never the obstacle.
     ///
-    /// Which is why the criterion is no longer tested through FNV inputs at all. Its
-    /// discriminating points are `2⁶³` and `2⁶²`, and an FNV `tail` is pseudorandom, so it
-    /// essentially never lands on a power of two: **no quantity of inputs here could have pinned
-    /// the coefficient.** That domain was not merely inadequate, it was structurally incapable.
-    /// `agreement_criterion_is_pinned_on_its_own_domain` varies `t` directly; this test keeps
-    /// the FNV half.
+    /// ⚠⚠ And the round that fixed all that shipped a worse claim: that the criterion's
+    /// discriminating points (`2⁶³` and `2⁶²`) are unreachable from here, because an FNV `tail`
+    /// is pseudorandom — "no quantity of inputs here could have pinned the coefficient … the
+    /// domain was not merely inadequate, it was structurally incapable". **False**, and the same
+    /// commit shipped the counterexample: the `Σ = 2⁶³` input in the loop below is an ordinary
+    /// FNV input, it is what kills the `p−1 → p−2` mutation, and it was added by that commit.
+    /// A reviewer then produced `Σ = 2⁶²` on demand in well under a second.
+    ///
+    /// The error is worth more than the correction. **Pseudorandomness bounds what a *draw*
+    /// finds, not what the *domain contains*** — and these inputs are not drawn, they are chosen
+    /// by lattice reduction, which is this module's whole subject. A failed search of my own was
+    /// written up as an impossibility. Both discriminating points are reachable, both are now in
+    /// the loop below, and the FNV test pins the coefficient by itself.
+    ///
+    /// `agreement_criterion_is_pinned_on_its_own_domain` is kept anyway, for a smaller and
+    /// honest reason: it *enumerates* the discriminating points instead of depending on a
+    /// lattice search having found inputs that reach them, so it stays sharp if these witnesses
+    /// are ever edited. It is a second lock on the same door, not the only one.
     #[test]
     fn fnv_recurrence_exponent_is_l_plus_one_minus_k() {
-        // The last TWO entries are the lattice-found agreements, one per residue class of the
-        // criterion (`Σ = 0` and `Σ = 2⁶³`). They make `retired == h`, so the agreement
-        // assertion below is exercised in both directions; without them every input gave
-        // `false == false`, which passes at any modulus — a vacuous check.
+        // The last THREE entries are lattice-found and each lands on a value of `tail` that the
+        // criterion discriminates. `Σ = 0` and `Σ = 2⁶³` agree, so the assertion below is
+        // exercised in both directions — without them every input gave `false == false`, which
+        // passes at any modulus, a vacuous check. `Σ = 2⁶²` does NOT agree, and it is what kills
+        // a mutated modulus: `tail % 2⁶² == 0` would call it an agreement. Round 6 claimed no
+        // FNV input could reach that point; this is one.
         for input in [
             &b"a"[..],
             &b"ab"[..],
@@ -298,6 +315,7 @@ mod tests {
             &b"0123456789"[..],
             &[104u8, 31, 7, 5, 30, 38, 58, 15, 217, 5][..],
             &[74u8, 81, 241, 16, 56, 222, 224, 193, 82, 209][..],
+            &[56u8, 244, 40, 39, 5, 183, 25, 254, 11, 15][..],
         ] {
             let l = input.len() as u32;
             let mut h = FNV_OFFSET;
@@ -376,16 +394,24 @@ mod tests {
 
     /// The agreement criterion, tested on **its own domain** rather than through FNV.
     ///
-    /// `fnv_recurrence_exponent_is_l_plus_one_minus_k` cannot pin this. Its `tail` values come
-    /// out of an FNV walk and are pseudorandom, while the criterion's discriminating points are
-    /// exactly `2⁶³` (where a wrong coefficient stops annihilating) and `2⁶²` (where a wrong
-    /// modulus starts accepting). A pseudorandom `u64` hits neither — 2000 random draws separate
-    /// none of the mutations below. That is why an earlier version of this file could only
-    /// *record* a surviving mutation and explain it as structural. It was not structural; it was
-    /// a domain that could never reach the witnesses.
+    /// The criterion is discriminated by exactly two values of `t` — `2⁶³` and `2⁶²` — and this
+    /// test enumerates both rather than hoping an input reaches them. Swept over coefficient and
+    /// modulus mutants, the only survivors are coefficients `≡ 2 (mod 4)`, which denote the same
+    /// predicate; no mutant is separated by a point outside `{2⁶³, 2⁶²}`.
     ///
-    /// Sampling would not fix it either, since the discriminating set has measure ~0. The points
-    /// are enumerated on purpose.
+    /// Which value kills which mutant is not a clean split, and an earlier version of this
+    /// comment paired them backwards: it said `2⁶³` catches a wrong coefficient and `2⁶²` a
+    /// wrong modulus. `2⁶³` does catch `p−1 → p−2`, but coefficient mutants of 2-adic valuation
+    /// ≥ 2 (`0`, `2(p−1)`, `4(p−1)`) are caught **only** at `2⁶²`. Enumerating both is what makes
+    /// the test complete; the attribution was decoration, and wrong.
+    ///
+    /// Kept alongside `fnv_recurrence_exponent_is_l_plus_one_minus_k` rather than instead of it.
+    /// That test also pins the coefficient — its lattice-found witnesses reach both points, which
+    /// an earlier version of this file wrongly called impossible. The difference is that this one
+    /// does not depend on a search having succeeded: it names the points outright, so it stays
+    /// sharp if those witnesses are edited. Random sampling would pin neither — the
+    /// discriminating set has measure ~0, and 2000 draws separate neither of the two mutations
+    /// the FNV witnesses target — which is why the points are enumerated rather than sampled.
     #[test]
     fn agreement_criterion_is_pinned_on_its_own_domain() {
         // p-1 = 2 * (odd), so multiplying by it costs exactly one bit of headroom:
