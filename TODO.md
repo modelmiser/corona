@@ -3192,6 +3192,28 @@ authoritative value is the number of `[x] **Round N**` entries.)
             correctness mutation-tight; wire CLEAN a 3rd time on the row⇄docstring check. **#5: streak
             0 after seventeen. The graduated surface changed (hash.rs), so r18 starts a fresh streak
             on the new frozen text.**
+      - ⭐ **Round 18 — CLEAN. Fresh streak 1/2, and the best-justified clean of the arc.** Both
+            halves clean, reviewed by ALL THREE lenses *after* each was hardened against the class
+            that caused a prior false-convergence:
+            • **Crate correctness** — mutation-tight under the STRUCTURAL-mutant mandate (r15 patch):
+            no survivor. Adversarial NO BREAK (10 vectors + **4.73M** differential checks + a 500-epoch
+            stale-rewrite, debug & release-ovf-off).
+            • **Crate claims** — the r17 patch in force: it explicitly re-verified the "self-referential
+            test claims" (does a docstring's claim about its test's contents match the body?) and found
+            them clean — the exact class that hid the r13→r17 false claim through three lenses.
+            • **Wire** — CLEAN a 4th time on the row⇄docstring check, live axiom build, row 72
+            "triple-agreement" (statement + both docstrings).
+            **All findings ledgerable LOWs, reviewer-rated non-errors:** the `See CHARTER.md` locality
+            (a garden-wide convention across every leaf — fixing only this leaf would desync it from
+            siblings; flagged r14/15/16/18, cleared each time); "finer than epoch"/"provenance reduces"
+            file-idiom (hedged in-row); the `Accumulator.lean:44` nested parenthetical (readability).
+            **Why this clean is stronger than r16's false one:** r16 was clean only on axes no lens
+            checked the defect class on; r18 is clean *on those very axes* (structural mutants,
+            doc-vs-body, row⇄docstring) — the two false-convergences' own detection checks now pass.
+            **No edits this round** (all LOWs ledgered) — a clean re-review of frozen text. corona
+            `1c361b6`, sol `d750da9`. **#5: streak 1 of 2 after eighteen. Round 19 re-reviews the SAME
+            frozen surface; if clean, that is two consecutive clean rounds on frozen text under the
+            hardened lenses ⇒ #5 EARNED ⇒ push both repos.**
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
