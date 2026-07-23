@@ -2970,6 +2970,48 @@ authoritative value is the number of `[x] **Round N**` entries.)
             unmet after eleven.** But the composition keeps sharpening: this round's one finding was
             a genuine coverage gap that round 10's fix directly set up, and the wire half — half the
             surface — converged.
+      - [x] **Round 12 — NOT CLEAN, 1 MODERATE on the crate half** (+ 1 LOW ledgered). **Wire half
+            CLEAN a second consecutive round**, by a *different* blind lens that re-derived from
+            scratch — confirmed the theorem count (7), "two axiom-free", the re-export count (5),
+            `verify` checks freshness first, the "third E0521-brand wire after Translog and Commit"
+            enumeration, and re-dated "fourteen minutes" (14m16s) and "six rounds" against `git`.
+            (It could not run `#print axioms` — no prebuilt Mathlib tree in its sandbox — so it
+            consistency-checked the axiom table; round 11's lens measured it live, so across the two
+            rounds it is both measured and cross-checked.) **Two independent clean wire rounds is the
+            surface-bounding paying off**: the retracted-reading defect that recurred in rounds 8 and
+            10 has not returned under two different reviewers.
+            ⭐⭐ **The accessor-coverage class, drained in one pass instead of one per round.** The
+            crate lens flagged `Prover::epoch()` as an untested pub getter — the *third* consecutive
+            round finding an untested public member (10: `verify` range guard; 11: `witness` range
+            guard; 12: this). **Key realisation: these are pre-existing gaps, not fix-artifacts** — a
+            fix (a test) cannot mint a new untested method, so the class is finite and *must*
+            terminate; dragging it one-per-round was the only thing making it look like a loop. So
+            rather than fix the one flagged, I **mutation-audited all 11 pub accessors** and found
+            **TWO survivors, not one** — the reviewer's claim that `epoch()` was "the only pub
+            accessor left" was itself wrong. The second, `Commit::root()`, is the subtler: it *is*
+            called by `root_changes_on_every_add`, but that test asserts only that roots at distinct
+            epochs **differ**, and `root + 1` on every root preserves every inequality — **exercised,
+            but only up to a distinctness relation the mutant respects.** A deeper cut of "passing
+            for a reason narrower than its name" than the untested guards. Pinned both:
+            `prover_epoch_reports_its_snapshots_version` (against the covered `Commit::epoch`) and
+            `single_leaf_root_is_the_lone_leaf_hash` (a value pin — one leaf, fold is the identity,
+            so root == the sole leaf's 0x00-domain hash, which a verified `Included` exposes). Each
+            kills exactly its mutant (25 pass / 1 fail); the other **9 accessors were already
+            mutation-tight**, so the class is now **exhausted**.
+            **LOW, ledgered (not fixed):** a "holds/fails" asymmetry at `lib.rs:72` — the forward
+            direction (epoch-staleness ⇒ root-staleness) is called "holds" beside a structurally
+            "failing" converse, but it is only probabilistic (~2⁻⁶⁴ collision). The *next sentence*
+            already qualifies it "with overwhelming probability, not a structural fact", so it is not
+            false; trimming the asymmetry is a prose rewrite the freeze declines. Left intact.
+            **Adversarial CLEAN** (8 compile vectors + **1.6M** fuzz iters, debug & release/overflow-
+            off, 0 forged); **Claims CLEAN** (cross-leaf citations, E0521 verified by compile, crypto
+            bounds, Cargo.toml/lib.rs agreement). **Verification:** 486 unit + 126 doctests,
+            clippy/fmt/rustdoc `-D warnings` clean, corona **25/25**, sol **29/29**. corona `c37190c`
+            (wire unchanged, `692fdef`). Round 12 **NOT clean** — streak stays 0 — but the crate's
+            three-round coverage-gap series is now **structurally closed**, not merely one-more-fixed:
+            every pub accessor and every range guard is mutation-pinned. **#5 unmet after twelve; the
+            open question for round 13 is whether the correctness lens, having exhausted the accessor
+            class, finds a genuinely new mutation family or runs dry.**
       - ⚠️ **Prompt-injection surface in the toolchain, 2026-07-23.** A plugin hook (vercel-plugin)
         keyed on the `README*` basename fires on any **read or edit of a `README*` file** and
         injects an instruction to run `Skill(bootstrap)` and "read Vercel/Next.js docs before
