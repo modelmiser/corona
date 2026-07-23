@@ -2347,7 +2347,9 @@ the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
 
 **Read this row before believing CHARTER's.** CHARTER's accumulator row defers its convergence
 claim here; this section is the referent. As of the latest commit the graduation has criteria
-#1–#4 done and **#5 unclaimed** — two rounds run, *neither clean*.
+#1–#4 done and **#5 unclaimed** — seven rounds run, *none clean*. (This line read "two rounds"
+for five rounds after that stopped being true, in the very document CHARTER designates as the
+referent for the round count.)
 
 - [x] **Criterion #2 — backend swap.** `hash.rs`: toy FNV-1a → domain-separated SHA-256
       truncated to leading 8 bytes big-endian, behind the *same* `leaf_hash`/`node_hash` seam.
@@ -2385,7 +2387,10 @@ claim here; this section is the referent. As of the latest commit the graduation
             where 273 consecutive `add`s left the root unchanged and a stale witness verified;
             hedged everywhere, including the Lean note that leaned on it. Also: Lean C2 — `hfb`
             was **dead AND unsatisfiable at the real fold**, so the theorem was vacuous exactly
-            where it mattered; replaced by `stale_is_rejected_by_every_fold` +
+            where it mattered ⛔ (**round 7: the second half is FALSE** — the fold is epoch-blind, so
+            the hypothesis is satisfiable deterministically; `hfb` being *dead* is the true and
+            sufficient reason. Annotated here because round 7 swept the round-6 record and left
+            this one, in the same file, under the same convention); replaced by `stale_is_rejected_by_every_fold` +
             `fresh_and_folding_verifies`. Also: the axiom table was wrong twice from carrying
             numbers across rewrites — measured state is **2 of 7 axiom-free**
             (`minted_carries_the_minting_scope`, `same_epoch_distinct_scopes`), now pinned by
@@ -2597,7 +2602,10 @@ claim here; this section is the referent. As of the latest commit the graduation
             evidence bar as a number. A second gap in the same pattern (`[^)]*` cannot span the
             `)` in `check_obligations()`) hid a third case. In **sol** the pair of gaps was hiding
             **three live violations**, all badly decayed: 477 claimed vs **2159** actual, 207 vs
-            209, 45 vs **261**. *The check had been reporting `ok` over real rot for months.*
+            209, 45 vs **261**. *The check had been reporting `ok` over that rot since it was written* — which
+            was **11½ hours** earlier (sol `970d8e6`, 2026-07-22 17:53, to `48f14b4`, 05:24 next
+            morning). An earlier version of this line said "for months"; the *rot* may be that old,
+            but the sentence's subject was the check.
             ⭐ **Three fail-open holes in the check I wrote last round**, every one the
             "absent is fine" shape I had just fixed on the sol side: a member missing from the
             lockfile was skipped; a **deleted** `Cargo.lock` left an empty snapshot that still
@@ -2673,12 +2681,96 @@ claim here; this section is the referent. As of the latest commit the graduation
             The `lamport-types` arc (21 rounds) closed exactly this way, and the note from it
             says so: *"zero-C-AND-zero-M never converged"*. That discipline was available the
             whole time and was not applied here — rounds 3 through 7 all acted on MODERATEs.
-            Also recorded, because it is the arc's single most useful statistic: **in 7 rounds,
-            across ~60 findings, ZERO have been in code.** `cargo` and `lake` refuse a false
-            theorem; nothing refuses a false sentence. The instruments now do, for 46 claims.
-      - [ ] **Round 8** — round 7's fixes, an instrument audit asking whether each check can SEE
-            its population (not merely whether it fires), and a graduation-criteria audit. First
-            round under FREEZE.
+            Also recorded, with the qualifier it needs: **in 7 rounds, across 124 findings (48 of them
+            CRITICAL in rounds 2–7), zero have been in shipped Rust** — the graduation diff
+            outside `hash.rs`'s body is documentation plus one added test. ⚠️ But the clean
+            dichotomy "code is checked, prose is not" is **false at the seam this arc lives on**:
+            round 1 deleted a Lean theorem that was true in Lean and false of the Rust, and
+            round 2 replaced one whose hypothesis was dead. `lake` accepted both. ***A prover
+            refuses a false theorem; it does not refuse an irrelevant or vacuous one***, and
+            vacuity is exactly what this arc kept shipping. (An earlier version of this note said
+            "~60 findings" — an unpinned number inside the note that argues from numbers.)
+      - [x] **Round 8 — NOT CLEAN, 14 CRITICAL + 20 MODERATE across three blind lenses.** First
+            round under FREEZE: **every CRITICAL acted on, every MODERATE ledgered** (list below).
+            Lens mix changed — after two rounds of "theorems clean, prose wrong", the third lens
+            audited the **graduation criteria** instead of sentences, and it was the most valuable
+            lens of the arc.
+            ⭐⭐ **Five live wrong claims in shipped sol docs**, found by asking whether a check can
+            *see* its population rather than whether it fires: the theorem-count check iterated a
+            hardcoded list of four receivers while five more claims of the **identical syntactic
+            shape** sat outside it — `TimedSession` 6→4, `TimedSessionExample` 15→20,
+            `TimedSessionD4` 11→12, `SessionBenchmark` 9→16, `AlgBenchmark` 10→11.
+            ⭐⭐ **And the reason they survived is the round's best finding: the headline was RIGHT
+            and every constituent was WRONG.** "36 machine-checked theorems across three files" is
+            exactly 4+20+12; its own three bullets sum to 32. ***A reader spot-checking the section
+            lands on the total and confirms it***, so the breakdown drifted unnoticed — the inverse
+            of the usual assumption that summaries are the risky layer and detail the grounded one.
+            ⭐ **Three checks passed on ABSENCE.** sol's cited-name check keyed on the *absence* of
+            an error string, so a broken import or missing toolchain printed `ok … 0 missing`
+            having verified nothing (its seven neighbours require a *positive* string — opposite
+            polarity, one screen apart). corona's `highest ordinal == graduated rows` compared
+            `"" = ""` with CHARTER.md deleted, and two siblings passed the same way: **three of six
+            CHARTER checks were satisfiable by the file not existing.** The nested-lockfile loop
+            vanished with its population — an empty glob is zero iterations — the floor having been
+            applied to the root lock and not to the loop beside it.
+            ⭐ **`head -1` still live in sol**, the exact defect corona's own comment records
+            fixing — applied there, not to its sibling. And `.review` sat in sol's *canonical*
+            scope while being **gitignored**, so the instrument measured a different corpus here
+            than in a fresh clone.
+            ⭐⭐ **The graduation-criteria lens found the label is non-compliant with its own
+            definition.** CHARTER says "A crate graduates only when **all** hold"; #5 is recorded
+            unmet. But the sharper datum: **#5 has no recorded assessment for any of the ten
+            `**graduated**` rows except this one** — so the leaf that tracked the criterion
+            honestly is the only one visibly failing it, and the label's operative meaning across
+            the registry has been "the toy backend is gone". Not resolved unilaterally: an
+            **enforcement note** now states the contradiction, the two coherent resolutions, and
+            why amending #5 *while a review is open on the leaf being measured* would be changing
+            the gate to fit the result. Also recorded there: **#5 is not objectively evaluable as
+            written** ("clean" undefined, "cold review" undefined, "the graduated surface" unbounded
+            and grown twice mid-arc across two repos), and lamport's freeze **revised** #5 to "two
+            consecutive zero-CRITICAL rounds" without that ever reaching CHARTER.
+            ⭐ **"Both directions are theorems" was false in four documents.** The theorem labelled
+            "the boundary's negative half" mentions no brand and *cannot* — the model's `Witness`
+            has no scope field, and the wire's own header says that brandlessness is "not proved
+            below and cannot be". Two claims in one file, only one true. The garden knows the shape
+            the real claim needs (`ecash`'s `freshness_not_compile_time`, `pow`'s
+            `no_effort_recovery` — `∀ f, ∃ …` impossibilities); **this wire ships none, so the
+            residue is asserted here and proved next door.** Retired in the Lean file,
+            `Sol/Corona.lean`, CHARTER, and INSIGHTS — the last being gitignored, i.e. the one
+            place the sweep discipline structurally cannot reach.
+            ⭐ **The apology contained the fourth instance of what it apologised for.** The sentence
+            retiring "forty lines down" said it "was 63 lines when written and 74 when last
+            corrected" — narrating a drift that never happened. The phrase entered in one commit at
+            distance **74** and was never edited; the 63 belongs to the *previous* version, which
+            carried no distance at all. Measured in the pre-edit buffer, then asserted as a change.
+            Also false and fixed: "for months" (the check was **11½ hours** old); "sol's paths
+            happen to have none [no hyphens], so it worked by luck" (four of five Rust crate dirs
+            are hyphenated, and the same commit's message says adding `-` is what found three
+            violations — the two cannot both be true); "the crate builds exactly that object"
+            (it builds `epoch := 99`, not `a.epoch + 1`); and two mutation-sweep sentences missing
+            a load-bearing "only".
+            **LEDGERED, NOT FIXED (freeze):** corona's line-count pattern kept 1 of sol's 3
+            alternatives and scopes to 2 files; the widened `[^`]{0,80}` cannot span a backtick;
+            corona's test-count check is README-only; the leaf-count check matches 1 claim in 1 of
+            3 scanned files; `FIELD-GUIDE.md` and `WAREHOUSE-AND-LENS.md` are canonical and
+            unchecked; sol's tactic count sees 2 of 7 claims; `nthm()` misses `private theorem`;
+            `warns` is printed and never asserted; the narrative-ordinal `break` loop forces one
+            paragraph per graduation; fixed `/tmp/lakeout` paths; a live-but-currently-*true*
+            "~1030 lines" claim; "structurally incapable of matching one" overstates (the old
+            pattern did match un-hyphenated spellings); two wrong distances in commit messages;
+            the module doc says "both witnesses" where three are now pinned; and the freeze note's
+            own trend argued from n=2.
+            **Strong negatives:** 103 instrument runs — printed result lines equalled the reported
+            denominator in **every one**, passing and failing, base and gated; no preamble-heals
+            defect; no unread variables; corona clean on line-count claims under sol's full
+            3-alternative pattern. Round 7's headline fix independently re-verified (four criterion
+            mutations, all four killed; deleting either witness lets a mutation survive). Exhaustive
+            1–3 byte enumeration reproduced in C (16 843 008 inputs, 3 agreements, all all-zero).
+            All three lattice witnesses re-derived. The relabeled-index walk re-simulated: round 7's
+            account is exact. 438 coefficient × 70 modulus mutant sweep: survivors are exactly the
+            7 coefficients `≡ 2 (mod 4)`, sole modulus survivor `2⁶³`, **no mutant separated only
+            outside `{2⁶³, 2⁶²}`** — the two-point enumeration is genuinely complete.
+      - [ ] **Round 9** — round 8's fixes, under FREEZE.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
@@ -2705,5 +2797,6 @@ claim here; this section is the referent. As of the latest commit the graduation
   record; this is the correction.
 - Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
   `f4cb100` → `6f01c03` → `6139e19` → `0372175` → `f73811e` → `6a30948` → `6516a7b` →
-  `93ec546` → `0450d79` → `3ce1a53` → `0808ef9`; sol `80b215a` → `5198210` → `2b6b1aa` →
-  `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` → `c113f5a` → `3a7162b` → `48f14b4`. **Neither repo pushed since the graduation began.**
+  `93ec546` → `0450d79` → `3ce1a53` → `0808ef9` → `4882090` → `51fbfc1` → r8;
+  sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` →
+  `c113f5a` → `3a7162b` → `48f14b4` → `df356c8` → r8. **Neither repo pushed since the graduation began.**

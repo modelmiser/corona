@@ -264,9 +264,14 @@ mod tests {
     /// `dₖ` this module is about. The all-zero input satisfies it at every length (Boundary 1
     /// below); an earlier version of this comment said "impossible at `L ≤ 2`" while that
     /// boundary case, in this same test, asserted the opposite. (That version also carried a
-    /// line-distance — "forty lines down" — which was 63 lines when written and 74 when last
-    /// corrected. Three locator claims in this file have now been wrong; they are being written
-    /// as references rather than distances.) Exhaustive enumeration of all
+    /// line-distance, "forty lines down". ⚠ The sentence retiring it was itself a false locator
+    /// claim — it said "63 lines when written and 74 when last corrected", narrating a drift that
+    /// never happened: the phrase entered in one commit at distance **74** and was never edited.
+    /// The 63 is real and belongs to the *previous* version, which carried no line-distance at
+    /// all. So the number was measured in the pre-edit buffer and then asserted as a change.
+    /// **Four** locator claims in this file have now been wrong, the fourth inside the apology
+    /// for the first three; they are written as references rather than distances.) Exhaustive
+    /// enumeration of all
     /// 16 843 008 inputs of 1–3 bytes returns the all-zero input and nothing else. Agreements
     /// with a *nonzero* `dₖ` become available around `L ≈ 8–9` (`256^L` inputs against a `2⁶³`
     /// congruence) and are abundant by `L = 10`, where two are pinned below — one per residue
@@ -397,12 +402,17 @@ mod tests {
     /// The criterion is discriminated by exactly two values of `t` — `2⁶³` and `2⁶²` — and this
     /// test enumerates both rather than hoping an input reaches them. Swept over coefficient and
     /// modulus mutants, the only survivors are coefficients `≡ 2 (mod 4)`, which denote the same
-    /// predicate; no mutant is separated by a point outside `{2⁶³, 2⁶²}`.
+    /// predicate; no mutant is separated *only* by a point outside `{2⁶³, 2⁶²}` — the word "only" is
+    /// load-bearing and an earlier version omitted it, making the sentence literally false (421 of
+    /// 438 coefficient mutants are also separated somewhere else; what matters is that none is
+    /// separated *exclusively* elsewhere).
     ///
     /// Which value kills which mutant is not a clean split, and an earlier version of this
     /// comment paired them backwards: it said `2⁶³` catches a wrong coefficient and `2⁶²` a
     /// wrong modulus. `2⁶³` does catch `p−1 → p−2`, but coefficient mutants of 2-adic valuation
-    /// ≥ 2 (`0`, `2(p−1)`, `4(p−1)`) are caught **only** at `2⁶²`. Enumerating both is what makes
+    /// ≥ 2 (`0`, `2(p−1)`, `4(p−1)`) are caught at `2⁶²` and not at `2⁶³`
+    /// (they are also caught at `(1 << 63) | (1 << 62)`, which is in the list below, so "only at
+    /// `2⁶²`" — an earlier wording — overstates it; the contrast that matters is with `2⁶³`). Enumerating both is what makes
     /// the test complete; the attribution was decoration, and wrong.
     ///
     /// Kept alongside `fnv_recurrence_exponent_is_l_plus_one_minus_k` rather than instead of it.

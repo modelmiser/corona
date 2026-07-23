@@ -99,7 +99,13 @@ else bad "CHARTER registry names == workspace leaves" "identical sets" "differ: 
 # Graduation bookkeeping: the count of `**graduated**` rows, the ordinal the newest row
 # claims, and the numbered narrative ("The **first**… **tenth**") must agree. Round 4 found
 # the narrative one entry short of the registry with no instrument to catch it.
+# Round 8: three of the six CHARTER checks were satisfiable by the FILE NOT EXISTING -- with
+# CHARTER.md absent, `grep -c ... || true` yields "" and `[ "" = "" ]` printed `ok` with a blank
+# value. A check whose operands are both empty is not comparing anything. Assert the file first.
+if [ -s CHARTER.md ]; then ok "CHARTER.md is present and non-empty" "$(wc -l < CHARTER.md) lines"
+else bad "CHARTER.md is present and non-empty" "non-empty" "missing or empty"; fi
 grad_rows=$(grep -cE '^\| *`?[a-z0-9-]+`? *\| *\*\*graduated\*\* *\|' CHARTER.md || true)
+grad_rows=${grad_rows:-0}
 ordinals="first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth"
 narrative=0
 for o in $ordinals; do
@@ -111,7 +117,9 @@ cmp_n "graduated rows == numbered narrative entries" "$grad_rows" "$narrative"
 # `sort -un` that fed this loop deduped them out of sight. The ordinals are supposed to be a
 # numbering, so check that: distinct, and topping out at exactly the graduated-row count.
 ord_raw=$(grep -ohE '\(([0-9]+)(st|nd|rd|th) graduation' CHARTER.md | grep -oE '[0-9]+' | sort -n)
-ord_n=$(printf '%s\n' "$ord_raw" | grep -c .)
+ord_n=$(printf '%s\n' "$ord_raw" | grep -c . || true)
+if [ "${ord_n:-0}" -ge 1 ]; then ok "graduation ordinal claims found" "$ord_n"
+else bad "graduation ordinal claims found" ">=1" "0"; fi
 for c in $(printf '%s\n' "$ord_raw" | sort -un); do
   [ "$c" -le "$grad_rows" ] && ok "ordinal '${c}th graduation' <= graduated rows" "$c <= $grad_rows" \
                             || bad "ordinal '${c}th graduation'" "<= $grad_rows" "$c"
@@ -201,7 +209,14 @@ for name in members:
         bad.append(f'{name}:toml={mv.group(1)}!=lock={root_lock[name]}')
 
 # Nested workspaces keep their own lockfiles and are invisible to `cargo test --workspace`.
-for nested in sorted(pathlib.Path('tools').glob('*/Cargo.lock')):
+nested_locks = sorted(pathlib.Path('tools').rglob('Cargo.lock'))
+# Round 8: an empty glob is zero iterations, so DELETING the nested lockfile left this green --
+# the vanishing-population floor was applied to the root lock and not to the loop beside it. Any
+# directory under tools/ with a manifest must have a lockfile.
+for wsdir in sorted(pathlib.Path('tools').rglob('Cargo.toml')):
+    if '[workspace]' in wsdir.read_text() and not (wsdir.parent / 'Cargo.lock').exists():
+        bad.append(f'{wsdir.parent}:Cargo.lock-missing')
+for nested in nested_locks:
     nl = parse_lock(nested)
     if nl is None:
         bad.append(f'{nested}:empty')
