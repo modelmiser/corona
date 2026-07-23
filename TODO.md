@@ -2130,7 +2130,35 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
 ## Frontier — nothing auto-starts; these are candidates, not backlog
 
 - [ ] **Next graduation** (non-hub) — a leaf whose backend swap is contained. Bar: CHARTER criteria.
-- [ ] **Diff-composition** — the `∘` search over warehouse surfaces described in WAREHOUSE-AND-LENS.
+- [x] **Diff-composition, round 1 — DONE 2026-07-22.** `COMPOSITION-SEARCH.md` (the lens) +
+      `tools/surfaces.py` (mechanical surface extraction over all 34 crates) +
+      `tools/compose-probes/` (3 reactions that must run, 3 rejections that must fail with
+      **their documented error code**, `probe.sh`). Run at FEEDSTOCK bar per WAREHOUSE-AND-LENS:
+      extract mechanically, choose by judgement, let the compiler score it — no review panel.
+      Three of 528 leaf pairs, chosen for question-diversity; the unattempted five are named in
+      the doc so the coverage is legible. **A** `unit ∘ numerical-accuracy` = GLUE ONLY (both
+      leaves seal the same `f64` carrier and neither is generic in it, so the round trip drops
+      one guarantee per crossing; `Quantity<Tracked>` compiles and means nothing — the phantom
+      slot takes anything). Its finding is a SECOND, more expensive shape of leaf 7's pressure:
+      what is missing is **polymorphism**, not a doorway — re-parameterising a converged type,
+      not an additive rung. **B** `dp ∘ crdt` = IMPOSSIBILITY, a new residue edge: the counter
+      clones and converges, the budget will not clone (E0599) — state replicates, accounting
+      does not. A privacy budget is exactly as non-monotone as leaf 9's spent set, reached from
+      the DP side; unifies leaf 9's coordination seam with leaf 15's `Clone`-vs-linear mapping.
+      **C** `translog ∘ lamport` = HIT at capacity 1: a signed tree head verifies with zero new
+      API, but the escaping artifact is unbranded by necessity (leaf 11's finding observed
+      ACROSS leaves) and one one-time key certifies one checkpoint (E0382) — so the load-bearing
+      version is `translog ∘ mss`, a leaf that already exists. Two corrections caught in-flight:
+      the pair count (C(33,2)=528, not C(34,2)=561 — corona-core is not a composition candidate)
+      and a false superlative ("first composition of two graduated leaves" — `mss` = merkle ∘
+      lamport predates it; both parents graduated later). **`compile_fail,EXXXX` doctests were
+      abandoned mid-build**: mutation-testing showed rustdoc enforces the error code only on
+      nightly, so a fence reading E0599 passes on a snippet failing E0382 — decorative. The
+      negatives are now real `required-features` bins whose exact code `probe.sh` greps; both
+      mutations (wrong code, negative made to compile) are killed. check-claims 12→15 (the leaves
+      claim now scoped to the new doc, plus the pair count checked as DERIVED, C(leaves,2)).
+- [ ] **Diff-composition, round 2** — candidate, not backlog. The five named-but-unattempted
+      pairs, or build `translog ∘ mss` (the only round-1 result that indicates a real leaf).
 - [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
       counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
 

@@ -44,8 +44,14 @@ ok "workspace members" "$members"
 # leaf-count claims in prose must equal members-1 (corona-core is not a leaf)
 # CANONICAL docs only. TODO/DEVLOG/INSIGHTS are append-only logs: a past-tense count in a
 # dated entry is correct BECAUSE it was true then. Only present-tense assertions can drift.
-for c in $(grep -rhoE 'corona-core \+ \*\*[0-9]+ leaves\*\*' README.md CHARTER.md 2>/dev/null | grep -oE '[0-9]+'); do
+for c in $(grep -rhoE 'corona-core \+ \*\*[0-9]+ leaves\*\*' README.md CHARTER.md COMPOSITION-SEARCH.md 2>/dev/null | grep -oE '[0-9]+'); do
   cmp_n "prose 'corona-core + N leaves'" "$c" "$((members-1))"
+done
+# COMPOSITION-SEARCH states how many leaf pairs exist, to make its coverage legible. That
+# is a DERIVED number: it must stay C(leaves,2), not merely be a number someone once wrote.
+leaves=$((members - 1))
+for c in $(grep -rhoE '[0-9]+ unordered leaf pairs' COMPOSITION-SEARCH.md tools/surfaces.py 2>/dev/null | grep -oE '^[0-9]+'); do
+  cmp_n "prose 'N unordered leaf pairs' == C(leaves,2)" "$c" "$((leaves * (leaves - 1) / 2))"
 done
 
 # ---------------------------------------------------------------- VERSIONS

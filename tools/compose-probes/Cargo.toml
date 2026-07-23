@@ -1,0 +1,46 @@
+[package]
+name = "compose-probes"
+version = "0.1.0"
+edition = "2021"
+publish = false
+autobins = false
+
+# Deliberately its OWN workspace: these probes are FEEDSTOCK, not a leaf. Keeping them out
+# of the root workspace means they do not move the pinned test/leaf counts that
+# `tools/check-claims.sh` guards, and `cargo test --workspace` at the root ignores them.
+[workspace]
+
+# The three REJECTIONS are behind a feature so a plain `cargo build` stays green while the
+# sources that must NOT compile still live in the repo as ordinary, greppable Rust.
+# `probe.sh` builds each one and asserts both the failure and its exact error code.
+#
+# They are NOT `compile_fail` doctests: rustdoc only enforces the `EXXXX` annotation on
+# nightly, so on a stable toolchain a doctest fenced `compile_fail,E0599` still passes when
+# the snippet fails with E0382. Mutation-tested and confirmed — the fence was decorative.
+[features]
+negatives = []
+
+[[bin]]
+name = "a_unit_x_accuracy"
+[[bin]]
+name = "b_dp_x_crdt"
+[[bin]]
+name = "c_translog_x_lamport"
+
+[[bin]]
+name = "fail_a_carrier_is_not_a_parameter"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_b_budget_does_not_replicate"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_c_one_key_one_checkpoint"
+required-features = ["negatives"]
+
+[dependencies]
+unit-types = { path = "../../unit-types" }
+numerical-accuracy = { path = "../../numerical-accuracy" }
+dp-types = { path = "../../dp-types" }
+crdt-types = { path = "../../crdt-types" }
+translog-types = { path = "../../translog-types" }
+lamport-types = { path = "../../lamport-types" }
