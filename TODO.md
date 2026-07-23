@@ -2472,8 +2472,57 @@ claim here; this section is the referent. As of the latest commit the graduation
             cross-lineage presentations (**the test first ran 246**, so the loop bounds now
             *make* it 300 rather than the prose remembering it) and the all-zero boundary
             where the two recurrence forms agree.
-      - [ ] **Round 5** — the round-4 fixes are again new unreviewed content, and the
-            subtraction in `hash.rs` is the largest single change any round has made.
+      - [x] **Round 5 — NOT CLEAN, 2 CRITICAL + 7 MODERATE from ONE lens** (subtraction
+            audit; the second lens, the instrument audit, never finished — see the incident
+            note below).
+            ⭐⭐ **A mutation-tested test still encoded a false claim.** Round 4's
+            `fnv_recurrence_exponent_is_l_plus_one_minus_k` asserted the two recurrence forms
+            agree *only* on all-zero input, and killed three mutations doing it. The reviewer
+            exhibited `[104,31,7,5,30,38,58,15,217,5]` — **no zero byte, every `dₖ ≠ 0`** —
+            where both agree, so my test fails on it. ***Mutation testing shows a test detects
+            changes to the CODE; it is silent on whether the test's INPUT DOMAIN is adequate
+            to the claim in its doc comment.*** My five hand-picked inputs topped out at
+            `L = 10` by accident, and agreements only become reachable near `L ≈ 8–9`, because
+            `documented − retired = (p−1)·Σ dₖ p^(L−k)` with `gcd(p−1, 2⁶⁴) = 2` ⇒ agreement
+            iff `Σ ≡ 0 (mod 2⁶³)`. The reviewer found it by lattice reduction — *the same
+            knapsack the module is about.* Test restructured around the algebraic identity,
+            counterexample pinned in the main loop.
+            ⭐ **The replacement assertion passed VACUOUSLY.** `retired == h ⟺ tail ≡ 0` held
+            at any modulus while every input made both sides `false`; a `2⁶²` mutation
+            survived until the counterexample exercised the true branch. And one mutation
+            **still** survives — `p−1 → p−2` in the criterion, because the only known
+            agreement has `tail == 0` *exactly* and every coefficient annihilates zero.
+            Recorded in the test rather than hidden: what pins `p−1` is the separate identity
+            assertion, where that mutation *does* fail. Prose narrowed to match — the
+            criterion admits `Σ = 0` and `Σ = 2⁶³`, and **only the first has a witness.**
+            ⭐ **Third consecutive round in which a commit contradicted itself.** Round 4's
+            multi-target hedge credited the **epoch gate** with blunting a hit on a superseded
+            root — but `Witness::epoch` is a `pub` field an attacker rewrites, after which
+            freshness passes and the **root comparison at the end of the fold** does the
+            refusing. The crate's own `VerifyError::Stale` docs say so, *as does the test added
+            by the very same commit.* Wrong mechanism, again in the direction that flatters the
+            defence.
+            Also: "the same dimension-8 instance" → the same *shape*, three instances (the next
+            sentence already said "with a different base constant"); "four successive drafts"
+            double-counted — three entered the slot; a same-commit provenance claim true of
+            `709580b` but not of the commit that wrote the sentence; TODO still carried
+            "publishes a new root per `add`", the premise round 4 corrected in `hash.rs`;
+            `lib.rs`'s inversion claim had lost its source pointer.
+            **Strong negatives worth recording:** 30 deleted sentences traced with **0 orphaned
+            dependents**, the citation target resolves exactly, sol references nothing deleted,
+            and the `node_hash` dimension-8 reduction reproduced 2000/2000.
+      - [ ] **Round 6** — the round-5 fixes are new unreviewed content, and the instrument
+            audit still owes this arc a completed pass.
+      - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
+        instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
+        Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
+        then failed with ENOSPC — *the diagnostic channel dies at exactly the moment you need
+        it*, so diagnostics were redirected under `/home` and read back. Stopped that specific
+        agent by task ID (never `pkill`), moved 9.3 GB of copies to
+        `~/staging/2026-07-23-r5-agent-scratch-copies/`. The `rm -rf` hook's suggested
+        `/tmp/claude-trash` is **on the same full filesystem and would have freed nothing** —
+        a trash directory only helps if it is on a different mount. Relaunch protocol: never
+        copy `sol/lean/.lake`.
       - ⚠️ **Working-tree incident, 2026-07-23 00:16:02.** `CHARTER.md` + `README.md` were
         rewritten in the same second by something outside this session, rolling the tree back
         to a pre-lamport-graduation state (8 `**graduated**` rows instead of 10, the ninth
@@ -2489,5 +2538,5 @@ claim here; this section is the referent. As of the latest commit the graduation
   *premise* did not, and the crate said the premise. Left in place above as the historical
   record; this is the correction.
 - Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
-  `f4cb100` → `6f01c03`; sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` →
-  `0ca3693`. **Neither repo pushed since the graduation began.**
+  `f4cb100` → `6f01c03` → `6139e19` → `0372175`; sol `80b215a` → `5198210` → `2b6b1aa` →
+  `810b5d4` → `46488bb` → `0ca3693`. **Neither repo pushed since the graduation began.**
