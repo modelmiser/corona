@@ -114,8 +114,10 @@
 //!   raw preimage bytes) can produce a *fresh* `SigningKey` that signs again under the
 //!   same [`VerifyingKey`] — and harvesting both preimage sides that way is exactly the
 //!   classic Lamport multi-signature forgery the one-time rule exists to prevent. The
-//!   linear guarantee is therefore **conditional on the seed being discarded after
-//!   keygen** (a real CSPRNG-generated key has no reproducible seed). Made executable by
+//!   linear guarantee is therefore **conditional on the seed being drawn uniformly *and*
+//!   discarded after keygen — two clauses, not one**: a *discarded* 24-bit seed is still
+//!   recovered in ≲2²⁵, re-mints the key and signs again (a real CSPRNG-generated key
+//!   satisfies both — it is uniform and has no reproducible seed). Made executable by
 //!   `a_retained_seed_re_mints_the_key_and_forges_a_second_message` (the seed re-mints
 //!   the key and forges a second message under the same `VerifyingKey`) and
 //!   `two_signatures_harvest_both_preimage_sides_at_a_differing_position` (two signatures

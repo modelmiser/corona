@@ -2104,5 +2104,5 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
 - [ ] **R20 under freeze** — zero CRITICAL twice consecutively opens the push gate. 30 corona / 25 sol
       commits unpushed pending it.
 
-The garden is again a finished thought: corona-core + **26 leaves**, no review debt. Any further leaf
+The garden is again a finished thought: corona-core + **33 leaves**, no review debt. Any further leaf
 is a fresh open-ended domain, not backlog. Nothing auto-starts.

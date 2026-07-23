@@ -317,12 +317,16 @@ use sha2::{Digest as _, Sha256};
 /// the same size as its range and guaranteed to contain the target, so each is a search of
 /// `2⁶⁴` candidates rather than an unbounded one. ~2⁶³ is the **unique-preimage average**;
 /// under a random-function model the target has 1 + Poisson(1) preimages, giving ~2^62.6.
-/// That convention rounds the attacker's cost *up* **row-by-row** — but ⚠ *not* everywhere:
-/// two places in the module posture use it in the other direction. At ‡ it is what makes a
-/// composite route appear to work at all (and the shipped `commit`, being a random function,
-/// is on the other side — so the route does not apply); and in the extraction bound the 2⁵⁷
-/// term is rounded *up* where a lower bound wants the cheapest cost, ~2⁵⁶. Both are flagged
-/// in place; neither moves the ~2³² floor.)
+/// That convention rounds the attacker's cost *up* everywhere — which is the SAFE direction
+/// only for pricing a row (an upper bound stays valid). ⚠ Wherever the posture consumes a
+/// figure as a *lower* bound or as an *existence* claim, up-rounding is the wrong direction,
+/// and this file does so in at least three places: at ‡, where it is what makes a composite
+/// route appear to work at all (the shipped `commit`, being a random function, is on the
+/// other side — so the route does not apply); in the extraction bound, where the 2⁵⁷ term
+/// wants the cheapest cost, ~2⁵⁶; and in the floor argument above, which reads row 6's
+/// up-rounded ~2⁵⁷ (~2⁵⁶ under the shipped `commit`, and ~2⁵⁵ against 257 targets) as a lower
+/// bound. No enumeration here is claimed complete — the rule is the check, not the list.
+/// None of the three moves the ~2³² floor; the smallest is still 2²³ above it.)
 /// Not "preserves preimage resistance": SHA-256's own
 /// ~2²⁵⁶ drops to ~2⁶⁴/~2⁶³, and its ~2¹²⁸ collision resistance to ~2³². See the module
 /// security posture.
