@@ -3,6 +3,14 @@
 version = 4
 
 [[package]]
+name = "accumulator-types"
+version = "0.1.0"
+
+[[package]]
+name = "arq-types"
+version = "0.1.0"
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -12,22 +20,58 @@ dependencies = [
 ]
 
 [[package]]
+name = "bloom-types"
+version = "0.2.0"
+dependencies = [
+ "siphasher",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
+name = "commit-types"
+version = "0.2.0"
+dependencies = [
+ "sha2",
+]
+
+[[package]]
 name = "compose-probes"
 version = "0.1.0"
 dependencies = [
+ "accumulator-types",
+ "arq-types",
+ "bloom-types",
+ "commit-types",
+ "consttime-types",
+ "corona-core",
  "crdt-types",
  "dp-types",
+ "ecash-types",
+ "erasure-types",
  "lamport-types",
  "numerical-accuracy",
+ "sigma-types",
+ "swap-types",
+ "threshold-types",
  "translog-types",
  "unit-types",
 ]
+
+[[package]]
+name = "consttime-types"
+version = "0.2.0"
+dependencies = [
+ "subtle",
+]
+
+[[package]]
+name = "corona-core"
+version = "0.1.0"
 
 [[package]]
 name = "cpufeatures"
@@ -60,11 +104,27 @@ checksum = "9ed9a281f7bc9b7576e61468ba615a66a5c8cfdff42420a70aa82701a3b1e292"
 dependencies = [
  "block-buffer",
  "crypto-common",
+ "subtle",
 ]
 
 [[package]]
 name = "dp-types"
 version = "0.1.0"
+
+[[package]]
+name = "ecash-types"
+version = "0.2.0"
+dependencies = [
+ "hmac",
+ "sha2",
+]
+
+[[package]]
+name = "erasure-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
+]
 
 [[package]]
 name = "generic-array"
@@ -74,6 +134,15 @@ checksum = "85649ca51fd72272d7821adaf274ad91c288277713d9c18820d8499a7ff69e9a"
 dependencies = [
  "typenum",
  "version_check",
+]
+
+[[package]]
+name = "hmac"
+version = "0.12.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6c49c37c09c17a53d937dfbb742eb3a961d65a994e6bcdcf37e7399d0cc8ab5e"
+dependencies = [
+ "digest",
 ]
 
 [[package]]
@@ -102,6 +171,33 @@ dependencies = [
  "cfg-if",
  "cpufeatures",
  "digest",
+]
+
+[[package]]
+name = "sigma-types"
+version = "0.1.0"
+
+[[package]]
+name = "siphasher"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ee5873ec9cce0195efcb7a4e9507a04cd49aec9c83d0389df45b1ef7ba2e649"
+
+[[package]]
+name = "subtle"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c2bddecc57b384dee18652358fb23172facb8a2c51ccc10d74c157bdea3292"
+
+[[package]]
+name = "swap-types"
+version = "0.1.0"
+
+[[package]]
+name = "threshold-types"
+version = "0.1.0"
+dependencies = [
+ "corona-core",
 ]
 
 [[package]]

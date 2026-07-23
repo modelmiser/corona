@@ -1,4 +1,4 @@
-# Composition search — round 1
+# Composition search
 
 *The `∘` search over warehouse surfaces that [WAREHOUSE-AND-LENS](WAREHOUSE-AND-LENS.md)
 describes. Feedstock bar: extract mechanically, choose by judgement, **let the compiler
@@ -11,11 +11,12 @@ score it**. Reproduce with `tools/surfaces.py` and `tools/compose-probes/probe.s
    extraction task, not a reading task.
 2. **Choose** — by hand. There is deliberately no mechanical pair ranker: every leaf accepts
    `&[u8]`, so a surface-overlap score would rank all 528 unordered leaf pairs plausible and
-   mean nothing. Three reactions were attempted, each asking a *different* question.
+   mean nothing. Each reaction attempted asks a *different* question; round 2 attempted
+   exactly the five pairs round 1 had published as candidates.
 3. **Score** — `cargo`. Each reaction is a binary that must build and run; each rejection it
    depends on is a source file that must fail, *with its documented error code*.
 
-## The three reactions
+## Round 1 — the first three reactions
 
 | | Reaction | Question it asks | Verdict |
 |---|---|---|---|
@@ -88,30 +89,138 @@ constraints fall straight out:
 ```text
 merkle ──┬──► mss ──► hypertree (mss ∘ mss)
 lamport ─┘    │
-              └────► translog ∘ mss   ← NEW, indicated, not built
-translog ─┬──► signed tree head (capacity 1)   ← NEW, built, capacity-bounded
+              └────► translog ∘ mss   ← indicated, not built
+translog ─┬──► signed tree head (capacity 1)   ← built, capacity-bounded
 lamport ──┘
 merkle ──┬──► vid
 erasure ─┘
 
-dp ╫ crdt   ← NEW negative edge: linear accounting does not cross a replica boundary
+dp ╫ crdt   ← negative edge: linear accounting does not cross a replica boundary
 ```
 
-## Proposed, not attempted
+## Round 2 — the five that round 1 named but did not attempt
 
-Named so the coverage of this round is legible — three of 561 pairs, chosen for question
-diversity, not for likelihood:
+Round 1 published a list of five candidates. Round 2 attempted **exactly that list**, rather
+than substituting easier pairs, because the published list is what makes the coverage of the
+search legible.
 
-- `swap` ∘ `ecash` — two linear capabilities traded atomically; expected to restate B's seam.
-- `arq` ∘ `erasure` — hybrid ARQ (FEC + retransmission); availability axis × delivery axis.
-- `consttime` ∘ any secret-bearing leaf — cross-cutting; expected glue, worth confirming.
-- `bloom` ∘ `accumulator` — a cheap absence filter in front of an authenticated inclusion
-  check; would test whether an *unauthenticated* parent poisons a composition.
-- `sigma` ∘ `commit` — commit-and-prove; both leaves already carry the brand.
+| | Reaction | Question it asks | Verdict |
+|---|---|---|---|
+| **D** | `swap` ∘ `ecash` | Does A's finding hold **on the crypto substrate**? | **Glue only** |
+| **E** | `arq` ∘ `erasure` | Liveness axis × availability axis | **Hit** |
+| **F** | `consttime` ∘ `threshold` | Can two *secret-holding* leaves meet? | **Glue, self-defeating** |
+| **G** | `bloom` ∘ `accumulator` | Does an *unauthenticated* parent poison a composition? | **Unmediated** |
+| **H** | `sigma` ∘ `commit` | Commit-and-prove | **Hit** |
+
+### D — A's finding replicates, in crypto *(glue only)*
+
+`atomic_swap` and `Escrow` name swap-types' own `Token`/`WireToken` concretely. ecash's
+`Coin` is an equally linear capability, and the two never meet (**E0308**). Trading e-cash
+atomically needs `Escrow<T>` — the same **missing polymorphism** reaction A found between
+`Quantity` and `Tracked`.
+
+> **The finding.** A was a non-crypto pair, so its result could have been an artifact of that
+> substrate. It is not: **two of eight reactions are blocked by arity, one in each domain.**
+> "Composition pressure surfaces missing API" (leaf 7) and "…surfaces missing polymorphism"
+> are two distinct failure modes, and the second is not rare.
+
+### E — erasure is a licence to stop retransmitting *(hit)*
+
+Encode 3-of-5, give each fragment its own single-frame ARQ stream, lose two streams forever,
+decode from the three that arrive. Zero rungs: `Fragment { index, value }` and
+`Frame { seq, payload }` are both public-fielded wire types.
+
+> **The finding.** ARQ and erasure coding are *alternative answers to one question* — how do
+> you get k things across a lossy channel? Retransmit until each arrives (needs a fair
+> channel) or send redundancy and tolerate loss (needs n > k). Composed, the erasure code
+> **discharges ARQ's liveness obligation**: you stop at k acks instead of pressing every
+> stream to completion, which is what makes it safe against a permanently dead stream.
+>
+> But the seam **discards the witness**. `Delivered` is a genuine sealed token (**E0451** —
+> it cannot be forged), and `erasure::decode` takes bare `Fragment`s. The one witness ARQ
+> mints does not survive the boundary.
+
+### F — the only crossing is a declassification *(glue, self-defeating)*
+
+Both leaves have a sealed type called `Secret` and they do not meet (**E0308**). The single
+doorway is `threshold_types::Secret::expose() -> u8`, so the composition is: reconstruct
+under one seal, **declassify to a bare `u8`**, re-seal under the other.
+
+> **The finding.** This is A's round trip with a security consequence. The plaintext interval
+> between the two seals is *precisely* the window `consttime-types` exists to close — so
+> composing them through the only available doorway defeats the reason for composing them.
+> A declassification doorway is a legitimate API and still the wrong seam.
+
+### G — the hazard is an `if` *(unmediated — a fourth verdict class)*
+
+Query the cheap filter first; skip the expensive authenticated check on a `DefinitelyAbsent`.
+Build the filter from a different (stale, or adversarial) set and the probe prints both:
+**bloom says definitely-absent = true, and the accumulator authenticates the same element as
+included = true.** Neither leaf is wrong; each answered truthfully about its own input.
+
+> **The finding — a new class.** No *value* flows from bloom to the accumulator. The
+> composition is a **control-flow short circuit**, an early return, and a type system cannot
+> inherit an obligation across an `if`. `DefinitelyAbsent` and `Included` are unrelated types
+> (**E0308**), so the data path is closed and the dangerous path is the one that isn't a data
+> path at all. Round 1's three verdicts — glue, impossibility, hit — all presumed a value
+> crossing the seam. This is the case where nothing crosses and the composition is still real.
+
+### H — a byte slot left open on purpose *(hit)*
+
+`Challenge::fiat_shamir(statement, commitment, msg: &[u8])` binds a proof to arbitrary
+context; passing a `commit-types` digest as `msg` yields commit-and-prove with zero rungs.
+(Both leaves export a type named `Commitment`; they are unrelated, and mixing them is
+**E0308** — the garden's *vocabulary* collides across leaves, its types do not.)
+
+> **The finding.** The seam is a deliberately open `&[u8]` slot — the general-purpose
+> composition point, and the reason this one costs nothing. And again the witness dies at it:
+> the minted `AcceptedTranscript` records **no reference to the commitment** it was bound to.
+> The binding is real at challenge-derivation time and unrecoverable from the evidence.
+
+## Composition graph after round 2
+
+```text
+arq  ──┬──► hybrid ARQ (stop at k acks)        ← NEW hit
+erasure┘
+sigma ─┬──► commit-and-prove (Fiat–Shamir msg) ← NEW hit
+commit ┘
+
+bloom ⇢ accumulator   ← NEW, UNMEDIATED: a control-flow short circuit, no type sees it
+swap  ╫ ecash         ← blocked by arity (∥ unit ╫ numerical-accuracy)
+consttime ╫ threshold ← crossable only by declassifying, which defeats the point
+```
+
+## Synthesis after eight reactions
+
+Eight of 528 leaf pairs. Four verdict classes, and one pattern nobody was looking for:
+
+| Verdict | Reactions | |
+|---|---|---|
+| **Glue only** | A, D, F | A & D blocked by **arity**; F by a declassification doorway |
+| **Impossibility** | B | linear accounting cannot cross a replica boundary |
+| **Hit** | C, E, H | all three cost zero rungs |
+| **Unmediated** | G | the composition is control flow; no type can see it |
+
+> **Every hit loses a witness at the seam. Three for three.** C's brand cannot escape
+> `consistency_scoped`, so what gets signed is bytes. E's sealed `Delivered` is discarded
+> because `decode` takes bare `Fragment`s. H's `AcceptedTranscript` does not record the
+> commitment that the challenge was derived from. In each case the composition *works* and
+> the evidence that it worked is not reconstructible from the types that come out.
+>
+> This is leaf 11's "the witness crosses the wire so it is unbranded by necessity", promoted
+> from a property of one leaf to a property of **seams**. A witness is minted by a check
+> inside a leaf; a seam is where a value leaves that leaf; so the witness is exactly what
+> cannot follow it. Worth stating as a design rule: **if a composition must carry evidence,
+> the seam has to be given a type of its own** — which is what `mss-types` did, and why it
+> needed two rungs to do it.
+
+Note what did **not** happen: zero reactions needed a new rung. Round 1 already warned that
+this is not a success metric, and round 2 confirms it — three of the five zero-rung
+reactions are glue or unmediated.
 
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # the three reactions and the three rejections
+tools/compose-probes/probe.sh      # eight reactions and eight rejections
 ```

@@ -28,6 +28,17 @@ name = "b_dp_x_crdt"
 name = "c_translog_x_lamport"
 
 [[bin]]
+name = "d_swap_x_ecash"
+[[bin]]
+name = "e_arq_x_erasure"
+[[bin]]
+name = "f_consttime_x_threshold"
+[[bin]]
+name = "g_bloom_x_accumulator"
+[[bin]]
+name = "h_sigma_x_commit"
+
+[[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
 required-features = ["negatives"]
 [[bin]]
@@ -35,6 +46,21 @@ name = "fail_b_budget_does_not_replicate"
 required-features = ["negatives"]
 [[bin]]
 name = "fail_c_one_key_one_checkpoint"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_d_no_leaf_is_generic_in_the_traded_item"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_e_delivery_witness_is_sealed"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_f_two_secrets_do_not_meet"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_g_absence_is_not_inclusion"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_h_two_commitments_collide_by_name_only"
 required-features = ["negatives"]
 
 [dependencies]
@@ -44,3 +70,14 @@ dp-types = { path = "../../dp-types" }
 crdt-types = { path = "../../crdt-types" }
 translog-types = { path = "../../translog-types" }
 lamport-types = { path = "../../lamport-types" }
+corona-core = { path = "../../corona-core" }
+swap-types = { path = "../../swap-types" }
+ecash-types = { path = "../../ecash-types" }
+arq-types = { path = "../../arq-types" }
+erasure-types = { path = "../../erasure-types" }
+consttime-types = { path = "../../consttime-types" }
+threshold-types = { path = "../../threshold-types" }
+bloom-types = { path = "../../bloom-types" }
+accumulator-types = { path = "../../accumulator-types" }
+sigma-types = { path = "../../sigma-types" }
+commit-types = { path = "../../commit-types" }

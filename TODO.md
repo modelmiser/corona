@@ -2173,8 +2173,40 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       fence in a third leaf. Checker 15→16. **The general lesson, third instance this week:
       an evidentiary device has to be watched failing, or it is decoration** — the fences were
       correct 57/58 times, which is exactly why nobody noticed the one that wasn't.
-- [ ] **Diff-composition, round 2** — candidate, not backlog. The five named-but-unattempted
-      pairs, or build `translog ∘ mss` (the only round-1 result that indicates a real leaf).
+- [x] **Diff-composition, round 2 — DONE 2026-07-22.** Attempted **exactly the five pairs round 1
+      published**, not easier substitutes — the published list is what makes the search's coverage
+      legible. 8 reactions + 8 rejections now in `probe.sh`, all codes OBSERVED before being pinned.
+      **D** `swap ∘ ecash` = GLUE ONLY — `atomic_swap`/`Escrow` name swap's own `Token` concretely
+      (E0308); trading e-cash needs `Escrow<T>`. **A's finding replicates on the crypto substrate**,
+      so it was not an artifact of the non-crypto pair: 2 of 8 reactions blocked by ARITY, one per
+      domain. **E** `arq ∘ erasure` = HIT — hybrid ARQ, 3-of-5 with two streams dead forever;
+      the erasure code DISCHARGES ARQ's liveness obligation (stop at k acks, never press a dead
+      stream). But `decode` takes bare `Fragment`s, so the sealed `Delivered` (E0451, genuinely
+      unforgeable) is DISCARDED at the seam. **F** `consttime ∘ threshold` = GLUE, SELF-DEFEATING —
+      two sealed `Secret` types that never meet (E0308); the only crossing is `expose()`, and the
+      plaintext interval it opens is precisely the window consttime exists to close. **G**
+      `bloom ∘ accumulator` = **UNMEDIATED, a FOURTH verdict class** — probe prints bloom
+      "definitely-absent = true" AND accumulator "authenticated-included = true" for the same
+      element, both truthful about their own inputs. No value flows; the composition is an early
+      return, and no type system inherits an obligation across an `if`. Round 1's three verdicts all
+      presumed a value crossing the seam. **H** `sigma ∘ commit` = HIT — Fiat–Shamir's `msg: &[u8]`
+      is a deliberately open slot, zero rungs; both leaves export an unrelated `Commitment` (E0308 —
+      the VOCABULARY collides across leaves, the types don't).
+      **THE SYNTHESIS: every hit loses a witness at the seam, 3 for 3.** C's brand can't escape
+      `consistency_scoped`; E's `Delivered` is discarded; H's `AcceptedTranscript` records no
+      reference to the commitment bound into its challenge. Leaf 11's "unbranded by necessity"
+      promoted from a property of one leaf to a property of SEAMS — a witness is minted by a check
+      *inside* a leaf, a seam is where a value *leaves* it, so the witness is exactly what cannot
+      follow. Design rule: **a composition that must carry evidence needs the seam to have a type of
+      its own** — which is what `mss-types` did, and why it cost two rungs. Also confirmed: zero of
+      eight reactions needed a rung, and three of those zero-rung reactions are glue or unmediated.
+      Caught in-flight: a **retired `561` survived round 1's rewrite** as "three of 561 pairs"
+      because the checker's pattern only knew "N unordered leaf pairs" — the exact
+      grep-every-synonym failure from the ecash arc. Pattern broadened, mutation-tested; 3
+      occurrences now checked. Checker 16→17.
+- [ ] **Diff-composition, round 3** — candidate, not backlog. Either build `translog ∘ mss` (still
+      the only result indicating a real leaf) or test the seam rule directly: does giving a seam its
+      own type recover the witness in E or H?
 - [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
       counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
 

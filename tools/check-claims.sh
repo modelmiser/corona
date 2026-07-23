@@ -50,8 +50,10 @@ done
 # COMPOSITION-SEARCH states how many leaf pairs exist, to make its coverage legible. That
 # is a DERIVED number: it must stay C(leaves,2), not merely be a number someone once wrote.
 leaves=$((members - 1))
-for c in $(grep -rhoE '[0-9]+ unordered leaf pairs' COMPOSITION-SEARCH.md tools/surfaces.py 2>/dev/null | grep -oE '^[0-9]+'); do
-  cmp_n "prose 'N unordered leaf pairs' == C(leaves,2)" "$c" "$((leaves * (leaves - 1) / 2))"
+# Match EVERY phrasing, not the one I happened to write first: a retired number survived a
+# rewrite as "three of 561 pairs" because the pattern only knew "N unordered leaf pairs".
+for c in $(grep -rhoE '[0-9]+ (unordered )?(leaf )?pairs' COMPOSITION-SEARCH.md tools/surfaces.py 2>/dev/null | grep -oE '^[0-9]+'); do
+  cmp_n "prose 'N ... pairs' == C(leaves,2)" "$c" "$((leaves * (leaves - 1) / 2))"
 done
 
 # ---------------------------------------------------------------- VERSIONS
