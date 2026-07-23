@@ -67,8 +67,12 @@
 //!    backwards through `p⁻¹` deterministically, leaving the same dimension-8 knapsack for the
 //!    seed. Total key recovery from a **single observed signature**, no `commit` inversion.
 //! 3. **[`digest`] collision-resistant** — the first branch, and **the binding one**: truncation
-//!    to 64 bits caps it at ~2³² (birthday, with ~2³² storage — or ~3× the hashes memory-free
-//!    via Pollard rho). That bound is a property of the width, not of SHA-256. Each of the three
+//!    to 64 bits caps it at ~2³² (birthday, with ~2³² storage; going memory-free does **not**
+//!    cost the ~3× this sentence used to quote — that is *Floyd* cycle detection's price, while
+//!    Brent's runs at ~1 evaluation per step and van Oorschot–Wiener distinguished points get
+//!    the same figure with negligible memory *and* parallel speedup, so the 3× over-priced the
+//!    attacker; corrected 2026-07-23 when `accumulator-types` inherited the phrasing).
+//!    That bound is a property of the width, not of SHA-256. Each of the three
 //!    is capped by a *parameter* rather than by the backend, and they are not the same parameter:
 //!    (1) by the **64-bit preimage domain** (not the commitment's output width — leave `commit`'s
 //!    output at 256 bits with `u64` preimages and one-wayness is still ~2⁶³; see `sha256_u64`'s

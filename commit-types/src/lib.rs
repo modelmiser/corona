@@ -200,8 +200,13 @@ use core::marker::PhantomData;
 /// ([`Commitment::verify`], [`commit`], [`leaky_commit`], [`ScopedCommitment::verify`],
 /// [`commit_scoped`]) are unchanged. What *did* change: the body; the removal of the toy
 /// `fnv1a` helper (private to this leaf, no external consumers); and — a breaking change
-/// for the return type, carrying **zero** blast radius because this leaf has no dependents
-/// — the width of the [`Digest`](hash::Digest) it returns (`u64` → `[u8; 32]`).
+/// for the return type, carrying **zero** blast radius across the leaf graph — no other
+/// *leaf* depends on this one — the width of the [`Digest`](hash::Digest) it returns
+/// (`u64` → `[u8; 32]`). Scoped deliberately: `tools/compose-probes` (added later, by the
+/// composition search) does path-depend on this crate and uses `commit` in three bins, so
+/// the unqualified "this leaf has no dependents" this sentence carried until 2026-07-23
+/// was false. It was found by sweeping the same claim-shape after `accumulator-types`'
+/// graduation shipped it — the tooling created dependents that the leaves' prose predates.
 ///
 /// ## Security posture
 ///

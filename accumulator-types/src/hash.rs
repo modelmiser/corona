@@ -7,31 +7,55 @@
 //! (`u64 → u64`), so unlike `merkle-types`' `u64 → [u8; 32]` graduation it forces
 //! no dependent edits — and this leaf has no dependent that *names the seam's type*
 //! (`tools/compose-probes` does depend on the crate, but only through `Accumulator`
-//! and `Included`, so the type-preserving swap reached it not at all). Values do move,
-//! hence `0.1.0 → 0.2.0`.
+//! and `Included`, so the swap forced no *source* edit there). It did force a
+//! `Cargo.lock` bump in that dependent, which is why the crate no longer claims "zero
+//! dependents" anywhere. Values do move, hence `0.1.0 → 0.2.0`.
 //!
 //! ## What the swap bought, and what it did not
 //!
 //! **Bought — one-wayness, and collisions demoted from *constructed* to *searched*.**
 //! 64-bit FNV-1a is cheaply invertible, but not because "a mixing function is
 //! invertible by construction" — that would be a non-sequitur (each SHA-256 round is
-//! a bijection on its state too). The reason is algebraic, and `lamport-types` states
-//! it precisely for the same function; quote it rather than paraphrase, because the
-//! change of variables is the whole content. FNV-1a is affine **in bounded
-//! perturbations**, not in the input bytes: since `h ⊕ b` and `h` differ only in the
-//! low byte, `h ⊕ b = h + d` with `|d| ≤ 255`, so over fixed-length input
-//! `h_L = OFFSET·p^L + Σₖ dₖ·p^(L−k) (mod 2⁶⁴)`. The unknowns are the **state-dependent
-//! `dₖ`**, and inverting is a dimension-8 modular knapsack whose *solution vector* is
-//! small — lattice-reduce over a relaxed box, then filter by forward consistency to
-//! recover actual bytes. Seconds.
+//! a bijection on its state too). The reason is algebraic, and the canonical statement
+//! of it lives in `lamport-types`' calibration paragraph, for the same function.
+//!
+//! **Quoted from there, exactly, for its own 8-byte payload:** FNV-1a is *affine in
+//! bounded perturbations* — since `h ⊕ b` and `h` differ only in the low byte,
+//! `h ⊕ b = h + d` with `|d| ≤ 255` — so
+//! `fnv(0x01 ‖ x) = h₁·p⁸ + Σₖ dₖ·p⁹⁻ᵏ (mod 2⁶⁴)` where `h₁ = (OFFSET ⊕ 0x01)·p`.
+//! Inversion is a dimension-8 modular knapsack whose **unknowns** satisfy `|dₖ| ≤ 255`
+//! (the coefficients are full-width; it is the *solution vector* that is small) —
+//! lattice-reduce, enumerate a relaxed box, filter by forward consistency.
+//!
+//! **Derived here, and checked here** (not quoted — the distinction is the point): for a
+//! general `L`-byte input with no tag, `h_L = OFFSET·p^L + Σₖ₌₁..ₗ dₖ·p^(L+1−k)`. The
+//! exponent is `L+1−k`, not `L−k`, because FNV-1a multiplies *after* the xor, so even the
+//! last byte's perturbation is multiplied once. That is not a detail: with `L−k` the
+//! identity fails on **1999 of 2000** random inputs and the lattice is simply the wrong
+//! instance. The test `fnv_recurrence_exponent_is_l_plus_one_minus_k` pins it.
+//!
+//! **The dimension is the number of unknown input bytes, and it is not 8 here.**
+//! `lamport-types`' `8` is the length of *its* payload, and its "under a second per
+//! target" is a measurement at that length. Enumeration cost runs as `511^L / 2⁶⁴`, so
+//! `L = 8` gives ~2⁸ box points and `L = 16` gives ~2⁸⁰. This crate's retired
+//! `leaf_hash` took **variable-length** data and its `node_hash` takes a fixed 17 bytes
+//! (16 unknown). So "inverts in seconds" is imported, true at `L = 8`, and **was not
+//! measured against `node_hash`** — where the same enumeration is not feasible at all.
+//! What carries across unchanged is the *structure*: the knapsack exists at every `L`.
 //!
 //! It is **not** affine in the bytes themselves, and this file previously said it was:
-//! additive separability `f(1,1) + f(0,0) ≡ f(1,0) + f(0,1)` fails outright (measured
-//! difference `0x2_0000_0366` on the two-byte case, and on 200000/200000 random
-//! inputs). The offset basis has low byte `0x25`, so `h ⊕ 0x01` *decrements* rather
-//! than increments — the very first byte breaks the identity. Two wrong justifications
-//! have now occupied this slot; the fix was to stop compressing the sibling file and
-//! carry its formulation verbatim.
+//! additive separability `f(1,1) + f(0,0) ≡ f(1,0) + f(0,1)` fails outright. The
+//! difference is exactly `±2p` — `0x2_0000_0003_66` on the two-byte case — and it can
+//! only ever be `0` or `±2p`, since it equals `p·(d₁ − d₀)` with each `dᵢ ∈ {±1}`: the
+//! offset basis has low byte `0x25`, so `h ⊕ 0x01` *decrements* where an even state
+//! increments. The test `separability_gap_is_exactly_two_p` pins that too.
+//!
+//! **Three wrong justifications have now occupied this slot**, and the third arrived
+//! *inside the fix for the second*. Round 2 replaced a paraphrase with what it called the
+//! sibling's formulation "carried verbatim" — and it was a silent re-derivation with the
+//! exponent shifted and the tag term dropped. A claim of verbatim quotation is itself a
+//! checkable claim, and nobody checked it against the source. Hence the split above:
+//! what is quoted is marked quoted, what is derived is marked derived and has a test.
 //!
 //! SHA-256 removes that structure and gives the construction its first non-trivial
 //! preimage assumption.
@@ -44,18 +68,31 @@
 //! **Not bought — the CEILING, which is the WIDTH.** A Merkle root binds its contents
 //! only as well as the hash resists **collisions** — the attacker picks both sides —
 //! and this seam is 64 bits wide. A birthday search over a truncated SHA-256 finds a
-//! colliding pair in **~2³²** evaluations — `√(π/2)·2³² ≈ 1.25·2³²` with ~2³² storage,
-//! or **~3× that** memory-free via Pollard-rho, whose cycle detection costs extra
-//! evaluations per step (`lamport-types` states the same figure the same way). Offline
-//! and key-independent either way; two leaves that collide are interchangeable under
-//! any root containing one.
+//! colliding pair in **~2³²** evaluations — `√(π/2)·2³² ≈ 1.25·2³²` with ~2³² storage.
+//! **Memory-freeness is not what costs extra.** The familiar ~3× is the price of *Floyd*
+//! cycle detection (three evaluations per step); Brent's variant is memory-free at ~1
+//! evaluation per step, and van Oorschot–Wiener distinguished points (*Parallel Collision
+//! Search with Cryptanalytic Applications*, J. Cryptology 1999) gets essentially the
+//! `1.25·2³²` figure with negligible memory **and** near-linear parallel speedup. Quoting
+//! the 3× as the memory-free price over-prices the attacker — the direction that flatters
+//! the defence, which is the one to be careful about. (`lamport-types` states the 3× the
+//! same way, and is wrong the same way.) Offline and key-independent throughout; two
+//! leaves that collide are interchangeable under any root containing one.
 //!
-//! Be exact about which attack costs what, because the two differ by 2³²:
+//! Be exact about which attack costs what — and note the middle row, because this leaf
+//! *manufactures* targets:
 //!
 //! | Attacker's goal | Generic cost here |
 //! |---|---|
 //! | find *some* colliding pair, choosing both sides (equivocation over a tree they build) | **~2³²** |
-//! | hit a **fixed** target — a `node_hash` from an honest tree — with a chosen `leaf_hash` | **~2⁶⁴** (second-preimage) |
+//! | hit **any of `T`** published targets — an epoch-versioned accumulator publishes a new root per `add` | **~2⁶⁴/T** (e.g. ~2⁴⁴ at `T = 2²⁰` epochs) |
+//! | hit one **fixed** target — a specific `node_hash` from an honest tree — with a chosen `leaf_hash` | **~2⁶⁴** (second-preimage) |
+//!
+//! The multi-target row is not decoration here. `add` advances the epoch and publishes a
+//! fresh root, so an adversary watching a long-lived accumulator accumulates targets for
+//! free, and will usually accept a hit against *any* of them. `lamport-types` makes this
+//! row the centrepiece of its own table; an earlier draft of this file adopted that table
+//! and dropped the row, presenting the remaining two as exhaustive.
 //!
 //! **So the graduation changed the *class* of break — from "produce a collision
 //! directly" to "search ~2³² for one" — and that is a real move in the exponent, from
@@ -124,6 +161,85 @@ pub fn node_hash(left: u64, right: u64) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // ---------------------------------------------------------------------------
+    // The RETIRED toy backend, reproduced here for one reason only: the module docs
+    // make arithmetic claims about it, and every prose number in this crate that was
+    // not machine-checked has eventually been wrong. Two of them were — the
+    // recurrence exponent and the separability constant — and both are now pinned.
+    // ---------------------------------------------------------------------------
+    const FNV_OFFSET: u64 = 0xcbf2_9ce4_8422_2325;
+    const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
+
+    fn fnv1a(bytes: &[u8]) -> u64 {
+        let mut h = FNV_OFFSET;
+        for &b in bytes {
+            h ^= u64::from(b);
+            h = h.wrapping_mul(FNV_PRIME);
+        }
+        h
+    }
+
+    fn p_pow(e: u32) -> u64 {
+        let mut acc = 1u64;
+        for _ in 0..e {
+            acc = acc.wrapping_mul(FNV_PRIME);
+        }
+        acc
+    }
+
+    /// The docs state `h_L = OFFSET·p^L + Σₖ dₖ·p^(L+1−k)` (1-based `k`) and say the
+    /// `p^(L−k)` form an earlier draft shipped is the wrong instance. Both halves are
+    /// asserted: the documented form must reproduce FNV-1a exactly, and the retired
+    /// form must not. A test that only checked the first would pass on either.
+    #[test]
+    fn fnv_recurrence_exponent_is_l_plus_one_minus_k() {
+        for input in [
+            &b"a"[..],
+            &b"ab"[..],
+            &b"abc"[..],
+            &b"alice"[..],
+            &b"0123456789"[..],
+        ] {
+            let l = input.len() as u32;
+            let mut h = FNV_OFFSET;
+            let mut ds = Vec::new();
+            for &b in input {
+                ds.push((h ^ u64::from(b)).wrapping_sub(h));
+                h = (h ^ u64::from(b)).wrapping_mul(FNV_PRIME);
+            }
+            assert_eq!(h, fnv1a(input));
+            let base = FNV_OFFSET.wrapping_mul(p_pow(l));
+            let documented = ds.iter().enumerate().fold(base, |acc, (i, d)| {
+                acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32)))
+            });
+            assert_eq!(documented, h, "documented recurrence must reproduce FNV-1a");
+            let retired = ds.iter().enumerate().fold(base, |acc, (i, d)| {
+                acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32 - 1)))
+            });
+            assert_ne!(
+                retired, h,
+                "the p^(L-k) form is the one the docs call wrong"
+            );
+        }
+    }
+
+    /// The separability gap is not a measured curiosity — it is forced. It equals
+    /// `p·(d₁ − d₀)` with each `dᵢ ∈ {±1}`, so `±2p` is the only nonzero outcome.
+    /// An earlier draft shipped `0x2_0000_0366`: the right measurement, transcribed
+    /// with two hex zeros dropped.
+    #[test]
+    fn separability_gap_is_exactly_two_p() {
+        let f = |a: u8, b: u8| fnv1a(&[a, b]);
+        let gap = f(1, 1)
+            .wrapping_add(f(0, 0))
+            .wrapping_sub(f(1, 0))
+            .wrapping_sub(f(0, 1));
+        assert_ne!(gap, 0, "additive separability fails");
+        assert_eq!(gap, FNV_PRIME.wrapping_mul(2), "the gap is exactly 2p");
+        assert_eq!(gap, 0x0000_0200_0000_0366, "the constant the docs print");
+        assert_ne!(gap, 0x0000_0002_0000_0366, "not the dropped-digit value");
+    }
 
     /// Golden vectors computed by an **independent oracle** — python's `hashlib`,
     /// not this crate — so the test pins the construction (tag bytes, big-endian

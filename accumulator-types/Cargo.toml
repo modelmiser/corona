@@ -7,9 +7,11 @@ license = "MIT"
 
 # Graduated backend: the audited RustCrypto SHA-256 replaces the toy FNV-1a behind
 # the same `hash` module seam (CHARTER.md, graduation criterion #2). The swap is
-# TYPE-PRESERVING (u64 -> u64), so it forces no dependent edits — and this leaf has
-# no dependents to force. `forbid(unsafe_code)` governs *our* code, not the vetted
-# dependency.
+# TYPE-PRESERVING (u64 -> u64), so it forces no dependent edits. It does have a
+# dependent — `tools/compose-probes` — which the swap reached not at all in COMPILE
+# terms, though its Cargo.lock did need the 0.1.0 -> 0.2.0 bump. "Zero dependents" is
+# what an earlier version of this comment said, and that was simply false.
+# `forbid(unsafe_code)` governs *our* code, not the vetted dependency.
 #
 # Otherwise depends on nothing — not even `corona-core`. Like `merkle-types`,
 # `lamport-types`, `ecash-types`, and `ratchet-types`, this leaf shares the garden's

@@ -263,9 +263,16 @@ impl Accumulator {
     /// unbranded values may escape — a [`Witness`], a `u64`, a `usize`, and also a
     /// [`Prover`], which is `Clone` and carries no brand. That last one is not an
     /// oversight: an escaped `Prover` mints only genuine witnesses for the epoch it was
-    /// frozen at. Those are accepted by any snapshot at the **same epoch** — correct, since
-    /// such snapshots carry an identical commitment — and rejected by the freshness check
-    /// or the fold at any later **epoch**. Say *epoch*, not *snapshot*: this leaf's own
+    /// frozen at. Those are accepted by any snapshot at the **same epoch of the same
+    /// lineage** — such snapshots carry an identical commitment — and rejected by the
+    /// freshness check or the fold at any later **epoch**. The lineage qualifier is
+    /// load-bearing, and an earlier draft of this sentence omitted it while asserting the
+    /// justification unconditionally: `Accumulator` is `Clone`, so two forks reach the
+    /// *same* epoch with *different* roots (the converse this crate refutes in its header),
+    /// and the fold rejects such a witness — measured, 300 cross-lineage same-epoch
+    /// presentations, 0 accepted. Note the direction: the real behaviour **rejects** where
+    /// the old sentence promised acceptance, so this was a false claim, never a hole.
+    /// Say *epoch*, not *snapshot*: this leaf's own
     /// headline datum is that a snapshot is strictly finer than an epoch, so "any later
     /// snapshot" would be the wrong quantifier. The rule is *unbranded*, not *small*; treat the list as examples.
     pub fn snapshot_scoped<R>(

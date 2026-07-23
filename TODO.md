@@ -2373,7 +2373,7 @@ claim here; this section is the referent. As of the latest commit the graduation
             construction" (a non-sequitur — each SHA-256 round is a bijection too) and replaced it
             with an affine-**in-the-input-bytes** account credited to `lamport-types`. That is
             arithmetically FALSE — additive separability `f(1,1)+f(0,0) ≡ f(1,0)+f(0,1)` fails by
-            `0x2_0000_0366`, on 200000/200000 random inputs; the offset basis has low byte `0x25`,
+            `0x2_0000_0003_66` (= exactly 2p; an earlier draft dropped two hex zeros), on 200000/200000 random inputs; the offset basis has low byte `0x25`,
             so `h ⊕ 0x01` **decrements** and the identity breaks at the first byte. And
             `lamport-types` never said it: it says affine **in bounded perturbations**
             (`h ⊕ b = h + d`, `|d| ≤ 255`, state-dependent `dₖ`, dimension-8 modular knapsack with
