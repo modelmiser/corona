@@ -145,3 +145,76 @@ pub fn seal_signed_consistency(
         _seal: (),
     })
 }
+
+// ─────────────────────────────────────────── SEAM G (bloom ∘ accumulator) — round 4
+
+/// Round 2 filed `bloom ∘ accumulator` as **unmediated**: the composition is a control-flow
+/// short circuit, so no type sees it. Round 3 concluded that witness loss at a seam is never
+/// forced. Those two look like they disagree, and this is the test.
+///
+/// The disagreement is only apparent, and the resolution is the finding: a seam type **cannot**
+/// mediate two *independently maintained* states — that is what round 2 actually observed —
+/// but it **can** mediate them if it owns the write path that keeps them in agreement.
+///
+/// Note what is deliberately absent: there is no `from_existing(BloomFilter, Accumulator)`.
+/// To bind a filter and an accumulator that were built separately, a third party would have to
+/// check that the filter summarises the accumulator's contents — and `Accumulator` does not
+/// expose its elements at all, so through these leaves' public APIs the check cannot even be
+/// attempted. (That is a statement about this API surface, not a proof that no binding could
+/// ever exist: an accumulator that published a commitment the filter also committed to would
+/// admit one.) The round-2 poisoning is unreachable here only because it is unconstructible.
+pub struct SummarizedSet {
+    accumulator: accumulator_types::Accumulator,
+    filter: bloom_types::BloomFilter,
+}
+
+/// Sealed witness that an element is absent **from the accumulator**, at a stated epoch —
+/// not merely absent from a filter someone handed us.
+///
+/// Soundness: every element enters both structures in the same `add`, and a Bloom filter has
+/// no false negatives, so `DefinitelyAbsent` implies never-added implies not-in-accumulator.
+pub struct AbsentAt {
+    epoch: u64,
+    _seal: (),
+}
+
+impl AbsentAt {
+    /// The epoch this absence was established at. It **goes stale**: absence is not
+    /// monotone under `add`, so a witness older than the current epoch says nothing about
+    /// now. Compare against [`SummarizedSet::epoch`] before relying on it.
+    pub fn epoch(&self) -> u64 {
+        self.epoch
+    }
+}
+
+impl SummarizedSet {
+    pub fn new(m_bits: usize, k: u32) -> SummarizedSet {
+        SummarizedSet {
+            accumulator: accumulator_types::Accumulator::new(),
+            filter: bloom_types::BloomFilter::new(m_bits, k),
+        }
+    }
+
+    /// The **sole** write path, which is what makes the seam sound: nothing can enter one
+    /// structure without entering the other.
+    pub fn add(&mut self, element: &[u8]) -> u64 {
+        self.filter.insert(element);
+        self.accumulator.add(element)
+    }
+
+    pub fn epoch(&self) -> u64 {
+        self.accumulator.epoch()
+    }
+
+    /// The cheap path, now sound. `Some` is a sealed proof of absence from the accumulator;
+    /// `None` means the filter could not rule it out and the authenticated check must run.
+    pub fn absent(&self, element: &[u8]) -> Option<AbsentAt> {
+        match self.filter.query(element) {
+            bloom_types::Membership::DefinitelyAbsent(_) => Some(AbsentAt {
+                epoch: self.accumulator.epoch(),
+                _seal: (),
+            }),
+            bloom_types::Membership::PossiblyPresent(_) => None,
+        }
+    }
+}

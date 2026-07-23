@@ -269,9 +269,51 @@ takes the index from the caller, and the residue is **executable**: swap two ind
 > because ARQ authenticates a symbol and never authenticates its coordinate. A seam type is a
 > lens, not a source: it can carry any fact across, and it can invent none.
 
+## Round 4 — checking round 2 and round 3 against each other
+
+Two conclusions from this page appear to disagree:
+
+- **Round 2:** `bloom ∘ accumulator` is **unmediated** — "no type can see it."
+- **Round 3:** witness loss at a seam is **never forced** by the type system.
+
+If a seam type can mediate G, "unmediated" was wrong. If it cannot, round 3's rule has a
+boundary. Either way one of them needs correcting, so the cheapest attack on this document is
+to compose its own two rows — and that is the test worth running.
+
+### It can be mediated, and the condition is ownership
+
+`SummarizedSet` owns an `Accumulator` and a `BloomFilter` behind private fields, with a single
+write path: `add` inserts into both. `absent()` then returns a sealed `AbsentAt` — a proof of
+absence **from the accumulator**, not from a filter someone handed us. Soundness is one line:
+every element enters both in the same `add`, and a Bloom filter has no false negatives, so
+`DefinitelyAbsent` ⟹ never added ⟹ not in the accumulator. Round 2's poisoning is not
+defended against; it is **unconstructible** (`l_seam_g` asserts `absent(bob).is_none()`).
+
+Note what is deliberately missing: there is no `from_existing(BloomFilter, Accumulator)`. To
+bind two separately-built objects, a third party would have to check that the filter
+summarises the accumulator's contents — and `Accumulator` does not expose its elements at all,
+so through these leaves' public APIs the check cannot even be attempted.
+
+> **Neither conclusion was wrong; they bound each other.** "Unmediated" is a property of two
+> **independently maintained** states, not a limit on seam types. A seam type cannot bind what
+> it merely observes — but it can mediate what it **owns the write path of**. Round 2 saw the
+> composition as an `if` between two objects because that is the only way to write it *from
+> outside*. Round 3's rule survives, with its condition now named.
+
+### What the seam could not fix was time
+
+`AbsentAt` carries an epoch and **goes stale**: add the element and the witness's epoch falls
+behind. The seam moved *soundness*, not *freshness* — leaf 11's residue is untouched.
+
+And that closes a loop across all twelve reactions. The residue that survives every seam is
+**non-monotonicity**. Reaction B: a privacy budget cannot be replicated because spending is not
+monotone. Leaf 9: a spent set. Leaf 11: an epoch. Here: absence, which `add` destroys. Facts
+that only accumulate ride through any composition; facts that can be *revoked* need a clock,
+and no seal is a clock.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # eleven reactions and eleven rejections
+tools/compose-probes/probe.sh      # twelve reactions and twelve rejections
 ```

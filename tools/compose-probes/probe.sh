@@ -13,7 +13,7 @@ echo "── reactions (must compile and run) ──"
 for b in a_unit_x_accuracy b_dp_x_crdt c_translog_x_lamport \
          d_swap_x_ecash e_arq_x_erasure f_consttime_x_threshold \
          g_bloom_x_accumulator h_sigma_x_commit \
-         i_seam_e j_seam_h k_seam_c; do
+         i_seam_e j_seam_h k_seam_c l_seam_g; do
   if out=$(cargo run --quiet --bin "$b" 2>&1); then
     printf '  ok    %s\n' "$b"
     printf '%s\n' "$out" | sed 's/^/          /'
@@ -50,6 +50,7 @@ check_fail fail_h_two_commitments_collide_by_name_only    E0308
 check_fail fail_i_seam_e_is_sealed                        E0451
 check_fail fail_j_seam_h_is_sealed                        E0451
 check_fail fail_k_seam_c_is_sealed                        E0451
+check_fail fail_l_seam_g_is_sealed                        E0451
 
 echo
 [ "$fails" -eq 0 ] && echo "probes green" || { echo "FAILED: $fails"; exit 1; }

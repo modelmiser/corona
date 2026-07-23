@@ -2230,9 +2230,30 @@ theorems — Cleve / Alpern–Schneider), 11 (residue degenerate in the append-o
       because ARQ authenticates a symbol and never authenticates its coordinate. *A seam type is a
       LENS, not a SOURCE: it can carry any fact across and can invent none.* 11 reactions + 11
       rejections in `probe.sh`.
-- [ ] **Diff-composition, round 4** — candidate, not backlog. The seam rule now predicts: give
-      `arq-types` a way to witness a coordinate and E's residue closes. That is a rung on a converged
-      leaf, so it is a deliberate act, not momentum.
+- [x] **Diff-composition, round 4 — DONE 2026-07-22. R2 and R3 checked AGAINST EACH OTHER.** Not
+      the ARQ-coordinate rung (near-tautological: give ARQ a coordinate, the seam carries one).
+      Instead the cheapest attack on this arc: **compose its own two rows.** R2 filed
+      `bloom ∘ accumulator` as UNMEDIATED ("no type can see it"); R3 concluded witness loss is NEVER
+      forced. One had to be wrong. **Neither was — they BOUND each other.** `SummarizedSet` owns an
+      `Accumulator` + `BloomFilter` behind private fields with ONE write path (`add` feeds both);
+      `absent()` mints a sealed `AbsentAt` proving absence FROM THE ACCUMULATOR. Soundness in one
+      line: same `add` feeds both + bloom has no false negatives ⇒ DefinitelyAbsent ⇒ never-added ⇒
+      not-in-accumulator. R2's poisoning isn't defended against, it is **UNCONSTRUCTIBLE**
+      (`l_seam_g` asserts `absent(bob).is_none()`). Deliberately NO `from_existing(filter, acc)`:
+      `Accumulator` doesn't expose its elements, so through these public APIs the binding check
+      can't even be attempted (scoped to this API surface, NOT claimed impossible in general — an
+      accumulator publishing a commitment the filter also committed to would admit one).
+      ⇒ **"unmediated" is a property of two INDEPENDENTLY MAINTAINED states, not a limit on seam
+      types: a seam cannot bind what it merely OBSERVES, but can mediate what it OWNS THE WRITE PATH
+      OF.** R3's rule survives with its condition named.
+      ⭐ **AND THE LOOP CLOSES:** what the seam could NOT fix was TIME — `AbsentAt` goes stale
+      (leaf 11's residue untouched). Across all 12 reactions the residue that survives every seam is
+      **NON-MONOTONICITY**: B's privacy budget, leaf 9's spent set, leaf 11's epoch, G's absence
+      (destroyed by `add`). *Facts that only accumulate ride through any composition; facts that can
+      be REVOKED need a clock, and no seal is a clock.* 12 reactions + 12 rejections.
+- [ ] **Diff-composition — CONVERGED, nothing queued.** 4 rounds, 12 reactions, 4 verdict classes,
+      2 rules with named conditions, 1 corrected prediction, 1 corrected finding (the fence
+      rediscovery). Further rounds would be new pairs at feedstock bar, not open questions.
 - [ ] **sol wiki drift** — pre-existing, unrelated to lamport; `check-claims.sh` now covers the
       counted claims. A dedicated pass would cover the prose ones. Low priority, not blocking.
 

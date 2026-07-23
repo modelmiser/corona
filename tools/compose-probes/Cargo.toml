@@ -43,6 +43,8 @@ name = "i_seam_e"
 name = "j_seam_h"
 [[bin]]
 name = "k_seam_c"
+[[bin]]
+name = "l_seam_g"
 
 [[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
@@ -76,6 +78,9 @@ name = "fail_j_seam_h_is_sealed"
 required-features = ["negatives"]
 [[bin]]
 name = "fail_k_seam_c_is_sealed"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_l_seam_g_is_sealed"
 required-features = ["negatives"]
 
 [dependencies]
