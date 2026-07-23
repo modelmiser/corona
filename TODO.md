@@ -3214,6 +3214,26 @@ authoritative value is the number of `[x] **Round N**` entries.)
             `1c361b6`, sol `d750da9`. **#5: streak 1 of 2 after eighteen. Round 19 re-reviews the SAME
             frozen surface; if clean, that is two consecutive clean rounds on frozen text under the
             hardened lenses ⇒ #5 EARNED ⇒ push both repos.**
+      - ⭐⭐ **Round 19 — CLEAN. #5 EARNED. Streak 2/2 on frozen text.** Both halves clean on the
+            identical frozen surface as r18 (`git diff 1c361b6 HEAD -- accumulator-types/ README.md
+            CHARTER.md` = empty), under all three hardened lenses:
+            • **Crate** — correctness mutation-tight (every non-equivalent single-operator mutant
+            killed); claims verified, explicitly incl. "**all test-body self-descriptions match**"
+            (the r17 patched check — the class that hid the false clean now passes) and Cargo.toml↔lib↔
+            hash agreement; adversarial NO BREAK (12 vectors + **1.6M** differential fuzz, 0 false
+            certs).
+            • **Wire** — CLEAN a 5th time on the row⇄docstring check, this reviewer BUILDING
+            `Sol.Lib.Accumulator` and running `#print axioms` on all seven theorems (not inspection):
+            axiom table exact, row 72 triple-agreement (statement + both docstrings). No material LOW.
+            **Both LOWs reviewer-confirmed NON-false:** the guard-order reorder ("effectively
+            equivalent under the stated contract" — the crate's own `VerifyError` doc declares
+            Stale/NotAMember carries no security weight); the `sha2` parenthetical ("technically
+            accurate … purely a wording nit"). Ledgered.
+            **⇒ CRITERION #5 CONVERGED 2026-07-23.** Two consecutive clean rounds (18, 19) on frozen
+            text, and — the point the arc paid 17 rounds to learn — clean *on the very axes that hid
+            the two false-convergences*, so this is not a third one. corona `1c361b6`, sol `d750da9`.
+            **All five graduation criteria now hold. → mark CHARTER #5 converged, then PUSH both
+            repos** (the standing "always cold-review before push" directive satisfied by convergence).
       - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
         `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
         fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
