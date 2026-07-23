@@ -2418,7 +2418,7 @@ claim here; this section is the referent. As of the latest commit the graduation
             all" false in `Cargo.toml` **and** CHARTER, and the dependent's `Cargo.lock`
             still pinned `0.1.0`. Also: the cost table adopted lamport's and **dropped its
             multi-target row**, which bites hardest here because an epoch-versioned
-            accumulator *publishes a new root per `add`* (~2⁴⁴ at 2²⁰ epochs, between the two
+            accumulator publishes a fresh root per *snapshot* (round 5: `add` itself computes no root — an earlier version of this line said "per `add`", the very premise round 4 corrected in `hash.rs`) (~2⁴⁴ at 2²⁰ epochs, between the two
             rows presented as exhaustive). Also: "~3× memory-free via Pollard-rho" prices
             **Floyd** cycle detection, not memory-freeness — over-pricing the attacker, *the
             direction that flatters the defence*.

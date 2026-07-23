@@ -523,7 +523,7 @@ garden primitives (E0451 + brand), no new one.
 > (`sha2`) truncated to `u64` behind the unchanged `leaf_hash`/`node_hash` seam. The
 > swap removes the toy's outright break but not the **ceiling the width imposes**: a
 > root binds only as well as the hash resists collisions, and a 64-bit seam yields a
-> ~2³² birthday bound. Three attack models, not two: ~2³² to find some colliding pair choosing both sides, ~2⁶⁴/T against any of T published snapshots, ~2⁶⁴ second-preimage against one fixed target. (The middle row is blunted here by the leaf's own residue — `verify` refuses a stale epoch before hashing, so a hit on a superseded root pays only against a verifier still pinned to it.) Append-only,
+> ~2³² birthday bound. Three attack models, not two: ~2³² to find some colliding pair choosing both sides, ~2⁶⁴/T against any of T published snapshots, ~2⁶⁴ second-preimage against one fixed target. (The middle row is blunted here by the leaf's own residue — the ROOT comparison at the end of the fold refuses a superseded snapshot, so a hit on an old root pays only against a verifier still pinned to it — not the epoch gate, whose `pub` field an attacker just rewrites.) Append-only,
 > no deletion, no consistency proofs or witness compaction (a real Merkle Mountain
 > Range / Certificate-Transparency log adds these). Because there is no deletion the
 > epoch equals the element count, so **within one accumulator** epoch-staleness implies

@@ -103,7 +103,7 @@
 //!   domain-separated SHA-256 (`sha2`), truncated to `u64` behind the unchanged
 //!   [`hash::leaf_hash`]/[`hash::node_hash`] seam. That removes the toy's outright
 //!   break — 64-bit FNV-1a inverts by lattice reduction over a small modular
-//!   knapsack, in seconds — so the achieved bound really did move, from effectively
+//!   knapsack, in seconds (the analysis lives in `lamport-types`' "Calibration on the toy" paragraph; [`hash`] explains how it lands on this crate's two functions) — so the achieved bound really did move, from effectively
 //!   zero bits to 32. What the swap **cannot** do is raise the *ceiling the width
 //!   imposes*: this structure binds an **ordered list** (`add` appends, duplicates
 //!   allowed, `Witness.index` is authenticated) only as well as the hash resists

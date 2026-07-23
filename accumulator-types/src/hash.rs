@@ -20,13 +20,16 @@
 //! of it lives in `lamport-types`' calibration paragraph, for the same function.
 //!
 //! **This file does not restate that analysis.** Read it at its source: the
-//! "Calibration on the toy" paragraph of `lamport-types/src/hash.rs`. Four successive
-//! drafts here tried to compress it and all four were wrong — a paraphrase, then an
-//! affine-in-the-bytes claim that was arithmetically false, then a re-derivation with a
-//! shifted exponent shipped under the word "verbatim", then a *genuine* restatement still
+//! "Calibration on the toy" paragraph of `lamport-types/src/hash.rs`. **Three** successive
+//! drafts here tried to compress it and all three were wrong: an attribution carrying an
+//! affine-in-the-bytes claim that was arithmetically false; then a re-derivation with a
+//! shifted exponent, shipped under the word "verbatim"; then a *genuine* restatement, still
 //! shipped under "quoted exactly" while dropping the source's `fixed-length` qualifier.
+//! (The crate's original text is not among them — it said "invertible by construction",
+//! which cites nothing and is rebutted two paragraphs above as a non-sequitur. An earlier
+//! version of this sentence counted four by folding that in.)
 //! **The slot itself was the defect.** A summary of someone else's argument is a claim
-//! with no checker on it, and this one had four owners in four rounds.
+//! with no checker on it, and this one had three owners in three rounds.
 //!
 //! What is kept here is only what this crate can *check*, plus the one fact the sibling's
 //! analysis does not cover — how it lands on **these two functions**:
@@ -35,14 +38,22 @@
 //!   `h_L = OFFSET·p^L + Σₖ₌₁..ₗ dₖ·p^(L+1−k) (mod 2⁶⁴)`, where `dₖ` is the state-dependent
 //!   perturbation `(h ⊕ bₖ) − h`. The exponent is `L+1−k`, not `L−k`, because FNV-1a
 //!   multiplies *after* the xor, so even the last byte's perturbation is multiplied once.
-//!   The two forms agree exactly when every `dₖ = 0` — i.e. only on all-zero input — and
-//!   differ everywhere else. `fnv_recurrence_exponent_is_l_plus_one_minus_k` asserts both
-//!   halves. (Both shipped functions prepend a tag, so the tagged instantiation replaces
+//!   The retired form is a *different instance*, but it does not always disagree, and two
+//!   earlier drafts of this bullet claimed it did (first universally, then "only on all-zero
+//!   input"). The true statement is algebraic:
+//!   `documented − retired = (p−1)·Σₖ dₖ·p^(L−k)`, and `gcd(p−1, 2⁶⁴) = 2`, so the forms
+//!   agree **iff `Σₖ dₖ·p^(L−k) ≡ 0 (mod 2⁶³)`** — itself a knapsack in the same `dₖ`.
+//!   That admits two classes, `Σ = 0` and `Σ = 2⁶³`, and **only the first has a known
+//!   witness**: `b"h\x1f\x07\x05\x1e&:\x0f\xd9\x05"` (no zero byte, every `dₖ ≠ 0`,
+//!   `Σ = 0` exactly) makes both forms equal, found by lattice reduction at `L = 10`.
+//!   Agreements are impossible at `L ≤ 2` and become available around `L ≈ 8–9`. `fnv_recurrence_exponent_is_l_plus_one_minus_k` asserts the identity, the
+//!   agreement criterion, and that counterexample. (Both shipped functions prepend a tag, so the tagged instantiation replaces
 //!   `OFFSET` with `(OFFSET ⊕ tag)·p` and runs `L` over the payload; the untagged form
 //!   above is the one the test pins.)
 //!
-//! - **Both of this crate's hashes were the *same* dimension-8 instance, so neither was
-//!   ever out of reach.** An earlier draft claimed `node_hash`'s 17-byte input made the
+//! - **Both of this crate's hashes reduce to the same dimension-8 *shape* — three distinct
+//!   instances of it, differing only in the base constant — so neither was ever out of
+//!   reach.** An earlier draft claimed `node_hash`'s 17-byte input made the
 //!   enumeration "not feasible at all" at ~2⁸⁰ — **false, and false in the direction that
 //!   flatters the defence.** An attacker inverting `node_hash` fixes the left child: the
 //!   first 9 bytes `0x01 ‖ be8(l)` fold to a *constant* state, leaving `be8(r)`'s 8 bytes
@@ -83,7 +94,9 @@
 //! the `1.25·2³²` figure with negligible memory **and** linear speedup in the processor
 //! count. Quoting ~3× as the *memory-free* price over-prices the attacker — the direction
 //! that flatters the defence, which is the one to be careful about. (`lamport-types`
-//! carried the same phrasing and was corrected in the same commit as this paragraph.)
+//! carried the same phrasing and was corrected in `709580b`, the round-3 commit — which
+//! predates this paragraph's current wording, so the two are not in lockstep: lamport still
+//! lacks the Brent refinement above.)
 //! Offline and key-independent throughout; two leaves that collide are interchangeable
 //! under any root containing one.
 //!
@@ -99,13 +112,18 @@
 //! Two hedges the middle row needs, both from this leaf's own subject. First, `T` counts
 //! **published snapshots**, not epochs: `add` advances the epoch and appends a leaf hash
 //! but computes no root — roots exist only inside `snapshot_scoped` — so `T` equals the
-//! number of `add`s only if every one of them was snapshotted. Second, and sharper:
-//! [`crate::Commit::verify`] rejects a witness whose epoch differs **before any hashing**, so a
-//! hit against a *superseded* root buys nothing from a verifier tracking the current
-//! snapshot. It pays only against a verifier still pinned to that old snapshot — which is
-//! a real deployment, but a narrower one than "any of `T`" suggests. **The mechanism that
-//! blunts the row is the leaf's headline residue**, which is the interesting part: the
-//! runtime freshness check that reduces to nothing also caps the multi-target discount.
+//! number of `add`s only if every one of them was snapshotted. Second: a hit against a
+//! *superseded* root buys nothing from a verifier tracking the current snapshot, so the row
+//! pays only against a verifier still pinned to that old snapshot — a real deployment, but
+//! narrower than "any of `T`" suggests. **Credit the right mechanism for that.** It is the
+//! **root comparison at the end of the fold**, not the epoch gate at the front: `Witness`'s
+//! `epoch` is a `pub` field an attacker simply rewrites to the current value, after which
+//! the freshness check passes and the fold refuses on the root. An earlier draft of this
+//! paragraph credited the epoch gate and called it "the leaf's headline residue" — which
+//! contradicts this crate's own [`crate::VerifyError::Stale`] doc ("carries no security
+//! weight … never on the `pub epoch` field") and the test two files down that says the
+//! refusal comes from the fold. Wrong mechanism, and wrong in the direction that flatters
+//! the defence.
 //! An earlier draft of this file omitted the row entirely, presenting the outer two as
 //! exhaustive; `lamport-types` carries the row too, though as a *primitive* cost rather
 //! than a forgery, and its own centrepiece is the ~2³² collision row.
@@ -207,26 +225,41 @@ mod tests {
         acc
     }
 
-    /// The docs state `h_L = OFFSET·p^L + Σₖ dₖ·p^(L+1−k)` (1-based `k`) and say the
-    /// `p^(L−k)` form an earlier draft shipped is the wrong instance. Both halves are
-    /// asserted — the documented form must reproduce FNV-1a, and the retired form must
-    /// not — because a test asserting only the positive half would still pass if the two
-    /// forms happened to coincide, and they *do* coincide on exactly one class.
+    /// The docs state `h_L = OFFSET·p^L + Σₖ dₖ·p^(L+1−k)` (1-based `k`). **That is the
+    /// only universal here, and it is what this test asserts first.**
     ///
-    /// That class is pinned too: the forms agree iff every `dₖ = 0`, i.e. iff the input
-    /// is all-zero bytes (`dₖ = (h ⊕ bₖ) − h` is zero exactly when `bₖ` clears no bit of
-    /// `h`'s low byte, and over the whole input that forces `bₖ = 0`). The negative
-    /// assertion is therefore scoped to non-zero input, and the boundary is asserted
-    /// rather than avoided — an earlier version of this comment claimed the negative half
-    /// held universally, which is false at `b"\0"`.
+    /// The retired `p^(L−k)` form is a *different instance*, but "it always disagrees" is
+    /// **false**, and two earlier versions of this comment said otherwise — first
+    /// universally, then "they agree iff the input is all-zero". Both were wrong, and the
+    /// second was wrong with a wrong reason attached (`dₖ = 0 ⟺ bₖ = 0`, trivially,
+    /// because `h ⊕ b = h` only at `b = 0`; the "clears no bit of `h`'s low byte" gloss
+    /// fails for any `b` that merely *sets* bits).
+    ///
+    /// The real characterisation is algebraic and is asserted below:
+    /// `documented − retired = (p−1)·Σₖ dₖ·p^(L−k)`, and since `gcd(p−1, 2⁶⁴) = 2`, the two
+    /// forms agree **iff `Σₖ dₖ·p^(L−k) ≡ 0 (mod 2⁶³)`** — a modular knapsack in the very
+    /// `dₖ` this module is about. Solutions are impossible at `L ≤ 2`, become available
+    /// around `L ≈ 8–9` (`256^L` inputs against a `2⁶³` congruence) and are abundant by
+    /// `L = 10`, where `b"h\x1f\x07\x05\x1e&:\x0f\xd9\x05"` — **no zero byte, every
+    /// `dₖ ≠ 0`** — makes both forms equal. It is pinned as a case, because a cold reviewer
+    /// found it by lattice reduction and it would have broken the previous assertion.
+    ///
+    /// ⚠ The lesson worth keeping: this test was **mutation-tested** when written, and
+    /// three mutations were killed. Mutation testing shows a test detects changes to the
+    /// *code*; it says nothing about whether the test's *input domain* is adequate to the
+    /// claim in its doc comment. Five short hand-picked inputs could not reach `L = 10`.
     #[test]
     fn fnv_recurrence_exponent_is_l_plus_one_minus_k() {
+        // The last entry is the round-5 counterexample: it makes `retired == h`, so the
+        // agreement assertion below is exercised in BOTH directions. Without it every input
+        // gave `false == false`, which passes at any modulus — a vacuous check.
         for input in [
             &b"a"[..],
             &b"ab"[..],
             &b"abc"[..],
             &b"alice"[..],
             &b"0123456789"[..],
+            &[104u8, 31, 7, 5, 30, 38, 58, 15, 217, 5][..],
         ] {
             let l = input.len() as u32;
             let mut h = FNV_OFFSET;
@@ -244,29 +277,65 @@ mod tests {
             let retired = ds.iter().enumerate().fold(base, |acc, (i, d)| {
                 acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32 - 1)))
             });
-            assert_ne!(
-                retired, h,
-                "the p^(L-k) form is the one the docs call wrong"
+            // The ALGEBRAIC relation, which is universal: doc - ret = (p-1)*sum(d_k p^(L-k)).
+            let tail = ds.iter().enumerate().fold(0u64, |acc, (i, d)| {
+                acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32 - 1)))
+            });
+            assert_eq!(
+                documented.wrapping_sub(retired),
+                FNV_PRIME.wrapping_sub(1).wrapping_mul(tail),
+                "doc - ret must equal (p-1) * sum(d_k p^(L-k))"
+            );
+            // ...hence the forms agree EXACTLY when (p-1)*tail vanishes mod 2^64. Asserted
+            // in this direct form rather than as `tail % 2^63 == 0`, which these inputs
+            // cannot discriminate (tail = 0 mod 2^63 implies tail = 0 mod 2^62).
+            //
+            // MUTATION RECORD, so the next reader does not over-trust this line: replacing
+            // the criterion's `p-1` by `p-2` does NOT fail, because the only agreement case
+            // known here has `tail == 0` exactly, and every coefficient annihilates 0. What
+            // pins the `p-1` is the identity assertion above, where that same mutation DOES
+            // fail. Two assertions, one pinned coefficient — not two independent ones.
+            assert_eq!(
+                retired == h,
+                FNV_PRIME.wrapping_sub(1).wrapping_mul(tail) == 0,
+                "agreement iff (p-1)*sum(d_k p^(L-k)) = 0 mod 2^64"
             );
         }
-        // The documented boundary: on all-zero input every dₖ = 0, both sums collapse to
-        // the base term, and the two forms AGREE. Asserted so the negative half above is
-        // known to be scoped rather than accidentally universal.
+        // Boundary 1: all-zero input. Every dk = 0, both sums collapse to the base term.
         for input in [&b"\0"[..], &b"\0\0"[..], &b"\0\0\0\0"[..]] {
-            let l = input.len() as u32;
-            let mut h = FNV_OFFSET;
-            let mut ds = Vec::new();
-            for &b in input {
-                ds.push((h ^ u64::from(b)).wrapping_sub(h));
-                h = (h ^ u64::from(b)).wrapping_mul(FNV_PRIME);
-            }
+            let (h, ds, base, l) = decompose(input);
             assert!(
                 ds.iter().all(|d| *d == 0),
                 "all-zero input has every dk = 0"
             );
-            let base = FNV_OFFSET.wrapping_mul(p_pow(l));
+            let _ = l;
             assert_eq!(base, h, "both forms collapse to the base term here");
         }
+        // Boundary 2: agreement WITHOUT any zero byte. Found by lattice reduction in cold
+        // review round 5; it falsified this test's previous doc comment, so it is pinned.
+        {
+            let input: &[u8] = &[104, 31, 7, 5, 30, 38, 58, 15, 217, 5];
+            let (h, ds, base, l) = decompose(input);
+            assert!(!input.contains(&0), "the counterexample has no zero byte");
+            assert!(ds.iter().all(|d| *d != 0), "and every dk is non-zero");
+            let retired = ds.iter().enumerate().fold(base, |acc, (i, d)| {
+                acc.wrapping_add(d.wrapping_mul(p_pow(l - i as u32 - 1)))
+            });
+            assert_eq!(retired, h, "yet the retired form agrees here");
+        }
+    }
+
+    /// Shared decomposition: `(h, dk, base, len)` for an input, so the boundary cases and
+    /// the main loop cannot drift apart.
+    fn decompose(input: &[u8]) -> (u64, Vec<u64>, u64, u32) {
+        let l = input.len() as u32;
+        let mut h = FNV_OFFSET;
+        let mut ds = Vec::new();
+        for &b in input {
+            ds.push((h ^ u64::from(b)).wrapping_sub(h));
+            h = (h ^ u64::from(b)).wrapping_mul(FNV_PRIME);
+        }
+        (h, ds, FNV_OFFSET.wrapping_mul(p_pow(l)), l)
     }
 
     /// The separability gap is not a measured curiosity — it is forced. It equals
