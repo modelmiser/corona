@@ -28,13 +28,22 @@ say "test counts (README claim vs cargo)"
 out=$(cargo test --workspace 2>&1); rc=$?
 unit=$(printf '%s' "$out" | grep -oE '^test result: ok\. [0-9]+ passed' | grep -oE '[0-9]+' | paste -sd+ | bc)
 suites=$(printf '%s' "$out" | grep -cE '^test result: ' || true)
-# README states "N unit tests + M doctests"
-r_unit=$(grep -oE '[0-9]+ unit tests \+ [0-9]+ doctests' README.md | grep -oE '^[0-9]+' | head -1)
-r_doc=$(grep -oE '[0-9]+ unit tests \+ [0-9]+ doctests' README.md | grep -oE '\+ [0-9]+' | grep -oE '[0-9]+' | head -1)
+# README states "N unit tests + M doctests". Round 7: these ended in `head -1`, so a SECOND,
+# contradictory claim was invisible — appending "the suite is 999 unit tests + 888 doctests" left
+# the script green. The anti-vanishing floors were added to the prose loops below for exactly this
+# reason and not to the two headline checks. Check EVERY claim, and require at least one.
 m_doc=$(printf '%s' "$out" | awk '/Doc-tests/{d=1} d&&/^test result: ok\./{s+=$4} END{print s+0}')
 m_unit=$((unit - m_doc))
-cmp_n "README unit-test count"    "$r_unit" "$m_unit"
-cmp_n "README doctest count"      "$r_doc"  "$m_doc"
+readme_claims=$(grep -oE '[0-9]+ unit tests \+ [0-9]+ doctests' README.md || true)
+n_readme=$(printf '%s\n' "$readme_claims" | grep -c . || true)
+if [ "$n_readme" -ge 1 ]; then ok "README test-count claims found" "$n_readme"
+else bad "README test-count claims found" ">=1" "0"; fi
+for claim in $(printf '%s\n' "$readme_claims" | grep . | tr ' ' '_'); do
+  c_unit=$(printf '%s' "$claim" | grep -oE '^[0-9]+')
+  c_doc=$(printf '%s' "$claim" | grep -oE '\+_[0-9]+' | grep -oE '[0-9]+')
+  cmp_n "README unit-test count"    "$c_unit" "$m_unit"
+  cmp_n "README doctest count"      "$c_doc"  "$m_doc"
+done
 # Round 6 (2026-07-23): this was `grep -q '^test result: FAILED'` and NOTHING else — so it
 # reported `ok` on a workspace that DOES NOT COMPILE, because a compile error never emits that
 # line, `$?` was discarded, and `set -uo pipefail` carries no `-e`. The one check asserting the
@@ -91,7 +100,7 @@ else bad "CHARTER registry names == workspace leaves" "identical sets" "differ: 
 # claims, and the numbered narrative ("The **first**… **tenth**") must agree. Round 4 found
 # the narrative one entry short of the registry with no instrument to catch it.
 grad_rows=$(grep -cE '^\| *`?[a-z0-9-]+`? *\| *\*\*graduated\*\* *\|' CHARTER.md || true)
-ordinals="first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth"
+ordinals="first second third fourth fifth sixth seventh eighth ninth tenth eleventh twelfth thirteenth fourteenth fifteenth sixteenth seventeenth eighteenth nineteenth twentieth"
 narrative=0
 for o in $ordinals; do
   grep -qE "^The \*\*$o\*\*|^The \*\*$o leaf-level\*\*" CHARTER.md && narrative=$((narrative+1)) || break
@@ -122,7 +131,9 @@ cmp_n "highest graduation ordinal == graduated rows" "$(printf '%s\n' "$ord_raw"
 # lied the other way. Each now declares how many claims it EXPECTS to find, so a claim going
 # missing fails instead of shrinking the score.
 leaf_claims=$(grep -rhoE 'corona-core \+ \*{0,2}[0-9]+ leaves\*{0,2}' README.md CHARTER.md COMPOSITION-SEARCH.md 2>/dev/null | grep -oE '[0-9]+')
-cmp_n "prose 'corona-core + N leaves' claims found" "$(printf '%s\n' "$leaf_claims" | grep -c .)" "1"
+n_leaf=$(printf '%s\n' "$leaf_claims" | grep -c . || true)
+if [ "$n_leaf" -ge 1 ]; then ok "prose 'corona-core + N leaves' claims found" "$n_leaf (>=1)"
+else bad "prose 'corona-core + N leaves' claims found" ">=1" "0"; fi
 for c in $leaf_claims; do
   cmp_n "prose 'corona-core + N leaves'" "$c" "$((members-1))"
 done
@@ -132,7 +143,9 @@ leaves=$((members - 1))
 # Match EVERY phrasing, not the one I happened to write first: a retired number survived a
 # rewrite as "three of 561 pairs" because the pattern only knew "N unordered leaf pairs".
 pair_claims=$(grep -rhoE '\*{0,2}[0-9]+\*{0,2} (unordered )?(leaf )?pairs' COMPOSITION-SEARCH.md tools/surfaces.py 2>/dev/null | grep -oE '[0-9]+')
-cmp_n "prose 'N ... pairs' claims found" "$(printf '%s\n' "$pair_claims" | grep -c .)" "3"
+n_pair=$(printf '%s\n' "$pair_claims" | grep -c . || true)
+if [ "$n_pair" -ge 1 ]; then ok "prose 'N ... pairs' claims found" "$n_pair (>=1)"
+else bad "prose 'N ... pairs' claims found" ">=1" "0"; fi
 for c in $pair_claims; do
   cmp_n "prose 'N ... pairs' == C(leaves,2)" "$c" "$((leaves * (leaves - 1) / 2))"
 done
@@ -144,28 +157,58 @@ say "version claims"
 # and it did not include `accumulator-types`, the leaf actually being graduated. Compare each
 # member's manifest version against the lockfile, over every member: that is a real claim, and
 # it is the one that was WRONG in this arc (compose-probes' lock pinned 0.1.0 after the bump).
+# Round 7 found three fail-open holes here, all of the "absent is treated as fine" shape that was
+# fixed on the sol side and not this one: a member missing from the lockfile was skipped; a
+# DELETED `Cargo.lock` left an empty snapshot that still `exists()`, so every member silently
+# passed; and the check iterated ROOT members only — missing `tools/compose-probes/Cargo.lock`,
+# which is its own workspace and is the exact drift the check was written for.
 lockmis=$(LOCK_PRE="$lock_pre" python3 - <<'PY'
 import os, re, pathlib
-lock = pathlib.Path(os.environ['LOCK_PRE'])
-locked = {}
-if lock.exists():
-    for blk in lock.read_text().split('[[package]]'):
+
+def parse_lock(path):
+    locked = {}
+    if not path.exists() or not path.read_text().strip():
+        return None                      # absent or empty is a FAILURE, not an empty dict
+    for blk in path.read_text().split('[[package]]'):
         n = re.search(r'^name = "([^"]+)"', blk, re.M)
         v = re.search(r'^version = "([^"]+)"', blk, re.M)
         if n and v:
             locked[n.group(1)] = v.group(1)
+    return locked
+
+bad = []
+root_lock = parse_lock(pathlib.Path(os.environ['LOCK_PRE']))
+if root_lock is None:
+    bad.append('root:Cargo.lock-missing-or-empty')
+    root_lock = {}
+
 s = pathlib.Path('Cargo.toml').read_text()
 m = re.search(r'members\s*=\s*\[(.*?)\]', s, re.S)
-bad = []
-for name in re.findall(r'"([^"]+)"', m.group(1)):
+members = re.findall(r'"([^"]+)"', m.group(1))
+versions = {}
+for name in members:
     p = pathlib.Path(name) / 'Cargo.toml'
     if not p.exists():
         continue
     mv = re.search(r'^version\s*=\s*"([^"]+)"', p.read_text(), re.M)
     if not mv:
         bad.append(f'{name}:no-version')
-    elif name in locked and locked[name] != mv.group(1):
-        bad.append(f'{name}:toml={mv.group(1)}!=lock={locked[name]}')
+        continue
+    versions[name] = mv.group(1)
+    if name not in root_lock:
+        bad.append(f'{name}:absent-from-lock')
+    elif root_lock[name] != mv.group(1):
+        bad.append(f'{name}:toml={mv.group(1)}!=lock={root_lock[name]}')
+
+# Nested workspaces keep their own lockfiles and are invisible to `cargo test --workspace`.
+for nested in sorted(pathlib.Path('tools').glob('*/Cargo.lock')):
+    nl = parse_lock(nested)
+    if nl is None:
+        bad.append(f'{nested}:empty')
+        continue
+    for name, want in versions.items():
+        if name in nl and nl[name] != want:
+            bad.append(f'{nested}:{name}={nl[name]}!=workspace={want}')
 print(' '.join(bad))
 PY
 )
@@ -174,7 +217,13 @@ else bad "manifest versions == Cargo.lock" "identical" "$lockmis"; fi
 
 # ---------------------------------------------------------------- NO FRAGILE LINE COUNTS
 say "no line-count claims for source files"
-lc=$(grep -rnE '`[A-Za-z0-9/._]+\.(rs|lean)`[^)]*\([0-9]{2,4} lines\)' README.md CHARTER.md 2>/dev/null || true)
+# Round 7: the character class had NO HYPHEN — and every one of this workspace's 34 member
+# directories contains one (`corona-core`, `*-types`, `numerical-accuracy`). The check was named
+# for a policy about THIS repo's sources and was structurally incapable of matching one; a real
+# claim about `corona-core/src/lib.rs` sailed through green. The `charter_rows` pattern failed the
+# same way in round 4. A regex over paths is a claim about the naming convention, and this repo's
+# convention is hyphens.
+lc=$(grep -rnE '`[A-Za-z0-9/._-]+\.(rs|lean)`[^`]{0,80}\([0-9]{2,4} lines\)' README.md CHARTER.md 2>/dev/null || true)
 if [ -z "$lc" ]; then ok "no source line-count claims in prose" "0"
 else bad "line-count claims (delete them)" "0" "$(printf '%s\n' "$lc" | wc -l)"; printf '%s\n' "$lc" | sed 's/^/          /'; fi
 
