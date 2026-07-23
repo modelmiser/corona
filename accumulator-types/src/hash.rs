@@ -471,9 +471,6 @@ mod tests {
 
     /// The separability gap is not a measured curiosity — it is forced. It equals
     /// `p·(d₁ − d₀)` with each `dᵢ ∈ {±1}`, so `±2p` is the only nonzero outcome.
-    ///
-    /// It carries no `assert_ne!`: a guard against a deterministic constant is already
-    /// entailed by the `assert_eq!` below — a check that cannot fail.
     #[test]
     fn separability_gap_is_exactly_two_p() {
         let f = |a: u8, b: u8| fnv1a(&[a, b]);
@@ -481,9 +478,7 @@ mod tests {
             .wrapping_add(f(0, 0))
             .wrapping_sub(f(1, 0))
             .wrapping_sub(f(0, 1));
-        assert_ne!(gap, 0, "additive separability fails");
         assert_eq!(gap, FNV_PRIME.wrapping_mul(2), "the gap is exactly 2p");
-        assert_eq!(gap, 0x0000_0200_0000_0366, "the constant the docs print");
     }
 
     /// Golden vectors computed by an **independent oracle** — python's `hashlib`,
