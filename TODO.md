@@ -2342,3 +2342,61 @@ the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
         the ~2³² birthday bound after the first draft published ~2⁶⁴ and never mentioned
         collisions. That was a substantive CRYPTO-POSTURE finding from review, not prose polish.
         The security-posture section is where a cold reader earns their keep.
+
+## Now (leaf 11 graduation — EXECUTING, criterion #5 NOT YET EARNED)
+
+**Read this row before believing CHARTER's.** CHARTER's accumulator row defers its convergence
+claim here; this section is the referent. As of the latest commit the graduation has criteria
+#1–#4 done and **#5 unclaimed** — two rounds run, *neither clean*.
+
+- [x] **Criterion #2 — backend swap.** `hash.rs`: toy FNV-1a → domain-separated SHA-256
+      truncated to leading 8 bytes big-endian, behind the *same* `leaf_hash`/`node_hash` seam.
+      Type-preserving `u64 → u64`. `0.1.0 → 0.2.0` (values move). Golden vectors from an
+      independent oracle (python `hashlib`), not from this crate's own output.
+- [x] **Criterion #3 — security/limits.** The ceiling is the **WIDTH, not the backend**: a `u64`
+      seam caps collision resistance at ~2³² regardless of what fills it. Cost table distinguishes
+      collision (~2³², attacker picks both sides) from second-preimage (~2⁶⁴, fixed target).
+- [x] **Criterion #4 — the substance.** `Sol.Lib.Accumulator`, the **17th wire** (sol `80b215a`),
+      7 theorems, 5 re-exported into the `Sol.Corona` scoreboard (67→72 rows, bijection exact).
+- [x] **Criterion #1 — thesis recorded.**
+- [ ] **Criterion #5 — cold review converges (CHARTER: TWO CONSECUTIVE CLEAN ROUNDS).**
+      - [x] **Round 1 — NOT CLEAN, 9 findings.** Corrections: CVE-2012-2459 misattributed (it is
+            Bitcoin duplicate-lone-node *malleability*; the apt cite for 0x00/0x01 is RFC 6962
+            §2.1); fixed-target cost priced at ~2³² when it is second-preimage at ~2⁶⁴; a false
+            superlative ("first composition of two graduated leaves" — `mss` predates it); Lean
+            `witness_is_determined_by_epoch_and_leaf` **deleted** (true in Lean, FALSE of the real
+            `Witness {index, siblings: Vec<u64>, epoch}`, and the eta lemma would hold for *any*
+            structure, so it evidenced nothing); "third leaf on the E0521 brand" false on both
+            readings → "third **Sol wire**".
+      - [x] **Round 2 — NOT CLEAN, 1 CRITICAL (found independently by two lenses) + 4 MOD + 8 LOW.**
+            ⭐ **The CRITICAL was introduced BY round 1's fix.** R1 retired "invertible by
+            construction" (a non-sequitur — each SHA-256 round is a bijection too) and replaced it
+            with an affine-**in-the-input-bytes** account credited to `lamport-types`. That is
+            arithmetically FALSE — additive separability `f(1,1)+f(0,0) ≡ f(1,0)+f(0,1)` fails by
+            `0x2_0000_0366`, on 200000/200000 random inputs; the offset basis has low byte `0x25`,
+            so `h ⊕ 0x01` **decrements** and the identity breaks at the first byte. And
+            `lamport-types` never said it: it says affine **in bounded perturbations**
+            (`h ⊕ b = h + d`, `|d| ≤ 255`, state-dependent `dₖ`, dimension-8 modular knapsack with
+            a *small solution vector*, relaxed box + forward-consistency filter). Re-parameterising
+            `d` to `b` converted a correct sketch into a false claim. **Two wrong justifications
+            have now occupied that one argument slot**; the fix was to stop paraphrasing and quote
+            the sibling verbatim. Also: "any `add` changes the commitment" is **computational
+            (~2³²), not structural** — a reviewer rebuilt the construction at a **24-bit** seam
+            where 273 consecutive `add`s left the root unchanged and a stale witness verified;
+            hedged everywhere, including the Lean note that leaned on it. Also: Lean C2 — `hfb`
+            was **dead AND unsatisfiable at the real fold**, so the theorem was vacuous exactly
+            where it mattered; replaced by `stale_is_rejected_by_every_fold` +
+            `fresh_and_folding_verifies`. Also: the axiom table was wrong twice from carrying
+            numbers across rewrites — measured state is **2 of 7 axiom-free**
+            (`minted_carries_the_minting_scope`, `same_epoch_distinct_scopes`), now pinned by
+            `sol/tools/check-claims.sh` so it cannot silently rot.
+      - [ ] **Round 3** — three blind lenses (adversarial/soundness, crypto posture, Lean
+            faithfulness) against the round-2-corrected text. Running.
+      - [ ] **Round 4** — required even if round 3 is clean; the gate is *two consecutive*.
+- **CORRECTION to the survey above:** "Zero dependents — verified twice" was true when surveyed
+  and is **false now** — `tools/compose-probes` path-depends on this crate. The *conclusion*
+  survived (the swap is type-preserving, so it reached the dependent not at all) but the
+  *premise* did not, and the crate said the premise. Left in place above as the historical
+  record; this is the correction.
+- Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd`; sol `80b215a` → `5198210` →
+  `2b6b1aa` → `810b5d4`. **Neither repo pushed since the graduation began.**
