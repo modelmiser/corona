@@ -2390,9 +2390,63 @@ claim here; this section is the referent. As of the latest commit the graduation
             numbers across rewrites — measured state is **2 of 7 axiom-free**
             (`minted_carries_the_minting_scope`, `same_epoch_distinct_scopes`), now pinned by
             `sol/tools/check-claims.sh` so it cannot silently rot.
-      - [ ] **Round 3** — three blind lenses (adversarial/soundness, crypto posture, Lean
-            faithfulness) against the round-2-corrected text. Running.
-      - [ ] **Round 4** — required even if round 3 is clean; the gate is *two consecutive*.
+      - [x] **Round 3 — NOT CLEAN, 7 CRITICAL + 8 MODERATE across three blind lenses**
+            (adversarial/soundness, crypto posture, Lean faithfulness). ⭐⭐ **The FNV slot
+            took its THIRD wrong occupant, and the third arrived INSIDE the fix for the
+            second.** R2 announced it had stopped paraphrasing and was carrying
+            `lamport-types`' formulation *verbatim* — and shipped a silent re-derivation:
+            exponent `p^(L−k)` where the sibling has `p^(9−k)` for its 8-byte payload
+            (`= p^(L+1−k)`, because FNV-1a multiplies **after** the xor), plus a dropped tag
+            term (`h₁ = (OFFSET⊕0x01)·p`, not `OFFSET·p^L`). Measured: as printed
+            **1999/2000** mismatches, shifted **0/2000**; a reviewer built the lattice both
+            ways and the correct exponent recovers the preimage 5/5 where the printed one
+            gets 0/2. ***A claim of verbatim quotation is itself a checkable claim, and
+            nobody checked it against the source.*** Fix = mark quoted-as-quoted and
+            derived-as-derived, and give the derived form a test.
+            ⭐ **The separability constant was my own correct measurement, transcribed
+            wrong** — `0x2_0000_0366` is `0x2_0000_0003_66` with two hex zeros dropped. True
+            value is exactly `2p`, and it can *only* be `0` or `±2p` since it equals
+            `p·(d₁−d₀)`, `dᵢ ∈ {±1}` — which the file's **own parity argument two sentences
+            later** already implied. *The prose↔number hop is the one step with no checker
+            on it.* Both constants are now pinned by tests, and **all three mutations of
+            those tests were killed** (wrong exponent, wrong multiple of `p`, removed
+            retired-form guard).
+            Also: "accepted by any snapshot at the same epoch, since such snapshots carry an
+            identical commitment" is the **exact converse this crate refutes in its own
+            header** (300 cross-lineage same-epoch presentations, 0 accepted; conservative
+            direction, so false claim not hole). Also: "zero dependents / no blast radius at
+            all" false in `Cargo.toml` **and** CHARTER, and the dependent's `Cargo.lock`
+            still pinned `0.1.0`. Also: the cost table adopted lamport's and **dropped its
+            multi-target row**, which bites hardest here because an epoch-versioned
+            accumulator *publishes a new root per `add`* (~2⁴⁴ at 2²⁰ epochs, between the two
+            rows presented as exhaustive). Also: "~3× memory-free via Pollard-rho" prices
+            **Floyd** cycle detection, not memory-freeness — over-pricing the attacker, *the
+            direction that flatters the defence*.
+            ⭐ **The mandated repo-pair sweep paid again:** the "no dependents" shape was
+            false in a **second graduated leaf** (`commit-types`, which `compose-probes` uses
+            in three bins). *The composition-search tooling created dependents that the
+            leaves' prose predates* — a whole-garden staleness class, not a typo.
+            Lean half (sol `46488bb`): the header said two theorems were both "stated with no
+            hypothesis on the fold" when one has `hf` **and its own docstring says so three
+            lines above**; "this list is the whole of it" omitted that `Snapshot` drops
+            `root`/`size` and that Rust's `verify` runs **four** gates to the model's two;
+            "neither is chosen by the caller" is false of the index (`pub`, and the crate's
+            own tests relabel it); and "exactly as `Sol.Lib.Lamport` did" **borrowed a
+            pedigree this wire cannot have** — Lamport's wire pre-existed its graduation by a
+            day, this one was committed *fourteen minutes after* the swap it discusses.
+      - [ ] **Round 4** — required even if round 3 had been clean; the gate is *two
+            consecutive*. Lenses aimed at where the defects actually keep coming from: the
+            **fix artifacts** of round 3, the rewritten crypto sections, and cross-document
+            consistency.
+      - ⚠️ **Working-tree incident, 2026-07-23 00:16:02.** `CHARTER.md` + `README.md` were
+        rewritten in the same second by something outside this session, rolling the tree back
+        to a pre-lamport-graduation state (8 `**graduated**` rows instead of 10, the ninth
+        narrative gone, the accumulator row back to `research (toy)`). HEAD was intact, no
+        stash, no in-progress op, refs unmoved; restored with `git restore` and re-verified
+        (10 rows, ninth narrative present). Diff captured to the session scratchpad. Cause
+        never identified — the round-3 adversarial reviewer independently reported it
+        happening *underneath* it, so its CHARTER quotes are pinned to HEAD, not the tree.
+        **Lesson: a cold reviewer reading a mutated tree reports artifacts as findings.**
 - **CORRECTION to the survey above:** "Zero dependents — verified twice" was true when surveyed
   and is **false now** — `tools/compose-probes` path-depends on this crate. The *conclusion*
   survived (the swap is type-preserving, so it reached the dependent not at all) but the
