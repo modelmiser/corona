@@ -2553,9 +2553,9 @@ claim here; this section is the referent. As of the latest commit the graduation
             byte, every `dₖ ≠ 0`) and it dies immediately. ***"This mutation survives because …"
             is a claim about the assertion; it was a claim about the inputs.*** Sharper still:
             the criterion's discriminating points are `2⁶³` and `2⁶²` while an FNV `tail` is
-            pseudorandom, so **no quantity of FNV inputs could ever have pinned that
-            coefficient** — the domain was not inadequate, it was *structurally incapable*, and
-            sampling cannot fix a measure-zero target. Criterion moved to its own domain
+            pseudorandom, so no quantity of FNV inputs could ever have pinned that coefficient —
+            the domain was *structurally incapable*. ⛔ **RETRACTED in round 7 — false, and
+            refuted by the witness round 6 itself added.** Criterion moved to its own domain
             (`agreement_criterion_is_pinned_on_its_own_domain`), **six mutations, six killed**,
             surviving-mutation note DELETED rather than expanded.
             Also: "agreements impossible at `L ≤ 2`" is false — the all-zero input agrees at
@@ -2585,9 +2585,55 @@ claim here; this section is the referent. As of the latest commit the graduation
             ascending, exact bijection; 30 sentences deleted in round 4 traced with **0 orphaned
             dependents**; the `node_hash` dimension-8 reduction reproduced 2000/2000; 16 corona
             and sol checks confirmed to fail correctly.
-      - [ ] **Round 7** — the round-6 fixes are new unreviewed content, and they are the
-            largest single round of the arc (both instruments rewritten, a test relocated to a
-            new domain, and prose corrections in five documents across two repos).
+      - [~] **Round 7 — NOT CLEAN** (two of three lenses in; the instrument re-audit is still
+            running). Both landed lenses found the *same shape*: a round-6 correction that was
+            **stronger than the evidence**, in a direction that reads as rigour.
+            ⭐⭐ **Round 6's headline sentence was refuted by an input round 6 added in the same
+            commit.** It claimed the criterion's discriminating points (`2⁶³`, `2⁶²`) were
+            unreachable from FNV inputs because a `tail` is pseudorandom — "no quantity of inputs
+            here could have pinned the coefficient … structurally incapable". But the `Σ = 2⁶³`
+            witness *in the FNV loop* is an ordinary FNV input, is exactly what kills `p−1 → p−2`,
+            and round 6 put it there. A reviewer produced `Σ = 2⁶²` in under a second
+            (`[56,244,40,39,5,183,25,254,11,15]`, verified). ⇒ ***Pseudorandomness bounds what a
+            DRAW finds, not what the DOMAIN contains*** — and these inputs are chosen by lattice
+            reduction, the module's own subject. Proximate cause, cheaper than the principle:
+            **my LLL search for that point failed and I wrote the failure up as an
+            impossibility.** A failed search licenses "not found", never "cannot exist". The
+            `2⁶²` witness is now in the loop; the FNV test alone kills all four criterion
+            mutations. The own-domain test is kept for a *smaller* reason: it enumerates the
+            points instead of depending on a search having succeeded.
+            ⭐⭐ **And the vacuity justification has been false since round 2.** The Lean file
+            retired a theorem because its hypothesis (`fold s d b = true` for a **stale** `b`)
+            was "unsatisfiable at the fold the real accumulator runs" — then rounds 2–6 argued
+            about the *probability* of the exception (`~2⁻³²`, corrected to `~2⁻⁶⁴`). The
+            hypothesis is satisfiable **deterministically**: the Rust fold is *epoch-blind*
+            (`Witness.epoch` is "checked for freshness, **not folded**"), so from any verifying
+            witness, bumping the epoch keeps the fold accepting — and the crate builds exactly
+            that object in `a_future_epoch_witness_is_also_stale`. ⇒ ***Four rounds refined a
+            NUMBER inside a sentence whose ARGUMENT was wrong***, which is why correcting it
+            never converged. The honest reason was already in the file: the proof never used the
+            hypothesis.
+            Also: round 6's relabeled-index fix was false for **three** of four cases where the
+            sentence it replaced was false for **one** (it cited disclosure (iv), which
+            enumerates the gates running *before* the root comparison, i.e. excludes the gate
+            that fires) — *a correction that narrows the claim can still widen the error*; a
+            count that switched predicate mid-refutation; Translog's twice-applied brand match
+            (and its wire number) hung off `Commit.brandGate`, which applies it once and is wire
+            8; a "no reading is offered of which results land where" five lines under the table
+            that names exactly that — **the same construction adjudicated in CHARTER nine minutes
+            earlier and not swept**; a third wrong line-distance locator ("forty lines down" was
+            63 when written, 74 when corrected) ⇒ locators are now written as references; and a
+            point→mutation-class pairing that was backwards for coefficient mutants of 2-adic
+            valuation ≥ 2 (caught only at `2⁶²`, never `2⁶³`).
+            **Strong negatives:** exhaustive 1–3 byte enumeration reproduced (16 843 008 inputs,
+            3 agreements, all all-zero); the discriminating set confirmed to be exactly
+            `{2⁶³, 2⁶²}` by sweeping coefficient and modulus mutants (only survivors are
+            coefficients `≡ 2 mod 4`, semantically identical); `L ≈ 8–9` availability supported by
+            LLL shortest-vector norms and a found `L = 8` witness; all 7 Lean theorems re-confirmed
+            non-vacuous both directions; axiom table 7/7; scoreboard 72/72; all four git-timeline
+            claims verified to the minute; every provenance claim round 6 made about earlier
+            drafts verified true against the actual commits.
+      - [ ] **Round 8** — round 7's fixes, and the instrument re-audit's findings when it lands.
       - ⚠️ **`/tmp` exhaustion, 2026-07-23 (my own instruction).** I told the round-5
         instrument-audit agent to `cp -r` both repos into `/tmp`; `sol` vendors **7.2 GB of
         Mathlib** under `lean/.lake`, and the 16 GB tmpfs hit 100%. Command output capture
@@ -2613,6 +2659,6 @@ claim here; this section is the referent. As of the latest commit the graduation
   *premise* did not, and the crate said the premise. Left in place above as the historical
   record; this is the correction.
 - Commits so far: corona `b51f4c2` → `30c334f` → `1e874dd` → `13c9e23` → `709580b` →
-  `f4cb100` → `6f01c03` → `6139e19` → `0372175` → `f73811e` → `6a30948` → `6516a7b`;
-  sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` →
-  `c113f5a`. **Neither repo pushed since the graduation began.**
+  `f4cb100` → `6f01c03` → `6139e19` → `0372175` → `f73811e` → `6a30948` → `6516a7b` →
+  `93ec546` → `0450d79`; sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` →
+  `0ca3693` → `fe7ffc5` → `c113f5a` → `3a7162b`. **Neither repo pushed since the graduation began.**
