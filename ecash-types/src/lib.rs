@@ -249,11 +249,12 @@ use std::fmt;
 /// ```
 ///
 /// (On stable, rustdoc runs `compile_fail` doctests but does **not** enforce
-/// the `,E0382`/`,E0599`/`,E0451` code annotations — they document intent and
-/// are checked only by nightly rustdoc. All three failures were verified
-/// against the compiler directly — E0382, E0599, and E0451, the
-/// private-field reason, respectively. The stable suite keeps these doctests
-/// *red*; nightly rustdoc additionally pins their *codes*.)
+/// the `,E0382`/`,E0599`/`,E0451` code annotations — the stable suite keeps these
+/// doctests *red*, and only nightly rustdoc additionally pins their *codes*.
+/// This repo enforces them anyway: `tools/check-claims.sh --gates`
+/// runs the doctest suite under nightly at the pre-push gate, so a fence naming the wrong
+/// code fails it. (No nightly toolchain installed? The gate SKIPs that check and says so —
+/// it never counts a skip as a pass.))
 ///
 /// The `Debug` impl redacts the tag — the tag is the bearer credential, and
 /// under the graduated HMAC a log line holding it is a spendable coin (a valid

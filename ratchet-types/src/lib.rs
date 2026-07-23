@@ -250,8 +250,10 @@ use core::fmt;
 /// ```
 ///
 /// (On stable, rustdoc runs `compile_fail` doctests but does not enforce the trailing
-/// `,E0599`/`,E0451` code annotations — they document intent and are pinned only by
-/// nightly rustdoc. Both failures were verified against the compiler directly.)
+/// `,E0599`/`,E0451` code annotations — only nightly rustdoc pins them. This repo enforces them anyway: `tools/check-claims.sh --gates`
+/// runs the doctest suite under nightly at the pre-push gate, so a fence naming the wrong
+/// code fails it. (No nightly toolchain installed? The gate SKIPs that check and says so —
+/// it never counts a skip as a pass.))
 pub struct ChainKey {
     secret: [u8; 32],
     index: u64,

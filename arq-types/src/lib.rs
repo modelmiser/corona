@@ -263,8 +263,10 @@ pub struct Ack {
 /// ```
 ///
 /// (On stable, rustdoc runs `compile_fail` doctests but does **not** enforce the
-/// `,E0451` code annotation — it documents intent and is checked only by nightly
-/// rustdoc. The failure was verified against the compiler directly.)
+/// `,E0451` code annotation — only nightly rustdoc pins it. This repo enforces them anyway: `tools/check-claims.sh --gates`
+/// runs the doctest suite under nightly at the pre-push gate, so a fence naming the wrong
+/// code fails it. (No nightly toolchain installed? The gate SKIPs that check and says so —
+/// it never counts a skip as a pass.))
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Delivered {
     seq: u64,
