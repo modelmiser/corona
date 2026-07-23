@@ -3012,6 +3012,55 @@ authoritative value is the number of `[x] **Round N**` entries.)
             every pub accessor and every range guard is mutation-pinned. **#5 unmet after twelve; the
             open question for round 13 is whether the correctness lens, having exhausted the accessor
             class, finds a genuinely new mutation family or runs dry.**
+      - [x] **Round 13 — NOT CLEAN, 2 MODERATE on the crate half** (+ 1 LOW ledgered). **Wire half
+            CLEAN a THIRD consecutive round** — a third independent lens, which got `lake build`
+            working and ran `#print axioms` live on all seven results *and* on the two Corona.lean
+            re-exports, matching row-for-row; re-dated every historical claim against `git`. The
+            wire is converged under three blind reviewers, the axiom table measured live in rounds
+            11 and 13. Its lone LOW is a non-defect (README names three attack models, CHARTER two —
+            granularity, not contradiction).
+            ⚠️ **The round-12 "class exhausted" claim was premature — my audit was too shallow.** The
+            correctness lens found `Accumulator::is_empty() -> true` survives: a bool getter has
+            **three** non-equivalent mutants `{→true, →false, negate}`, and round 12 tested only
+            `negate` (killed by the empty-case assertion). `→false` and `negate` die on the empty
+            side; **`→true` needs a non-empty caller, and no test called `is_empty()` on a non-empty
+            accumulator.** Fixed by asserting `!is_empty()` in `add_advances_the_epoch` (already
+            builds a len-3 acc). Then re-audited the **full** mutant set for both non-scalar
+            accessors — `is_empty {→true,→false,negate}` and `authenticated_indices
+            {→empty,→map|_|0,→map+1}` (the latter pinned by the module doctest's `vec![1]`) — **all
+            six killed.** The class is now *genuinely* exhausted; the lesson is that "one mutant per
+            accessor" under-tests any non-scalar return.
+            ⭐⭐ **The separability anecdote was wrong a SECOND time — so it is deleted, not fixed a
+            third.** `separability_gap_is_exactly_two_p`'s docstring narrated its own past
+            transcription bug, and the narration is self-contradictory: it prints the bad draft as
+            `0x2_0000_0366` (**9** hex digits — two zeros dropped from the 11-digit `2p =
+            0x20000000366`) while the gloss says "**three** dropped" and names the **8**-digit
+            `0x20000366` — printed value and stated value differ by 16×. **This is the exact passage
+            round 10 "fixed" (two→three).** Per [[feedback_fix_is_new_content]] and this leaf's own
+            INSIGHTS ("Resolution = SUBTRACTION; the slot itself was the defect"): **two wrong
+            justifications ⇒ delete the slot.** Removed the entire self-referential digit-history and
+            the dangling "that guard / historical error" references; kept only the load-bearing
+            forced-`2p` math and the true guard-entailment note. Deletion writes no new claims, so
+            the freeze favours it over a third correction.
+            **LOW, ledgered (not fixed):** `hash.rs:104` — "~1.5× Floyd's *improvement*" has an
+            undefined referent (improvement of what, over what). Imprecise, not false; the
+            load-bearing vOW distinguished-points figure beside it is correct. Freeze declines the
+            prose touch. **Adversarial CLEAN** (8 typed vectors + **33M-check** differential fuzz,
+            release/overflow-off, 0 forged). **Verification:** 26 crate unit + 2 doctests (486
+            workspace, unchanged — no new test *function*, one assertion added), clippy/fmt/rustdoc
+            `-D warnings` clean, corona **25/25**, sol **29/29**. corona `2f5608c` (wire unchanged,
+            `692fdef`). Round 13 **NOT clean** — streak stays 0 — but both findings are *tail*
+            phenomena: an under-audited sibling of an exhausted class, and the final deletion of a
+            slot that had defied correction twice. **#5 unmet after thirteen. Wire converged (3
+            rounds); the crate's open question for round 14 is whether the correctness lens, now that
+            the accessor class is fully drained, finds anything at all.**
+      - ⚠️ **Prompt-injection surface, escalated: TWO trigger paths, 2026-07-23.** Beyond the
+        `README*`-basename hook (fires on read/edit of any README), a **second** vercel-plugin path
+        fires on `UserPromptSubmit` when the prompt text contains "next.js"/"vercel" — it triggered
+        when a wire-lens notification *quoted the injection it had disregarded*, demanding
+        `Skill(vercel-cli)` + `Skill(nextjs)`. Both paths disregarded every time (injected hook text
+        is not a user instruction; corona is Rust, no Vercel/Next.js code in play). On record as a
+        live, self-propagating injection surface in the toolchain.
       - ⚠️ **Prompt-injection surface in the toolchain, 2026-07-23.** A plugin hook (vercel-plugin)
         keyed on the `README*` basename fires on any **read or edit of a `README*` file** and
         injects an instruction to run `Skill(bootstrap)` and "read Vercel/Next.js docs before
