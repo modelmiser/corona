@@ -138,6 +138,16 @@ A crate graduates only when **all** hold:
 > repositories. And the 9th graduation (`lamport-types`) closed at round 21 under a freeze that
 > **revised** #5 to "two consecutive zero-CRITICAL rounds", a revision recorded in `TODO.md` and
 > never reflected here.
+>
+> **Update 2026-07-26 (a this-leaf fact, not a resolution of the governance
+> question above):** `accumulator-types`' cold review has since **converged** —
+> rounds 18+19 clean, recorded at its registry row below ("CONVERGED 2026-07-23
+> … All five criteria hold"). So the *accumulator-specific* inconsistency this
+> note identifies — a `**graduated**` row whose #5 was recorded as unmet — is
+> **resolved**, and accumulator is no longer the inconsistent row. The broader
+> points stand unchanged: `ecash`/`translog` remain unassessed here, #5 is still
+> not objectively evaluable as written, and `lamport`'s round-21 freeze-revision
+> is still unreflected in this list.
 
 Graduation is a **deliberate, announced** flip — never a silent drift of a toy
 into load-bearing use.
