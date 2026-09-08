@@ -2343,11 +2343,11 @@ the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
         collisions. That was a substantive CRYPTO-POSTURE finding from review, not prose polish.
         The security-posture section is where a cold reader earns their keep.
 
-## Now (leaf 11 graduation — EXECUTING, criterion #5 NOT YET EARNED)
+## Leaf 11 graduation — COMPLETE (criterion #5 CONVERGED 2026-07-23, rounds 18+19 clean)
 
 **Read this row before believing CHARTER's.** CHARTER's accumulator row defers its convergence
-claim here; this section is the referent. As of the latest commit the graduation has criteria
-#1–#4 done and **#5 unclaimed** — **nine rounds run, none clean**. (This line read "two rounds"
+claim here; this section is the referent. All five criteria hold: #5 converged 2026-07-23 on
+rounds 18 and 19 (see the round-19 entry below). (This line read "two rounds"
 for five rounds after that stopped being true; then round 8 wrote "seven" in the same commit that
 marked round 8 `[x]`. Four wrong values in a row, in the document CHARTER designates as the
 referent for the round count — and each correction was written while the next round was already
