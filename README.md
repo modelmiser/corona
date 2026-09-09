@@ -19,6 +19,8 @@ readers and on-task agents should see is a small *lens* (minimal subset per
 composition or residue edge). See [`WAREHOUSE-AND-LENS.md`](WAREHOUSE-AND-LENS.md), and
 [`COMPOSITION-SEARCH.md`](COMPOSITION-SEARCH.md) for the `∘` search it describes — round 1
 scored three reactions with the compiler rather than with prose.
+[`CWE-664-MAP.md`](CWE-664-MAP.md) is the outward search: CWE-664's lifecycle taxonomy mapped
+against the leaves, with five candidate gaps outside the garden's current domains.
 
 Corona is the **type** face of the Radiant verification work. Its sibling **Sol**
 is the **proof** face (machine-checked Lean lemmas). The wiring — first exercised at
