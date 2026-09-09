@@ -325,6 +325,15 @@ work (complete tasks, add children, keep siblings).
             "at least 2ʲ", `n = 9..=12` example dropped (its range includes the honest anchor);
             #3's list → "among them"; remaining-breaks list gains the same-seed harvest; four
             equivalent mutants re-confirmed; E0382 fence's code unenforced on stable — noted.
+      - [x] **Round 7 — NOT CLEAN: 1 MODERATE + 5 LOW, no CRITICAL; correctness (82 mutants, 78
+            killed, 4 equivalent) + adversarial CLEAN.** MOD: replay corollary said "exposed by
+            ANY one signature under that key" — only a same-`key_index` signature exposes the
+            needed siblings (counterexample: slot-2 signature cannot supply leaf_hash(vk1)) →
+            fixed. LOW: band survey numbers unpinned → `capacity_lie_band_accepts_a_genuine_
+            prefix`; inherited width residue unpinned at mss level → `inherited_width_residue_
+            carries_through` with the parent's colliding pair (collision re-verified before use);
+            Cargo "demo seed" → "demo/reused seed"; Merkle citation gains the CRYPTO '89 venue;
+            doc-occurrence text-mutation hazard + 4 equivalent survivors recorded, no change.
 
 ## Now (leaf 8 — vid-types)
 

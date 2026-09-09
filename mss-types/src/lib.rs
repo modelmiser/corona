@@ -10,7 +10,7 @@
 //! > primitive** and **no reach into private internals**?*
 //!
 //! The historically canonical test case exists: the **Merkle Signature Scheme**
-//! (MSS, Merkle 1979) is *literally* `merkle-types ∘ lamport-types`. A Lamport key
+//! (MSS, Merkle 1979 — the thesis; published as "A Certified Digital Signature", CRYPTO '89) is *literally* `merkle-types ∘ lamport-types`. A Lamport key
 //! signs **one** message (leaf 5's whole point); Merkle's fix was a hash tree over
 //! *n* one-time **verifying** keys, whose root becomes a single many-time public
 //! key. Each signature reveals its one-time key plus an inclusion proof that this
@@ -165,7 +165,8 @@
 //!   layers. **But the inherited 64-bit Lamport digest width is not**: a signature binds
 //!   to `digest(message)`, so a birthday pair forges at ~2³² (leaf 5's disclosed cap —
 //!   a property of the width, not of SHA-256), and that carries straight through this
-//!   composition. ⚠ And that is the bound for a **correctly-used** key: this crate's own
+//!   composition (pinned by `inherited_width_residue_carries_through`, with the parent's
+//!   published colliding pair). ⚠ And that is the bound for a **correctly-used** key: this crate's own
 //!   demo seed is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
 //!   the weakest link is the seed, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
 //!   seeds (below), fixed capacity, and that inherited width. Until 2026-09-08 this bullet
@@ -214,8 +215,8 @@
 //!   capacity-2 key at `key_index` 0. And a **zero-cost
 //!   corollary** needing no search at all: an honest signature under the capacity-`n` key
 //!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
-//!   `vk`, same one-time signature, the other tree's proof siblings (exposed by any one
-//!   signature under that key) — a cross-anchor replay, `minted_by` the second anchor. A
+//!   `vk`, same one-time signature, the other tree's proof siblings (exposed by a
+//!   signature at the same `key_index` under that key) — a cross-anchor replay, `minted_by` the second anchor. A
 //!   capacity upgrade must change the seed. All three — the sharing, the replay, and the
 //!   forgery itself (assembled from harvested preimages, verified under the honest key) —
 //!   are pinned by `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
@@ -258,7 +259,7 @@
 //!   least** the first 2ʲ genuine slots unchanged — often more, wherever both widths pair
 //!   identically at every level (review survey 2026-09-08: true `n = 5` under adopted
 //!   6, 7 or 8 accepts slots 0–3 inclusive and rejects slot 4, exactly 2ʲ; `n = 11` under
-//!   12 accepts 0–9). Under
+//!   12 accepts 0–9; both pinned by `capacity_lie_band_accepts_a_genuine_prefix`). Under
 //!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
 //!   adds **no acceptance channel of its own**; membership of bytes stays sound —
 //!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor
@@ -1073,6 +1074,63 @@ mod tests {
             .expect("forged, never signed, accepted by the HONEST key");
         assert_eq!(v.key_index(), 0);
         assert!(!signed.iter().any(|(sm, _)| *sm == m.as_bytes()));
+    }
+
+    #[test]
+    fn capacity_lie_band_accepts_a_genuine_prefix() {
+        // The "often not detectable by rejection" disclosure, executable: under a
+        // capacity lie inside the same power-of-two band, genuine un-relabeled signatures
+        // verify at their TRUE index for a prefix of at least 2^j slots.
+        fn accepted_prefix(seed: u64, n: usize, adopted: usize) -> Vec<usize> {
+            let (mut chain, pk) = generate(seed, n).map(|(c, p)| (Some(c), p)).unwrap();
+            let lie = MssPublicKey::adopt(pk.root_hash(), adopted).unwrap();
+            let mut ok = Vec::new();
+            for i in 0..n {
+                let (sig, rest) = chain.take().unwrap().sign_next(b"band");
+                chain = rest;
+                if let Some(v) = lie.verify(b"band", &sig) {
+                    assert_eq!(v.key_index(), i, "true index, under the lie");
+                    assert!(v.minted_by(&lie) && !v.minted_by(&pk));
+                    ok.push(i);
+                }
+            }
+            ok
+        }
+        for adopted in [6, 7, 8] {
+            assert_eq!(
+                accepted_prefix(77, 5, adopted),
+                vec![0, 1, 2, 3],
+                "n = 5, exactly 2^2"
+            );
+        }
+        assert_eq!(
+            accepted_prefix(77, 11, 12),
+            (0..=9).collect::<Vec<_>>(),
+            "n = 11 under 12: more than 2^3"
+        );
+    }
+
+    #[test]
+    fn inherited_width_residue_carries_through() {
+        // Leaf 5's published 8-byte digest collision (its
+        // `a_digest_collision_forges_across_keys_at_the_toy_width`): one MSS signature on
+        // the first message verifies, unchanged, for the second — never signed — because
+        // the composition binds to `digest(message)` exactly as the parent does.
+        let signed = [0x26u8, 0x1b, 0xc1, 0xc8, 0xe8, 0x2a, 0x1f, 0xd3];
+        let never_signed = [0xbbu8, 0x84, 0x0e, 0x93, 0x72, 0xa8, 0x7c, 0xe5];
+        assert_ne!(signed, never_signed);
+        assert_eq!(
+            lamport_types::hash::digest(&signed),
+            lamport_types::hash::digest(&never_signed)
+        );
+        let (chain, pk) = generate(0xC0FFEE, 4).unwrap();
+        let (sig, _) = chain.sign_next(&signed);
+        assert_eq!(
+            pk.verify(&never_signed, &sig)
+                .expect("the width residue, inherited")
+                .key_index(),
+            0
+        );
     }
 
     #[test]
