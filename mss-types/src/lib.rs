@@ -42,7 +42,10 @@
 //!   and not a brand).
 //! - **The brand, penning the intermediate.** Verification adopts the trusted root
 //!   inside `merkle_types::adopt_scoped`, so the intermediate `VerifiedLeaf<'brand>`
-//!   is born penned in that scope and *cannot leak out of it*: the one fact
+//!   is born penned in that scope and *cannot leak out of it* (the leak path's
+//!   diagnostic is an un-numbered `lifetime may not live long enough` with the invariance
+//!   note; `E0521` is what the cross-scope *consumption* path reports — "E0308-class" is
+//!   the garden's label for the primitive, not the code either path prints): the one fact
 //!   extracted from it — the anchor-relative authenticated leaf index — escapes
 //!   unbranded into
 //!   [`VerifiedMssMessage`], joined there with the digest (from leaf 5's
@@ -72,10 +75,11 @@
 //! composing had required a fifth primitive or a `pub(crate)` back door, the
 //! garden's thesis would have a hole; it required neither.
 //!
-//! And the pressure propagates upward: the same cold review that shaped those
-//! rungs caught this crate re-creating *both* component gaps one level up — a
-//! composed witness with no provenance (the gap vss/merkle each found at rung 1 and
-//! closed at rung 2), and a public key a wire-side verifier could not construct (the gap
+//! And the pressure propagates upward: the rungs were shaped by composition pressure at
+//! seed time; the leaf-7 cold review (its round 2) then caught this crate re-creating
+//! *both* component gaps one level up — a composed witness with no provenance (the gap
+//! merkle found at rung 1 and closed at rung 2; vss closed the same gap the same way,
+//! its commits carrying no rung number), and a public key a wire-side verifier could not construct (the gap
 //! `adopt_scoped` closed for leaf 4). Hence the full-anchor witness provenance
 //! ([`VerifiedMssMessage::minted_by`]) and [`MssPublicKey::adopt`]. A composition
 //! inherits its components' *obligations*, not just their guarantees.
@@ -99,7 +103,10 @@
 //!    review's adversarial findings (the same-seed cross-capacity channel, its zero-cost
 //!    replay corollary, and the capacity-lie "often not detectable by rejection" note).
 //! 4. **Lean wire** — `Sol.Lib.Mss`, the garden's **18th wire** and the first for a
-//!    composition. Its content is the composition question on the proof face: *does a
+//!    composition. It lives in the `sol` repository, which is **private**: nothing below
+//!    is checkable from this crate, and its review record is separate (a blind in-family
+//!    review of the Lean; the cross-vendor pass covered only this crate's public claims).
+//!    Its content is the composition question on the proof face: *does a
 //!    composition inherit its parents' proofs the way it inherits their backends?* It does,
 //!    with **zero rungs on either parent's wire** — for a model that carries side-patterns,
 //!    not indices. The keychain is `Sol.Lib.Lamport`'s two-state capability lifted to a
@@ -158,7 +165,7 @@
 //!   demo seed is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
 //!   the weakest link is the seed, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
 //!   seeds (below), fixed capacity, and that inherited width. Until 2026-09-08 this bullet
-//!   ended "so `mss-types` is a research-rung composition, not an independently graduated
+//!   said "so `mss-types` is a research-rung composition, not an independently graduated
 //!   leaf"; it now **is** graduated — by inheritance, see *Graduation* above — and the
 //!   sentence that survives is the true one: the *type* discipline (the Merkle brand over
 //!   one-time Lamport keys) is the subject, and the seeds/capacity are demonstration, not
@@ -189,16 +196,17 @@
 //!   one seed are distinct public keys backed by the **same** one-time keys, so honest,
 //!   linear, once-each use of two such chains reveals two signatures under slot `i`'s
 //!   key — a one-time-key reuse with no `E0382` hazard and no re-mint of either chain
-//!   value, and it is a cheap forgery under the **honest** anchor: `k` such chains used
+//!   value, and it is a cheap forgery under the **honest** anchor: `c` such chains used
 //!   once each let an adversary forge any message whose 64 digest bits fall in the
 //!   revealed set. Cost, stated per instance: **~2ᵏ digest trials, where `k` is the number
-//!   of the 64 positions at which all revealed digests agree** (only there is one side
-//!   still hidden). With three chains `k ~ Binomial(64, ¼)`, so `k ≈ 16` and ~2¹⁶ ≈ 65,000
+//!   of the 64 positions at which all `c` revealed digests agree** (only there is one side
+//!   still hidden). With `c = 3`, `k ~ Binomial(64, ¼)`, so `k ≈ 16` and ~2¹⁶ ≈ 65,000
 //!   trials is typical (this crate's own three test messages give `k = 17`, ~131,000). The
-//!   per-message success probability averaged over key material is (7/8)⁶⁴ ≈ 1/5,150, but
-//!   its reciprocal is NOT the expected cost — Jensen: E\[2ᵏ\] = (5/4)⁶⁴ ≈ 1.6 million — and
-//!   an earlier version of this bullet said "expected ~5,150", which the review caught as a
-//!   ~30× understatement on the crate's own inputs. The forgery verifies under the honest
+//!   per-message success probability averaged over the signed messages' digests is
+//!   (7/8)⁶⁴ ≈ 1/5,150, but its reciprocal is NOT the expected cost — Jensen:
+//!   E\[2ᵏ\] = (5/4)⁶⁴ ≈ 1.6 million — and an earlier version of this bullet said
+//!   "expected ~5,150", which the review caught as a ~25× understatement on the crate's
+//!   own inputs. The forgery verifies under the honest
 //!   capacity-2 key at `key_index` 0. And a **zero-cost
 //!   corollary** needing no search at all: an honest signature under the capacity-`n` key
 //!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
@@ -241,8 +249,11 @@
 //!   that a lie will *surface* as rejections: for the prefix of slots whose fold
 //!   shape the lie leaves unchanged, genuine un-relabeled signatures still verify
 //!   at their TRUE index, `minted_by` the lying anchor — a wrong capacity is often
-//!   not detectable by rejection at all (review survey 2026-09-08, e.g. true
-//!   `n = 5` under adopted 6/7/8 accepts slots 0..3 unchanged). Under
+//!   not detectable by rejection at all. Structurally it is a whole power-of-two band:
+//!   for a true `n` in (2ʲ, 2ʲ⁺¹], every adopted capacity in that band accepts the first
+//!   2ʲ genuine slots unchanged (review survey 2026-09-08: true `n = 5` under adopted
+//!   6, 7 or 8 accepts slots 0–3 inclusive and rejects slot 4; `n = 9..=12` under
+//!   9..=16 accept slots 0–7). Under
 //!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
 //!   adds **no acceptance channel of its own**; membership of bytes stays sound —
 //!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor

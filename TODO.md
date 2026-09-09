@@ -305,6 +305,15 @@ work (complete tasks, add children, keep siblings).
             message asserted). LOW: single-killer test concentration (recorded, not a defect);
             wire-side gap half-closed — `adopt` covers the key, a received signature's `vk` has no
             `from_bytes` on leaf 5 → recorded as the next rung composition pressure names.
+      - [x] **Round 5 — NOT CLEAN: 1 MODERATE + 9 LOW, all prose; correctness (71 mutants, 66
+            killed, 5 equivalent) + adversarial CLEAN.** MOD: `k` used for both the chain count and
+            the agreeing-position count in adjacent sentences (2³ vs 2¹⁷) → chains are `c`. LOW:
+            "(7/8)⁶⁴ averaged over key material" → over the signed digests; rungs attributed to a
+            cold review → shaped at seed, caught by leaf-7 review round 2; vss rung number unsourced
+            → said so; "~30×" → ~25× (131,072/5,150); "0..3" → 0–3 inclusive + the power-of-two
+            band the survey shows; "bullet ended" → "said"; Sol wire location (private repo)
+            hedged on the surface; brand-leak diagnostic is un-numbered, E0521 is the consumption
+            path — labelled as the garden's convention.
 
 ## Now (leaf 8 — vid-types)
 
