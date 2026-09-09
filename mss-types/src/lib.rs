@@ -156,7 +156,8 @@
 //!
 //! - **Both hash *backends* are graduated — forgery is no longer "invert FNV".** The remaining
 //!   breaks are the inherited 64-bit digest width (~2³²), this crate's demo seed (≲2²⁵), and
-//!   — cheapest of all, given seed reuse across capacities — the same-seed harvest below
+//!   — cheapest *forgery* of all, given seed reuse across capacities (the replay below is
+//!   cheaper still but forges nothing new) — the same-seed harvest below
 //!   (~2ᵏ, `k ≈ 16` for three chains; two give `k ≈ 32`, no cheaper than the width); none
 //!   of them is SHA-256.
 //!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
@@ -216,8 +217,13 @@
 //!   capacity-2 key at `key_index` 0. And a **zero-cost
 //!   corollary** needing no search at all: an honest signature under the capacity-`n` key
 //!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
-//!   `vk`, same one-time signature, the other tree's proof siblings (exposed by a
-//!   signature at the same `key_index` under that key) — a cross-anchor replay, `minted_by` the second anchor. A
+//!   `vk`, same one-time signature, the other tree's proof siblings — exposed by a
+//!   signature at the same `key_index` under that key, or computed outright: with a
+//!   shared seed every revealed `vk` is a leaf of *both* trees, so a never-used
+//!   same-seed key's proofs are rebuilt from the source chain's signatures alone
+//!   (review probe 2026-09-08: capacity-4 fully used, capacity-2 and -3 never
+//!   signed, both accept the replay) — a cross-anchor replay, `minted_by` the second
+//!   anchor. A
 //!   capacity upgrade must change the seed. All three — the sharing, the replay, and the
 //!   forgery itself (assembled from harvested preimages, verified under the honest key) —
 //!   are pinned by `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
@@ -493,10 +499,13 @@ impl VerifiedMssMessage {
 /// key pairs, a Merkle tree over the verifying keys' canonical bytes, and the
 /// tree's root data as the public key. `None` if `n == 0` (a chain that can sign
 /// nothing has no reason to exist — and it would break the never-empty invariant).
+/// There is no upper guard: an `n` whose key material exceeds the address space
+/// panics on allocation (`capacity overflow`), as any `Vec` would — a resource
+/// limit, not a checked bound (review 2026-09-08).
 ///
 /// Per-key seeds are derived through `lamport_types::hash::prg` under side byte
-/// `0xFF` — a side value `prg` documents as reserved for callers, outside the
-/// `{0, 1}` keygen uses — so the chain-level and key-level derivations have
+/// `0xFF` — outside the `{0, 1}` keygen uses, which `prg`'s contract documents and
+/// permits callers to build on — so the chain-level and key-level derivations have
 /// **disjoint input domains**. (That bounds the *inputs*; distinctness of the
 /// 64-bit *outputs* now rests on the graduated SHA-256 Lamport-derivation hash (the Merkle layer likewise SHA-256).
 /// Deterministic derivation is the toy choice, for reproducible tests; it is

@@ -350,6 +350,17 @@ work (complete tasks, add children, keep siblings).
             `root_hash[0] == pk.root_hash[0]` watched surviving before the test and dying after).
             LOW: "k ≈ 16" assumes three chains → said; 6 equivalent survivors re-confirmed. Streak
             resets; convergence needs 2 clean.
+      - [x] **Round 10 (workflow run 10): CONVERGED — its rounds 1 and 2 both CLEAN on all three
+            lenses (0 CRITICAL, 0 MODERATE) on the frozen text at `436922e`.** Correctness 88 + 94
+            mutants, all non-equivalent killed, 4 documented equivalents; claims every-claim verified
+            on stable and nightly; adversarial 3M-verdict differential fuzz, capacity-lie sweep
+            matches the band disclosure exactly, no break. 5 LOW carried: allocation-limit panic on
+            absurd `n` (documented, no guard added — non-test code stays byte-identical); "cheapest
+            of all" → "cheapest forgery of all" (the replay is cheaper but forges nothing new); `prg`
+            "reserved" → "permits"; replay precondition is sufficient not necessary — a never-used
+            same-seed key's proofs are rebuilt from the source chain's signatures alone (probe
+            verified) → said; 4 equivalent survivors re-confirmed. **⇒ CRITERION #5 CONVERGED
+            2026-09-08**, per the fix-all-LOWs rule the LOW fixes get one verification round below.
 
 ## Now (leaf 8 — vid-types)
 
