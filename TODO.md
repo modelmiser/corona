@@ -235,6 +235,47 @@ work (complete tasks, add children, keep siblings).
       rejected with the exact documented error codes (E0382/E0451/E0616/E0599/
       E0277/E0521). 88 unit + 20 doctests. **All 7 leaves now cold-reviewed.**
 
+## Leaf 7 GRADUATION (2026-09-08) — by inheritance; #5 record lives HERE (the referent)
+
+- [x] Decision: a composition leaf owns no backend → criterion #2 is inherited (both parents
+      graduated July 2026); CHARTER gains a second #2 caveat. Nothing swapped, no code changed.
+- [x] Criterion #4: `Sol.Lib.Mss`, the 18th wire, first for a composition (sol `1d503dd`, fixes
+      `8677d25`). Zero rungs on either parent's wire — for a side-pattern model; an index-carrying
+      model would need `authProof` totality (declined). Blind in-family review of the wire
+      (2026-09-08): 3 findings fixed — "verbatim" false twice; propext carrier is `foldUp`'s
+      definition not the tactic; headline dropped "along one index, under an honest anchor";
+      collision contrast restated at `accepts`; restored-chain contrast added (rows 78–79).
+- [x] Cross-vendor review of the corona-side claims (public repo only — sol is PRIVATE, so the
+      Lean file was NOT sent out): GPT-5.3-codex + Grok-4.6, both REFUTED the unqualified
+      composition sentence on `understated_adopted_capacity_misattributes_to_a_real_slot` (a
+      capacity lie is a different anchor: committed bytes reassigned, no collision); Grok alone
+      caught 4 wording defects GPT passed ("section below"→above; "hash no longer the weak link";
+      "exactly as in the graduated parents"; Lean claims unverifiable from corona). All fixed.
+- [ ] **Criterion #5 — cold review of THIS graduation text (garden-cold-review workflow, 3 lenses).**
+      - [x] **Round 1 — NOT CLEAN: 3 MODERATE + 7 LOW.** MOD: adopt boundary mutant
+            `capacity==0→<=1` survived (no test adopted at capacity 1) → pinned in
+            `adopted_public_key_verifies_wire_style`; per-key derivation `prg(seed,i,0xFF)` never
+            pinned (mutants `0xFF→0`, `i→i+1` survived) → asserted per slot in the n=4 loop; #5
+            asserted by pointer to a placeholder → now a pointer to this record, no status.
+            LOW: capacity getter unasserted at index>0 (pinned); `n==0` guard equivalent to
+            merkle's refusal (non-defect, noted); "demo root"→"demo seed"; "SHA-256 collision"→
+            u64-truncated (~n²/2⁶⁵, and a collision = key reuse, worse than an orbit); "hash-based
+            signatures are stateful" over-general (SPHINCS+); UNDISCLOSED CHANNEL (adversarial
+            lens): per-key seeds independent of n → chains of different capacities from one seed
+            share one-time keys; linear once-each use of two = a key reuse, forged under 10/10
+            pks in the lens's probe. Disclosed in the seed bullet. Adversarial: NO BREAK (20
+            compile-time vectors, 3.4M-verification differential fuzz, 0 disagreements).
+      - [x] **Round 2 — NOT CLEAN: 2 MODERATE (claims) + 5 LOW; correctness + adversarial CLEAN**
+            (115 mutants, 110 killed, 5 proven equivalent; 4.3M-iteration differential fuzz, no
+            break). MOD: "the Lean model has no capacity" false for Part 1's `Chain` → "the Part 2
+            acceptance model"; Cargo description said GRADUATED unconditionally while lib.rs held
+            #5 open → both now say "#5 OPEN", and lib.rs names the one-word flip as the only
+            change permitted at convergence. LOW: the 4 equivalent mutants noted at the `n == 0`
+            guard; cross-capacity key sharing now a TEST (`same_seed_different_capacities_share_
+            one_time_keys`) and its cost stated (a cheap forgery under the honest anchor, ~1 in
+            5,000 messages with three chains); vss provenance-gap rung 2→1 (merkle + CHARTER say
+            1); "seeds distinct by construction" → seed INPUTS.
+
 ## Now (leaf 8 — vid-types)
 
 - [x] Seed vid-types: the **second composition leaf** — verifiable information

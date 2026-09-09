@@ -75,7 +75,7 @@
 //! And the pressure propagates upward: the same cold review that shaped those
 //! rungs caught this crate re-creating *both* component gaps one level up — a
 //! composed witness with no provenance (the gap vss/merkle each closed at their
-//! rung 2), and a public key a wire-side verifier could not construct (the gap
+//! rung 1), and a public key a wire-side verifier could not construct (the gap
 //! `adopt_scoped` closed for leaf 4). Hence the full-anchor witness provenance
 //! ([`VerifiedMssMessage::minted_by`]) and [`MssPublicKey::adopt`]. A composition
 //! inherits its components' *obligations*, not just their guarantees.
@@ -115,7 +115,7 @@
 //!    it can reassign genuinely committed bytes to another index with no collision
 //!    (`understated_adopted_capacity_misattributes_to_a_real_slot`,
 //!    `overstated_adopted_capacity_yields_phantom_indices_caught_by_minted_by`), though it still admits no
-//!    uncommitted key. The Lean model has no `capacity`, so those two tests have no image
+//!    uncommitted key. The wire's Part 2 acceptance model has no `capacity` (Part 1's `Chain` does), so those two tests have no image
 //!    there: the theorem is silent about them, not wrong. The residues are restated in the
 //!    same motion: `signature_transfers_along_digest_equality` (the ~2³² width — Lamport's
 //!    Part 3 shape, generic in the digest type, not derived from it),
@@ -129,11 +129,13 @@
 //!    lacks. The datum, with that qualifier: this crate's thesis — composition pressure
 //!    surfaces missing API, not missing vocabulary — held on the proof face for what the
 //!    model states.
-//! 5. **Cold review.** The research surface converged at round 6 (2026-07). The re-review of
-//!    *this* graduation text is a separate arc whose round-by-round record lives in
-//!    `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points there
-//!    rather than restating a count. #5 is earned only by two consecutive clean rounds on
-//!    this text, and nothing here asserts that it has been.
+//! 5. **Cold review — OPEN.** The research surface converged at round 6 (2026-07). The
+//!    re-review of *this* graduation text is a separate arc whose round-by-round record
+//!    lives in `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points
+//!    there rather than restating a count. #5 is earned only by two consecutive clean
+//!    rounds on this text. The word OPEN above, and its twin in `Cargo.toml`'s description,
+//!    are the only text permitted to change at convergence (to CONVERGED, with the round
+//!    numbers) — so that the flip is not a fix-artifact on the reviewed surface.
 //!
 //! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no code and
 //! no value, the blast radius is zero of every kind, not merely compile-time.
@@ -184,8 +186,15 @@
 //!   one seed are distinct public keys backed by the **same** one-time keys, so honest,
 //!   linear, once-each use of two such chains reveals two signatures under slot `i`'s
 //!   key — a one-time-key reuse with no `E0382` hazard and no re-mint of either chain
-//!   value. A capacity upgrade must change the seed. (Found by the 2026-09-08 review's
-//!   adversarial lens; within the seed premise, so disclosed, not a guarantee break.)
+//!   value, and it is a cheap forgery under the **honest** anchor: `k` such chains used
+//!   once each let an adversary forge any message whose 64 digest bits fall in the
+//!   revealed set — with three chains roughly one message in 5,000, found by hashing
+//!   candidates (the review's reproducer forged a never-signed message after ~13,000
+//!   SHA-256 trials, verifying under the honest capacity-2 key at `key_index` 0). A
+//!   capacity upgrade must change the seed. Pinned by
+//!   `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
+//!   review's adversarial lens; within the seed premise, so disclosed, not a guarantee
+//!   break.)
 //! - **Fixed capacity.** `n` is set at keygen; a spent chain is spent. Real
 //!   schemes tier trees over trees (Merkle's own suggestion; XMSS^MT's structure)
 //!   — out of scope for the toy.
@@ -229,7 +238,7 @@
 //!   relative to, **not** a unique position within a degenerate one). This is
 //!   `merkle-types`' documented structural-symmetry **orbit**, arriving here
 //!   through the `adopt` doorway (regression-tested). [`generate`] never mints
-//!   such an anchor — its per-key seeds are distinct by construction, so its
+//!   such an anchor — its per-key seed *inputs* are distinct by construction, so its
 //!   leaves are distinct up to a (u64-truncated) SHA-256 collision (both layers graduated) — but an *adopted* anchor
 //!   carries no such pedigree.
 //! - **MSS, not XMSS.** The standardized descendant (XMSS, RFC 8391) uses WOTS+
@@ -423,6 +432,9 @@ impl VerifiedMssMessage {
 /// is about.)
 pub fn generate(seed: u64, n: usize) -> Option<(MssKeychain, MssPublicKey)> {
     if n == 0 {
+        // Redundant with `merkle_types::commit_scoped(&[])`, which refuses an empty
+        // commitment; kept as defense in depth. Deleting it is an EQUIVALENT mutant
+        // (review 2026-09-08), so no test pins this clause — the parent's does.
         return None;
     }
     let pairs: Vec<(SigningKey, VerifyingKey)> = (0..n)
@@ -877,6 +889,35 @@ mod tests {
         assert!(
             !v.minted_by(&pk),
             "full anchor still separates it from truth"
+        );
+    }
+
+    #[test]
+    fn same_seed_different_capacities_share_one_time_keys() {
+        // The disclosed cross-capacity channel, executable: two chains from ONE seed at
+        // capacities 2 and 3 are DIFFERENT public keys whose slot-0 one-time keys are the
+        // SAME. Each chain is used once, linearly — no E0382 hazard, no re-mint — and
+        // yet slot 0's key has now signed twice. A capacity upgrade must change the seed.
+        let (c2, pk2) = generate(0xC0FFEE, 2).unwrap();
+        let (c3, pk3) = generate(0xC0FFEE, 3).unwrap();
+        assert_ne!(pk2, pk3, "different capacities, different public keys");
+        let (s2, _) = c2.sign_next(b"under the capacity-2 key");
+        let (s3, _) = c3.sign_next(b"under the capacity-3 key");
+        assert_eq!(
+            s2.vk, s3.vk,
+            "one seed, one slot-0 one-time key, two signatures"
+        );
+        assert_eq!(
+            pk2.verify(b"under the capacity-2 key", &s2)
+                .unwrap()
+                .key_index(),
+            0
+        );
+        assert_eq!(
+            pk3.verify(b"under the capacity-3 key", &s3)
+                .unwrap()
+                .key_index(),
+            0
         );
     }
 
