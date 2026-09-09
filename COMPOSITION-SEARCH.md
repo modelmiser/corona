@@ -387,9 +387,44 @@ that need it. What holds it there?
 > the map's candidate A is closed as a *datum* — the field guide's E0382 line should say
 > "at most once, and the other half is liveness" — not as leaf 34.
 
+## Reaction O — `deadlock ∘ accumulator`: boot order, and the reset the program does not own
+
+`CWE-MAP.md` candidate B, run as a reaction before any leaf: a hardware lock bit is a monotone
+wall *within* a power epoch and un-sets *across* one (CWE-1232); boot phases must run in order
+(CWE-1190 DMA before fabric ACL, 1193, 1279). Two leaves already hold the two halves:
+deadlock-29's strictly-increasing const levels are an order, and accumulator-11's generative
+brand is an epoch. `o_deadlock_x_accumulator` composes them with **zero rungs**:
+
+- **Boot order within a chain reduces: E0080** (`fail_o_phase_order_is_a_wall`). Fabric(1) →
+  DMA(2) → crypto(3) as one `Guard::acquire` chain builds; DMA-then-fabric trips the wall.
+- **Entering at DMA does not** (O2). `Lock::acquire` is unconstrained, so `DMA.acquire()` with
+  the fabric never locked builds and runs — which is CWE-1190 verbatim. deadlock-29's
+  *single-chain obligation* is the boot-order obligation under another name: the order holds
+  only for phases that are taken as one chain, and nothing forces a boot to be one chain.
+  An inherited residue, not a new one.
+- **The program-owned reset reduces: E0521** (`fail_o_witness_cannot_outlive_the_epoch`) plus
+  leaf 11's runtime `Stale` (O3). Record the power cycle in the log, the epoch advances, the
+  old witness is stale and the branded `Included<'epoch>` cannot leave its scope.
+- **The device-owned reset is unmediated** (O4). Inside one epoch scope, holding an
+  `Included<'epoch>` that says "fabric-locked is in this snapshot", the device power-cycles.
+  Witness says locked = true; device says locked = false. No value crossed, no scope closed,
+  no type changed.
+
+> **Verdict — unmediated, the third member of G's class, and the class now has a shape.**
+> G's hazard was an `if` (control flow); N's was an omission (a statement not there); O's is
+> an **event outside the program** (the environment). All three are "not a data path", and
+> they are the three places a data path can fail to exist: in the control structure, in the
+> absence of code, and beyond the program's edge. O also answers candidate E
+> (observed-vs-owned state) without a separate reaction: a state whose transitions another
+> party performs is exactly a brand whose epoch another party advances, and the type sees the
+> program's scope, never the party's. B and E close together as datum, not leaf 34. What the
+> map called "the reset residue in hardware" is leaf 11's freshness residue with the epoch
+> advanced from outside — the residue was already named; the domain was new, the question
+> was not.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # fourteen reactions and fifteen rejections (one a lint, by design)
+tools/compose-probes/probe.sh      # fifteen reactions and seventeen rejections (one a lint, by design)
 ```

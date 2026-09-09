@@ -3293,7 +3293,11 @@ ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a lea
       "exactly once" has no primitive (`mem::forget` safe, `#[must_use]` a lint); the missing half
       is liveness → arq-24's Alpern–Schneider line. Vocabulary-level. REINFORCED from 703 (252
       unchecked return, 390 error without action, 460 cleanup on unwind): resources AND results. Best candidate.
-- [ ] **B. reset / power-state walls** (CWE-1232/1233/1271/1221/1279) — a lock bit is a monotone
+- [x] **B. reset / power-state walls** — RUN as reaction O (`deadlock ∘ accumulator`, zero rungs, two
+      rejections E0080 + E0521). Verdict UNMEDIATED (G's class, 3rd member: an event outside the
+      program). Boot order = leaf 29 within a chain, and CWE-1190 IS leaf 29's single-chain residue;
+      the program-owned reset = leaf 11; the device-owned reset no type sees. Closes E as well.
+      Original: (CWE-1232/1233/1271/1221/1279) — a lock bit is a monotone
       wall within a power epoch and un-sets across one the type can't see: the CALM residue in
       hardware; also the builder-typestate (665) the garden skipped as trivial. ULX3S path.
       REINFORCED from 691: 841 behavioral workflow (session types — the founding typestate example;
@@ -3301,7 +3305,8 @@ ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a lea
 - [ ] **C. clock expiry** (CWE-613/324/298) — every freshness leaf is event-epoch; wall-clock
       expiry makes the trust anchor a clock. New edge or freshness sub-case? = the question.
 - [ ] **D. reentrancy** (CWE-1265) — emergent like deadlock-29; least novel, closest to crypto.
-- [ ] **E. observed-vs-owned state** (CWE-372/1250) — truth held by a broker/hardware/replica;
+- [x] **E. observed-vs-owned state** — CLOSED by reaction O (a state another party transitions = a
+      brand whose epoch another party advances). Original: (CWE-372/1250) — truth held by a broker/hardware/replica;
       cockpit ratchet boot derivation is a live instance. Probably PARTIAL, not a leaf.
 - [ ] **G. entropy** (CWE-330/333) — no leaf names a random value's QUALITY (frost-12 holds only its
       one-time use); the reduce-half is a witness-trap. PARTIAL, minor.

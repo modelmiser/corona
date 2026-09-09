@@ -193,6 +193,9 @@ Sits between the wire and coordination edges; may be a PARTIAL rather than a lea
   693's 1253 give it the reset/boot instance. Residue named by 841: the OTHER endpoint's compliance —
   session-type duality across the wire. B stays a hardware-first candidate but its reaction question is
   now "what does a session type hold that a per-endpoint typestate does not?"
+  **RUN as reaction O** (`COMPOSITION-SEARCH.md`): unmediated, G's class — the device-owned reset
+  is an event outside the program; the program-owned half reduces to leaf 11 (E0521 + Stale) and
+  boot order to leaf 29 (E0080). B and E close together as a datum, not a leaf.
 - **New, minor — G (entropy): 330/333.** No leaf names the *quality* of a random value; frost-12 holds
   only its one-time use. A value carries no evidence of its distribution, so the reduce-half is a
   witness ("from the OS RNG") that is a textbook witness-trap. PARTIAL, not a leaf.
