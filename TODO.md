@@ -292,6 +292,19 @@ work (complete tasks, add children, keep siblings).
             re-presents unchanged under pk_m at the same index with pk_m's proof siblings, zero
             search — disclosed + pinned in the same test; capacity lies often NOT detectable by
             rejection (genuine signatures verify at their true index under the lie) — disclosed.
+      - [x] **Round 4 (workflow run 4: its round 1 CLEAN on all 3 lenses, its round 2 NOT CLEAN):
+            1 CRITICAL + 1 MODERATE + 2 LOW.** ⚠ **The CRITICAL was again introduced by the
+            previous round's fix**: round 3's claims lens SUGGESTED "expected ~5,150 = 1/(7/8)^64"
+            and I adopted its number; it is a Jensen error — per instance the cost is 2^k, k ~
+            Bin(64, 1/4) (positions where all three revealed digests agree), median 2^16 ≈ 65,000,
+            E[2^k] = (5/4)^64 ≈ 1.6M; on the crate's own strings k = 17. Verified numerically before
+            rewriting. Two rounds running, the reviewer's proposed replacement was the defect —
+            a suggested figure is a claim to check, not a fix to paste. MOD: "Both pinned" false —
+            the forgery was stated, not tested → the harvest forgery is now IN the test (three
+            chains, assembled from revealed preimages, verified under the honest key, never-signed
+            message asserted). LOW: single-killer test concentration (recorded, not a defect);
+            wire-side gap half-closed — `adopt` covers the key, a received signature's `vk` has no
+            `from_bytes` on leaf 5 → recorded as the next rung composition pressure names.
 
 ## Now (leaf 8 — vid-types)
 

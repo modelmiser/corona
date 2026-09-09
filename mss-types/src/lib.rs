@@ -191,15 +191,22 @@
 //!   key — a one-time-key reuse with no `E0382` hazard and no re-mint of either chain
 //!   value, and it is a cheap forgery under the **honest** anchor: `k` such chains used
 //!   once each let an adversary forge any message whose 64 digest bits fall in the
-//!   revealed set — with three chains an expected ~5,150 SHA-256 trials per forgery (the
-//!   reciprocal of (7/8)⁶⁴; two independent reproducers needed ~5,500 and ~13,000),
-//!   verifying under the honest capacity-2 key at `key_index` 0. And a **zero-cost
+//!   revealed set. Cost, stated per instance: **~2ᵏ digest trials, where `k` is the number
+//!   of the 64 positions at which all revealed digests agree** (only there is one side
+//!   still hidden). With three chains `k ~ Binomial(64, ¼)`, so `k ≈ 16` and ~2¹⁶ ≈ 65,000
+//!   trials is typical (this crate's own three test messages give `k = 17`, ~131,000). The
+//!   per-message success probability averaged over key material is (7/8)⁶⁴ ≈ 1/5,150, but
+//!   its reciprocal is NOT the expected cost — Jensen: E\[2ᵏ\] = (5/4)⁶⁴ ≈ 1.6 million — and
+//!   an earlier version of this bullet said "expected ~5,150", which the review caught as a
+//!   ~30× understatement on the crate's own inputs. The forgery verifies under the honest
+//!   capacity-2 key at `key_index` 0. And a **zero-cost
 //!   corollary** needing no search at all: an honest signature under the capacity-`n` key
 //!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
 //!   `vk`, same one-time signature, the other tree's proof siblings (exposed by any one
 //!   signature under that key) — a cross-anchor replay, `minted_by` the second anchor. A
-//!   capacity upgrade must change the seed. Both pinned by
-//!   `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
+//!   capacity upgrade must change the seed. All three — the sharing, the replay, and the
+//!   forgery itself (assembled from harvested preimages, verified under the honest key) —
+//!   are pinned by `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
 //!   review's adversarial lens; within the seed premise, so disclosed, not a guarantee
 //!   break.)
 //! - **Fixed capacity.** `n` is set at keygen; a spent chain is spent. Real
@@ -241,7 +248,12 @@
 //!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor
 //!   — `key_index` is simply authenticated relative to the *adopted* shape, in
 //!   both directions. Never mix a hash from one source with a capacity from
-//!   another.
+//!   another. And `adopt` closes the wire gap for the **public key only**: a received
+//!   [`MssSignature`]'s `vk` has no `from_bytes` on leaf 5 (`VerifyingKey`'s fields are
+//!   private, E0451 — `to_bytes` has no inverse), so a verifier decoding bytes cannot yet
+//!   construct one in safe Rust; the "wire-style" test verifies an in-process value. That
+//!   is the next rung composition pressure names on `lamport-types`, recorded here, not
+//!   built (review 2026-09-08).
 //! - **An adopted anchor can be degenerate — the orbit symmetry is inherited.**
 //!   Adoption trusts the anchor's *content*, too: a root whose tree commits
 //!   **duplicate** key bytes makes those positions interchangeable — one genuine
@@ -944,9 +956,10 @@ mod tests {
         );
         // The zero-cost corollary: pk2's signature, re-presented under pk3 with pk3's
         // slot-0 proof siblings (exposed by s3), verifies for pk2's MESSAGE under pk3.
+        // (The harvest forgery follows, after this block.)
         let replay = MssSignature {
             ots: s2.ots.clone(),
-            vk: s2.vk,
+            vk: s2.vk.clone(),
             proof: s3.proof.clone(),
         };
         let v = pk3
@@ -954,6 +967,67 @@ mod tests {
             .expect("cross-anchor replay: no search, no re-mint");
         assert_eq!(v.key_index(), 0);
         assert!(v.minted_by(&pk3) && !v.minted_by(&pk2));
+
+        // The harvest forgery, executable: a third chain (capacity 4) signs a third
+        // message; the three revealed digests together expose BOTH preimages at every
+        // position where they disagree. A candidate message forges iff its digest agrees
+        // with some signed digest at every position — i.e. matches the revealed side at
+        // the k positions where all three agree. Expected ~2^k trials (k = 17 here).
+        let (c4, _pk4) = generate(0xC0FFEE, 4).unwrap();
+        let (s4, _) = c4.sign_next(b"under the capacity-4 key");
+        assert_eq!(s4.vk, s2.vk);
+        let signed: [(&[u8], &Signature); 3] = [
+            (b"under the capacity-2 key", &s2.ots),
+            (b"under the capacity-3 key", &s3.ots),
+            (b"under the capacity-4 key", &s4.ots),
+        ];
+        let digests: Vec<u64> = signed
+            .iter()
+            .map(|(m, _)| lamport_types::hash::digest(m))
+            .collect();
+        let k = (0..64)
+            .filter(|i| {
+                digests
+                    .iter()
+                    .all(|d| (d >> i) & 1 == (digests[0] >> i) & 1)
+            })
+            .count();
+        assert_eq!(k, 17, "positions where all three revealed digests agree");
+        let mut forged_message = None;
+        for n in 0u64..(1 << 20) {
+            let m = format!("forged transfer #{n}");
+            let d = lamport_types::hash::digest(m.as_bytes());
+            let mut revealed = [0u64; 64];
+            let mut covered = true;
+            for (i, slot) in revealed.iter_mut().enumerate() {
+                match signed
+                    .iter()
+                    .zip(&digests)
+                    .find(|(_, dj)| (*dj >> i) & 1 == (d >> i) & 1)
+                {
+                    Some(((_, sig), _)) => *slot = sig.revealed[i],
+                    None => {
+                        covered = false;
+                        break;
+                    }
+                }
+            }
+            if covered {
+                forged_message = Some((m, Signature { revealed }));
+                break;
+            }
+        }
+        let (m, ots) = forged_message.expect("a forgeable message within 2^20 candidates");
+        let forged = MssSignature {
+            ots,
+            vk: s2.vk.clone(),
+            proof: s2.proof.clone(),
+        };
+        let v = pk2
+            .verify(m.as_bytes(), &forged)
+            .expect("forged, never signed, accepted by the HONEST key");
+        assert_eq!(v.key_index(), 0);
+        assert!(!signed.iter().any(|(sm, _)| *sm == m.as_bytes()));
     }
 
     #[test]
