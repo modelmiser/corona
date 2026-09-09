@@ -3278,23 +3278,30 @@ authoritative value is the number of `[x] **Round N**` entries.)
   sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` →
   `c113f5a` → `3a7162b` → `48f14b4` → `df356c8` → r8. **Neither repo pushed since the graduation began.**
 
-## Next (outward search — `CWE-664-MAP.md`, 2026-09-08)
+## Next (outward search — `CWE-MAP.md`, 2026-09-08)
 
 The garden restarts when a new domain poses a typestate question worth a leaf. The outward
-search for such domains (outside trading/crypto) is `CWE-664-MAP.md` (`767049d`): CWE-664's
-381-node lifecycle subtree classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
+search for such domains (outside trading/crypto) is `CWE-MAP.md` (`767049d`, extended
+the same day to pillars 691/693/703): 626 nodes classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
 ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a leaf to build.
 - [ ] **A. exactly-once** (CWE-772 leak family, 459/226/1239 zeroization) — E0382 is at-most-once;
       "exactly once" has no primitive (`mem::forget` safe, `#[must_use]` a lint); the missing half
-      is liveness → arq-24's Alpern–Schneider line. Vocabulary-level. Best candidate.
+      is liveness → arq-24's Alpern–Schneider line. Vocabulary-level. REINFORCED from 703 (252
+      unchecked return, 390 error without action, 460 cleanup on unwind): resources AND results. Best candidate.
 - [ ] **B. reset / power-state walls** (CWE-1232/1233/1271/1221/1279) — a lock bit is a monotone
       wall within a power epoch and un-sets across one the type can't see: the CALM residue in
       hardware; also the builder-typestate (665) the garden skipped as trivial. ULX3S path.
+      REINFORCED from 691: 841 behavioral workflow (session types — the founding typestate example;
+      residue = the other endpoint's compliance) + boot ordering 1190/1193/1280/1279 + fuse 1253.
 - [ ] **C. clock expiry** (CWE-613/324/298) — every freshness leaf is event-epoch; wall-clock
       expiry makes the trust anchor a clock. New edge or freshness sub-case? = the question.
 - [ ] **D. reentrancy** (CWE-1265) — emergent like deadlock-29; least novel, closest to crypto.
 - [ ] **E. observed-vs-owned state** (CWE-372/1250) — truth held by a broker/hardware/replica;
       cockpit ratchet boot derivation is a live instance. Probably PARTIAL, not a leaf.
+- [ ] **G. entropy** (CWE-330/333) — no leaf names a random value's QUALITY (frost-12 holds only its
+      one-time use); the reduce-half is a witness-trap. PARTIAL, minor.
+- [ ] datum for consttime-25's residue text: fault injection (CWE-1332/1247) is the physical-layer
+      residue's INTEGRITY face — a skipped instruction makes an E0451 seal forgeable. One sentence.
 - [ ] Other corpora not yet mined (same shape-search, different index): RFC "MUST NOT be reused /
       exactly once / only after" clusters; JEDEC/USB/PCIe link-training state machines;
       cross-vendor disagreement via `cursor-agent` on "which domains encode safety with these moves".
