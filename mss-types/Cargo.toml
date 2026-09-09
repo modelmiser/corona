@@ -9,7 +9,7 @@ license = "MIT"
 # (not corona-core) and builds strictly on their public surfaces. That is the
 # thesis being tested here — that leaves compose into a stronger guarantee through
 # their sealed public APIs alone, with no new primitive and no private access.
-# See the "what composition discovered" section in lib.rs.
+# See the "What composition discovered" paragraph under "The finding" in lib.rs.
 [dependencies]
 merkle-types = { path = "../merkle-types" }
 lamport-types = { path = "../lamport-types" }

@@ -275,6 +275,23 @@ work (complete tasks, add children, keep siblings).
             one_time_keys`) and its cost stated (a cheap forgery under the honest anchor, ~1 in
             5,000 messages with three chains); vss provenance-gap rung 2→1 (merkle + CHARTER say
             1); "seeds distinct by construction" → seed INPUTS.
+      - [x] **Round 3 — NOT CLEAN: 1 CRITICAL + 2 MODERATE + 7 LOW.** ⚠ **The CRITICAL was
+            introduced by round 2's fix** (the accumulator pattern, again): round 2's claims lens
+            said merkle/CHARTER put vss's provenance-gap closure at rung 1; I changed the
+            crate's correct "rung 2" to "rung 1" WITHOUT re-reading `36c6e99` ("rung 2 — brand
+            VerifiedLeaf … Closes the rung-1 provenance gap"). CHARTER's "rung-1 provenance gap"
+            names where the gap was FOUND. Restored as "found at rung 1 and closed at rung 2".
+            Lesson re-learned: verify a reviewer's citation before applying it, especially one
+            that agrees with a tidy story. MOD: Debug count mutant (`len()`→`capacity()`)
+            survived — Debug never formatted after a `sign_next`; pinned. "#3 unchanged in
+            substance" false — the review EXTENDED the section; qualified. LOW: 3 equivalent
+            mutants noted at the verify sites; "no code" → "no non-test code" (crate + CHARTER);
+            brand "neither returned nor copied" → cannot escape (Root is Copy inside); ~13,000
+            → expected ~5,150 with both observed counts; Cargo "section" → paragraph; NEW
+            CHANNEL COROLLARY (adversarial): cross-anchor REPLAY — an honest pk_n signature
+            re-presents unchanged under pk_m at the same index with pk_m's proof siblings, zero
+            search — disclosed + pinned in the same test; capacity lies often NOT detectable by
+            rejection (genuine signatures verify at their true index under the lie) — disclosed.
 
 ## Now (leaf 8 — vid-types)
 

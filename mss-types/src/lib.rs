@@ -74,8 +74,8 @@
 //!
 //! And the pressure propagates upward: the same cold review that shaped those
 //! rungs caught this crate re-creating *both* component gaps one level up — a
-//! composed witness with no provenance (the gap vss/merkle each closed at their
-//! rung 1), and a public key a wire-side verifier could not construct (the gap
+//! composed witness with no provenance (the gap vss/merkle each found at rung 1 and
+//! closed at rung 2), and a public key a wire-side verifier could not construct (the gap
 //! `adopt_scoped` closed for leaf 4). Hence the full-anchor witness provenance
 //! ([`VerifiedMssMessage::minted_by`]) and [`MssPublicKey::adopt`]. A composition
 //! inherits its components' *obligations*, not just their guarantees.
@@ -94,8 +94,10 @@
 //!    parts that stay illustrative — the deterministic demo seed, the fixed capacity — are
 //!    not backends and are disclosed under #3, not swapped under #2 — and so is the
 //!    inherited 64-bit Lamport digest width, a parent's disclosed limit.
-//! 3. **Security / limits section** — [Honest limits](#honest-limits), below, unchanged in
-//!    substance.
+//! 3. **Security / limits section** — [Honest limits](#honest-limits), below: unchanged in
+//!    substance *by the graduation itself*, and **extended** on 2026-09-08 by the graduation
+//!    review's adversarial findings (the same-seed cross-capacity channel, its zero-cost
+//!    replay corollary, and the capacity-lie "often not detectable by rejection" note).
 //! 4. **Lean wire** — `Sol.Lib.Mss`, the garden's **18th wire** and the first for a
 //!    composition. Its content is the composition question on the proof face: *does a
 //!    composition inherit its parents' proofs the way it inherits their backends?* It does,
@@ -137,8 +139,9 @@
 //!    are the only text permitted to change at convergence (to CONVERGED, with the round
 //!    numbers) — so that the flip is not a fix-artifact on the reviewed surface.
 //!
-//! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no code and
-//! no value, the blast radius is zero of every kind, not merely compile-time.
+//! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no non-test
+//! code and no value (the review added tests), the blast radius is zero of every kind, not
+//! merely compile-time.
 //!
 //! ## Honest limits
 //!
@@ -188,10 +191,14 @@
 //!   key — a one-time-key reuse with no `E0382` hazard and no re-mint of either chain
 //!   value, and it is a cheap forgery under the **honest** anchor: `k` such chains used
 //!   once each let an adversary forge any message whose 64 digest bits fall in the
-//!   revealed set — with three chains roughly one message in 5,000, found by hashing
-//!   candidates (the review's reproducer forged a never-signed message after ~13,000
-//!   SHA-256 trials, verifying under the honest capacity-2 key at `key_index` 0). A
-//!   capacity upgrade must change the seed. Pinned by
+//!   revealed set — with three chains an expected ~5,150 SHA-256 trials per forgery (the
+//!   reciprocal of (7/8)⁶⁴; two independent reproducers needed ~5,500 and ~13,000),
+//!   verifying under the honest capacity-2 key at `key_index` 0. And a **zero-cost
+//!   corollary** needing no search at all: an honest signature under the capacity-`n` key
+//!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
+//!   `vk`, same one-time signature, the other tree's proof siblings (exposed by any one
+//!   signature under that key) — a cross-anchor replay, `minted_by` the second anchor. A
+//!   capacity upgrade must change the seed. Both pinned by
 //!   `same_seed_different_capacities_share_one_time_keys`. (Found by the 2026-09-08
 //!   review's adversarial lens; within the seed premise, so disclosed, not a guarantee
 //!   break.)
@@ -223,7 +230,12 @@
 //!   and an **understated** one at an in-range `key_index` that genuinely
 //!   belongs to a *different* committed key (misattribution to a real slot,
 //!   self-consistently `minted_by` the lying anchor) — and any lie can also
-//!   spuriously *reject* genuine signatures (all regression-tested). Under
+//!   spuriously *reject* genuine signatures (all regression-tested). Do not infer
+//!   that a lie will *surface* as rejections: for the prefix of slots whose fold
+//!   shape the lie leaves unchanged, genuine un-relabeled signatures still verify
+//!   at their TRUE index, `minted_by` the lying anchor — a wrong capacity is often
+//!   not detectable by rejection at all (review survey 2026-09-08, e.g. true
+//!   `n = 5` under adopted 6/7/8 accepts slots 0..3 unchanged). Under
 //!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
 //!   adds **no acceptance channel of its own**; membership of bytes stays sound —
 //!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor
@@ -570,6 +582,10 @@ impl MssPublicKey {
         merkle_types::adopt_scoped(self.root_hash, self.size, |root| {
             let leaf = root.verify(&sig.vk.to_bytes(), &sig.proof)?;
             Some(VerifiedMssMessage {
+                // Both fields are what the parents minted: `vm.digest()` IS
+                // `hash::digest(message)` and `leaf.index()` IS `sig.proof.index` by the
+                // parents' construction, so substituting either is an EQUIVALENT mutant
+                // (review 2026-09-08) — recorded so a mutation tool is not misread.
                 digest: vm.digest(),
                 key_index: leaf.index(),
                 root_hash: self.root_hash,
@@ -700,6 +716,12 @@ mod tests {
             format!("{chain:?}"),
             "MssKeychain(<3 unspent one-time keys>)"
         );
+        // The count is LIVE, not the initial capacity: after one signature it reads 2.
+        let (_, rest) = chain.sign_next(b"x");
+        assert_eq!(
+            format!("{:?}", rest.unwrap()),
+            "MssKeychain(<2 unspent one-time keys>)"
+        );
     }
 
     #[test]
@@ -788,7 +810,8 @@ mod tests {
 
         // THE WIN a brand forbids — distributability. `MssPublicKey` is `Copy`, so it
         // duplicates and the original stays live (a brand-scoped value is pinned to its
-        // generative closure — it could be neither returned nor freely copied); the
+        // generative closure — it could not be returned from, or outlive, that scope;
+        // `Root<'brand>` itself is `Copy` *inside* it); the
         // witness is `Clone` in kind, crossing scopes and the wire freely.
         let distributed_copy = pk_a;
         assert_eq!(pk_a.root_hash(), distributed_copy.root_hash());
@@ -919,6 +942,18 @@ mod tests {
                 .key_index(),
             0
         );
+        // The zero-cost corollary: pk2's signature, re-presented under pk3 with pk3's
+        // slot-0 proof siblings (exposed by s3), verifies for pk2's MESSAGE under pk3.
+        let replay = MssSignature {
+            ots: s2.ots.clone(),
+            vk: s2.vk,
+            proof: s3.proof.clone(),
+        };
+        let v = pk3
+            .verify(b"under the capacity-2 key", &replay)
+            .expect("cross-anchor replay: no search, no re-mint");
+        assert_eq!(v.key_index(), 0);
+        assert!(v.minted_by(&pk3) && !v.minted_by(&pk2));
     }
 
     #[test]
