@@ -2323,7 +2323,7 @@ the expensive act. **Result: exactly ONE clean non-hub candidate remains.**
          scoping.
       3. **No crypto backend to vet** → `threshold`/`erasure` (GF(256) is genuine arithmetic, a
          pedagogical *size* not a placeholder), `unit`, `numerical-accuracy`.
-- [ ] **CANDIDATE: `accumulator-types` (leaf 11) — toy FNV-1a → SHA-256, u64-truncated.**
+- [x] **CANDIDATE: `accumulator-types` (leaf 11) — toy FNV-1a → SHA-256, u64-truncated.** *(DONE — graduated 2026-07-22; box ticked 2026-09-08 during a TODO sweep, see the COMPLETE header below.)*
       - **Seam is type-preserving.** `hash::leaf_hash(&[u8]) -> u64` and
         `hash::node_hash(u64, u64) -> u64` — a `u64 → u64` swap, i.e. **lamport's zero
         COMPILE-TIME blast radius shape**, not merkle's `u64 → [u8; 32]`. Values still move, so
@@ -2365,7 +2365,7 @@ authoritative value is the number of `[x] **Round N**` entries.)
 - [x] **Criterion #4 — the substance.** `Sol.Lib.Accumulator`, the **17th wire** (sol `80b215a`),
       7 theorems, 5 re-exported into the `Sol.Corona` scoreboard (67→72 rows, bijection exact).
 - [x] **Criterion #1 — thesis recorded.**
-- [ ] **Criterion #5 — cold review converges (CHARTER: TWO CONSECUTIVE CLEAN ROUNDS).**
+- [x] **Criterion #5 — cold review converges (CHARTER: TWO CONSECUTIVE CLEAN ROUNDS).** *(CONVERGED 2026-07-23, rounds 18+19 — recorded below; box ticked 2026-09-08.)*
       - [x] **Round 1 — NOT CLEAN, 9 findings.** Corrections: CVE-2012-2459 misattributed (it is
             Bitcoin duplicate-lone-node *malleability*; the apt cite for 0x00/0x01 is RFC 6962
             §2.1); fixed-target cost priced at ~2³² when it is second-preimage at ~2⁶⁴; a false

@@ -88,6 +88,11 @@
 //!   system). Leaf 25 names the whole **class**: a family of security properties —
 //!   constant-time, secret zeroization, power-analysis resistance — that live on
 //!   the *operational/physical* layer, where **no value-level type can hold them**.
+//!   The class has an **integrity face** too, not only this confidentiality one: under
+//!   fault injection (a voltage/clock glitch that skips an instruction — CWE-1332/1247)
+//!   the branch that *is* the E0451 check can simply not execute, so a seal whose soundness
+//!   is "the check ran" is forgeable from below the value abstraction. Same layer, same
+//!   platform assumption, opposite property (added 2026-09-08 from `CWE-MAP.md`).
 //!
 //! ## The time axis, inverted (leaf 20's delay, within the 18 / 20 / 21 triad)
 //!
