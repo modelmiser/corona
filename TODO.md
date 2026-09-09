@@ -3277,3 +3277,24 @@ authoritative value is the number of `[x] **Round N**` entries.)
   `93ec546` → `0450d79` → `3ce1a53` → `0808ef9` → `4882090` → `51fbfc1` → r8;
   sol `80b215a` → `5198210` → `2b6b1aa` → `810b5d4` → `46488bb` → `0ca3693` → `fe7ffc5` →
   `c113f5a` → `3a7162b` → `48f14b4` → `df356c8` → r8. **Neither repo pushed since the graduation began.**
+
+## Next (outward search — `CWE-664-MAP.md`, 2026-09-08)
+
+The garden restarts when a new domain poses a typestate question worth a leaf. The outward
+search for such domains (outside trading/crypto) is `CWE-664-MAP.md` (`767049d`): CWE-664's
+413-node lifecycle subtree classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
+ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a leaf to build.
+- [ ] **A. exactly-once** (CWE-772 leak family, 459/226/1239 zeroization) — E0382 is at-most-once;
+      "exactly once" has no primitive (`mem::forget` safe, `#[must_use]` a lint); the missing half
+      is liveness → arq-24's Alpern–Schneider line. Vocabulary-level. Best candidate.
+- [ ] **B. reset / power-state walls** (CWE-1232/1233/1271/1221/1279) — a lock bit is a monotone
+      wall within a power epoch and un-sets across one the type can't see: the CALM residue in
+      hardware; also the builder-typestate (665) the garden skipped as trivial. ULX3S path.
+- [ ] **C. clock expiry** (CWE-613/324/298) — every freshness leaf is event-epoch; wall-clock
+      expiry makes the trust anchor a clock. New edge or freshness sub-case? = the question.
+- [ ] **D. reentrancy** (CWE-1265) — emergent like deadlock-29; least novel, closest to crypto.
+- [ ] **E. observed-vs-owned state** (CWE-372/1250) — truth held by a broker/hardware/replica;
+      cockpit ratchet boot derivation is a live instance. Probably PARTIAL, not a leaf.
+- [ ] Other corpora not yet mined (same shape-search, different index): RFC "MUST NOT be reused /
+      exactly once / only after" clusters; JEDEC/USB/PCIe link-training state machines;
+      cross-vendor disagreement via `cursor-agent` on "which domains encode safety with these moves".
