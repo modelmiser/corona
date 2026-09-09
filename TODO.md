@@ -334,6 +334,13 @@ work (complete tasks, add children, keep siblings).
             carries_through` with the parent's colliding pair (collision re-verified before use);
             Cargo "demo seed" → "demo/reused seed"; Merkle citation gains the CRYPTO '89 venue;
             doc-occurrence text-mutation hazard + 4 equivalent survivors recorded, no change.
+      - [x] **Round 8 — NOT CLEAN: 1 MODERATE + 4 LOW; correctness CLEAN (50 mutants, 46 killed, 4
+            equivalent; nightly doctests confirm E0382/E0451); adversarial lens FAILED (API
+            overloaded — not a verdict).** MOD: "Clone-able, like every evidence witness in the
+            garden" — false universal (`Refined`, `Halted` withhold Clone) → "the garden's other
+            `Verified*` witnesses". LOW: README's leaf-7 prose section still said "Research rung"
+            (drift outside the crate) → rewritten; `size: root.size()` equivalent-mutant annotated;
+            n==0 comment no longer implies no local test; "weakest link is the seed" → seed handling.
 
 ## Now (leaf 8 — vid-types)
 

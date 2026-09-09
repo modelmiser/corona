@@ -168,7 +168,7 @@
 //!   composition (pinned by `inherited_width_residue_carries_through`, with the parent's
 //!   published colliding pair). ⚠ And that is the bound for a **correctly-used** key: this crate's own
 //!   demo seed is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
-//!   the weakest link is the seed, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
+//!   the weakest link is seed handling, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
 //!   seeds (below), fixed capacity, and that inherited width. Until 2026-09-08 this bullet
 //!   said "so `mss-types` is a research-rung composition, not an independently graduated
 //!   leaf"; it now **is** graduated — by inheritance, see *Graduation* above — and the
@@ -420,7 +420,8 @@ pub struct MssSignature {
 /// — minted only by [`MssPublicKey::verify`], and only when **both** composed
 /// checks pass: the one-time signature verified (leaf 5's sole minter) *and* the
 /// one-time key proved membership under the root (leaf 4's sole minter). Evidence
-/// of the conjunction; `Clone`-able, like every evidence witness in the garden.
+/// of the conjunction; `Clone`-able, like the garden's other `Verified*` witnesses (not
+/// every evidence witness: `refinement`'s `Refined` and `totality`'s `Halted` withhold it).
 ///
 /// The witness records the **full anchor of the key that minted it** — both the
 /// root hash *and* the capacity — as value-level provenance. Check the binding
@@ -504,7 +505,8 @@ pub fn generate(seed: u64, n: usize) -> Option<(MssKeychain, MssPublicKey)> {
     if n == 0 {
         // Redundant with `merkle_types::commit_scoped(&[])`, which refuses an empty
         // commitment; kept as defense in depth. Deleting it is an EQUIVALENT mutant
-        // (review 2026-09-08), so no test pins this clause — the parent's does.
+        // (review 2026-09-08): `zero_capacity_is_refused` covers n == 0, but no test
+        // distinguishes this clause from the parent's refusal.
         return None;
     }
     let pairs: Vec<(SigningKey, VerifyingKey)> = (0..n)
@@ -516,6 +518,8 @@ pub fn generate(seed: u64, n: usize) -> Option<(MssKeychain, MssPublicKey)> {
     merkle_types::commit_scoped(&leaf_bytes, |root, tree| {
         let pk = MssPublicKey {
             root_hash: root.hash(),
+            // `root.size()` IS `n` (merkle's build sets size = leaf count), so
+            // `size: n` is an EQUIVALENT mutant (review 2026-09-08) — recorded.
             size: root.size(),
         };
         let mut entries: Vec<(SigningKey, VerifyingKey, Proof)> = pairs

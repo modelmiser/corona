@@ -311,13 +311,15 @@ including merkle's orbit symmetry, which an adopted degenerate anchor (duplicate
 committed key bytes) carries straight into `key_index` (disclosed and
 regression-tested).
 
-> ⚠ **Research rung.** Inherits lamport's seed caveat (a retained seed re-mints
-> the whole keychain — the linearity binds the chain *value*, and no hash fixes that).
-> Both hash layers are now graduated SHA-256 (Merkle from leaf 4, Lamport from leaf 5),
-> so what keeps this leaf illustrative is the *composition* — deterministic seeds, a fixed
-> capacity `n`, **and the inherited 64-bit Lamport width**, whose ~2³² forgery carries
-> straight through — not a toy hash. MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked
-> hashing).
+> **Graduated 2026-09-08, by inheritance** — the first composition graduation: both hash
+> layers are graduated SHA-256 (Merkle from leaf 4, Lamport from leaf 5) and this crate owns
+> no backend of its own, so criterion #2 is inherited; `Sol.Lib.Mss` is its wire (the 18th).
+> Still not production crypto, and the limits are the *composition's*: lamport's seed caveat
+> (a retained seed re-mints the whole keychain, and per-key seeds are capacity-independent,
+> so chains of different capacities from one seed share one-time keys), a fixed capacity
+> `n`, **and the inherited 64-bit Lamport width**, whose ~2³² forgery carries straight
+> through. MSS, not XMSS (RFC 8391 uses WOTS+ and bitmasked hashing). Criterion #5's round
+> record is in the crate's TODO section.
 
 ## Leaf 8: `vid-types`
 
