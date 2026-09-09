@@ -359,7 +359,7 @@ graduation changes no non-test code and no value — the **ninth non-hub** by fa
 depends on it) with zero blast radius of any kind. It contributed `Sol.Lib.Mss`, the **18th
 wire** and the first for a composition, whose content is the composition question on the proof
 face: the parents' wires had every lemma the composition needed (`fold_pins_leaf_and_path` as
-shipped pins the presented key to the committed one; Lamport's transfer lifts verbatim), so the
+shipped pins the presented key to the committed one; Lamport's transfer is restated at the composed acceptance, generic in the digest type), so the
 crate's thesis — composition pressure surfaces missing API, not missing vocabulary — held there
 too. Criterion #5 — the re-review of this graduation text — is its own arc; `TODO.md` carries the
 round record, and neither this paragraph nor the row restates a count.

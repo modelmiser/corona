@@ -140,13 +140,15 @@
 //!    lacks. The datum, with that qualifier: this crate's thesis — composition pressure
 //!    surfaces missing API, not missing vocabulary — held on the proof face for what the
 //!    model states.
-//! 5. **Cold review — OPEN.** The research surface converged at round 6 (2026-07). The
-//!    re-review of *this* graduation text is a separate arc whose round-by-round record
-//!    lives in `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points
-//!    there rather than restating a count. #5 is earned only by two consecutive clean
-//!    rounds on this text. The word OPEN above, and its twin in `Cargo.toml`'s description,
-//!    are the only text permitted to change at convergence (to CONVERGED, with the round
-//!    numbers) — so that the flip is not a fix-artifact on the reviewed surface.
+//! 5. **Cold review — CONVERGED 2026-09-08** (workflow run 10, rounds 10.1 and 10.2 clean on
+//!    all three lenses at `436922e`; the trailing LOW fixes were then verified by run 11's
+//!    round 1, clean, and this status flip is the one change that round anticipated). The
+//!    research surface had converged at round 6 (2026-07). The round-by-round record lives
+//!    in `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points there
+//!    rather than restating a count. Until this flip the word here was OPEN, and the flip —
+//!    here and in `Cargo.toml`'s description — was declared in advance as the only text
+//!    permitted to change at convergence, so that it is not a fix-artifact on the reviewed
+//!    surface.
 //!
 //! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no non-test
 //! code and no value (the review added tests), the blast radius is zero of every kind, not
@@ -499,8 +501,9 @@ impl VerifiedMssMessage {
 /// key pairs, a Merkle tree over the verifying keys' canonical bytes, and the
 /// tree's root data as the public key. `None` if `n == 0` (a chain that can sign
 /// nothing has no reason to exist — and it would break the never-empty invariant).
-/// There is no upper guard: an `n` whose key material exceeds the address space
-/// panics on allocation (`capacity overflow`), as any `Vec` would — a resource
+/// There is no upper guard: an `n` whose key material overflows `isize::MAX` panics
+/// with `capacity overflow`, and one that merely exceeds available memory **aborts the
+/// process** on allocation failure (uncatchable), as any `Vec` would — a resource
 /// limit, not a checked bound (review 2026-09-08).
 ///
 /// Per-key seeds are derived through `lamport_types::hash::prg` under side byte

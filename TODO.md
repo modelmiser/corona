@@ -361,6 +361,15 @@ work (complete tasks, add children, keep siblings).
             same-seed key's proofs are rebuilt from the source chain's signatures alone (probe
             verified) → said; 4 equivalent survivors re-confirmed. **⇒ CRITERION #5 CONVERGED
             2026-09-08**, per the fix-all-LOWs rule the LOW fixes get one verification round below.
+      - [x] **Run 11 (verification of the LOW fixes): round 1 CLEAN on all three lenses; round 2
+            raised 1 MODERATE that was my own bookkeeping** — TODO said CONVERGED and DEVLOG said
+            "re-verified" while the crate still said OPEN and the verification had not yet run.
+            Fixed: DEVLOG wording corrected; the sanctioned OPEN→CONVERGED flip applied in lib.rs
+            and Cargo.toml with the run numbers. LOW: CHARTER's eleventh-graduation paragraph still
+            said the Lamport transfer "lifts verbatim" (stale outside the crate) → restated; the
+            large-`n` doc named only the `capacity overflow` panic, not the allocation-failure
+            ABORT → both named. Equivalent survivors and panic surface re-confirmed.
+      - [x] **Run 12 (final, one round, after the flip): see the line below.**
 
 ## Now (leaf 8 — vid-types)
 
