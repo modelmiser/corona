@@ -76,7 +76,8 @@
 //! garden's thesis would have a hole; it required neither.
 //!
 //! And the pressure propagates upward: the rungs were shaped by composition pressure at
-//! seed time; the leaf-7 cold review (its round 2) then caught this crate re-creating
+//! seed time; the leaf-7 cold review (its round 1, `a627858`; round 2 then widened the
+//! witness's provenance to the full anchor) caught this crate re-creating
 //! *both* component gaps one level up — a composed witness with no provenance (the gap
 //! merkle found at rung 1 and closed at rung 2; vss closed the same gap the same way,
 //! its commits carrying no rung number), and a public key a wire-side verifier could not construct (the gap
@@ -100,8 +101,9 @@
 //!    inherited 64-bit Lamport digest width, a parent's disclosed limit.
 //! 3. **Security / limits section** — [Honest limits](#honest-limits), below: unchanged in
 //!    substance *by the graduation itself*, and **extended** on 2026-09-08 by the graduation
-//!    review's adversarial findings (the same-seed cross-capacity channel, its zero-cost
-//!    replay corollary, and the capacity-lie "often not detectable by rejection" note).
+//!    review's findings — among them the same-seed cross-capacity channel with its
+//!    zero-cost replay corollary and Jensen-corrected cost, the capacity-lie "often not
+//!    detectable by rejection" note, and the leaf-5 `from_bytes` wire gap.
 //! 4. **Lean wire** — `Sol.Lib.Mss`, the garden's **18th wire** and the first for a
 //!    composition. It lives in the `sol` repository, which is **private**: nothing below
 //!    is checkable from this crate, and its review record is separate (a blind in-family
@@ -153,7 +155,9 @@
 //! ## Honest limits
 //!
 //! - **Both hash *backends* are graduated — forgery is no longer "invert FNV".** The remaining
-//!   breaks are the inherited 64-bit digest width (~2³²) and this crate's demo seed (≲2²⁵), not SHA-256.
+//!   breaks are the inherited 64-bit digest width (~2³²), this crate's demo seed (≲2²⁵), and
+//!   — cheapest of all, given seed reuse across capacities — the same-seed harvest below
+//!   (~2ᵏ, `k ≈ 16`); none of them is SHA-256.
 //!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
 //!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the vetted
 //!   SHA-256 (u64-truncated, one-way at ~2⁶³). The earlier "a real adversary forges
@@ -250,10 +254,11 @@
 //!   shape the lie leaves unchanged, genuine un-relabeled signatures still verify
 //!   at their TRUE index, `minted_by` the lying anchor — a wrong capacity is often
 //!   not detectable by rejection at all. Structurally it is a whole power-of-two band:
-//!   for a true `n` in (2ʲ, 2ʲ⁺¹], every adopted capacity in that band accepts the first
-//!   2ʲ genuine slots unchanged (review survey 2026-09-08: true `n = 5` under adopted
-//!   6, 7 or 8 accepts slots 0–3 inclusive and rejects slot 4; `n = 9..=12` under
-//!   9..=16 accept slots 0–7). Under
+//!   for a true `n` in (2ʲ, 2ʲ⁺¹], every adopted capacity in that band accepts **at
+//!   least** the first 2ʲ genuine slots unchanged — often more, wherever both widths pair
+//!   identically at every level (review survey 2026-09-08: true `n = 5` under adopted
+//!   6, 7 or 8 accepts slots 0–3 inclusive and rejects slot 4, exactly 2ʲ; `n = 11` under
+//!   12 accepts 0–9). Under
 //!   *every* capacity lie, nothing uncommitted ever verifies — a capacity lie
 //!   adds **no acceptance channel of its own**; membership of bytes stays sound —
 //!   up to the Merkle hash, now leaf 4's **graduated SHA-256** — exactly as under an honest anchor
@@ -309,6 +314,35 @@
 //! let (chain, _pk) = generate(1, 4).unwrap();
 //! let (_sig0, _rest) = chain.sign_next(b"first");
 //! let (_sig1, _) = chain.sign_next(b"again"); // ERROR[E0382]: use of moved value `chain`
+//! ```
+//!
+//! The three sealed types cannot be forged from outside (E0451). Every private field is
+//! named on purpose — omitting one is also rejected, but with an uncoded "cannot construct
+//! … due to private fields" diagnostic that does not demonstrate E0451. And a caveat the
+//! garden records at `vid-types`: on stable, rustdoc parses a `compile_fail` fence's error
+//! code and ignores it, so these (and the E0382 fence above) pin *some* compile error;
+//! only `cargo +nightly test --doc` enforces the code.
+//!
+//! ```compile_fail,E0451
+//! let forged = mss_types::VerifiedMssMessage {
+//!     digest: 0xDEAD,         // ERROR[E0451]: field `digest` is private
+//!     key_index: 2,           // ERROR[E0451]: field `key_index` is private
+//!     root_hash: [0u8; 32],   // ERROR[E0451]: field `root_hash` is private
+//!     capacity: 4,            // ERROR[E0451]: field `capacity` is private
+//! };
+//! ```
+//!
+//! ```compile_fail,E0451
+//! let bypassed_adopt = mss_types::MssPublicKey {
+//!     root_hash: [0u8; 32],   // ERROR[E0451]: field `root_hash` is private
+//!     size: 0,                // ERROR[E0451]: field `size` is private
+//! };
+//! ```
+//!
+//! ```compile_fail,E0451
+//! let empty = mss_types::MssKeychain {
+//!     entries: Vec::new(),    // ERROR[E0451]: field `entries` is private
+//! };
 //! ```
 
 #![forbid(unsafe_code)]

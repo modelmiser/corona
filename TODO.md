@@ -314,6 +314,17 @@ work (complete tasks, add children, keep siblings).
             band the survey shows; "bullet ended" → "said"; Sol wire location (private repo)
             hedged on the surface; brand-leak diagnostic is un-numbered, E0521 is the consumption
             path — labelled as the garden's convention.
+      - [x] **Round 6 — NOT CLEAN: 1 CRITICAL + 1 MODERATE + 6 LOW; adversarial CLEAN.** ⚠ The
+            CRITICAL was introduced by round 5's fix, THIRD time: I wrote "its round 2" from the
+            round-5 lens's attribution; `a627858` (round 1) closed both gaps, 61fb436 (round 2)
+            widened provenance to the full anchor. This time the commits were read before the
+            sentence was rewritten. MOD: the E0451 seals on all three private-field types were
+            asserted in prose and pinned by nothing (all fields `pub` → suite green) → three
+            `compile_fail,E0451` doctests naming every private field (vid-types pattern), with the
+            stable-rustdoc "code not enforced" caveat stated. LOW: band prefix is a LOWER bound →
+            "at least 2ʲ", `n = 9..=12` example dropped (its range includes the honest anchor);
+            #3's list → "among them"; remaining-breaks list gains the same-seed harvest; four
+            equivalent mutants re-confirmed; E0382 fence's code unenforced on stable — noted.
 
 ## Now (leaf 8 — vid-types)
 
