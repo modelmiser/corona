@@ -1,7 +1,7 @@
 # CWE-664 × corona — read-only mapping (2026-09-08)
 
 Source: CWE 4.20 (2026-04-30), view 1000 (Research Concepts). CWE-664 has 27 direct children
-and 413 descendants — not "roughly fifty" as guessed; the 50-ish figure is the Class/Base layer
+and 381 distinct descendants (413 tree positions; some nodes have two parents) — not "roughly fifty" as guessed; the 50-ish figure is the Class/Base layer
 that carries a mechanism. Variants (path-traversal spellings, Java/PHP specifics) are dropped.
 CWE-323 (nonce reuse) is NOT in this subtree (it sits under 344/693); frost/lamport hold it anyway.
 

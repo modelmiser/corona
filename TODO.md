@@ -3282,7 +3282,7 @@ authoritative value is the number of `[x] **Round N**` entries.)
 
 The garden restarts when a new domain poses a typestate question worth a leaf. The outward
 search for such domains (outside trading/crypto) is `CWE-664-MAP.md` (`767049d`): CWE-664's
-413-node lifecycle subtree classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
+381-node lifecycle subtree classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
 ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a leaf to build.
 - [ ] **A. exactly-once** (CWE-772 leak family, 459/226/1239 zeroization) — E0382 is at-most-once;
       "exactly once" has no primitive (`mem::forget` safe, `#[must_use]` a lint); the missing half
