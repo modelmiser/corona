@@ -88,8 +88,11 @@ GAP = typestate-shaped, no leaf, no edge names it · OUT = not a lifecycle/types
 "Used exactly once" has no primitive: `mem::forget` is safe, `#[must_use]` is a lint, Drop runs
 only if the value is dropped. The missing half is liveness ("eventually released"), so it lands on
 arq-24's Alpern–Schneider line — a leak has no finite bad prefix. Outside crypto entirely (file
-descriptors, memory, hardware zeroization). A vocabulary-level finding: every leaf inherits it,
-and no leaf names it. Best candidate.
+descriptors, memory, hardware zeroization). A vocabulary-level finding: every leaf inherits it.
+**CORRECTION (same day):** an earlier version of this row said "no leaf names it" — wrong; leaves
+5 and 10 name the affine/linear split and decline it as unneeded for their subjects. The sharper
+question — what holds it where the domain DOES need it — was run as **reaction N**
+(`COMPOSITION-SEARCH.md`): verdict *unmediated*, G's class; closed as a datum, not a leaf.
 
 **B. Reset / power-state / init sequencing (1232, 1233, 1271, 1221, 1279, 1223, 1246).** Hardware:
 a lock bit is a monotone wall *within* a power epoch and silently un-sets *across* one the type

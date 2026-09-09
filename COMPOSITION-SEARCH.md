@@ -351,9 +351,45 @@ WAREHOUSE-AND-LENS says a new composition should "expose the minimal subset". Th
 reaction and a lens entry, which now exist. Promotion to a peer leaf is "a deliberate act, not
 momentum", and on this evidence the act is not yet earned.
 
+## Reaction N — exactly-once, and the leaf that had already declined it
+
+The first reaction not chosen from the surface table but from outside the garden:
+`CWE-MAP.md` ranked "exactly-once" (CWE-772 leak, CWE-252 unchecked return, CWE-390 error
+detected without action) as the best candidate for a new question, because the garden's
+E0382 is "at most once" and nothing in the vocabulary says "at least once". Before building,
+the map's claim that *no leaf names it* was checked and found **wrong**: leaves 5 (`lamport`)
+and 10 (`ratchet`) both name the affine/linear split in their crate docs and *decline* it —
+"OTS needs at-most-once, and that is what a move gives." So the reaction question sharpened:
+those leaves declined the half their subject does not need; CWE-772/252 are the subjects
+that need it. What holds it there?
+
+`n_exactly_once` scores every candidate, first with the compiler, then with the runtime:
+
+- **At-most-once holds: E0382** (`fail_n_at_most_once_holds`). A second `sign` is a moved
+  value. This is the half the garden already owns.
+- **At-least-once, static: a lint, with no error code** (`fail_n_at_least_once_is_a_lint`).
+  `#[must_use]` under `#![deny(unused_must_use)]` rejects a bare unused value — and the
+  diagnostic is `error: unused ... that must be used`, no `E`-number, because it is not a
+  type error. `probe.sh` gained a `check_lint` for exactly this shape: it asserts the failure,
+  the wording, and the *absence* of a code. Two safe spellings pass it anyway: `let _ = v;`
+  and `mem::forget(v)`.
+- **At-least-once, dynamic: a drop-bomb, defused by safe code.** A `Drop` that panics if the
+  value was never consumed fires on a plain drop (N3) and never fires under `mem::forget`
+  (N4), which skips `Drop` and is not `unsafe`.
+
+> **Verdict — unmediated, the second member of G's class.** G found a hazard that is an
+> `if`: no value crosses, so no type inherits. N finds a hazard that is an *omission*: the
+> statement that would consume the value is not there, and a type system cannot see a
+> statement that does not exist. Both are the same shape — the dangerous path is not a data
+> path — and N sits one step further out: G's `if` is at least in the source. The residue is
+> the liveness half of linearity (a leak has no finite bad prefix; ∥ `arq`'s Alpern–Schneider
+> line), and the reduce-half is the affine half the garden already holds. No rung, no leaf:
+> the map's candidate A is closed as a *datum* — the field guide's E0382 line should say
+> "at most once, and the other half is liveness" — not as leaf 34.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # thirteen reactions and thirteen rejections
+tools/compose-probes/probe.sh      # fourteen reactions and fifteen rejections (one a lint, by design)
 ```

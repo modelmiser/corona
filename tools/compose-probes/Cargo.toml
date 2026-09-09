@@ -47,6 +47,8 @@ name = "k_seam_c"
 name = "l_seam_g"
 [[bin]]
 name = "m_translog_x_mss"
+[[bin]]
+name = "n_exactly_once"
 
 [[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
@@ -86,6 +88,12 @@ name = "fail_l_seam_g_is_sealed"
 required-features = ["negatives"]
 [[bin]]
 name = "fail_m_keychain_is_linear"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_n_at_most_once_holds"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_n_at_least_once_is_a_lint"
 required-features = ["negatives"]
 
 [dependencies]

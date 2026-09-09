@@ -16,7 +16,9 @@ The part of an invariant a Rust type *can* hold reduces to one of four compile e
 
 - **E0451 — seal.** A private field / no public constructor: a value can only arrive through a
   *checked path*. ("This was verified.")
-- **E0382 — move.** A capability consumed at most once. ("This was used once.")
+- **E0382 — move.** A capability consumed at most once. ("This was used once.") *At most*:
+  that it is consumed *at all* is the liveness half of linearity, and no type holds it —
+  `#[must_use]` is a lint and `mem::forget` is safe (reaction N, `COMPOSITION-SEARCH.md`).
 - **E0308 / E0521 — brand.** Phantom tags that must match. ("This came from *here*.")
 - **E0080 — wall.** A monotone-arithmetic bound enforced at compile time. ("This can't be
   over-demanded.")

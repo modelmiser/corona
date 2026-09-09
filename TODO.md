@@ -3284,7 +3284,12 @@ The garden restarts when a new domain poses a typestate question worth a leaf. T
 search for such domains (outside trading/crypto) is `CWE-MAP.md` (`767049d`, extended
 the same day to pillars 691/693/703): 626 nodes classified LANG / COVERED / PARTIAL / GAP / OUT. Five candidates,
 ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a leaf to build.
-- [ ] **A. exactly-once** (CWE-772 leak family, 459/226/1239 zeroization) — E0382 is at-most-once;
+- [x] **A. exactly-once** — RUN as reaction N (`n_exactly_once` + 2 rejections, one a LINT with no
+      error code — `probe.sh` gained `check_lint`). Verdict UNMEDIATED (G's class: the hazard is an
+      omission, not a data path). Closed as a datum, not leaf 34. Correction: leaves 5/10 already
+      named and declined the affine/linear split; the map's "no leaf names it" was wrong.
+      - [x] field guide E0382 line: "at most once — the other half is liveness" (one sentence).
+      Original ticket: (CWE-772 leak family, 459/226/1239 zeroization) — E0382 is at-most-once;
       "exactly once" has no primitive (`mem::forget` safe, `#[must_use]` a lint); the missing half
       is liveness → arq-24's Alpern–Schneider line. Vocabulary-level. REINFORCED from 703 (252
       unchecked return, 390 error without action, 460 cleanup on unwind): resources AND results. Best candidate.
