@@ -422,9 +422,32 @@ brand is an epoch. `o_deadlock_x_accumulator` composes them with **zero rungs**:
 > advanced from outside — the residue was already named; the domain was new, the question
 > was not.
 
+## Reaction P — clock expiry, run against a prediction
+
+The last open candidate from `CWE-MAP.md` (C: CWE-613/324/298 — a session, key, or certificate
+used past expiry). Reaction O made a prediction cheap enough to write down first, so it was
+written down first, in `clock.rs`: *nothing new — a clock is another party advancing an epoch,
+so the residue is O's plus the witness-trap; the reduce-half is the ordinary seal and scope
+brand.* `p_clock_expiry` scored it:
+
+- `Valid` is sealed (**E0451**, `fail_p_valid_is_sealed`) and branded to the reading that
+  minted it (**E0521**, `fail_p_valid_cannot_outlive_the_reading`). Reduce-half as predicted.
+- **P1**: `with_reading(0, …)` mints a real `Valid` for a cert issued to expire at 100. The type
+  cannot tell a clock from a constant; the reading is an input. The witness-trap.
+- **P2**: an honest reading, then 25 ms of sleep inside the scope with a 10 ms cert. `Valid`
+  still held, clock says expired. The reading is a point; the scope is an interval; time is the
+  party that advanced the epoch. Reaction O's shape.
+
+> **Verdict — unmediated, prediction confirmed, no new datum.** The value of the reaction is
+> that the prediction was falsifiable and survived, not that it found something. With it the
+> map's search closes: of five candidates, A/B/C/E are data (one field-guide sentence, three
+> members of G's class), D was ranked lowest and is not run, G was minor and is not run. The
+> outward search found no leaf 34 — which is the answer to the question that started it: a
+> domain new to the garden is not the same as a question new to the garden.
+
 ## Reproduce
 
 ```sh
 tools/surfaces.py                  # the surface table (add --json for the raw data)
-tools/compose-probes/probe.sh      # fifteen reactions and seventeen rejections (one a lint, by design)
+tools/compose-probes/probe.sh      # sixteen reactions and nineteen rejections (one a lint, by design)
 ```

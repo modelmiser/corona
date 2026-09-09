@@ -23,4 +23,5 @@
 //! mutation-tested and confirmed here, which is how this file came to be rewritten. The
 //! fence was decorative, so the check moved somewhere it is real.
 
+pub mod clock;
 pub mod seam;

@@ -101,7 +101,7 @@ garden has never entered. Also carries the classic builder-typestate (665) the g
 as trivial; 1279 shows it is not trivial when the phases are hardware units. Your ULX3S path.
 Real CVEs behind 1232/1234 (Intel/AMD lock-bit escapes).
 
-**C. Clock expiry (613, 324, 298).** The freshness edge in corona is event-epoch (accumulator
+**C. Clock expiry (613, 324, 298).** *RUN as reaction P against a written-down prediction; confirmed: witness-trap + O's class, no new datum.* The freshness edge in corona is event-epoch (accumulator
 advance, spend). Wall-clock expiry is a different residue: the trust anchor is a *clock*, and no
 value can read one. Whether this is a new edge or a freshness sub-case is itself the reaction
 question. Adjacent to crypto (certs, JWT) but the mechanism is not cryptographic.

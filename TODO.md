@@ -3302,7 +3302,8 @@ ranked; each is a REACTION to run (`COMPOSITION-SEARCH.md` procedure), not a lea
       hardware; also the builder-typestate (665) the garden skipped as trivial. ULX3S path.
       REINFORCED from 691: 841 behavioral workflow (session types — the founding typestate example;
       residue = the other endpoint's compliance) + boot ordering 1190/1193/1280/1279 + fuse 1253.
-- [ ] **C. clock expiry** (CWE-613/324/298) — every freshness leaf is event-epoch; wall-clock
+- [x] **C. clock expiry** — RUN as reaction P (prediction written first in `clock.rs`; confirmed:
+      witness-trap P1 + external event P2; E0451 + E0521 reduce-half). No new datum. Original: (CWE-613/324/298) — every freshness leaf is event-epoch; wall-clock
       expiry makes the trust anchor a clock. New edge or freshness sub-case? = the question.
 - [ ] **D. reentrancy** (CWE-1265) — emergent like deadlock-29; least novel, closest to crypto.
 - [x] **E. observed-vs-owned state** — CLOSED by reaction O (a state another party transitions = a

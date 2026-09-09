@@ -14,7 +14,7 @@ for b in a_unit_x_accuracy b_dp_x_crdt c_translog_x_lamport \
          d_swap_x_ecash e_arq_x_erasure f_consttime_x_threshold \
          g_bloom_x_accumulator h_sigma_x_commit \
          i_seam_e j_seam_h k_seam_c l_seam_g m_translog_x_mss n_exactly_once \
-         o_deadlock_x_accumulator; do
+         o_deadlock_x_accumulator p_clock_expiry; do
   if out=$(cargo run --quiet --bin "$b" 2>&1); then
     printf '  ok    %s\n' "$b"
     printf '%s\n' "$out" | sed 's/^/          /'
@@ -56,6 +56,8 @@ check_fail fail_m_keychain_is_linear                      E0382
 check_fail fail_n_at_most_once_holds                      E0382
 check_fail fail_o_phase_order_is_a_wall                   E0080
 check_fail fail_o_witness_cannot_outlive_the_epoch        E0521
+check_fail fail_p_valid_is_sealed                         E0451
+check_fail fail_p_valid_cannot_outlive_the_reading        E0521
 
 # A rejection with NO error code — reaction N's finding. `#[must_use]` is a lint: denied,
 # it rejects a bare unused value, but the diagnostic carries no `E`-number because it is

@@ -51,6 +51,8 @@ name = "m_translog_x_mss"
 name = "n_exactly_once"
 [[bin]]
 name = "o_deadlock_x_accumulator"
+[[bin]]
+name = "p_clock_expiry"
 
 [[bin]]
 name = "fail_a_carrier_is_not_a_parameter"
@@ -102,6 +104,12 @@ name = "fail_o_phase_order_is_a_wall"
 required-features = ["negatives"]
 [[bin]]
 name = "fail_o_witness_cannot_outlive_the_epoch"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_p_valid_is_sealed"
+required-features = ["negatives"]
+[[bin]]
+name = "fail_p_valid_cannot_outlive_the_reading"
 required-features = ["negatives"]
 
 [dependencies]
