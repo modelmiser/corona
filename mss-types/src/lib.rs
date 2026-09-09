@@ -157,7 +157,8 @@
 //! - **Both hash *backends* are graduated — forgery is no longer "invert FNV".** The remaining
 //!   breaks are the inherited 64-bit digest width (~2³²), this crate's demo seed (≲2²⁵), and
 //!   — cheapest of all, given seed reuse across capacities — the same-seed harvest below
-//!   (~2ᵏ, `k ≈ 16`); none of them is SHA-256.
+//!   (~2ᵏ, `k ≈ 16` for three chains; two give `k ≈ 32`, no cheaper than the width); none
+//!   of them is SHA-256.
 //!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
 //!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the vetted
 //!   SHA-256 (u64-truncated, one-way at ~2⁶³). The earlier "a real adversary forges
@@ -887,6 +888,16 @@ mod tests {
             "cross-key misuse: caught only at runtime, never by the type"
         );
         assert!(va.minted_by(&pk_a), "and holds for the genuine minting key");
+        // And the hash half of the anchor is compared WHOLE: a one-byte-off adopted root at
+        // the same capacity must not claim the witness (the negative pairs above differ at
+        // ~31 of 32 bytes, which a prefix compare would pass by luck).
+        let mut near = pk_a.root_hash();
+        near[31] ^= 1;
+        let near_pk = MssPublicKey::adopt(near, pk_a.capacity()).unwrap();
+        assert!(!va.minted_by(&near_pk), "a near-miss anchor claims nothing");
+        let mut near0 = pk_a.root_hash();
+        near0[0] ^= 1;
+        assert!(!va.minted_by(&MssPublicKey::adopt(near0, pk_a.capacity()).unwrap()));
     }
 
     #[test]

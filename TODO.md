@@ -341,6 +341,15 @@ work (complete tasks, add children, keep siblings).
             `Verified*` witnesses". LOW: README's leaf-7 prose section still said "Research rung"
             (drift outside the crate) → rewritten; `size: root.size()` equivalent-mutant annotated;
             n==0 comment no longer implies no local test; "weakest link is the seed" → seed handling.
+      - [x] **Round 9 (workflow run 9): its round 1 CLEAN on all three lenses — the arc's first fully
+            clean round (96 mutants, 86 non-equivalent all killed; claims every-claim verified on
+            stable AND nightly; adversarial 21.5k-tree differential fuzz, no break). Its round 2
+            NOT CLEAN: 1 MODERATE + 2 LOW.** MOD: `minted_by`'s root-hash compare unpinned against a
+            NEAR-MISS anchor (negatives differed at 31/32 bytes; a prefix compare survived) → two
+            one-byte-off adopted anchors at the same capacity asserted to claim nothing (mutant
+            `root_hash[0] == pk.root_hash[0]` watched surviving before the test and dying after).
+            LOW: "k ≈ 16" assumes three chains → said; 6 equivalent survivors re-confirmed. Streak
+            resets; convergence needs 2 clean.
 
 ## Now (leaf 8 — vid-types)
 
