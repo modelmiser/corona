@@ -2,7 +2,7 @@
 name = "mss-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 7 — the Merkle Signature Scheme as a COMPOSITION of merkle-types and lamport-types. TOY: a type-discipline demonstration, not production crypto."
+description = "Corona leaf 7 — the Merkle Signature Scheme as a COMPOSITION of merkle-types and lamport-types. GRADUATED 2026-09-08 by inheritance (both parents graduated; Sol.Lib.Mss is its wire; criterion-5 round record in TODO.md) — still not production crypto: demo seed, fixed capacity, inherited 64-bit width."
 license = "MIT"
 
 # The garden's first COMPOSITION leaf: it deliberately imports two sibling LEAVES

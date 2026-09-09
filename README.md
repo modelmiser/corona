@@ -42,7 +42,7 @@ corona/
 ├── merkle-types/     # leaf 4 — Merkle inclusion proofs as typestate (GRADUATED)
 ├── lamport-types/    # leaf 5 — Lamport one-time signatures as typestate (GRADUATED — still not production)
 ├── static-config-types/  # leaf 6 — compile-time threshold/quorum config, E0080 (TOY)
-├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition, TOY)
+├── mss-types/        # leaf 7 — Merkle Signature Scheme = merkle ∘ lamport (composition; GRADUATED 2026-09-08 BY INHERITANCE — the first composition graduation, nothing to swap; Sol.Lib.Mss, the 18th wire, needed zero rungs on either parent)
 ├── vid-types/        # leaf 8 — verifiable information dispersal = erasure ∘ merkle (composition, TOY)
 ├── ecash-types/      # leaf 9 — bearer value & the double-spend boundary (negative space; GRADUATED 2026-07-22 — HMAC-SHA-256, the first MAC-authentication graduation; Sol.Lib.Ecash [16th wire]: authenticity-not-witness-definable, freshness-not-compile-time)
 ├── ratchet-types/    # leaf 10 — symmetric KDF-chain ratchet: forward secrecy as move-linearity (GRADUATED 2026-07-21 — SHA-256 as a random-oracle/PRF; Sol.Lib.Ratchet, the residue's home splits on the held value's preimage count)

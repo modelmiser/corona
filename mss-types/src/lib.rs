@@ -80,9 +80,68 @@
 //! ([`VerifiedMssMessage::minted_by`]) and [`MssPublicKey::adopt`]. A composition
 //! inherits its components' *obligations*, not just their guarantees.
 //!
+//! ## Graduation (2026-09-08) — the first composition graduation, by inheritance
+//!
+//! The CHARTER's five criteria, read for a leaf that owns **no backend**:
+//!
+//! 1. **Thesis recorded** — this header and the cold-review record (converged at round 6,
+//!    2026-07; TODO/DEVLOG).
+//! 2. **Backend swap — inherited.** A composition's seams are its parents' seams. Both
+//!    parents graduated in July 2026 (`merkle-types` 07-21, `lamport-types` 07-22), and this
+//!    crate calls them through their public surfaces only, so every vetted primitive it runs
+//!    is theirs. The criterion holds exactly when every composed parent has graduated and
+//!    cannot hold earlier; nothing here was swapped, because nothing here was a backend. The
+//!    parts that stay illustrative — the deterministic demo seed, the fixed capacity — are
+//!    not backends and are disclosed under #3, not swapped under #2 — and so is the
+//!    inherited 64-bit Lamport digest width, a parent's disclosed limit.
+//! 3. **Security / limits section** — [Honest limits](#honest-limits), below, unchanged in
+//!    substance.
+//! 4. **Lean wire** — `Sol.Lib.Mss`, the garden's **18th wire** and the first for a
+//!    composition. Its content is the composition question on the proof face: *does a
+//!    composition inherit its parents' proofs the way it inherits their backends?* It does,
+//!    with **zero rungs on either parent's wire** — for a model that carries side-patterns,
+//!    not indices. The keychain is `Sol.Lib.Lamport`'s two-state capability lifted to a
+//!    cursor (`emits_are_consecutive`: a run emits exactly the consecutive indices from the
+//!    cursor, so `no_key_index_is_emitted_twice` and `at_most_capacity_signatures`, with
+//!    `restored_chain_defeats_linearity` as the seed caveat's proved contrast); the composed
+//!    acceptance pins the presented key to the committed one by
+//!    `Sol.Lib.Merkle.fold_pins_leaf_and_path` as shipped (`accepted_key_is_the_committed_key`):
+//!    under a **fixed honest `(root_hash, capacity)` anchor and a fixed `proof.index`** (which
+//!    selects the fold's sides), the presented `vk` is the leaf the fold pins there, so a
+//!    different-bytes `vk` is a Merkle collision and a different message under that `vk` is a
+//!    Lamport forgery. Both qualifiers are load-bearing and this crate's own tests are the
+//!    reason: relabeling changes the side-pattern (Merkle's residue, rejected by an honest
+//!    anchor), and a **capacity lie through [`MssPublicKey::adopt`] is a different anchor** —
+//!    it can reassign genuinely committed bytes to another index with no collision
+//!    (`understated_adopted_capacity_misattributes_to_a_real_slot`,
+//!    `overstated_adopted_capacity_yields_phantom_indices_caught_by_minted_by`), though it still admits no
+//!    uncommitted key. The Lean model has no `capacity`, so those two tests have no image
+//!    there: the theorem is silent about them, not wrong. The residues are restated in the
+//!    same motion: `signature_transfers_along_digest_equality` (the ~2³² width — Lamport's
+//!    Part 3 shape, generic in the digest type, not derived from it),
+//!    `collision_breaks_key_binding` (stated at the composed acceptance on a two-leaf tree),
+//!    and `accepts_under_some_anchor` (the caller-trusted anchor — recorded by a trivially
+//!    true existential, not evidenced). What the wire trusts is what its parents trust:
+//!    linearity is a discipline over cursor-threaded runs (rustc enforces the threading), a
+//!    verifying key is its leaf value (the model abstracts `leaf_hash ∘ to_bytes`), and the
+//!    index is its side-pattern. Part 1 and Part 2 of the wire are joined by prose, not a
+//!    theorem: an index-carrying model would have needed an `authProof`-totality rung Merkle
+//!    lacks. The datum, with that qualifier: this crate's thesis — composition pressure
+//!    surfaces missing API, not missing vocabulary — held on the proof face for what the
+//!    model states.
+//! 5. **Cold review.** The research surface converged at round 6 (2026-07). The re-review of
+//!    *this* graduation text is a separate arc whose round-by-round record lives in
+//!    `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points there
+//!    rather than restating a count. #5 is earned only by two consecutive clean rounds on
+//!    this text, and nothing here asserts that it has been.
+//!
+//! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no code and
+//! no value, the blast radius is zero of every kind, not merely compile-time.
+//!
 //! ## Honest limits
 //!
-//! - **Both hash backends are now graduated — the hash is no longer the weak link.**
+//! - **Both hash *backends* are graduated — forgery is no longer "invert FNV".** The remaining
+//!   breaks are the inherited 64-bit digest width (~2³²) and this crate's demo seed (≲2²⁵), not SHA-256.
 //!   The Merkle layer inherits leaf 4's **graduated SHA-256**, and the Lamport layer
 //!   (leaf 5) has now graduated too — its `commit`/`digest`/`prg` seam is the vetted
 //!   SHA-256 (u64-truncated, one-way at ~2⁶³). The earlier "a real adversary forges
@@ -91,15 +150,21 @@
 //!   to `digest(message)`, so a birthday pair forges at ~2³² (leaf 5's disclosed cap —
 //!   a property of the width, not of SHA-256), and that carries straight through this
 //!   composition. ⚠ And that is the bound for a **correctly-used** key: this crate's own
-//!   demo root is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
+//!   demo seed is the 24-bit literal `0xC0FFEE`, recoverable in ≲2²⁵, so *as demonstrated*
 //!   the weakest link is the seed, not the width (∥ `hypertree-types`). What remains illustrative is *this composition itself*: deterministic
-//!   seeds (below), fixed capacity, and that inherited width — so `mss-types` is a
-//!   research-rung composition, **not an independently graduated leaf**; the *type*
-//!   discipline (the Merkle brand over one-time Lamport keys) is the subject.
+//!   seeds (below), fixed capacity, and that inherited width. Until 2026-09-08 this bullet
+//!   ended "so `mss-types` is a research-rung composition, not an independently graduated
+//!   leaf"; it now **is** graduated — by inheritance, see *Graduation* above — and the
+//!   sentence that survives is the true one: the *type* discipline (the Merkle brand over
+//!   one-time Lamport keys) is the subject, and the seeds/capacity are demonstration, not
+//!   backend. Still **not production crypto**: the demo seed and the inherited 64-bit width
+//!   are Lamport's disclosed limits, carried through this composition; Merkle's remaining
+//!   limits (promotion, a caller-trusted root) are separate and also inherited.
 //! - **The [`MssPublicKey`] is caller-trusted** (as every trust anchor in the
 //!   garden is): verification proves a signature is valid *under this root*, not
 //!   that this root belongs to the right signer.
-//! - **Stateful, and honestly so.** Hash-based signatures are famously *stateful*
+//! - **Stateful, and honestly so.** Merkle-tree hash-based signatures (MSS, XMSS, LMS) are
+//!   famously *stateful* — SPHINCS+ is the stateless sibling, bought at signature size
 //!   — RFC 8391 devotes real text to state-management hazards, because restoring
 //!   an old key state from backup re-arms spent keys. Here the state **is the
 //!   linear keychain value**: it cannot be `Clone`d, so within safe Rust the
@@ -109,10 +174,18 @@
 //!   (affine, at-most-*n* — deliberately, as in leaf 5).
 //! - **Per chain *value*, not per chain *material*** — leaf 5's seed caveat,
 //!   inherited whole: [`generate`] is deterministic, so a holder of the seed can
-//!   re-mint the *entire keychain* and sign afresh under the same public key. The
+//!   re-mint the *entire keychain* and sign afresh under the same public key (or, more
+//!   cheaply, re-mint one slot's key from the public `prg` seam and staple it to a
+//!   published signature's `proof`/`vk` — [`MssSignature`]'s fields are public). The
 //!   linearity binds the chain value; the guarantee is conditional on the seed
 //!   being discarded (a real deployment uses a CSPRNG). *A capability is only as
-//!   strong as the most permissive way to obtain what it gates.*
+//!   strong as the most permissive way to obtain what it gates.* And the per-key seeds
+//!   `prg(seed, i, 0xFF)` do **not** depend on `n`: chains of *different* capacities from
+//!   one seed are distinct public keys backed by the **same** one-time keys, so honest,
+//!   linear, once-each use of two such chains reveals two signatures under slot `i`'s
+//!   key — a one-time-key reuse with no `E0382` hazard and no re-mint of either chain
+//!   value. A capacity upgrade must change the seed. (Found by the 2026-09-08 review's
+//!   adversarial lens; within the seed premise, so disclosed, not a guarantee break.)
 //! - **Fixed capacity.** `n` is set at keygen; a spent chain is spent. Real
 //!   schemes tier trees over trees (Merkle's own suggestion; XMSS^MT's structure)
 //!   — out of scope for the toy.
@@ -157,7 +230,7 @@
 //!   `merkle-types`' documented structural-symmetry **orbit**, arriving here
 //!   through the `adopt` doorway (regression-tested). [`generate`] never mints
 //!   such an anchor — its per-key seeds are distinct by construction, so its
-//!   leaves are distinct up to a SHA-256 collision (both layers graduated) — but an *adopted* anchor
+//!   leaves are distinct up to a (u64-truncated) SHA-256 collision (both layers graduated) — but an *adopted* anchor
 //!   carries no such pedigree.
 //! - **MSS, not XMSS.** The standardized descendant (XMSS, RFC 8391) uses WOTS+
 //!   one-time keys and bitmasked tree hashing, not plain Lamport + plain trees.
@@ -514,6 +587,15 @@ mod tests {
             let v = pk.verify(msg, &sig).expect("genuine signature verifies");
             assert_eq!(v.key_index(), i, "keys are spent in index order");
             assert_eq!(v.digest(), lamport_types::hash::digest(msg));
+            assert_eq!(v.capacity(), 4, "the anchor's capacity, at every index");
+            // The documented per-key derivation, pinned: slot i's verifying key IS
+            // `SigningKey::generate(prg(seed, i, 0xFF)).1` — the 0xFF byte keeps the
+            // chain's seeds off lamport's own side-0/side-1 preimage domains.
+            assert_eq!(
+                sig.vk,
+                SigningKey::generate(lamport_types::hash::prg(7, i, 0xFF)).1,
+                "slot {i} derives from prg(seed, i, 0xFF), no other input domain"
+            );
             chain = rest;
         }
         // The fourth signature spent the last key.
@@ -648,8 +730,14 @@ mod tests {
         wrong_root[0] ^= 1;
         let wrong = MssPublicKey::adopt(wrong_root, pk.capacity()).unwrap();
         assert!(wrong.verify(b"over the wire", &sig).is_none());
-        // No key of nothing.
+        // No key of nothing — and the smallest legal anchor, capacity 1, adopts and
+        // verifies (the guard's boundary pinned from above, not only from below).
         assert!(MssPublicKey::adopt(pk.root_hash(), 0).is_none());
+        let (one, pk1) = generate(9, 1).unwrap();
+        let (sig1, none) = one.sign_next(b"only");
+        assert!(none.is_none());
+        let adopted1 = MssPublicKey::adopt(pk1.root_hash(), 1).expect("capacity 1 is legal");
+        assert_eq!(adopted1.verify(b"only", &sig1).unwrap().key_index(), 0);
     }
 
     #[test]
@@ -801,7 +889,7 @@ mod tests {
         // key indices, and both witnesses honestly claim the same anchor —
         // minted_by pins WHICH anchor an index is relative to, not a unique
         // position within a degenerate one. generate() never mints such an
-        // anchor (distinct per-key seeds → distinct leaves, up to a SHA-256 collision).
+        // anchor (distinct per-key seeds → distinct leaves, up to a (u64-truncated) SHA-256 collision).
         let (sk, vk) = SigningKey::generate(0xDD);
         let leaf = vk.to_bytes();
         let (root_hash, p0, p1) =
