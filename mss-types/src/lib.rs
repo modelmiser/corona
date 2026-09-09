@@ -140,15 +140,14 @@
 //!    lacks. The datum, with that qualifier: this crate's thesis — composition pressure
 //!    surfaces missing API, not missing vocabulary — held on the proof face for what the
 //!    model states.
-//! 5. **Cold review — CONVERGED 2026-09-08** (workflow run 10, rounds 10.1 and 10.2 clean on
-//!    all three lenses at `436922e`; the trailing LOW fixes were then verified by run 11's
-//!    round 1, clean, and this status flip is the one change that round anticipated). The
-//!    research surface had converged at round 6 (2026-07). The round-by-round record lives
-//!    in `TODO.md` (the referent, as for `accumulator-types`); the CHARTER row points there
-//!    rather than restating a count. Until this flip the word here was OPEN, and the flip —
-//!    here and in `Cargo.toml`'s description — was declared in advance as the only text
-//!    permitted to change at convergence, so that it is not a fix-artifact on the reviewed
-//!    surface.
+//! 5. **Cold review — CONVERGED 2026-09-08** at workflow run 10: rounds 10.1 and 10.2 clean
+//!    on all three lenses at `436922e`, which is the criterion's test (two consecutive clean
+//!    rounds, no CRITICAL or MODERATE). The research surface had converged at round 6
+//!    (2026-07). After run 10 the text kept changing: trailing LOW fixes, this paragraph, and
+//!    the OPEN→CONVERGED flip — each later run's findings are applied and recorded in
+//!    `TODO.md`, the referent, and the last run's own findings are by construction the ones
+//!    no round has read. That is the honest shape of any review record, and the rule that
+//!    ends the loop is the garden's: converge on CRITICAL/MODERATE, fix the LOWs, stop.
 //!
 //! Fan-out: `hypertree-types` (`mss ∘ mss`) — and since this graduation changes no non-test
 //! code and no value (the review added tests), the blast radius is zero of every kind, not
@@ -221,10 +220,11 @@
 //!   re-presents *unchanged* under the capacity-`m` key at the same `key_index` — same
 //!   `vk`, same one-time signature, the other tree's proof siblings — exposed by a
 //!   signature at the same `key_index` under that key, or computed outright: with a
-//!   shared seed every revealed `vk` is a leaf of *both* trees, so a never-used
-//!   same-seed key's proofs are rebuilt from the source chain's signatures alone
-//!   (review probe 2026-09-08: capacity-4 fully used, capacity-2 and -3 never
-//!   signed, both accept the replay) — a cross-anchor replay, `minted_by` the second
+//!   shared seed every revealed `vk` at an index below the other tree's capacity is a
+//!   leaf of *both* trees, so a never-used same-seed key's proofs are rebuilt from the
+//!   source chain's signatures alone
+//!   (pinned by `never_used_same_seed_key_accepts_a_rebuilt_replay`: capacity-4 fully
+//!   used, capacity-2 never signed, accepts) — a cross-anchor replay, `minted_by` the second
 //!   anchor. A
 //!   capacity upgrade must change the seed. All three — the sharing, the replay, and the
 //!   forgery itself (assembled from harvested preimages, verified under the honest key) —
@@ -328,30 +328,32 @@
 //!
 //! The three sealed types cannot be forged from outside (E0451). Every private field is
 //! named on purpose — omitting one is also rejected, but with an uncoded "cannot construct
-//! … due to private fields" diagnostic that does not demonstrate E0451. And a caveat the
+//! … due to private fields" diagnostic that does not demonstrate E0451. rustc emits ONE
+//! `E0451` naming all the private fields together; the per-line notes below mark which
+//! fields that single diagnostic names. And a caveat the
 //! garden records at `vid-types`: on stable, rustdoc parses a `compile_fail` fence's error
 //! code and ignores it, so these (and the E0382 fence above) pin *some* compile error;
 //! only `cargo +nightly test --doc` enforces the code.
 //!
 //! ```compile_fail,E0451
 //! let forged = mss_types::VerifiedMssMessage {
-//!     digest: 0xDEAD,         // ERROR[E0451]: field `digest` is private
-//!     key_index: 2,           // ERROR[E0451]: field `key_index` is private
-//!     root_hash: [0u8; 32],   // ERROR[E0451]: field `root_hash` is private
-//!     capacity: 4,            // ERROR[E0451]: field `capacity` is private
+//!     digest: 0xDEAD,         // named by the one E0451: `digest` is private
+//!     key_index: 2,           // named by the one E0451: `key_index` is private
+//!     root_hash: [0u8; 32],   // named by the one E0451: `root_hash` is private
+//!     capacity: 4,            // named by the one E0451: `capacity` is private
 //! };
 //! ```
 //!
 //! ```compile_fail,E0451
 //! let bypassed_adopt = mss_types::MssPublicKey {
-//!     root_hash: [0u8; 32],   // ERROR[E0451]: field `root_hash` is private
-//!     size: 0,                // ERROR[E0451]: field `size` is private
+//!     root_hash: [0u8; 32],   // named by the one E0451: `root_hash` is private
+//!     size: 0,                // named by the one E0451: `size` is private
 //! };
 //! ```
 //!
 //! ```compile_fail,E0451
 //! let empty = mss_types::MssKeychain {
-//!     entries: Vec::new(),    // ERROR[E0451]: field `entries` is private
+//!     entries: Vec::new(),    // named by the one E0451: `entries` is private
 //! };
 //! ```
 
@@ -1101,6 +1103,42 @@ mod tests {
             .expect("forged, never signed, accepted by the HONEST key");
         assert_eq!(v.key_index(), 0);
         assert!(!signed.iter().any(|(sm, _)| *sm == m.as_bytes()));
+    }
+
+    #[test]
+    fn never_used_same_seed_key_accepts_a_rebuilt_replay() {
+        // The "computed outright" replay: the capacity-4 chain is fully used; a capacity-2
+        // chain from the SAME seed never signs at all. Its root and its slot-0 proof are
+        // rebuilt from the four revealed verifying keys alone (the first two are its
+        // leaves), and the capacity-4 slot-0 signature verifies under it.
+        let (mut c4, _pk4) = generate(0xC0FFEE, 4).map(|(c, p)| (Some(c), p)).unwrap();
+        let mut sigs = Vec::new();
+        for _ in 0..4 {
+            let (s, rest) = c4.take().unwrap().sign_next(b"cap-4 message");
+            sigs.push(s);
+            c4 = rest;
+        }
+        let (_never_used, pk2) = generate(0xC0FFEE, 2).unwrap();
+        let leaves: Vec<Vec<u8>> = sigs.iter().take(2).map(|s| s.vk.to_bytes()).collect();
+        let (rebuilt_root, proof0) = merkle_types::commit_scoped(&leaves, |root, tree| {
+            (root.hash(), tree.proof(0).expect("leaf 0 of 2"))
+        })
+        .expect("two leaves");
+        assert_eq!(
+            rebuilt_root,
+            pk2.root_hash(),
+            "the never-used key's root, from revealed vks"
+        );
+        let replay = MssSignature {
+            ots: sigs[0].ots.clone(),
+            vk: sigs[0].vk.clone(),
+            proof: proof0,
+        };
+        let v = pk2
+            .verify(b"cap-4 message", &replay)
+            .expect("rebuilt proof, never-used key");
+        assert_eq!(v.key_index(), 0);
+        assert!(v.minted_by(&pk2));
     }
 
     #[test]

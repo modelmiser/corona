@@ -251,7 +251,7 @@ work (complete tasks, add children, keep siblings).
       capacity lie is a different anchor: committed bytes reassigned, no collision); Grok alone
       caught 4 wording defects GPT passed ("section below"→above; "hash no longer the weak link";
       "exactly as in the graduated parents"; Lean claims unverifiable from corona). All fixed.
-- [ ] **Criterion #5 — cold review of THIS graduation text (garden-cold-review workflow, 3 lenses).**
+- [x] **Criterion #5 — cold review of THIS graduation text (garden-cold-review workflow, 3 lenses) — CONVERGED at run 10; loop STOPPED after run 12 (converge-then-stop).**
       - [x] **Round 1 — NOT CLEAN: 3 MODERATE + 7 LOW.** MOD: adopt boundary mutant
             `capacity==0→<=1` survived (no test adopted at capacity 1) → pinned in
             `adopted_public_key_verifies_wire_style`; per-key derivation `prg(seed,i,0xFF)` never
@@ -369,7 +369,23 @@ work (complete tasks, add children, keep siblings).
             said the Lamport transfer "lifts verbatim" (stale outside the crate) → restated; the
             large-`n` doc named only the `capacity overflow` panic, not the allocation-failure
             ABORT → both named. Equivalent survivors and panic surface re-confirmed.
-      - [x] **Run 12 (final, one round, after the flip): see the line below.**
+      - [x] **Run 12 (one round, on the flipped text): 1 MODERATE + 4 LOW; correctness + adversarial
+            CLEAN (79 mutants, 75 killed, 4 equivalent; 440k-signature fuzz, no divergence).** MOD: the
+            #5 paragraph's provenance account was wrong — the flip commit also carried the paragraph
+            rewrite and run 11's abort-wording LOW, and "run 12: see below" had no outcome →
+            paragraph rewritten as a FIXED POINT (each later run's findings recorded here; the last
+            run's own findings are by construction unreviewed). LOW: "every revealed vk is a leaf of
+            both trees" false universal → "at an index below the other tree's capacity"; the
+            computed-outright replay now a TEST (`never_used_same_seed_key_accepts_a_rebuilt_
+            replay`); E0451 per-field annotations reworded (rustc emits ONE E0451 naming all
+            fields); this box was unticked while the crate said CONVERGED → ticked. NOT applied
+            (non-test code stays byte-identical through the graduation): `verify` runs the 64-round
+            Lamport check before merkle's free range gate — a pure cost reordering, queued below.
+            **STOP.** Runs 11 and 12 found no CRITICAL/MODERATE about the crate's claims — only
+            about the record of the review itself, which is the treadmill the CLAUDE.md
+            correction-prose rule names; run 12's LOW fixes ship unreviewed by that rule.
+- [ ] Cost fix for a later rung: `MssPublicKey::verify` — run the membership/range gate before the
+      64-round Lamport check (review run 12, adversarial lens); no guarantee affected.
 
 ## Now (leaf 8 — vid-types)
 
