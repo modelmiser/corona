@@ -21,10 +21,14 @@
 //! Leaf 7 needed two small additive rungs on its components; leaf 8 needed none
 //! because the surface was already complete. This leaf, like leaf 8, needs **none**:
 //! it builds entirely on `mss-types`' public API (`generate`, `MssKeychain::sign_next`,
-//! `MssPublicKey::{adopt, verify}`, `VerifiedMssMessage::{key_index, digest}`), reused
-//! verbatim. (`VerifiedMssMessage::minted_by` was listed here until 2026-09-09 and is never
-//! called — every `minted_by` in this file is *this* crate's own method. The composition
-//! re-implements that check one level up rather than reusing it.) The nesting demands no private access and no new vocabulary — so
+//! `MssPublicKey::{adopt, verify, root_hash, capacity}`, `MssKeychain::remaining`,
+//! `VerifiedMssMessage::{key_index, digest}`), reused verbatim. `merkle-types` is a second
+//! direct dependency, but only to *name* its digest type in public signatures — not a
+//! composed operand, so `mss ∘ mss` remains one composition. (Two 2026-09-09 audits of this
+//! list: `minted_by` was listed and never called — this crate re-implements that check one
+//! level up — and `root_hash`/`capacity`/`remaining` were called and never listed. The first
+//! pass looked only for unused entries, which is how a list meant to be exact stayed wrong in
+//! the other direction.) The nesting demands no private access and no new vocabulary — so
 //! composition is not merely *repeatable* (leaf 8) but *self-nesting*.
 //!
 //! **(2) Composing *two* stateful leaves needs *coordinated* linear state — the new
@@ -207,8 +211,10 @@ impl HyperPublicKey {
 /// `top_sig` authenticates `(bottom_root, bottom_capacity)` under the long-term key;
 /// `bottom_sig` authenticates the message under that subtree. Public and inspectable
 /// — **publishable**, not secret-free: a Lamport signature reveals 64 of its
-/// one-time key's 128 preimages, which is exactly why a second signature under one key
-/// completes it (see the honest limits). Its safety comes from the one-time discipline, not
+/// one-time key's 128 preimages, which is why signing twice under one key is the
+/// catastrophe. Two signatures expose both sides only where the two digests *differ* — 30 of
+/// 64 positions in the honest limits' measured case — so two do not by themselves complete a
+/// key; "a handful", as that section says, does. Its safety comes from the one-time discipline, not
 /// from an absence of key material — leaf 5 words the same object "public, forgeable data" (the type witnessing a
 /// *verified* message is [`VerifiedHypertreeMessage`], minted only by [`HyperPublicKey::verify`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -300,7 +306,10 @@ impl VerifiedHypertreeMessage {
 /// let (_s2, _r2) = chain.sign_next(b"second"); // error[E0382]: use of moved value
 /// ```
 pub struct HyperKeychain {
-    /// Master seed — regenerates future bottom subtrees deterministically.
+    /// The **instance** seed (`instance_seed(master, top_n, bottom_n)`), never the caller's
+    /// master seed — that distinction IS the 0.4.0 fix, and the rotation below re-derives
+    /// subtrees from this field. A reader who takes it for the raw master concludes the
+    /// rotation re-creates the 0.2.0 key-sharing break. Regenerates subtrees deterministically.
     seed: u64,
     /// Top keychain keys remaining to certify *future* subtrees (`None` once spent).
     top: Option<MssKeychain>,
@@ -440,6 +449,15 @@ impl HyperPublicKey {
 /// Deterministically generate a 2-layer hypertree from `seed`: a `top_n`-key top
 /// keychain, and a first bottom subtree of `bottom_n` keys certified under top key 0.
 /// Total capacity is `top_n × bottom_n`. `None` if either layer would be empty.
+///
+/// ⚠ **Large parameters do not return `None`; they die.** Each unit of either parameter is a
+/// Lamport keychain, so allocation is linear in `top_n + bottom_n`: `usize::MAX` panics with
+/// `capacity overflow`, and around `2^40` the process **aborts** on allocation failure, which
+/// `catch_unwind` cannot intercept. There is no upper guard and this is a resource limit, not
+/// a checked bound — noted because the module doc invites large parameters ("an enormous
+/// *virtual* keyspace") and because one test depends on the `usize::MAX` panic.
+/// [`HyperPublicKey::verify`], the attacker-facing entry point, is by contrast total: every
+/// malformed signature returns `None`.
 pub fn generate_hypertree(
     seed: u64,
     top_n: usize,
@@ -514,10 +532,18 @@ const _: () = assert!(
 /// ⚠ An earlier version of this function chained `subseed(subseed(seed, top_n), bottom_n)`
 /// and this docstring argued it was injective because `subseed` is "a bijection in each
 /// argument". **That derivation is invalid** — bijectivity in each argument separately says
-/// nothing about the pair — and the property was false: `instance_seed(0xC0FFEE, 2,
-/// 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`, and the chain's collisions are
-/// *constructible* by solving one linear relation, so a signer could have picked two
-/// colliding parameterisations deliberately. Found by the graduation review, 2026-09-09.
+/// nothing about the pair — and the property, as stated (unrestricted), was false:
+/// `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`.
+///
+/// ⚠ **What that did NOT amount to** — corrected 2026-09-09, after this text overstated it.
+/// An earlier version said a signer could have picked two colliding parameterisations
+/// deliberately "by solving one linear relation". At *reachable* parameters — the same domain
+/// this function's own claim is scoped to — the old fold has no known collision: an
+/// exhaustive sweep of `[1, 1200]²` finds none, and the smallest usable colliding partner is
+/// around `2^38`. Deliberate collision would have needed an offline search, not one equation.
+/// The reasons to replace it stand and are enough: the argument was invalid and the property
+/// was stated without its domain. Judging the old fold by a stricter reachability standard
+/// than the new one is the error-sign tell — the overstatement ran toward my own fix.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
     subseed(seed, pack_params(top_n, bottom_n))
 }
@@ -1026,6 +1052,11 @@ mod tests {
                 "bottom half recovers from ({t}, {b})"
             );
         }
+        // Nothing is DROPPED either: the round-3 literal has no adjacent equal bytes and no
+        // zero byte, so `dedup`, `retain(|b| *b != 0)` and trailing-zero `pop` were all
+        // no-ops on it and the whole length-reducing family survived (round 6). An all-zero
+        // anchor is the one input on which every such filter is visible.
+        assert_eq!(anchor_bytes([0u8; 32], 0), vec![0u8; 40], "nothing dropped");
         // The two collisions a narrower shift would introduce, at reachable parameters.
         assert_ne!(pack_params(2, 258), pack_params(3, 2));
         assert_ne!(pack_params(2, 65538), pack_params(3, 2));

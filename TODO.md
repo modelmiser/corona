@@ -877,6 +877,31 @@ any push, so nothing false was ever public.
             binding against itself, which no implementation can break, and never verified the
             signatures it made. Rewritten to verify four signatures across a rotation.
             Four mutants watched dying.
+      - [x] **Round 6 — NOT CLEAN: 0 CRITICAL, 7 MODERATE. Two are the ERROR-SIGN TELL, and
+            both run toward my own fix** ([[feedback_error_sign_distribution_is_the_tell]]):
+            (a) I wrote that the 0.3.0 fold's collisions were "constructible by solving one
+            linear relation, so a signer could have picked two colliding parameterisations
+            deliberately" — but at REACHABLE parameters, the very domain the new function's own
+            claim is scoped to, the old fold has no known collision (exhaustive over
+            `[1,1200]²`; smallest usable partner ~2^38). I judged the old fold by a stricter
+            reachability standard than the new one. The honest reasons stand and suffice: the
+            argument was invalid and the property was stated without its domain.
+            (b) "a second signature under one key completes it" contradicts the measurement in
+            the very section it cites — two signatures expose both sides only where the digests
+            DIFFER (30 of 64), leaving ~34 unknown; the same bullet's own wording is "a handful
+            of re-parameterisations completes a key".
+            Also: the whole length-REDUCING mutant family on `anchor_bytes` survived, because
+            the round-3 "non-uniform" literal has no adjacent equal bytes and no zero byte, so
+            `dedup`, `retain(!=0)` and trailing-zero `pop` are all no-ops on exactly the 40
+            bytes it inspects — one assertion on an all-zero anchor kills all four (three
+            watched dying). `generate_hypertree`'s large-parameter panic/ABORT was documented
+            only inside a test comment while its rustdoc named one `None` condition. The
+            `seed` FIELD doc still said "Master seed" though it holds the derived instance
+            seed — the exact distinction 0.4.0 is about, and a reader believing it concludes
+            the rotation re-creates the 0.2.0 break. And the reused-parent-API list was audited
+            in ONE direction on 2026-09-09: an unused entry removed, three used ones
+            (`root_hash`, `capacity`, `remaining`) never added, and lib.rs lacked the
+            second-dependency qualifier Cargo.toml already carried.
 
 ## Now (leaf 15 — crdt-types)
 
