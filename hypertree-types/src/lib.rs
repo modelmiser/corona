@@ -206,7 +206,10 @@ impl HyperPublicKey {
 ///
 /// `top_sig` authenticates `(bottom_root, bottom_capacity)` under the long-term key;
 /// `bottom_sig` authenticates the message under that subtree. Public and inspectable
-/// — like every signature in the garden it carries no secret (the type witnessing a
+/// — **publishable**, not secret-free: a Lamport signature reveals 64 of its
+/// one-time key's 128 preimages, which is exactly why a second signature under one key
+/// completes it (see the honest limits). Its safety comes from the one-time discipline, not
+/// from an absence of key material — leaf 5 words the same object "public, forgeable data" (the type witnessing a
 /// *verified* message is [`VerifiedHypertreeMessage`], minted only by [`HyperPublicKey::verify`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct HyperSignature {
@@ -597,12 +600,29 @@ mod tests {
 
     #[test]
     fn the_long_term_key_is_stable() {
-        // The public key does not change as the chain advances — one key, many sigs.
-        let (chain, pk) = generate_hypertree(42, 2, 3).unwrap();
-        let pk_before = pk;
-        let (_sig, rest) = chain.sign_next(b"x");
-        let (_sig2, _rest2) = rest.unwrap().sign_next(b"y");
-        assert_eq!(pk, pk_before); // Copy: unchanged
+        // ⚠ `HyperPublicKey` is `Copy` and `sign_next` never receives it, so comparing a copy
+        // of the binding against itself CANNOT fail under any implementation (round 5). The
+        // real content is below: signatures from before and after a rotation must both verify
+        // under the one key. `every_signature_verifies_across_the_rotation` also covers it.
+        // One key, many signatures — including across a subtree rotation.
+        let (mut chain, pk) = generate_hypertree(42, 2, 3)
+            .map(|(c, p)| (Some(c), p))
+            .unwrap();
+        let msgs: [&[u8]; 4] = [b"w", b"x", b"y", b"z"];
+        let mut sigs = Vec::new();
+        for m in msgs {
+            let (sig, rest) = chain.take().expect("capacity remains").sign_next(m);
+            sigs.push(sig);
+            chain = rest;
+        }
+        for (m, sig) in msgs.iter().zip(&sigs) {
+            let v = pk
+                .verify(m, sig)
+                .expect("verifies under the one long-term key");
+            assert!(v.minted_by(&pk));
+        }
+        // The 4th signature is in subtree 1, so the key spans the rotation.
+        assert_eq!(pk.verify(msgs[3], &sigs[3]).unwrap().subtree_index(), 1);
         assert_eq!(pk.subtrees(), 2);
     }
 
@@ -815,10 +835,11 @@ mod tests {
 
     #[test]
     fn the_witness_records_the_top_capacity_not_the_bottom() {
-        // `subtrees` is private with no accessor, so its ONLY observable is `minted_by` —
-        // and the single assertion of that used a 2x2 hypertree, where the two capacities
-        // coincide, so recording the bottom capacity or a literal 2 was undetectable
-        // (review round 2). A hypertree with top capacity neither 2 nor equal to the bottom
+        // `subtrees` has no accessor, so `minted_by` is its only *checked* observable — the
+        // derived `Debug` and `PartialEq` do publish it, which an earlier version of this
+        // comment denied (round 5). The single assertion of `minted_by` used a 2x2 hypertree
+        // where the two capacities coincide, so recording the bottom capacity or a literal 2
+        // was undetectable (round 2). A top capacity neither 2 nor equal to the bottom
         // separates all three.
         let (chain, pk) = generate_hypertree(0x5EED, 3, 1).unwrap();
         let (sig, _) = chain.sign_next(b"m");
@@ -1029,6 +1050,15 @@ mod tests {
             );
         }
         assert_eq!(subseed(0, 0), 0);
+        // `instance_seed`'s own value was pinned by nothing: transposing its arguments,
+        // adding one, xoring a constant, and dropping the splitmix fold outright all
+        // survived, because every assertion about it is an `assert_ne!` or a collision
+        // sweep — invariant under ANY injective map — and the two wiring tests call it on
+        // both sides of their comparison (round 5). Same shape as `digest()` in round 4.
+        // Computed, not copied.
+        assert_eq!(instance_seed(0xC0FFEE, 2, 3), 0xea87_9970_249b_1ad8);
+        assert_eq!(instance_seed(7, 2, 4), 0xb9eb_7380_fc94_929b);
+        assert_eq!(instance_seed(0xC0FFEE, 1, 1), 0x9e9b_5b0c_e312_8b95);
         assert_eq!(subseed(0xC0FFEE, 0), 0xe658_8447_cc47_8205);
         assert_eq!(subseed(0xC0FFEE, 1), 0xca82_16fa_9058_d0fa);
         assert_eq!(subseed(0xC0FFEE, 2), 0xece4_5bab_ce87_0479);
@@ -1061,7 +1091,11 @@ mod tests {
         // — the seed index actually used decoupling from the `subtree_index` the witness
         // reports (review round 4). Rebuild every subtree independently and require an exact
         // match, which pins the whole family rather than its pairwise distinctness.
-        let (seed, t, b) = (0xC0FFEE, 3usize, 2usize);
+        // t must exceed 3: at t = 3 the reachable indices are 1, 2, which is a FIXED POINT
+        // of both `+1` and `*2`, so the counter mutant `next_subtree * 2` survived (round 5)
+        // — and at 66 subtrees that mutant wraps `u64` and re-derives subtree 0's whole
+        // keychain, which is the one-time-key reuse this crate is about.
+        let (seed, t, b) = (0xC0FFEE, 5usize, 2usize);
         let inst = instance_seed(seed, t, b);
         let sigs = sign_n(seed, t, b, t * b);
         for j in 0..t {

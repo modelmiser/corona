@@ -5,7 +5,7 @@ edition = "2021"
 description = "Corona leaf 14 — an XMSS^MT-style hypertree signature as a COMPOSITION of mss-types with ITSELF (mss ∘ mss). TOY: a type-discipline demonstration, not production crypto."
 license = "MIT"
 
-# The garden's first RECURSIVE composition: it imports a single sibling leaf —
+# The garden's first RECURSIVE composition: it COMPOSES a single sibling leaf (a second, merkle-types, is imported only to name its digest type in public signatures) —
 # `mss-types` (itself merkle ∘ lamport) — and nests it under itself. A top keychain
 # signs the root of a bottom keychain; the bottom signs the message. Built strictly
 # on mss-types' public surface, with NO new rungs into it (∥ leaf 8's verbatim reuse

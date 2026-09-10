@@ -854,6 +854,29 @@ any push, so nothing false was ever public.
             key-derivation function's constants must not drift silently.
             ⚠ My first known-answer vectors were INVENTED rather than computed and the test
             failed on them; computed and re-landed. Six mutants watched dying.
+      - [x] **Run 5 — NOT CLEAN: 0 CRITICAL, 6 MODERATE.** Two of them are the round-4 lesson
+            recurring on new targets, which is the shape of a real convergence rather than a
+            treadmill: `instance_seed`'s VALUE was pinned by nothing (transposing its
+            arguments, `+1`, `^ const`, and dropping the splitmix outright all survived,
+            because every assertion about it is an `assert_ne!` or a collision sweep —
+            invariant under any injective map — and the two wiring tests call it on BOTH sides
+            of their comparison) → known answers, **computed** this time; and the rotation
+            counter `next_subtree * 2` survived because my own test ran at `t = 3`, where the
+            reachable indices 1, 2 are a FIXED POINT of both `+1` and `*2` → widened to
+            `t = 5`. That mutant matters: at 66 subtrees it wraps `u64` and re-derives subtree
+            0's whole keychain.
+            Three prose corrections, all mine: "like every signature in the garden it carries
+            no secret" is FALSE for Lamport — a signature reveals 64 of the 128 preimages,
+            which is precisely why a second signature completes the key, and the crate's own
+            break analysis says so 120 lines above (leaf 5 words it "public, forgeable data");
+            my round-2 comment "`subtrees` is private with no accessor, so its ONLY observable
+            is `minted_by`" ignores the derived `Debug`/`PartialEq`, which publish it; and
+            Cargo.toml's "imports a single sibling leaf" is contradicted by its own dependency
+            table, since `merkle-types` is named in PUBLIC signatures.
+            One check that cannot fail: `the_long_term_key_is_stable` compared a `Copy` of a
+            binding against itself, which no implementation can break, and never verified the
+            signatures it made. Rewritten to verify four signatures across a rotation.
+            Four mutants watched dying.
 
 ## Now (leaf 15 — crdt-types)
 
