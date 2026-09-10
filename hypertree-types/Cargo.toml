@@ -2,7 +2,7 @@
 name = "hypertree-types"
 version = "0.2.0"
 edition = "2021"
-description = "Corona leaf 14 — an XMSS^MT-style hypertree signature as a COMPOSITION of mss-types with ITSELF (mss ∘ mss). GRADUATED 2026-09-09 by TRANSITIVE inheritance (its parent mss-types itself graduated by inheritance; Sol.Lib.Hypertree is its wire, the 19th; criterion #5 OPEN — round record in TODO.md) — still not production crypto: demo seeds, two fixed layers, inherited 64-bit width."
+description = "Corona leaf 14 — an XMSS^MT-style hypertree signature as a COMPOSITION of mss-types with ITSELF (mss ∘ mss). TOY: a type-discipline demonstration, not production crypto."
 license = "MIT"
 
 # The garden's first RECURSIVE composition: it imports a single sibling leaf —

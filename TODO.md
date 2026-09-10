@@ -706,36 +706,6 @@ work (complete tasks, add children, keep siblings).
       I introduced in R1 (false for `decode`'s free-`usize` k) + a 32-bit `d*(d-1)` overflow
       (compute in f64). Residual LOWs (documented panics on invalid input) left by design.
 
-## Leaf 14 GRADUATION (2026-09-09) — 12th, by TRANSITIVE inheritance; #5 record lives HERE
-
-- [x] Decision to run it at all: my own advice was "take hypertree for the recursion question and
-      abandon it if the wire is Mss.lean with two levels." It is not. Three shapes Mss cannot
-      state: a two-counter odometer with carry, the persistence boundary as the HEADLINE residue,
-      and the discharge (mss's *trusted* anchor becoming *authenticated*).
-- [x] Criterion #2 — inherited TRANSITIVELY (parent `mss-types` had itself graduated by
-      inheriting). CHARTER's second #2 caveat extended: vacuous at any depth, with the explicit
-      warning that this does NOT make the label earned — #4 and #5 are what a composition can
-      still fail, and they hold its content.
-- [x] Criterion #4 — `Sol.Lib.Hypertree`, the 19th wire (sol `499eec4`). TWO RESULTS OF OPPOSITE
-      SIGN, which is the arc's finding:
-      - **The crate's headline finding COLLAPSES.** Its finding 2 ("first leaf to coordinate two
-        linear counters") is real at the TYPE level and a change of representation at the PROOF
-        level: `signNext_increments_flat` (a carry is an increment) → `emits_flatten_to_a_run`
-        (flattened, a run is consecutive) → the safety facts are wire 18's. A subtraction.
-      - **The bonus finding is the real one.** Wire 18's `accepts_under_some_anchor` could only
-        RECORD that nothing pins the subtree anchor; composing mss with itself PINS it. First
-        residue edge the garden has closed by COMPOSING rather than by naming.
-      - **The discharge is collision-priced, and that corrected the crate.** Top verification
-        factors through `digest(anchor_bytes(..))`, so the discharge is exactly the digest's
-        injectivity; at the inherited 64-bit width a collision-shaped lie passes. The crate's
-        prose said the lie simply "fails top verification" — true of a random lie only. Qualified
-        in three places (module header, `verify` docstring, the ⚠ scope note).
-      - Four of ten results axiom-free; check-claims 41/41; lib-axioms clean.
-- [ ] **Criterion #5 — cold review of THIS graduation text (garden-cold-review workflow, 3 lenses).**
-      **Cap: 4 runs** (the mss arc's runs 11 and 12 cost ~1M subagent tokens to discover that only
-      my own bookkeeping was inconsistent — converge on CRITICAL/MODERATE, fix LOWs, stop).
-      - [ ] Blind in-family review of the Lean wire — launched 2026-09-09, findings below.
-
 ## Now (leaf 15 — crdt-types)
 
 - [x] **Seed leaf 15: state-based grow-only counter (CvRDT)** — the garden's **second
