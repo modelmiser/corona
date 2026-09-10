@@ -242,6 +242,20 @@ impl HyperPublicKey {
         self.top.root_hash()
     }
 
+    /// Its one field is private, and that had no check at all until 2026-09-10 — which mattered
+    /// more than a missing fence usually does: publishing it silently BUILDS the verifier-side
+    /// doorway the honest limits describe as "recorded here, not built", since
+    /// `HyperPublicKey { top: MssPublicKey::adopt(root, subtrees)? }` is then writable from
+    /// outside. It also un-equivalences the mutant that
+    /// `minted_by_is_false_for_a_foreign_key` records as equivalent *through the public API*,
+    /// exactly as that note says it would.
+    ///
+    /// ```compile_fail,E0616
+    /// # use hypertree_types::generate_hypertree;
+    /// let (_chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+    /// let _leak = pk.top; // ERROR[E0616]: field `top` is private
+    /// ```
+    ///
     /// The number of subtrees this hypertree certifies (the top capacity).
     pub fn subtrees(&self) -> usize {
         self.top.capacity()
@@ -409,6 +423,43 @@ impl VerifiedHypertreeMessage {
 /// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
 /// let _leak = chain.bottom_n; // ERROR[E0616]: field `bottom_n` is private
 /// ```
+///
+/// ⚠ **Fencing two of the six fields was not fencing the struct**, and the one left unfenced
+/// longest is the worst: `next_subtree` is the rotation's seed index, so a single write
+/// (`chain.next_subtree = 0`) makes the next rotation regenerate a subtree already spent, and
+/// its one-time keys sign a second message. Worse, the crate's own reuse evidence is blind to
+/// that instance — `the_persistence_boundary_…` proves reuse by asserting two witnesses carry
+/// the SAME `(subtree_index, leaf_index)` pair, and here the certifying top key has advanced,
+/// so the pairs DIFFER while the bottom key is identical. Every field is fenced now:
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = chain.next_subtree; // ERROR[E0616]: field `next_subtree` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = &chain.top; // ERROR[E0616]: field `top` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = &chain.bottom; // ERROR[E0616]: field `bottom` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = &chain.cert; // ERROR[E0616]: field `cert` is private
+/// ```
+///
+/// (That last one is doubly protected: `SubtreeCert` is itself a private type, so `pub cert`
+/// is an EQUIVALENT mutant — the fence keeps rejecting, but with a private-type error rather
+/// than `E0616`. Recorded so a mutation run is not misread, and because on stable the fence's
+/// code is not enforced, so nothing else would notice the reason changing.)
 pub struct HyperKeychain {
     /// The **instance** seed (`instance_seed(master, top_n, bottom_n)`), never the caller's
     /// master seed — that distinction IS the 0.4.0 fix, and the rotation below re-derives
@@ -556,10 +607,15 @@ impl HyperPublicKey {
 ///
 /// ⚠ **Large parameters do not return `None`; they die.** Each unit of either parameter is a
 /// Lamport keychain, so allocation is linear in `top_n + bottom_n`. Measured on this
-/// toolchain a `(SigningKey, VerifyingKey)` is **2048 bytes**, which puts the two failure
-/// modes far apart: allocation *failure* — an uncatchable **abort** — begins once `n · 2048`
-/// exceeds available memory, near `2^25` on a 64 GiB machine, while the `capacity overflow`
-/// **panic** needs `n · 2048 > isize::MAX`, i.e. `n` above `2^52`. There is no upper guard and this is a resource limit, not
+/// toolchain a `(SigningKey, VerifyingKey)` is **2048 bytes**, but that undercounts the peak:
+/// a keychain entry also carries a `Proof` (inline, plus its siblings on the heap), and
+/// keygen holds the pairs, the leaf bytes and the Merkle layers live at once. Measured peak
+/// RSS is about **3× the 2048-byte model** (n = 2¹⁶ → 380 MB against a modelled 134 MB;
+/// n = 2¹⁸ → 1.65 GB against 537 MB), so allocation *failure* — an uncatchable **abort** —
+/// begins nearer `2^23.4` than `2^25` on a 64 GiB machine. The `capacity overflow` **panic**
+/// leg is unaffected, since the first `collect` really is over 2048-byte elements: it needs
+/// `n` above `2^52`. The qualitative point is what matters and survives either figure: the
+/// two failure modes are far apart, and neither returns `None`. There is no upper guard and this is a resource limit, not
 /// a checked bound — noted because the module doc invites large parameters ("an enormous
 /// *virtual* keyspace") and because one test depends on the `usize::MAX` panic.
 /// [`HyperPublicKey::verify`], the attacker-facing entry point, is by contrast total: every
@@ -604,7 +660,11 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 /// Enumerating subtree indices cannot close this family: a test that reaches index *N* is
 /// blind to any `TOP_DOMAIN` above it, and chasing that with more parameters is unbounded. The
 /// wall is the garden's own vocabulary instead — leaf 6's primitive, turned on this leaf's own
-/// constant — so a colliding value fails to *compile*, for every index at once. It bounds the
+/// constant — so a colliding value fails to *compile*, for every **reachable** index at once:
+/// the wall excludes collisions with indices below `2^32`, and beyond that the argument is
+/// unreachability, since each unit of `top_n` is a Lamport keychain. (Stating the bound
+/// without its domain is the defect `pack_params` records two items down; it applies here.)
+/// It bounds the
 /// value from BELOW only; drift among the admissible values is caught by the published-key
 /// literal in the test module, which also pins this constant exactly.
 ///

@@ -1045,6 +1045,31 @@ any push, so nothing false was ever public.
             - Cargo.toml's description named no residue while lib.rs treats that omission as
               fix-worthy and both parents name theirs; now carries the width, the demo seed and
               the missing doorway.
+      - [x] **Round 13 — NOT CLEAN: 0 CRITICAL, 4 MODERATE. TWO more real SEAL GAPS, both
+            direct continuations of round 11's finding that I fixed INCOMPLETELY.**
+            - 🔓 I fenced 2 of `HyperKeychain`'s 6 fields and called the struct checked. The
+              worst one was unfenced: `next_subtree` is the rotation's seed index, so
+              `chain.next_subtree = 0` makes the next rotation regenerate a spent subtree and
+              its one-time keys sign a second message — total reuse from ONE field write. And
+              **the crate's own reuse evidence is blind to that instance**: the persistence
+              test proves reuse by asserting two witnesses share a `(subtree_index, leaf_index)`
+              pair, but here the certifying top key has advanced, so the pairs DIFFER while the
+              bottom key is identical. All six fenced now (four watched dying; `cert` is a
+              genuine EQUIVALENT mutant — its type is private too, so the fence rejects for a
+              second reason — recorded rather than claimed as a kill).
+            - 🔓 `HyperPublicKey.top` had no check at all, and publishing it **silently builds
+              the verifier-side doorway round 12 documented as "recorded here, not built"**, and
+              un-equivalences the mutant `minted_by_is_false_for_a_foreign_key` records as
+              equivalent through the public API — exactly as that note said it would. Fenced.
+            - My resource model undercounted: 2048 B/key omits the `Proof` and keygen's
+              transients. Measured peak RSS is ~3× the model (2¹⁶ → 380 MB vs 134 MB; 2¹⁸ →
+              1.65 GB vs 537 MB), so the abort threshold is ~2^23.4, not 2^25. **Fifth number
+              this arc I stated without measuring.**
+            - "a colliding value fails to compile, for every index at once" is an unqualified
+              universal over a `u64` index space; the wall only excludes indices below 2^32 and
+              beyond that the argument is unreachability — the same "property without its
+              domain" defect `pack_params` records two items down. Qualified.
+            Doctests 10 → 15.
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue
