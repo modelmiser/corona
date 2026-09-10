@@ -811,6 +811,29 @@ any push, so nothing false was ever public.
             removal mutants survived — one of them panicking on `(usize::MAX, 0)` instead of
             returning None. The mirror mutant IS equivalent and is now recorded as such.
             Seven mutants watched dying.
+      - [x] **Run 3 — NOT CLEAN: 0 CRITICAL, 6 MODERATE.** Severity dropping; every finding real.
+            The best one came with a better remedy than I would have written: `TOP_DOMAIN` was
+            pinned only up to whatever subtree index the test loop reached (values 3, 5, 6, 7,
+            100 each survived a suite whose largest index was one less), and chasing that with
+            more parameters is unbounded. Closed instead with a **const-eval wall** —
+            `const _: () = assert!(TOP_DOMAIN > u32::MAX as u64)` — so a colliding value fails
+            to COMPILE for every index at once. The garden's own E0080 primitive (leaf 6),
+            turned on this leaf's own constant. Watched firing `error[E0080]` on two mutants.
+            Also: the first subtree's seed index was pinned only against 1 and 2 → all-pairs
+            over an 8-subtree chain; the anchor-encoding test used the literal `[7u8; 32]`, so
+            its assertion was invariant under every PERMUTATION of the root's bytes and both
+            `reverse` and `rotate_left` survived the one test that claims to pin the encoding
+            → non-uniform literal; the "28 of 64 bottom positions" figure is unreproducible
+            from its own stated setup (it needs the two instances to sign DIFFERENT messages,
+            a clause TODO.md had and lib.rs dropped) → restored; the TOY banner omitted the
+            64-bit width that the honest limits call the surviving weakest link, so a reader
+            of only that banner was not told the scheme is forgeable at ~2³² → restored, as the
+            parent leaf has it; and `VerifiedMssMessage::minted_by` was listed as reused API
+            and is never called → removed, with the note that this crate re-implements that
+            check one level up. Six mutants watched dying, plus one that first SURVIVED: my
+            new top-seed test asserted the arithmetic rather than the wiring, so deleting the
+            `subseed` call in `generate_hypertree` passed it — now pinned by rebuilding the
+            top layer independently and comparing published keys.
 
 ## Now (leaf 15 — crdt-types)
 

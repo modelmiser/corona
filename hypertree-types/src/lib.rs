@@ -21,8 +21,10 @@
 //! Leaf 7 needed two small additive rungs on its components; leaf 8 needed none
 //! because the surface was already complete. This leaf, like leaf 8, needs **none**:
 //! it builds entirely on `mss-types`' public API (`generate`, `MssKeychain::sign_next`,
-//! `MssPublicKey::{adopt, verify}`, `VerifiedMssMessage::{key_index, minted_by, …}`),
-//! reused verbatim. The nesting demands no private access and no new vocabulary — so
+//! `MssPublicKey::{adopt, verify}`, `VerifiedMssMessage::{key_index, digest}`), reused
+//! verbatim. (`VerifiedMssMessage::minted_by` was listed here until 2026-09-09 and is never
+//! called — every `minted_by` in this file is *this* crate's own method. The composition
+//! re-implements that check one level up rather than reusing it.) The nesting demands no private access and no new vocabulary — so
 //! composition is not merely *repeatable* (leaf 8) but *self-nesting*.
 //!
 //! **(2) Composing *two* stateful leaves needs *coordinated* linear state — the new
@@ -86,7 +88,11 @@
 //!   messages: the Lamport catastrophe, reachable from published signatures alone with no
 //!   seed, no persistence and no `unsafe`. Measured before the fix at `seed = 0xC0FFEE`:
 //!   `bottom_n` 2 vs 4 published an **identical** public key and exposed both preimages at
-//!   30 of 64 top positions and 28 of 64 bottom positions; `top_n` 2 vs 3 published
+//!   30 of 64 top positions — and, *when the two instances signed different messages*, at 28
+//!   of 64 bottom positions. (That clause is load-bearing and an earlier draft of this bullet
+//!   dropped it: changing `bottom_n` changes what the TOP key signs, since the anchor embeds
+//!   the capacity, but the bottom key signs whatever the caller passes, so the parameter
+//!   change alone exposes none of the bottom.) `top_n` 2 vs 3 published
 //!   *different* public keys that nonetheless shared their slot-0 keys at both layers. A
 //!   handful of re-parameterisations completes a key and mints arbitrary
 //!   [`VerifiedHypertreeMessage`]s under an honest long-term key.
@@ -141,9 +147,13 @@
 //!
 //! ## ⚠ TOY — not production crypto
 //!
-//! A type-discipline demonstration. Both hash layers are now graduated SHA-256;
-//! what remains illustrative is the composition — deterministic seeds, 2 fixed layers,
-//! no state persistence protocol. Not for signing anything real.
+//! A type-discipline demonstration. Both hash layers are now graduated SHA-256, which does
+//! **not** mean no cryptographic weakness survives: what remains illustrative is the
+//! inherited **64-bit Lamport digest width**, forgeable at ~2³² for a correctly-used key,
+//! plus the composition — deterministic seeds, 2 fixed layers, no state persistence
+//! protocol. Not for signing anything real. (The width was missing from this list until
+//! 2026-09-09 while the honest limits named it as the surviving weakest link, so a reader of
+//! only this banner — the section written for exactly that reader — was not told.)
 //!
 //! ## Intended use
 //!
@@ -462,6 +472,19 @@ pub fn generate_hypertree(
 /// Domain tag for the top-layer seed, kept out of the `0..2^32` subtree-index range.
 const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 
+/// The separation above, as a **const-eval wall** (E0080) rather than a test.
+///
+/// A test can only pin `TOP_DOMAIN` against the subtree indices it happens to reach: the
+/// review found values 3, 5, 6, 7 and 100 each surviving a suite whose largest index was
+/// one less. Chasing that with more parameters is unbounded, and the wall is the garden's
+/// own vocabulary — leaf 6's primitive, turned on this leaf's own constant. A colliding
+/// value now fails to *compile*, for every subtree index at once.
+const _: () = assert!(
+    TOP_DOMAIN > u32::MAX as u64,
+    "TOP_DOMAIN must sit above every subtree index, or one Lamport key signs both a \
+     subtree anchor and a message"
+);
+
 /// **The instance seed — the 2026-09-09 fix.** Every parameter that can change what a
 /// one-time key signs is folded in here, and every key in the hypertree is derived from the
 /// result, so two hypertrees differing in *any* parameter share no key material at either
@@ -738,7 +761,11 @@ mod tests {
         // bytes; truncating either half survives them (`root[..1]`, `capacity as u8`) while
         // producing real forgeries. Pin the encoding itself: 32 root bytes then 8 capacity
         // bytes, little-endian, nothing dropped.
-        let root = [7u8; 32];
+        // NON-UNIFORM on purpose: with `[7u8; 32]` the assertion below is invariant under
+        // every permutation of the root's bytes, so `v.reverse()` and `v.rotate_left(1)`
+        // both survived it (review round 3) — in the one test that claims to pin the
+        // encoding, and for the crate's only `Vec`-returning function.
+        let root: [u8; 32] = core::array::from_fn(|i| (i as u8).wrapping_mul(7).wrapping_add(3));
         let bytes = anchor_bytes(root, 0x0102_0304_0506_0708);
         assert_eq!(bytes.len(), 40, "the whole root and the whole capacity");
         assert_eq!(&bytes[..32], &root[..]);
@@ -946,6 +973,35 @@ mod tests {
     }
 
     #[test]
+    fn the_top_seed_is_outside_the_subtree_seed_family() {
+        // `TOP_DOMAIN`'s value is walled at compile time, but the *structure* — that the top
+        // seed is derived through `subseed` at all — is not. Deleting that call makes the top
+        // layer use the instance seed raw, which no parameter sweep catches (review round 3).
+        let inst = instance_seed(0xC0FFEE, 4, 2);
+        let top = subseed(inst, TOP_DOMAIN);
+        assert_ne!(top, inst, "the top seed is not the instance seed itself");
+        for j in 0..128u64 {
+            assert_ne!(
+                top,
+                subseed(inst, j),
+                "the top seed collides with subtree {j}"
+            );
+        }
+        // The above is arithmetic; this observes the WIRING. Rebuild the top layer
+        // independently and require the published key to match — deleting the `subseed` call
+        // in `generate_hypertree` leaves the layers non-colliding by accident rather than by
+        // construction, and survived every arithmetic assertion above.
+        let (_, expected_top) = generate(top, 4).expect("top_n >= 1");
+        let (_chain, pk) = generate_hypertree(0xC0FFEE, 4, 2).unwrap();
+        assert_eq!(
+            pk.root_hash(),
+            expected_top.root_hash(),
+            "the top layer must be derived through TOP_DOMAIN, not from the instance seed"
+        );
+        assert_eq!(pk.subtrees(), expected_top.capacity());
+    }
+
+    #[test]
     fn every_subtree_uses_a_distinct_seed() {
         // The subtree-seed indexing, pinned: three mutants of the rotation arithmetic each
         // make two subtrees share a seed, which is one-time-key reuse — finding 3's own
@@ -962,6 +1018,17 @@ mod tests {
         assert_ne!(roots[0], roots[1]);
         assert_ne!(roots[1], roots[2]);
         assert_ne!(roots[0], roots[2]);
+        // Three subtrees pin the first subtree's seed index only against 1 and 2; constants
+        // >= 3 survived (review round 3). Check all pairs over a longer chain.
+        let deep: Vec<_> = sign_n(0xC0FFEE, 8, 1, 8)
+            .into_iter()
+            .map(|s| s.bottom_root)
+            .collect();
+        for i in 0..deep.len() {
+            for j in (i + 1)..deep.len() {
+                assert_ne!(deep[i], deep[j], "subtrees {i} and {j} share a seed");
+            }
+        }
     }
 
     #[test]
