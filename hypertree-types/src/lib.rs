@@ -77,39 +77,36 @@
 //!
 //! ## Honest limits
 //!
-//! - **⛔ BROKEN AS SHIPPED: the long-term public key does not commit to `bottom_n`, and
-//!   re-parameterising leaks the top key.** [`HyperPublicKey`] is built from the top
-//!   keychain alone, so `generate_hypertree(seed, top_n, b)` yields the **same** public key
-//!   for every `b` — while each bottom subtree's root, and therefore the **anchor bytes the
-//!   top one-time key signs**, is a function of `b`. Publish two hypertrees from one seed at
-//!   different bottom capacities and top key 0 has signed two different messages: at the
-//!   Lamport layer that is the one-time-key catastrophe. Measured on `seed = 0xC0FFEE,
-//!   top_n = 2`: `b = 2` and `b = 4` give an identical public key, and their two top
-//!   signatures already reveal **both** preimages at 30 of 64 digest positions; a handful of
-//!   further re-parameterisations complete the key and mint arbitrary
-//!   [`VerifiedHypertreeMessage`]s under the honest long-term key — no seed, no persistence,
-//!   no `unsafe`, wire data only. Pinned by
-//!   `reparameterising_the_bottom_reuses_the_top_one_time_key`.
+//! - **⚠ FIXED 2026-09-09 (`0.2.0` → `0.3.0`, every key and signature changes): key material
+//!   was shared across parameterisations.** Both layers derived from `seed` alone, and
+//!   `mss_types::generate` derives per-key seeds independently of capacity, so slot *i* of
+//!   the top layer and of every subtree was **the same Lamport key** in every
+//!   parameterisation — while the anchor a top key signs depends on `bottom_n`, and the
+//!   message a bottom key signs is whatever the caller passes. One one-time key, two
+//!   messages: the Lamport catastrophe, reachable from published signatures alone with no
+//!   seed, no persistence and no `unsafe`. Measured before the fix at `seed = 0xC0FFEE`:
+//!   `bottom_n` 2 vs 4 published an **identical** public key and exposed both preimages at
+//!   30 of 64 top positions and 28 of 64 bottom positions; `top_n` 2 vs 3 published
+//!   *different* public keys that nonetheless shared their slot-0 keys at both layers. A
+//!   handful of re-parameterisations completes a key and mints arbitrary
+//!   [`VerifiedHypertreeMessage`]s under an honest long-term key.
 //!
-//!   **This is a defect, not a residue**, and naming its fix correctly matters. Binding
-//!   `bottom_n` into the published anchor is **not** sufficient: it would only make the two
-//!   identities distinguishable, while the *same* top keychain still signs both anchor sets,
-//!   so the preimages still leak and the recovered key still forges under either identity.
-//!   The defect is that **the top keychain's seed does not depend on `bottom_n` although
-//!   what it signs does** — `subseed(seed, TOP_DOMAIN)` ignores it — so the fix is to derive
-//!   the top seed from every parameter that reaches the signed bytes (which also makes the
-//!   public keys differ, for free). The general rule the leaf learned the hard way: *any
-//!   parameter that changes what a one-time key signs must change that key.* It is *not*
-//!   covered by any
-//!   disclosure below: the seed limit is about a retained seed re-minting an *equivalent*
-//!   hypertree (here the attacker needs no seed and the instances are **not** equivalent),
-//!   and finding 3's persistence boundary is about identical parameters. It also **voids the
-//!   bonus finding** for these instances: the subtree anchor is only "authenticated under
-//!   the long-term key" while that key authenticates one anchor per top slot, which
-//!   re-parameterisation destroys. Found by the graduation review, 2026-09-09. Until it is
-//!   fixed, **do not treat one `HyperPublicKey` as pinning a configuration**, and do not
-//!   publish two hypertrees from one seed. The leaf is **not graduated**; criterion #3 fails
-//!   while a total break is undisclosed, and this bullet is that disclosure.
+//!   Fixed by `instance_seed` (private): every parameter is folded into one seed and every
+//!   key hangs off that, so two hypertrees differing in any parameter share nothing. Pinned
+//!   by `distinct_parameterisations_share_no_key_material` and
+//!   `transposed_parameters_are_distinct_instances`. **The naming of the fix is itself the
+//!   lesson:** binding the parameters into the published *anchor* would only have made the
+//!   identities distinguishable while the same keys kept signing. *Any parameter that
+//!   changes what a one-time key signs must change that key.*
+//!
+//!   This was a **defect, not a residue** — fixable inside the vocabulary, and covered by no
+//!   disclosure here: the seed limit below is about a retained seed re-minting an
+//!   *equivalent* hypertree, where the attacker needs no seed and the instances were not
+//!   equivalent; finding 3's persistence boundary is about identical parameters. While it
+//!   stood it also **voided the bonus finding**, since a subtree anchor is only
+//!   "authenticated under the long-term key" while that key authenticates one anchor per top
+//!   slot. Found by the graduation review, 2026-09-09, and the reason this leaf's first
+//!   graduation attempt was reverted the same day.
 //!
 //! - **Persistence is the real boundary (see finding 3).** The linear type prevents
 //!   index reuse *within one running program*. It cannot prevent state reuse across
@@ -432,14 +429,17 @@ pub fn generate_hypertree(
     if top_n == 0 || bottom_n == 0 {
         return None;
     }
+    // EVERY key in this hypertree hangs off the instance seed, never off `seed` directly:
+    // the parameters reach what the one-time keys sign, so they must reach the keys.
+    let inst = instance_seed(seed, top_n, bottom_n);
     // Top layer, domain-separated from the subtree seeds.
-    let (top, top_pk) = generate(subseed(seed, TOP_DOMAIN), top_n)?;
+    let (top, top_pk) = generate(subseed(inst, TOP_DOMAIN), top_n)?;
     // First subtree (index 0), certified by top key 0.
-    let (bottom, bottom_pk) = generate(subseed(seed, 0), bottom_n)?;
+    let (bottom, bottom_pk) = generate(subseed(inst, 0), bottom_n)?;
     let (top_sig, top_rest) =
         top.sign_next(&anchor_bytes(bottom_pk.root_hash(), bottom_pk.capacity()));
     let chain = HyperKeychain {
-        seed,
+        seed: inst,
         top: top_rest,
         bottom,
         cert: SubtreeCert {
@@ -455,6 +455,30 @@ pub fn generate_hypertree(
 
 /// Domain tag for the top-layer seed, kept out of the `0..2^32` subtree-index range.
 const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
+
+/// **The instance seed — the 2026-09-09 fix.** Every parameter that can change what a
+/// one-time key signs is folded in here, and every key in the hypertree is derived from the
+/// result, so two hypertrees differing in *any* parameter share no key material at either
+/// layer.
+///
+/// Before this existed, `generate_hypertree` derived both layers from `seed` alone. Since
+/// `mss_types::generate` derives its per-key seeds independently of the keychain's
+/// capacity, slot *i* of the top layer and of every subtree was **the same Lamport key**
+/// across every parameterisation — while the anchor a top key signs is a function of
+/// `bottom_n`, and the message a bottom key signs is whatever the caller passes. One
+/// one-time key, two messages, at both layers and along both axes: total key recovery from
+/// published signatures alone. See the honest limits for the measured figures.
+///
+/// The rule the leaf learned: **any parameter that changes what a one-time key signs must
+/// change that key.** Binding the parameters into the published anchor instead would only
+/// have made the identities distinguishable while the same keys kept signing.
+///
+/// Injective in `(top_n, bottom_n)`: [`subseed`] is a bijection in each argument (an
+/// injective offset, then splitmix64's bijective finalizer), so distinct parameter pairs —
+/// a transposition like `(2, 4)` against `(4, 2)` included — give distinct instances.
+fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
+    subseed(subseed(seed, top_n as u64), bottom_n as u64)
+}
 
 /// Canonical bytes of a subtree public key's `(root, capacity)` anchor — what the top
 /// layer signs. Both signer and verifier derive it identically.
@@ -597,37 +621,44 @@ mod tests {
     }
 
     #[test]
-    fn reparameterising_the_bottom_reuses_the_top_one_time_key() {
-        // ⛔ THE BREAK (review 2026-09-09). One seed, one top capacity, two bottom
-        // capacities: the long-term public key is IDENTICAL because it commits only to the
-        // top layer, yet top key 0 signs a different anchor in each — the Lamport one-time
-        // catastrophe, reachable from wire data alone.
-        let (c2, pk2) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
-        let (c4, pk4) = generate_hypertree(0xC0FFEE, 2, 4).unwrap();
-        assert_eq!(
-            pk2, pk4,
-            "the public key does not commit to bottom_n — the defect"
-        );
-        let (s2, _) = c2.sign_next(b"m");
-        let (s4, _) = c4.sign_next(b"m");
-        assert_eq!(s2.top_sig.vk, s4.top_sig.vk, "the SAME one-time top key");
-        assert_ne!(
-            (s2.bottom_root, s2.bottom_capacity),
-            (s4.bottom_root, s4.bottom_capacity),
-            "signing two different anchors"
-        );
-        // Both sides of a digest bit are now public wherever the two anchors' digests
-        // differ: that is what a one-time key must never expose.
-        let leaked = (0..64)
-            .filter(|&i| s2.top_sig.ots.revealed[i] != s4.top_sig.ots.revealed[i])
-            .count();
-        assert!(
-            leaked > 0,
-            "one-time key material leaked at {leaked} positions"
-        );
-        // And each instance's signatures verify under the other's public key, because it is
-        // the same key — so the two are not distinguishable identities at all.
-        assert!(pk4.verify(b"m", &s2).is_some() && pk2.verify(b"m", &s4).is_some());
+    fn distinct_parameterisations_share_no_key_material() {
+        // Regression for the 2026-09-09 break. Before `instance_seed`, hypertrees from one
+        // seed shared one-time keys at BOTH layers along BOTH axes, which is total key
+        // recovery from published signatures. Every pair below differs in some parameter, so
+        // every pair must differ in public key and in both slot-0 one-time keys.
+        let params = [(2usize, 2usize), (2, 4), (3, 2), (4, 2)];
+        let mut seen = Vec::new();
+        for (t, b) in params {
+            let (chain, pk) = generate_hypertree(0xC0FFEE, t, b).unwrap();
+            let (sig, _) = chain.sign_next(b"m");
+            seen.push((pk, sig));
+        }
+        for i in 0..seen.len() {
+            for j in (i + 1)..seen.len() {
+                assert_ne!(
+                    seen[i].0, seen[j].0,
+                    "public keys must distinguish parameters"
+                );
+                assert_ne!(
+                    seen[i].1.top_sig.vk, seen[j].1.top_sig.vk,
+                    "top slot-0 one-time key must not be shared across parameters"
+                );
+                assert_ne!(
+                    seen[i].1.bottom_sig.vk, seen[j].1.bottom_sig.vk,
+                    "bottom slot-0 one-time key must not be shared across parameters"
+                );
+                assert!(seen[j].0.verify(b"m", &seen[i].1).is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn transposed_parameters_are_distinct_instances() {
+        // `instance_seed` folds the parameters in order, so a transposition is not a
+        // collision — the cheapest way for a parameter-mixing scheme to be wrong.
+        let (_c1, a) = generate_hypertree(7, 2, 4).unwrap();
+        let (_c2, b) = generate_hypertree(7, 4, 2).unwrap();
+        assert_ne!(a, b);
     }
 
     #[test]

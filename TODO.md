@@ -708,8 +708,8 @@ work (complete tasks, add children, keep siblings).
 
 ## ⛔ Leaf 14 GRADUATION — ATTEMPTED 2026-09-09, REVERTED THE SAME DAY (a real break, undisclosed)
 
-**Outcome: `hypertree-types` is NOT graduated, and the attempt is why the break is known.**
-Criterion #3 fails while a total forgery is undisclosed. The wire (`Sol.Lib.Hypertree`, the
+**Outcome: the graduation attempt is why a total forgery was found, and it is now FIXED.**
+Graduation itself remains open pending the re-review. The wire (`Sol.Lib.Hypertree`, the
 19th) stands and is pushed; the graduation commit `b098449` was reverted at `90236a8` before
 any push, so nothing false was ever public.
 
@@ -751,10 +751,18 @@ any push, so nothing false was ever public.
       link 2 rejected it unaided and the test was vacuous — the real pin needs 5→8);
       the root half (a cross-subtree splice); and the subtree-seed indexing (three mutants
       each causing one-time-key reuse, finding 3's own catastrophe, all surviving).
-- [ ] **DECISION REQUIRED — fix or leave disclosed.** The one-line fix is to derive the top
-      seed from `bottom_n` as well. It changes a public crate's key derivation, so every
-      existing public key and signature changes: out of the graduation arc's scope.
-- [ ] After a fix: re-run the review (cap 4 runs) and only then reconsider graduation.
+- [x] **FIXED 2026-09-09 (owner: "fix it and re-review"), `0.2.0` → `0.3.0`.** And the break
+      was WIDER than the review found — checked before patching, which changed the fix:
+      - the BOTTOM layer leaks too (subtree slot-0 key shared across `bottom_n`; two
+        instances signing different messages exposed both preimages at 28 of 64 positions);
+      - the `top_n` axis leaks at BOTH layers, under *different* public keys, which is the
+        inherited `mss` cross-capacity channel one level up.
+      So the fix is not "put `bottom_n` in the top seed" but an **instance seed**: fold every
+      parameter into one seed and hang every key off it. Two fix-reverting mutants watched
+      dying (`inst = seed`; and folding both parameters through one `subseed`, which collides
+      on a transposition). Pinned by `distinct_parameterisations_share_no_key_material` and
+      `transposed_parameters_are_distinct_instances`.
+- [ ] Re-review after the fix (cap 4 runs), then reconsider graduation.
 
 ## Now (leaf 15 — crdt-types)
 
