@@ -973,6 +973,33 @@ any push, so nothing false was ever public.
         wall); everything since is test strength or documentation, and this round it was one
         unbounded family plus my own prose. That is the garden's own converge-then-stop
         condition in substance if not in the gate's letter.
+      - [x] **Round 10 — NOT CLEAN: 2 CRITICAL + 4 MODERATE. MY CONVERGENCE READ ABOVE WAS
+            WRONG**, and wrong in the self-flattering direction: I predicted the round would be
+            the unbounded family plus prose, and it produced two criticals, one of them a FALSE
+            SECURITY CLEARANCE I had written and one a REGRESSION I introduced in round 9.
+            - ⛔ CRITICAL: "at reachable parameters the old fold has no known collision" is
+              FALSE. Verified the review's witness by hand: the 0.3.0 chain maps
+              `(397752, 472914)` and `(839514, 1)` to one instance seed — 1.7 GiB of key
+              material, inside the envelope the crate itself calls reachable, found by sorting
+              one linear form. And my "~2⁴²" was a SWEEP-WIDTH ARTIFACT: the expected minimum
+              gap is ≈2⁶⁵/T², so it measured how far I looked, not the fold. Third time this
+              one paragraph was wrong, in both directions, each time flattering the correction.
+              Fixed by DELETION ([[feedback_fix_is_new_content]]): the crate now makes NO
+              exploitability claim about the retired fold, states the exhibited collision, and
+              says the reasons to replace it never needed such an estimate.
+            - ⛔ CRITICAL: round 9's narration strip DELETED the comment correcting "3x3" to
+              "4x4" and left the stale prescription standing, so the comment named a remedy
+              vacuous against a mutant it names in the same breath. My own regression.
+            - `anchor_bytes`: `v.sort()` survived, because the round-3 "non-uniform" ramp is
+              strictly INCREASING and so a fixed point of sort — the one order-canonicalising
+              mutant a ramp cannot catch. One byte-swap kills sort, reverse and rotate.
+            - The rotation's seed index was bounded at 7 (the all-pairs sweep stops at 8 chains
+              and the deep=40 loop never read a root) → `% 8` gave real key reuse at top_n = 9;
+              and `HyperPublicKey::subtrees()` was bounded at 4 while its four siblings reach
+              39. Both now read inside the existing deep loop, at no keygen cost.
+            Six mutants watched dying. **Lesson for the convergence read: a flat finding count
+            with changing character is not evidence of convergence, and my prediction that the
+            next round would be trivial was itself the error-sign tell.**
 
 ## Now (leaf 15 — crdt-types)
 

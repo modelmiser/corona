@@ -126,12 +126,14 @@
 //!   `0.4.0`, which packs the two parameters into disjoint halves of one word before mixing,
 //!   so the packing determines the pair for every parameter small enough for keygen to
 //!   terminate. ⚠ This sentence said until 2026-09-09 that a signer could construct the old
-//!   fold's collisions "by solving one linear relation"; that overstated it, and the
-//!   retraction lived only on `instance_seed` while the module page — the public-facing
-//!   surface — kept the withdrawn version. At *reachable* parameters the old fold has no
-//!   known collision: exhaustive over `[1, 1200]²`, where the smallest usable colliding
-//!   partner is ~2⁴².
-//!   The honest reasons to replace it are that the argument was invalid and the property was
+//!   fold's collisions "by solving one linear relation". **No claim is made here about how
+//!   cheaply the retired fold could be collided.** Three successive attempts at one were
+//!   wrong in both directions — first overstating the danger, then clearing it on a sweep of
+//!   `[1, 1200]²` whose minimum gap is a function of the sweep width (`≈ 2⁶⁵/T²`) rather than
+//!   a property of the fold. It is in fact collidable well inside the reachable envelope: the
+//!   graduation review exhibited `(397752, 472914)` against `(839514, 1)`, about 1.7 GiB of
+//!   key material, found by sorting one linear form. The reasons to replace it never needed
+//!   an exploitability estimate: the injectivity argument was invalid and the property was
 //!   stated without its domain.
 //!
 //!   This was a **defect, not a residue** — fixable inside the vocabulary, and covered by no
@@ -840,7 +842,13 @@ mod tests {
         // every permutation of the root's bytes, so `v.reverse()` and `v.rotate_left(1)`
         // both survived it — in the one test that claims to pin the
         // encoding, and for the crate's only `Vec`-returning function.
-        let root: [u8; 32] = core::array::from_fn(|i| (i as u8).wrapping_mul(7).wrapping_add(3));
+        // NON-MONOTONE on purpose. A uniform literal is invariant under permutation; a
+        // strictly INCREASING ramp is invariant under `sort()` — the one order-canonicalising
+        // mutant a ramp cannot catch, and it collapses two distinct roots onto one signed
+        // anchor. Swapping two entries kills sort, reverse, rotate and swap at once.
+        let mut root: [u8; 32] =
+            core::array::from_fn(|i| (i as u8).wrapping_mul(7).wrapping_add(3));
+        root.swap(1, 9);
         let bytes = anchor_bytes(root, 0x0102_0304_0506_0708);
         assert_eq!(bytes.len(), 40, "the whole root and the whole capacity");
         assert_eq!(&bytes[..32], &root[..]);
@@ -1164,7 +1172,8 @@ mod tests {
         // while agreeing with the truth on {0, 1}. That is not cosmetic: the persistence
         // finding proves key reuse by asserting two witnesses carry the SAME pair, and under
         // any of those mutants two genuinely distinct keys report the same pair, which makes
-        // the crate's own reuse evidence unsound. Enumerate the whole 3x3.
+        // the crate's own reuse evidence unsound. Enumerate a square larger than any modulus
+        // named above — 3x3 would not do, since on {0,1,2} the mutant `% 3` is the identity.
         // ⚠ THIS FAMILY IS UNBOUNDED, and enumerating further is a bound, not a proof. For
         // any test that observes indices `0..N`, the mutant `% (N+1)` (or `.min(N)`) agrees
         // with the truth everywhere the test looks. Successive review rounds duly found
@@ -1193,6 +1202,9 @@ mod tests {
         let (mut chain, pk) = generate_hypertree(0xC0FFEE, deep, 1)
             .map(|(c, p)| (Some(c), p))
             .unwrap();
+        // The public accessor belongs to the same family and was pinned only to 4.
+        assert_eq!(pk.subtrees(), deep);
+        let mut roots = Vec::new();
         for i in 0..deep {
             let c = chain.take().expect("capacity remains");
             assert_eq!(c.subtree_remaining(), 1);
@@ -1208,6 +1220,15 @@ mod tests {
                 v.minted_by(&pk),
                 "the witness records the top capacity, at {deep}"
             );
+            roots.push(sig.bottom_root);
+        }
+        // The rotation's SEED index is the same family and was bounded at 7, because the
+        // all-pairs root sweep stops at 8 chains and this loop never read a root. A `% 8`
+        // there makes subtree 8 re-derive subtree 0's whole keychain — actual key reuse.
+        for i in 0..roots.len() {
+            for j in (i + 1)..roots.len() {
+                assert_ne!(roots[i], roots[j], "subtrees {i} and {j} share a seed");
+            }
         }
         // The other axis, so a `leaf_index` modulus is caught too.
         let (chain, pk) = generate_hypertree(0xC0FFEE, 1, deep).unwrap();
