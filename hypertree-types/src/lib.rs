@@ -145,6 +145,27 @@
 //!   slot. Found by the graduation review, 2026-09-09, and the reason this leaf's first
 //!   graduation attempt was reverted the same day.
 //!
+//! - **No verifier-side doorway — and this is finding (1)'s own thesis coming true.**
+//!   [`HyperPublicKey`]'s only public constructor is [`generate_hypertree`], which also hands
+//!   back the signing keychain. So across a process boundary verify-capability is inseparable
+//!   from sign-capability: a party holding exactly what a hypertree *publishes* — the root and
+//!   the subtree count, both of which this type exposes — cannot enter the API at all, and the
+//!   type refuses to accept back the two values it publishes. `generate_hypertree`'s note that
+//!   [`HyperPublicKey::verify`] is "the attacker-facing entry point" is true within one
+//!   process and not across a wire.
+//!
+//!   That is **verbatim the gap leaf 7 names as a headline and closes with
+//!   `MssPublicKey::adopt`** ("a wire-side verifier holding exactly what MSS publishes could
+//!   not enter the API at all"), re-created one level up — which is exactly what leaf 7's own
+//!   converged thesis predicts: *a composition inherits its components' obligations, not just
+//!   their guarantees*. The bonus finding above says this leaf **discharges** leaf 7's
+//!   caller-trusted anchor at the bottom; the honest completion is that the same residue
+//!   **reappears at the top**, because closing it needs a `HyperPublicKey::adopt(root_hash,
+//!   subtrees)` whose anchor would itself be caller-trusted. The residue does not vanish under
+//!   composition, it moves up a layer. Recorded here, **not built** — the same disposition
+//!   leaf 7 takes toward the `from_bytes` rung it names on leaf 5. Found by the graduation
+//!   review, 2026-09-10.
+//!
 //! - **Persistence is the real boundary (see finding 3).** The linear type prevents
 //!   index reuse *within one running program*. It cannot prevent state reuse across
 //!   serialization/restore, VM cloning, or crash-recovery — the failure mode that
@@ -580,13 +601,16 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 
 /// The separation above, as a **const-eval wall** (E0080) rather than a test.
 ///
-/// Tests pin `TOP_DOMAIN` only over the indices they enumerate — the suite checks 128
-/// arithmetically and reaches subtree 39 for real — so values above that range survived (the
-/// honest surviving witness is 200; 100 dies to the arithmetic loop). Chasing the rest with
-/// more parameters is unbounded, and the wall is the garden's own vocabulary: leaf 6's
-/// primitive, turned on this leaf's own constant. A colliding value now fails to *compile*,
-/// for every subtree index at once. It bounds the value from BELOW only — drift among the
-/// admissible values is caught instead by the published-key literal in the test module.
+/// Enumerating subtree indices cannot close this family: a test that reaches index *N* is
+/// blind to any `TOP_DOMAIN` above it, and chasing that with more parameters is unbounded. The
+/// wall is the garden's own vocabulary instead — leaf 6's primitive, turned on this leaf's own
+/// constant — so a colliding value fails to *compile*, for every index at once. It bounds the
+/// value from BELOW only; drift among the admissible values is caught by the published-key
+/// literal in the test module, which also pins this constant exactly.
+///
+/// ⚠ An earlier version of this paragraph named 200 as a surviving witness. It does not
+/// survive: the same commit that wrote that sentence added `assert_eq!(TOP_DOMAIN, …)`, so
+/// one commit asserted and denied the same fact, and 200 now dies twice over.
 const _: () = assert!(
     TOP_DOMAIN > u32::MAX as u64,
     "TOP_DOMAIN must sit above every subtree index, or one Lamport key signs both a \
@@ -1265,7 +1289,7 @@ mod tests {
         let (mut chain, pk) = generate_hypertree(0xC0FFEE, deep, 1)
             .map(|(c, p)| (Some(c), p))
             .unwrap();
-        // The public accessor belongs to the same family and was pinned only to 4.
+        // The public accessor belongs to the same family and was pinned only to 3.
         assert_eq!(pk.subtrees(), deep);
         let mut roots = Vec::new();
         for i in 0..deep {
