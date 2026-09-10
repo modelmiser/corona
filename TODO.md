@@ -1216,6 +1216,55 @@ any push, so nothing false was ever public.
             - 1 test added (37 unit + 15 doc, green). Two mutants watched dying, including one
               that checks the dual test is not a tautology.
 
+      - [x] **Round 18 — cross-vendor again, on the ROUND-17 CORRECTIONS. Every finding was in
+            prose or test strength; ZERO in the code. Second consecutive round where the fix
+            itself stood and the writing about it did not.**
+            - ⚠ **PROCESS BREACH, mine, disclosed:** the first launch of this round ran with the
+              shell cwd at `~/Claude/github/sol` — **the PRIVATE repo** — because `cd` does not
+              persist between Bash calls. `cursor-agent` reviews whatever repo it is standing
+              in, so sol's tree shape (and plausibly `Sol/Lib/Hypertree.lean`) went to two
+              third-party vendors. Re-run correctly from corona. Memory written:
+              `feedback_cursor_agent_inherits_cwd` — put the `cd` in the SAME command and
+              verify the remote before sending.
+            - ⛔ **My dual-inversion test passed for the WRONG REASON.** Grok: stub `layer_seed`
+              to a constant and `target` becomes that constant, so every `j` "hits", `solved`
+              reaches 1999, and the test reports success while measuring nothing. **Verified by
+              mutation — it did pass.** Fixed with a specificity guard (neighbouring indices
+              must miss); the constant mutant now dies.
+            - ⛔ **~2⁶⁴/`top_n` is not the cheapest chosen-victim collision either.**
+              `instance_seed` is still plain `subseed`, no feed-forward, so under the same
+              premise a second master copies the WHOLE instance in one step:
+              `mₐ = m_v + (pack_v − packₐ)·G`. **O(1), verified.** My round-17 correction
+              replaced one wrong cost with another.
+            - ⛔ **"Untargeted collisions forge" is not an entry point in THIS crate** —
+              `HyperPublicKey`'s only constructor is `generate_hypertree`, which also returns
+              the signing chain, so the API never hands a public key to anyone who cannot
+              already sign under it. Both reviewers. **This is the sharpest structural result of
+              the whole arc: it connects the width residue to the UNBUILT RUNG below.** The
+              missing `HyperPublicKey::adopt` is currently load-bearing for a security property,
+              not just for ergonomics — build it and the birthday collision becomes live.
+            - 🔓 Two leftover "2⁶⁴" comments sat inside tests, contradicting the docstring that
+              had just retracted them. 🔓 "2000 consecutive instances" for a `1..2_000` loop
+              asserting 1999 (both reviewers). 🔓 Two asserts in the residue test restated the
+              loop's own break condition and could not fail. 🔓 `instance_seed`'s lead sentence
+              dropped the `< 2³²` qualifier it claimed to carry. 🔓 "every clause pinned by a
+              test" — none of the three tests measures a cost.
+            - 🔓 Pre-existing, found in passing: `keychain_debug_is_redacted…` said "the MASTER
+              seed is never displayed" (it is the INSTANCE seed) and checked only
+              `!contains("seed")`, so a `Debug` printing the value under a neutral field name
+              survived. Now checks the value in decimal and hex; mutant watched dying.
+            - **Disagreement was again where the value was.** On cost GPT said UNSUPPORTED,
+              Grok supplied the O(1) attack; on my tests GPT said "mixed", Grok gave the exact
+              constant-function pass. The lenient reviewer was wrong both times — three rounds
+              running. Consensus would have closed this file with a wrong-reason test in it.
+            - Four mutants watched dying (constant `layer_seed` before AND after the guard, the
+              `Debug` value leak, the vacuity of the narrowing).
+      - [ ] **TREADMILL CALLED (`feedback_correction_prose_treadmill`).** Rounds 16→18 found
+            progressively less about the CODE and more about the prose describing it; the
+            docstring is now five layers of nested retraction. The named remedy is a standalone
+            truth file: one current statement of what is and is not established, with the
+            history as history. Doing that next, then re-reviewing the consolidated version.
+
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue
