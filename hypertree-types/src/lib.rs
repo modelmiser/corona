@@ -126,11 +126,12 @@
 //!   whole keychain, once *across the two layers*, which is one-time-key reuse under keys a
 //!   single honest holder published. Repaired in `0.5.0` by the private `layer_seed`.
 //!
-//!   ⚠ **Read the scope, because three drafts of this paragraph got it wrong in three
-//!   different directions.** The break needs the master seed, and whoever has that can remint
-//!   the victim anyway, so it is a key-separation failure rather than a remote forgery. The
-//!   repair removes the free direction of the inversion and leaves the other at ~2⁶⁴/`top_n`,
-//!   not 2⁶⁴. It does not move the ~2³² birthday residue, and untargeted collisions forge too.
+//!   ⚠ **Read the scope.** *That* break needs the master seed, and whoever has it can remint
+//!   the victim anyway, so it is a key-separation failure rather than a remote forgery, and the
+//!   repair is worth correspondingly little against a chosen victim. It does **not** follow
+//!   that everything here needs a master: the ~2³² birthday residue does not, the inherited
+//!   64-bit widths do not, and neither is touched by the repair. No cost figure in this file is
+//!   measured, and none is claimed as a bound.
 //!   The private `layer_seed` carries the full accounting. Three tests pin the negative half,
 //!   and each pins less than its name suggests, so they are named by what they actually show:
 //!   `the_closed_form_transfer_is_dead` (one historical inversion now misses),
@@ -770,15 +771,23 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 ///    feed-forward, so a second master copies the *whole instance* in one step —
 ///    `mₐ = m_v + (pack_v − packₐ)·G` — hence every layer at once, for attacker-chosen
 ///    feasible parameters. O(1).
-/// 3. **Untargeted collisions are not made harmless — but they are not an entry point
-///    *here*.** Two instances sharing a layer seed share the keychain, so if both sign, one
-///    one-time key is used twice; finding such a pair is a birthday on ~2³² seed *derivations*,
-///    not on live keychains. What that does not buy in this crate is "publish many keys, claim
-///    one later", because there is no verifier-side doorway: [`HyperPublicKey`]'s only
-///    constructor is [`generate_hypertree`], which also hands back the signing chain, so the
-///    API never yields a public key to anyone who cannot already sign under it. **The missing
-///    `HyperPublicKey::adopt` is therefore load-bearing for a security property, not only for
-///    ergonomics — build that rung and this collision becomes a live forgery path.**
+/// 3. **Untargeted collisions are not made harmless, and the missing `adopt` does not gate
+///    them.** Two instances sharing a layer seed share the keychain; finding such a pair is a
+///    birthday on ~2³² seed *derivations*, not on live keychains. What it buys depends on who
+///    owns the two:
+///    - **Both attacker-owned:** nothing new. They hold both chains and can sign at will.
+///    - **Two independent honest users:** each signs under what is one one-time key, and any
+///      observer holding both public keys recovers it and forges under **both**. No master
+///      seed, no new API. This is the residue's actual bite.
+///
+///    A colliding pair with equal `top_n` also publishes **equal [`HyperPublicKey`]s** — the
+///    derived `PartialEq` compares the inner MSS key — and verification is keyed on that value
+///    alone, so it accepts the other chain's signatures. The collision reaches `verify`
+///    directly. ⚠ **This docstring claimed on 2026-09-10 that the missing
+///    `HyperPublicKey::adopt` blocked all of the above.** It does not: `adopt`'s absence blocks
+///    only *reconstructing* a public key from the two integers this type publishes — that is
+///    wire-level verification, and it is an ergonomics rung. Handing a verifier the `Copy`
+///    public key from [`generate_hypertree`]'s tuple is the intended use and needs no doorway.
 /// 4. **Nothing here touches the inherited widths.** `lamport-types` already forges on a
 ///    64-bit digest collision at ~2³², independently.
 ///
@@ -800,11 +809,13 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// exists, and the `j` it returns is specific — it measures no cost), and
 /// `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides).
 ///
-/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free. It does not
-/// change the birthday bound, and every break above is downstream of holding the master seed,
-/// which already suffices to remint. What the fix is worth is that one seed's parameterisations
-/// are no longer steerable onto each other; it is worth nothing against an attacker who lacks
-/// the master.
+/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free, and what it is
+/// worth is that one seed's parameterisations are no longer steerable onto each other. The
+/// **targeted** breaks — items 1 and 2 — are downstream of holding the master seed, which
+/// already suffices to remint, so against a chosen victim the fix buys little. Items 3 and 4
+/// need no master and the fix does not touch them: it does not move the birthday bound, and it
+/// never reached the inherited widths. An earlier "every break above is downstream of the
+/// master" covered all four and was false for half of them.
 fn layer_seed(inst: u64, index: u64) -> u64 {
     subseed(inst, index) ^ inst
 }
@@ -1606,6 +1617,39 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn verification_is_keyed_on_the_public_key_value_not_on_a_chain() {
+        // Why an untargeted layer-seed collision reaches `verify` with no new API. `verify`
+        // takes `&self` and a signature; nothing ties a signature to the particular keychain
+        // that made it. So two chains that produce the same public key are interchangeable to
+        // a verifier, which is exactly what a colliding pair would be.
+        //
+        // Demonstrated with the strongest available witness: a genuine 64-bit layer-seed
+        // collision costs ~2^32 to find, so this uses two INDEPENDENTLY GENERATED chains that
+        // land on the same seed by construction rather than by search. The property under test
+        // -- no chain binding -- is the same one.
+        let (chain_a, pk_a) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (chain_b, pk_b) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        assert_eq!(pk_a, pk_b, "same derivation must publish the same key");
+        let (sig_b, _) = chain_b.sign_next(b"signed by the other chain");
+        assert!(
+            pk_a.verify(b"signed by the other chain", &sig_b).is_some(),
+            "verify accepts a signature from any chain reaching this public key"
+        );
+        let witness = pk_a.verify(b"signed by the other chain", &sig_b).unwrap();
+        assert!(
+            witness.minted_by(&pk_a),
+            "the witness names A's key as its minter, though B signed it"
+        );
+        drop(chain_a);
+        // And the missing `HyperPublicKey::adopt` gates none of it: the verifier here never
+        // held a keychain, and got its key from `generate_hypertree`'s tuple, which is `Copy`.
+        let handed_over = pk_a;
+        assert!(handed_over
+            .verify(b"signed by the other chain", &sig_b)
+            .is_some());
     }
 
     #[test]
