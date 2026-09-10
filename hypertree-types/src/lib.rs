@@ -77,7 +77,7 @@
 //!
 //! ## Honest limits
 //!
-//! - **⚠ FIXED 2026-09-09 (`0.2.0` → `0.3.0`, every key and signature changes): key material
+//! - **⚠ FIXED 2026-09-09 (`0.2.0` → `0.4.0`, every key and signature changes): key material
 //!   was shared across parameterisations.** Both layers derived from `seed` alone, and
 //!   `mss_types::generate` derives per-key seeds independently of capacity, so slot *i* of
 //!   the top layer and of every subtree was **the same Lamport key** in every
@@ -94,10 +94,16 @@
 //!   Fixed by `instance_seed` (private): every parameter is folded into one seed and every
 //!   key hangs off that, so two hypertrees differing in any parameter share nothing. Pinned
 //!   by `distinct_parameterisations_share_no_key_material` and
-//!   `transposed_parameters_are_distinct_instances`. **The naming of the fix is itself the
-//!   lesson:** binding the parameters into the published *anchor* would only have made the
-//!   identities distinguishable while the same keys kept signing. *Any parameter that
-//!   changes what a one-time key signs must change that key.*
+//!   `the_instance_seed_separates_every_reachable_parameter_pair`. **The naming of the fix
+//!   is itself the lesson:** binding the parameters into the published *anchor* would only
+//!   have made the identities distinguishable while the same keys kept signing. *Any
+//!   parameter that changes what a one-time key signs must change that key.*
+//!
+//!   `0.3.0` carried this fix with a **collidable** fold — a `subseed` chain, whose
+//!   collisions a signer can construct by solving one linear relation — under a docstring
+//!   claiming injectivity from an invalid argument. Corrected the same day in `0.4.0`, which
+//!   packs the two parameters into disjoint halves of one word before mixing, so the packing
+//!   determines the pair for every parameter small enough for keygen to terminate.
 //!
 //!   This was a **defect, not a residue** — fixable inside the vocabulary, and covered by no
 //!   disclosure here: the seed limit below is about a retained seed re-minting an
@@ -473,11 +479,21 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 /// change that key.** Binding the parameters into the published anchor instead would only
 /// have made the identities distinguishable while the same keys kept signing.
 ///
-/// Injective in `(top_n, bottom_n)`: [`subseed`] is a bijection in each argument (an
-/// injective offset, then splitmix64's bijective finalizer), so distinct parameter pairs —
-/// a transposition like `(2, 4)` against `(4, 2)` included — give distinct instances.
+/// **Injective for every reachable parameter, and here is the honest reason.** The two
+/// parameters are packed into disjoint halves of one `u64` before mixing, so the packed
+/// value determines the pair whenever both are below `2^32` — which is every pair for which
+/// keygen can terminate, since each unit of either parameter is a Lamport key. [`subseed`]
+/// is a bijection in its index for a fixed seed, so distinct pairs give distinct instances.
+///
+/// ⚠ An earlier version of this function chained `subseed(subseed(seed, top_n), bottom_n)`
+/// and this docstring argued it was injective because `subseed` is "a bijection in each
+/// argument". **That derivation is invalid** — bijectivity in each argument separately says
+/// nothing about the pair — and the property was false: `instance_seed(0xC0FFEE, 2,
+/// 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`, and the chain's collisions are
+/// *constructible* by solving one linear relation, so a signer could have picked two
+/// colliding parameterisations deliberately. Found by the graduation review, 2026-09-09.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
-    subseed(subseed(seed, top_n as u64), bottom_n as u64)
+    subseed(seed, ((top_n as u64) << 32) | (bottom_n as u64))
 }
 
 /// Canonical bytes of a subtree public key's `(root, capacity)` anchor — what the top
@@ -701,7 +717,9 @@ mod tests {
         // TOP_DOMAIN is what keeps the top layer off the subtree-index range. Collide them
         // and ONE Lamport key signs both an anchor and a message — the catastrophe this
         // crate is about — while every other test passes (review round 2).
-        for (t, b) in [(2usize, 2usize), (3, 1), (2, 3)] {
+        // The parameter list must reach a subtree index above every small TOP_DOMAIN a
+        // mutant might choose: with a maximum index of 2, values >= 3 all survived (round 2).
+        for (t, b) in [(2usize, 2usize), (3, 1), (2, 3), (4, 1), (6, 1)] {
             let sigs = sign_n(0xC0FFEE, t, b, t * b);
             let tops: Vec<_> = sigs.iter().map(|s| s.top_sig.vk.clone()).collect();
             let bottoms: Vec<_> = sigs.iter().map(|s| s.bottom_sig.vk.clone()).collect();
@@ -776,12 +794,110 @@ mod tests {
     }
 
     #[test]
-    fn transposed_parameters_are_distinct_instances() {
-        // `instance_seed` folds the parameters in order, so a transposition is not a
-        // collision — the cheapest way for a parameter-mixing scheme to be wrong.
-        let (_c1, a) = generate_hypertree(7, 2, 4).unwrap();
-        let (_c2, b) = generate_hypertree(7, 4, 2).unwrap();
-        assert_ne!(a, b);
+    fn subtree_remaining_counts_down_and_resets_across_the_rotation() {
+        // This accessor had zero coverage — its identifier appeared once, at its definition
+        // (review round 2), so every mutant of it survived.
+        let (mut chain, _pk) = generate_hypertree(0xC0FFEE, 2, 3)
+            .map(|(c, p)| (Some(c), p))
+            .unwrap();
+        let mut seen = Vec::new();
+        for _ in 0..6 {
+            let c = chain.take().unwrap();
+            seen.push(c.subtree_remaining());
+            let (_sig, rest) = c.sign_next(b"m");
+            chain = rest;
+        }
+        assert_eq!(
+            seen,
+            vec![3, 2, 1, 3, 2, 1],
+            "resets when the subtree rotates"
+        );
+    }
+
+    #[test]
+    fn keychain_debug_is_redacted_and_tracks_the_rotation() {
+        // No test formatted a `HyperKeychain` at all (review round 2). The security half —
+        // that the seed is never printed — is structural (field omission plus
+        // `finish_non_exhaustive`), but the reported values were unpinned.
+        let (mut chain, _pk) = generate_hypertree(0xC0FFEE, 2, 3)
+            .map(|(c, p)| (Some(c), p))
+            .unwrap();
+        let mut seen = Vec::new();
+        for _ in 0..4 {
+            let c = chain.take().unwrap();
+            let text = format!("{c:?}");
+            assert!(!text.contains("seed"), "the master seed is never displayed");
+            seen.push(text);
+            let (_sig, rest) = c.sign_next(b"m");
+            chain = rest;
+        }
+        assert_eq!(
+            seen[0],
+            "HyperKeychain { subtree: 0, bottom_remaining: 3, .. }"
+        );
+        assert_eq!(
+            seen[2],
+            "HyperKeychain { subtree: 0, bottom_remaining: 1, .. }"
+        );
+        assert_eq!(
+            seen[3],
+            "HyperKeychain { subtree: 1, bottom_remaining: 3, .. }"
+        );
+    }
+
+    #[test]
+    fn the_zero_guard_refuses_before_allocating() {
+        // `empty_layers_are_refused` looks like it pins the `top_n == 0 || bottom_n == 0`
+        // guard, but the downstream `generate(.., 0)?` refuses anyway, so removal mutants
+        // survived it (review round 2). This input separates them: without the `bottom_n`
+        // clause the top layer is fully allocated BEFORE the empty bottom is discovered, and
+        // `usize::MAX` top keys panics in raw_vec instead of returning None.
+        assert!(generate_hypertree(0, usize::MAX, 0).is_none());
+        // The mirror is a genuine EQUIVALENT mutant, recorded so a mutation run is not
+        // misread: dropping the `top_n` clause is safe because `generate(.., 0)?` for the
+        // TOP layer short-circuits before the bottom is built.
+        assert!(generate_hypertree(0, 0, usize::MAX).is_none());
+    }
+
+    #[test]
+    fn the_instance_seed_separates_every_reachable_parameter_pair() {
+        // Assert on `instance_seed` DIRECTLY. An earlier version of this test compared two
+        // public keys, which differ because `top_n` changes the top tree's size whatever the
+        // seed fold does — so it observed nothing about the fold and passed unchanged under a
+        // commutative one (review round 2).
+        assert_ne!(
+            instance_seed(7, 2, 4),
+            instance_seed(7, 4, 2),
+            "a transposition is not a collision"
+        );
+        // A truncating cast on either parameter re-creates the 0.2.0 key-sharing break, and
+        // is invisible below 256.
+        assert_ne!(
+            instance_seed(0xC0FFEE, 2, 2),
+            instance_seed(0xC0FFEE, 258, 2)
+        );
+        assert_ne!(
+            instance_seed(0xC0FFEE, 2, 2),
+            instance_seed(0xC0FFEE, 2, 258)
+        );
+        assert_ne!(
+            instance_seed(0xC0FFEE, 2, 2),
+            instance_seed(0xC0FFEE, 65538, 2)
+        );
+        assert_ne!(
+            instance_seed(0xC0FFEE, 2, 2),
+            instance_seed(0xC0FFEE, 2, 65538)
+        );
+        // And no collision anywhere in a dense block of reachable parameters.
+        let mut seen = std::collections::HashSet::new();
+        for t in 1..48usize {
+            for b in 1..48usize {
+                assert!(
+                    seen.insert(instance_seed(0xC0FFEE, t, b)),
+                    "instance seed collides at ({t}, {b})"
+                );
+            }
+        }
     }
 
     #[test]

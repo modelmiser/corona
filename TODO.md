@@ -788,6 +788,29 @@ any push, so nothing false was ever public.
             - the witness's `subtrees` field: only observable through `minted_by`, whose one
               assertion used a 2×2 hypertree where the two capacities coincide.
             Six tests added, all eight mutants watched dying.
+      - [x] **Run 2 — NOT CLEAN: 1 CRITICAL + 6 MODERATE, all real, and the sharpest is mine.**
+            **My injectivity claim for `instance_seed` was FALSE, and my stated derivation was
+            invalid.** I wrote that `subseed` is "a bijection in each argument, so distinct
+            parameter pairs give distinct instances" — bijectivity in each argument separately
+            says nothing about the pair. Verified the exhibited collision by hand:
+            `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`.
+            Worse than a wrong claim: the chain's collisions are *constructible* by solving one
+            linear relation, so a signer could pick two colliding parameterisations on purpose.
+            Fixed in `0.4.0` by packing the parameters into disjoint halves of one word before
+            mixing, which makes the property true on every reachable parameter with a
+            derivation that is actually valid.
+            CRITICAL (claims): `transposed_parameters_are_distinct_instances` pinned NOTHING
+            about transposition — it compared two public keys, which differ because `top_n`
+            changes the top tree's size whatever the fold does. Three doc sites credited it.
+            Now asserts on `instance_seed` directly, over a dense block of parameters.
+            MODERATE ×5: `TOP_DOMAIN` pinned only for values ≤ 2 (the loop's largest subtree
+            index was 2, so every mutant ≥ 3 survived, re-colliding the layers); injectivity
+            pinned only below 256, so a `u8` truncation survived and re-created the 0.2.0
+            break; `subtree_remaining` and the `Debug` impl had ZERO coverage; and the
+            zero-guard was tripped by the downstream `generate(.., 0)?` rather than itself, so
+            removal mutants survived — one of them panicking on `(usize::MAX, 0)` instead of
+            returning None. The mirror mutant IS equivalent and is now recorded as such.
+            Seven mutants watched dying.
 
 ## Now (leaf 15 — crdt-types)
 
