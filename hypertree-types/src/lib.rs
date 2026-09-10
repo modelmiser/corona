@@ -125,7 +125,7 @@
 //!   for the instance seed. Because every step of the derivation was a bijection in one
 //!   group, a victim's top-layer seed inverted back to attacker parameters in **closed form,
 //!   with no search at all**, and two exhibited pairs turned that into universal forgery under
-//!   an honest key. See [`layer_seed`], which repairs it in `0.5.0` by making the index
+//!   an honest key. Repaired in `0.5.0` by the private `layer_seed`, which makes the index
 //!   expansion non-invertible in the instance seed while leaving the parameter fold a
 //!   bijection. Pinned by `the_closed_form_transfer_is_dead`,
 //!   `distinct_parameterisations_stay_disjoint`,
