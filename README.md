@@ -49,7 +49,7 @@ corona/
 ├── accumulator-types/ # leaf 11 — append-only Merkle accumulator: the epoch brand & where staleness stops reducing (GRADUATED)
 ├── frost-types/      # leaf 12 — threshold Schnorr (FROST): the one-time nonce as linear capability (TOY)
 ├── fountain-types/   # leaf 13 — LT rateless erasure coding: where the k-of-n count residue stops being a count (TOY)
-├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition & coordinated linear state (TOY)
+├── hypertree-types/  # leaf 14 — XMSS^MT hypertree (mss ∘ mss): recursive composition; GRADUATED 2026-09-09 by TRANSITIVE inheritance — Sol.Lib.Hypertree (19th wire) shows the 'coordinated linear state' finding COLLAPSES to one counter in mixed radix, while leaf 7's caller-trusted anchor becomes PINNED: the first residue edge closed by composing
 ├── crdt-types/       # leaf 15 — grow-only counter (CvRDT): encapsulation reduces to E0451, the semilattice laws are Sol's (TOY)
 ├── bloom-types/      # leaf 16 — Bloom filter: the sound seal inverts — non-membership is exact, presence is a one-sided proxy (GRADUATED — keyed SipHash; Sol.Lib.Bloom proves no-false-negatives + absence soundness, false-positive a proved contrast)
 ├── translog-types/   # leaf 17 — Merkle consistency proofs (RFC 6962/CT): a relational witness — the brand relates two snapshots but does not order them (GRADUATED 2026-07-22 — SHA-256; completes Sol.Lib.Translog, the 7th wire; forging a false consistency proof now needs a SHA-256 collision, and the swap moves no theorem)

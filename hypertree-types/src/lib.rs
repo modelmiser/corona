@@ -67,6 +67,16 @@
 //! **authenticated under the long-term key** — the mirror image of leaf 7's lesson
 //! that "a composition inherits its components' obligations."
 //!
+//! ⚠ **Scope, sharpened by the Lean wire (2026-09-09):** top verification factors through
+//! the *digest* of the anchor bytes (mss verify → lamport verify re-derives
+//! `digest(message)`), so the discharge is exactly as strong as that digest's injectivity.
+//! At the inherited 64-bit width, a lie whose anchor bytes collide with the honest anchor's
+//! digest is accepted under the honest top signature. **The capacity lie moves from free to
+//! ~2³², not to impossible** — the sentence above is true of a random lie, not of a
+//! collision-shaped one. `Sol.Lib.Hypertree`'s `capacity_lie_needs_an_anchor_collision`
+//! carries injectivity as an explicit hypothesis; `discharge_fails_without_injectivity`
+//! exhibits its loss.
+//!
 //! ## The witness
 //!
 //! [`VerifiedHypertreeMessage`] is minted (E0451) only when **both** links verify:
@@ -99,8 +109,56 @@
 //!   seeds are below that: a 24-bit literal root falls in ≲2²⁵, so in the demonstration the
 //!   seed, not the width, is the weakest link. What remains illustrative is that
 //!   width plus the *composition* (deterministic seeds, 2 fixed layers, no
-//!   state-persistence protocol), so this stays a research-rung leaf — **not
-//!   independently graduated**.
+//!   state-persistence protocol). Until 2026-09-09 this bullet ended "so this stays a
+//!   research-rung leaf, not independently graduated"; it **is** now graduated, by
+//!   inheritance (see *Graduation* below). What the sentence was right about is unchanged:
+//!   those three things are what keep it illustrative, and none of them is a backend.
+//!
+//! ## Graduation (2026-09-09) — the second composition graduation, by TRANSITIVE inheritance
+//!
+//! The CHARTER's five criteria, read for a leaf whose seams are its parent's seams:
+//!
+//! 1. **Thesis recorded** — this header (three findings plus the bonus) and the cold-review
+//!    record in `TODO.md`.
+//! 2. **Backend swap — inherited, transitively.** `mss-types` graduated 2026-09-08 by
+//!    inheriting from `merkle` and `lamport`; this leaf composes `mss` with itself and owns
+//!    no backend of its own, so it inherits from a leaf that inherited. That is the question
+//!    the first composition graduation could not answer, and the answer is that the caveat
+//!    is transitive: #2 asks that every *illustrative backend* be replaced behind its seam,
+//!    and a leaf with no backend satisfies it vacuously however deep the nesting goes. The
+//!    parts that stay illustrative — deterministic seeds, two fixed layers, the inherited
+//!    64-bit width — are disclosed under #3, not swapped under #2.
+//! 3. **Security / limits section** — [Honest limits](#honest-limits), below, extended
+//!    2026-09-09 by the wire's finding that the capacity-lie discharge is collision-priced.
+//! 4. **Lean wire** — `Sol.Lib.Hypertree`, the garden's **19th wire** and the second for a
+//!    composition. It lives in the `sol` repository, which is **private**, so nothing in
+//!    this bullet is checkable from this crate. Two results, opposite in sign.
+//!
+//!    *The crate's headline finding collapses.* Finding 2 above says a hypertree is the
+//!    first leaf to coordinate two linear counters. On the proof face the odometer is one
+//!    counter in mixed radix — `signNext_increments_flat` (a carry is an increment) and
+//!    `emits_flatten_to_a_run` (flattened, a run is consecutive) — so
+//!    `no_index_pair_is_emitted_twice` and `at_most_the_product` are `Sol.Lib.Mss`'s
+//!    single-cursor facts under a change of representation. The coordination is real where
+//!    this crate claims it, at the *type* level, one `self`-by-value move advancing both;
+//!    it is a re-encoding at the proof level. A subtraction, recorded as one.
+//!
+//!    *The bonus finding is the real one.* `Sol.Lib.Mss.accepts_under_some_anchor` could
+//!    only **record** that nothing pins the subtree anchor. Composing `mss` with itself
+//!    **pins** it (`capacity_lie_needs_an_anchor_collision`) — the first time the garden has
+//!    closed one of its own residue edges by composing rather than by naming it — with a new
+//!    residue of its own, stated not hidden (`discharge_fails_without_injectivity`, and the
+//!    ⚠ scope note above). *The persistence boundary stays open*
+//!    (`restored_hypertree_defeats_linearity`), which is finding 3 and the standing argument
+//!    for the stateless SPHINCS+.
+//! 5. **Cold review — OPEN.** The re-review of *this* graduation text is its own arc whose
+//!    round record lives in `TODO.md`, the referent. #5 is earned only by two consecutive
+//!    clean rounds on this text. The word OPEN here, and its twin in `Cargo.toml`'s
+//!    description, are declared in advance as the only text permitted to change at
+//!    convergence, so that the flip is not a fix-artifact on the reviewed surface.
+//!
+//! Fan-out: none. This leaf is a sink in the dependency graph, so the blast radius is zero
+//! of every kind, and the graduation changes no non-test code and no value.
 //!
 //! ## ⚠ TOY — not production crypto
 //!
@@ -344,7 +402,9 @@ impl HyperPublicKey {
     /// 1. `top.verify(anchor_bytes(bottom_root, bottom_capacity), top_sig)` — the top
     ///    keychain authenticates the subtree's anchor under this long-term key. Because
     ///    the *capacity* is part of the signed bytes, leaf 7's adopt capacity-lie is
-    ///    discharged here (the anchor is authenticated, not caller-trusted).
+    ///    discharged here (the anchor is authenticated, not caller-trusted) — **up to a
+    ///    collision on the anchor digest**, since this check factors through
+    ///    `digest(anchor_bytes(..))` at the inherited 64-bit width. Free becomes ~2³².
     /// 2. `bottom_pk.verify(message, bottom_sig)` — the (now-authenticated) subtree
     ///    authenticates the message.
     ///
