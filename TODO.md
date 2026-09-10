@@ -706,6 +706,56 @@ work (complete tasks, add children, keep siblings).
       I introduced in R1 (false for `decode`'s free-`usize` k) + a 32-bit `d*(d-1)` overflow
       (compute in f64). Residual LOWs (documented panics on invalid input) left by design.
 
+## ⛔ Leaf 14 GRADUATION — ATTEMPTED 2026-09-09, REVERTED THE SAME DAY (a real break, undisclosed)
+
+**Outcome: `hypertree-types` is NOT graduated, and the attempt is why the break is known.**
+Criterion #3 fails while a total forgery is undisclosed. The wire (`Sol.Lib.Hypertree`, the
+19th) stands and is pushed; the graduation commit `b098449` was reverted at `90236a8` before
+any push, so nothing false was ever public.
+
+- [x] Wire written, blind-reviewed, rewritten (sol `499eec4` → `6b4ba5b`). The review's charge
+      was correct: my Part 2 had no content and I sold its thinnest theorem as the headline —
+      the discharge was proved from injectivity alone, an eta-expansion of its own hypothesis
+      mentioning neither the composed acceptance nor the top check. Rewritten so both findings
+      are theorems: the odometer reduction is now PERFORMED (a hypertree run flattened IS
+      `Mss.emitsIn` on a chain of capacity top·bottom), and the discharge is stated at the
+      composed acceptance with both trusted premises visible — the top binds one digest
+      (`BindsOneDigest`) and the digest separates anchors.
+- [x] ⛔ **CRITICAL (adversarial lens): the long-term public key does not commit to `bottom_n`.**
+      `HyperPublicKey` is the top keychain alone, so `generate_hypertree(seed, top_n, b)` gives
+      the SAME public key for every `b`, while the anchor the top one-time key signs is a
+      function of `b`. Verified independently before acting: `b = 2` vs `b = 4` at seed
+      0xC0FFEE give an identical pk, the same top `vk`, two different anchors, and both
+      preimages exposed at 30 of 64 positions. Ten re-parameterisations complete the key and
+      mint arbitrary witnesses under the honest long-term key — no seed, no persistence, wire
+      data only. Disclosed in Honest limits and pinned by
+      `reparameterising_the_bottom_reuses_the_top_one_time_key`.
+      - **The fix is NOT what I first wrote.** Binding `bottom_n` into the published anchor
+        only makes the identities distinguishable; the same top keychain still signs both
+        anchor sets, so the preimages still leak. The defect is that the top keychain's SEED
+        ignores `bottom_n` although what it signs does not. Rule: *any parameter that changes
+        what a one-time key signs must change that key.* (Caught by deriving my own proposed
+        fix instead of pasting it — the mss arc's lesson, applied to myself.)
+      - **It voids the crate's bonus finding** for re-parameterised instances, which is the
+        finding the graduation's headline rested on.
+      - Methodological datum worth keeping: the wire's premise `BindsOneDigest` is EXACTLY
+        what the crate violates. The blind review forced me to state that premise instead of
+        assuming it, and stating it is what made the break legible one file away.
+- [x] ⛔ **CRITICAL (claims lens): the E0451 doctest was a check that could not fail.** It wrote
+      `top_root: 2` where the type is `[u8; 32]`, so it failed with E0308 and never E0451 —
+      and passed unchanged with every field made `pub`. Fixed (real types, all fields named,
+      `compile_fail,E0451`, the stable-rustdoc caveat), and watched failing with the seal
+      removed.
+- [x] Three MODERATE surviving mutants, all now killed and each watched dying: the capacity
+      half of `anchor_bytes` (the shipped test lied 2→3, which changes the Merkle depth, so
+      link 2 rejected it unaided and the test was vacuous — the real pin needs 5→8);
+      the root half (a cross-subtree splice); and the subtree-seed indexing (three mutants
+      each causing one-time-key reuse, finding 3's own catastrophe, all surviving).
+- [ ] **DECISION REQUIRED — fix or leave disclosed.** The one-line fix is to derive the top
+      seed from `bottom_n` as well. It changes a public crate's key derivation, so every
+      existing public key and signature changes: out of the graduation arc's scope.
+- [ ] After a fix: re-run the review (cap 4 runs) and only then reconsider graduation.
+
 ## Now (leaf 15 — crdt-types)
 
 - [x] **Seed leaf 15: state-based grow-only counter (CvRDT)** — the garden's **second

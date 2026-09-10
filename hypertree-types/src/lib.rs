@@ -77,6 +77,40 @@
 //!
 //! ## Honest limits
 //!
+//! - **⛔ BROKEN AS SHIPPED: the long-term public key does not commit to `bottom_n`, and
+//!   re-parameterising leaks the top key.** [`HyperPublicKey`] is built from the top
+//!   keychain alone, so `generate_hypertree(seed, top_n, b)` yields the **same** public key
+//!   for every `b` — while each bottom subtree's root, and therefore the **anchor bytes the
+//!   top one-time key signs**, is a function of `b`. Publish two hypertrees from one seed at
+//!   different bottom capacities and top key 0 has signed two different messages: at the
+//!   Lamport layer that is the one-time-key catastrophe. Measured on `seed = 0xC0FFEE,
+//!   top_n = 2`: `b = 2` and `b = 4` give an identical public key, and their two top
+//!   signatures already reveal **both** preimages at 30 of 64 digest positions; a handful of
+//!   further re-parameterisations complete the key and mint arbitrary
+//!   [`VerifiedHypertreeMessage`]s under the honest long-term key — no seed, no persistence,
+//!   no `unsafe`, wire data only. Pinned by
+//!   `reparameterising_the_bottom_reuses_the_top_one_time_key`.
+//!
+//!   **This is a defect, not a residue**, and naming its fix correctly matters. Binding
+//!   `bottom_n` into the published anchor is **not** sufficient: it would only make the two
+//!   identities distinguishable, while the *same* top keychain still signs both anchor sets,
+//!   so the preimages still leak and the recovered key still forges under either identity.
+//!   The defect is that **the top keychain's seed does not depend on `bottom_n` although
+//!   what it signs does** — `subseed(seed, TOP_DOMAIN)` ignores it — so the fix is to derive
+//!   the top seed from every parameter that reaches the signed bytes (which also makes the
+//!   public keys differ, for free). The general rule the leaf learned the hard way: *any
+//!   parameter that changes what a one-time key signs must change that key.* It is *not*
+//!   covered by any
+//!   disclosure below: the seed limit is about a retained seed re-minting an *equivalent*
+//!   hypertree (here the attacker needs no seed and the instances are **not** equivalent),
+//!   and finding 3's persistence boundary is about identical parameters. It also **voids the
+//!   bonus finding** for these instances: the subtree anchor is only "authenticated under
+//!   the long-term key" while that key authenticates one anchor per top slot, which
+//!   re-parameterisation destroys. Found by the graduation review, 2026-09-09. Until it is
+//!   fixed, **do not treat one `HyperPublicKey` as pinning a configuration**, and do not
+//!   publish two hypertrees from one seed. The leaf is **not graduated**; criterion #3 fails
+//!   while a total break is undisclosed, and this bullet is that disclosure.
+//!
 //! - **Persistence is the real boundary (see finding 3).** The linear type prevents
 //!   index reuse *within one running program*. It cannot prevent state reuse across
 //!   serialization/restore, VM cloning, or crash-recovery — the failure mode that
@@ -184,12 +218,23 @@ pub struct HyperSignature {
 /// Holding one proves the two-level authenticated path existed. Building one directly
 /// does not compile:
 ///
-/// ```compile_fail
+/// ```compile_fail,E0451
 /// use hypertree_types::VerifiedHypertreeMessage;
 /// let forged = VerifiedHypertreeMessage {
-///     digest: 1, top_root: 2, subtrees: 3, subtree_index: 0, leaf_index: 0,
-/// }; // fields are private
+///     digest: 1,              // ERROR[E0451]: field `digest` is private
+///     top_root: [0u8; 32],    // ERROR[E0451]: field `top_root` is private
+///     subtrees: 3,            // ERROR[E0451]: field `subtrees` is private
+///     subtree_index: 0,       // ERROR[E0451]: field `subtree_index` is private
+///     leaf_index: 0,          // ERROR[E0451]: field `leaf_index` is private
+/// };
 /// ```
+///
+/// ⚠ Until 2026-09-09 that snippet wrote `top_root: 2`, whose type is `[u8; 32]`, so it
+/// failed with **E0308 and never E0451** — a check that could not fail for the reason it
+/// claimed, and one that passed unchanged with every field made `pub`. Every field is now
+/// named with its real type (rustc emits ONE `E0451` listing them all). Caveat inherited
+/// from `mss-types`: on stable, rustdoc parses a `compile_fail` fence's error code and
+/// ignores it, so only `cargo +nightly test --doc` enforces the code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedHypertreeMessage {
     digest: u64,
@@ -549,6 +594,104 @@ mod tests {
         // top_n = 1: a degenerate hypertree = one subtree of capacity bottom_n.
         let oks = sign_all(3, 1, 3, &[b"p", b"q", b"r"]);
         assert_eq!(oks, vec![true, true, true]);
+    }
+
+    #[test]
+    fn reparameterising_the_bottom_reuses_the_top_one_time_key() {
+        // ⛔ THE BREAK (review 2026-09-09). One seed, one top capacity, two bottom
+        // capacities: the long-term public key is IDENTICAL because it commits only to the
+        // top layer, yet top key 0 signs a different anchor in each — the Lamport one-time
+        // catastrophe, reachable from wire data alone.
+        let (c2, pk2) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (c4, pk4) = generate_hypertree(0xC0FFEE, 2, 4).unwrap();
+        assert_eq!(
+            pk2, pk4,
+            "the public key does not commit to bottom_n — the defect"
+        );
+        let (s2, _) = c2.sign_next(b"m");
+        let (s4, _) = c4.sign_next(b"m");
+        assert_eq!(s2.top_sig.vk, s4.top_sig.vk, "the SAME one-time top key");
+        assert_ne!(
+            (s2.bottom_root, s2.bottom_capacity),
+            (s4.bottom_root, s4.bottom_capacity),
+            "signing two different anchors"
+        );
+        // Both sides of a digest bit are now public wherever the two anchors' digests
+        // differ: that is what a one-time key must never expose.
+        let leaked = (0..64)
+            .filter(|&i| s2.top_sig.ots.revealed[i] != s4.top_sig.ots.revealed[i])
+            .count();
+        assert!(
+            leaked > 0,
+            "one-time key material leaked at {leaked} positions"
+        );
+        // And each instance's signatures verify under the other's public key, because it is
+        // the same key — so the two are not distinguishable identities at all.
+        assert!(pk4.verify(b"m", &s2).is_some() && pk2.verify(b"m", &s4).is_some());
+    }
+
+    #[test]
+    fn a_lied_capacity_that_link_two_cannot_catch_still_fails() {
+        // The bonus finding, actually pinned. The shipped test lies 2 -> 3, which changes
+        // the Merkle DEPTH, so link 2 rejects it unaided and the test passes even if the
+        // capacity is dropped from the signed anchor bytes. A lie only link 1 can catch:
+        // bottom_n = 5 -> 8 keeps the depth, and leaf 0 is never the promoted node.
+        let (chain, pk) = generate_hypertree(0xABCD, 2, 5).unwrap();
+        let (sig, _) = chain.sign_next(b"m");
+        let mut lied = sig.clone();
+        lied.bottom_capacity = 8;
+        // Link 2 alone WOULD accept this — so only the signed capacity can reject it.
+        assert!(
+            mss_types::MssPublicKey::adopt(lied.bottom_root, 8)
+                .unwrap()
+                .verify(b"m", &lied.bottom_sig)
+                .is_some(),
+            "link 2 cannot catch this lie; the test is vacuous unless link 1 does"
+        );
+        assert!(
+            pk.verify(b"m", &lied).is_none(),
+            "the signed capacity rejects it"
+        );
+    }
+
+    #[test]
+    fn a_spliced_subtree_root_fails_top_verification() {
+        // The ROOT half of the anchor, pinned: splice subtree 1's bottom signature and root
+        // onto subtree 0's top certificate. Without the root in the signed bytes this mints
+        // a provenance forgery reporting subtree_index 0 for subtree 1's message.
+        let (chain, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (s1, r1) = chain.sign_next(b"one");
+        let (_s2, r2) = r1.unwrap().sign_next(b"two");
+        let (s3, _) = r2.unwrap().sign_next(b"three");
+        let spliced = HyperSignature {
+            bottom_sig: s3.bottom_sig.clone(),
+            bottom_root: s3.bottom_root,
+            bottom_capacity: s3.bottom_capacity,
+            top_sig: s1.top_sig.clone(),
+        };
+        assert!(
+            pk.verify(b"three", &spliced).is_none(),
+            "the signed root rejects the splice"
+        );
+    }
+
+    #[test]
+    fn every_subtree_uses_a_distinct_seed() {
+        // The subtree-seed indexing, pinned: three mutants of the rotation arithmetic each
+        // make two subtrees share a seed, which is one-time-key reuse — finding 3's own
+        // catastrophe — and all three survived the shipped suite.
+        let (mut chain, _pk) = generate_hypertree(0xC0FFEE, 3, 1)
+            .map(|(c, p)| (Some(c), p))
+            .unwrap();
+        let mut roots = Vec::new();
+        for _ in 0..3 {
+            let (sig, rest) = chain.take().unwrap().sign_next(b"m");
+            roots.push(sig.bottom_root);
+            chain = rest;
+        }
+        assert_ne!(roots[0], roots[1]);
+        assert_ne!(roots[1], roots[2]);
+        assert_ne!(roots[0], roots[2]);
     }
 
     #[test]
