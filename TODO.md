@@ -1087,6 +1087,30 @@ any push, so nothing false was ever public.
               recorded claim. `pub struct SubtreeCert` is capability-free and its dangerous
               composite dies. `verify` held under 1.3M adversarial calls: no panics, no false
               accepts.
+      - [x] **Round 15 — 0 CRITICAL, 4 MODERATE. NOT a second floor round; my hope for one was
+            wrong, the second failed prediction of this arc.** The findings are a NEW CLASS,
+            never probed before: **derived trait impls that no test observes.**
+            - 🔓 `HyperSignature`'s derived `Clone` was never round-tripped through `verify`, so
+              a clone that corrupts the signature survived — `verify(&sig)` true while
+              `verify(&sig.clone())` false. The two tests that clone a signature immediately
+              overwrite the field or rebuild it, masking the clone in both.
+            - 🔓 `PartialEq`/`Eq` on the witness and the signature were invoked by NOTHING:
+              `-> true`, `-> false`, and deleting the derives outright all survived. On the
+              public key `-> false` survived too, making it unequal to itself while `Eq + Hash`
+              promise reflexivity to any `HashSet`. Derives are API and nothing was watching.
+            - 📐 **"two hypertrees differing in any parameter share no key material at either
+              layer" does not follow from instance-seed injectivity** — I stated the conclusion
+              having established only the premise. Two gaps, the first structural and obvious
+              once seen: `subseed(s, i)` depends only on `s + i·G`, so it is NOT injective in
+              the PAIR, and distinct instance seeds can share a subtree seed at different
+              indices (computed against the crate's own pinned value). And per-key material is
+              a 64-bit-truncated SHA-256, so output distinctness is a collision-resistance
+              assumption — the qualifier `mss-types` states plainly and this crate dropped. No
+              reachable colliding pair is known: a measurement, not a proof, now labelled so.
+            - A struct-level note and its `compile_fail` fence were attached to the
+              `subtrees()` METHOD, so rustdoc filed a field-privacy test under a method and made
+              that method's summary a sentence about a different item. Moved to the type.
+            Three derive mutants watched dying.
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue
