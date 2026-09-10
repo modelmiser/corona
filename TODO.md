@@ -1167,6 +1167,55 @@ any push, so nothing false was ever public.
               VERIFIED on disk this time — the 0.4.0 bump never landed while its commit message
               said it had.
 
+      - [x] **Round 17 — CROSS-VENDOR (GPT-5.3-Codex + Grok-4.6, `cursor-agent --mode ask`).
+            The round that sized the defect correctly, and it refuted MY OWN round-16 fix
+            commit — which was already pushed.** Third consecutive round finding substance;
+            three failed convergence predictions in this arc, and I have stopped making them.
+            - ⛔ **REFUTED: "a closed form, zero search, any victim."** The inversion targets a
+              *layer seed*, and **there is no published seed** — `HyperPublicKey` carries a
+              Merkle root and a capacity. It needs the master, and anyone with the master can
+              remint the victim with `generate_hypertree` outright. So `0.4.0` was a
+              **key-separation** failure, not a remote forgery. I had escalated a real defect
+              into a catastrophic one *in the commit that retracted two earlier overstatements
+              of the same defect.* Both reviewers caught it independently.
+            - ⛔ **REFUTED: "a targeted collision costs 2⁶⁴."** Grok supplied the attack I
+              missed, and it is the dual of my own proof. `layer_seed` is injective in the
+              index BY CONSTRUCTION — so it is trivially INVERTIBLE in the index:
+              `j = G⁻¹·(F⁻¹(target ^ inst) − inst)`. `0.5.0` killed "choose j, solve the
+              parameters"; it did not touch "choose the parameters, solve j". The only obstacle
+              is that `j` must land below `top_n`, which is the attacker's own budget: ~2⁶⁴/`top_n`,
+              about 2⁴⁸ at `top_n = 2¹⁶`, lower with Hellman TMTO. **Verified myself: 1999/1999
+              attacker instances admit an exact `j`.** Now pinned by
+              `the_dual_inversion_is_not_closed_by_this_fix`.
+            - ⛔ **REFUTED: "only targeted collisions forge."** Publish ~2³² hypertrees, find a
+              pair sharing a layer seed, sign on both, later claim the published key. No victim
+              is aimed at. Both reviewers, independently.
+            - 🔓 `subseed`'s own docstring said index-bijectivity is "what `layer_seed`
+              deliberately gives up" — **flatly contradicting `layer_seed`'s docstring two items
+              above it**, which proves it KEEPS index-injectivity and gives up invertibility in
+              the SEED. I wrote both the same hour.
+            - 🔓 "0.2.0–0.4.0 ARE ALL FORGEABLE" merged three different breaks into one
+              mechanism: `0.2.0` shared keys by identity (bare master), `0.3.0` through a
+              collidable chain, `0.4.0` through the shared group. Only the third is what
+              `layer_seed` repairs.
+            - **Where the two reviewers DISAGREED is where the value was, exactly as
+              `feedback_cross_vendor_soundness_review` says.** On the 2⁶⁴ claim GPT said
+              UNSUPPORTED ("no shortcut handed to you, but not proved") and Grok said REFUTED
+              *with a working attack* — the lenient reviewer was wrong again. On the documented
+              near-miss (`F(x) ^ x`) GPT said REFUTED, wanting preimage hardness; Grok said
+              CONFIRMED with the right reason — the collapse needs no preimage at all, since
+              `inst + j·G = inst' + j'·G` collides directly. **GPT was wrong there and my
+              original text was right**, so the refutations were not all in one direction and
+              consensus would have decided both incorrectly.
+            - ✅ Kept: the `0.5.0` fix itself, `layer_seed`'s asymmetry, index-injectivity as a
+              PROOF (composition of three bijections, not the 50k sample), the near-miss, and
+              the width residue. What changed is every sentence about cost and reach.
+            - Net claim, now stated once and pinned clause by clause: `0.5.0` removes the free
+              direction of the inversion, leaves the other at ~2⁶⁴/`top_n`, does not move the
+              ~2³² birthday residue, and neither break was ever reachable without the master.
+            - 1 test added (37 unit + 15 doc, green). Two mutants watched dying, including one
+              that checks the dual test is not a tautology.
+
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue
