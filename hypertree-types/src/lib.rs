@@ -694,46 +694,30 @@ const _: () = assert!(
      subtree anchor and a message"
 );
 
-/// **The instance seed — the 2026-09-09 fix.** Every parameter that can change what a
-/// one-time key signs is folded in here, and every key in the hypertree is derived from the
-/// result, so two hypertrees differing in any parameter get **distinct instance seeds** — on
-/// the domain where both parameters are below `2³²`, the qualifier [`pack_params`] states and
-/// this sentence claimed to carry while omitting it.
+/// **The instance seed.** Every parameter that can change what a one-time key signs is folded
+/// in here, and every key in the hypertree hangs off the result, so two hypertrees differing
+/// in any parameter get **distinct instance seeds** — on the domain where both parameters are
+/// below `2³²`, the qualifier [`pack_params`] states.
 ///
-/// ⛔ **THE STRONGER CLAIM WAS FALSE.** An earlier version of this docstring said two
-/// hypertrees differing in any parameter "share no key material at either layer". Round 15
-/// said the argument did not establish it; round 16 refuted it by exhibition, at `0xC0FFEE`
-/// and with instantiable parameters:
+/// ⛔ **That is all it buys, and it is not "they share no key material".** Two
+/// parameterisations of one master seed have been exhibited sharing a whole keychain, once
+/// across the two layers, at `0xC0FFEE` with instantiable parameters — `(184_155, 25)`'s
+/// subtree 16431 against `(63_360, 126)`'s genesis, and `(68_173, 130)`'s **top** keychain
+/// against `(62_781, 25)`'s subtree 14062. Both pinned by
+/// `distinct_parameterisations_stay_disjoint`. `TOP_DOMAIN` walls the layers apart only
+/// *within* one instance. [`layer_seed`] is the repair and carries the accounting.
 ///
-/// - `(184_155, 25)`'s subtree 16431 and `(63_360, 126)`'s genesis subtree were **one
-///   keychain**, so one Lamport key signs two chosen messages.
-/// - The layers crossed too: `(68_173, 130)`'s **top** keychain was `(62_781, 25)`'s subtree
-///   14062 — a key that certifies anchors is a key that signs caller-chosen messages.
-///   `TOP_DOMAIN` walls the layers apart only *within* one instance, which its docstring's
-///   "for every reachable index at once" did not say.
+/// ⚠ **Scope, because it is easy to overstate and this file did, repeatedly.** Reaching any of
+/// this needs the master seed, and whoever holds that can remint the victim outright with
+/// `generate_hypertree`. No seed is published; [`HyperPublicKey`] carries a Merkle root and a
+/// capacity. These are **key-separation** failures — one seed's parameterisations are not
+/// independent of each other — not remote forgeries.
 ///
-/// Both pinned by `distinct_parameterisations_stay_disjoint`.
-///
-/// ⚠ **Three versions, three different breaks — do not merge them, as this file did on
-/// 2026-09-10.** `0.2.0` hung every key off the bare master, so slot *i* was the same key in
-/// every parameterisation: sharing by identity, no search. `0.3.0` folded the parameters
-/// through a collidable chain. `0.4.0` packed them injectively but left the fold and the
-/// layer expansion sharing one group, which is the defect [`layer_seed`] repairs.
-///
-/// ⚠ **And the `0.4.0` defect is narrower than the sentence that replaced it claimed.** That
-/// sentence called the closed form a forgery reachable from a "published top-layer seed".
-/// **There is no published seed.** [`HyperPublicKey`] publishes a Merkle root and a capacity;
-/// every seed here is secret. The inversion needs a *known layer seed*, hence the master — and
-/// anyone holding the master can already remint the victim outright with
-/// `generate_hypertree`. So `0.4.0`'s closed form is a **key-separation** failure — one seed's
-/// parameterisations are not independent of each other — and not a remote forgery. That
-/// distinction is the whole difference between "catastrophic" and "must be fixed", and this
-/// file has now written the overstated version of this defect three times running.
-///
-/// So what `instance_seed` buys is exactly this and no more: **distinct parameterisations get
-/// distinct instance seeds**, closing the `0.2.0` defect where they got the *same* one. On its
-/// own it never made the derived per-subtree keys disjoint, and this docstring twice said it
-/// did.
+/// ⚠ Three versions, three *different* breaks, not one: `0.2.0` hung every key off the bare
+/// master (sharing by identity), `0.3.0` folded through a collidable chain, `0.4.0` packed the
+/// parameters injectively but left the fold and the layer expansion in one group. Only the
+/// third is what [`layer_seed`] repairs. Round-by-round history in `TODO.md` and
+/// `INSIGHTS/leaf-14-hypertree.md`; it is deliberately not re-narrated here.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
     subseed(seed, pack_params(top_n, bottom_n))
 }
@@ -763,75 +747,64 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// Seed for one layer or subtree of an instance — `subseed(inst, j) ^ inst`, a Davies–Meyer
 /// feed-forward, and the `0.5.0` repair of `0.4.0`'s shared-group collapse.
 ///
-/// The point is that the function is **asymmetric in its two arguments**, each direction
-/// load-bearing for a different reason:
+/// The function is deliberately **asymmetric in its two arguments**:
 ///
-/// - **Bijective in `index`, for fixed `inst`** — and this is a proof, not a sample.
-///   `j ↦ inst + j·G` is a bijection (`G` odd), `F` is a bijection (odd multipliers; every
-///   `x ^ (x >> k)` with `k ≥ 1` is invertible, and `F` uses 30, 27, 31), and `^ inst` is a
-///   bijection for fixed `inst`. Composition
-///   of bijections. [`TOP_DOMAIN`] rests on exactly this: lose it and the top layer could land
-///   on a subtree. Sampled as a regression by
-///   `layer_seed_is_injective_in_index_and_walls_off_the_top`.
+/// - **Bijective in `index`, for fixed `inst`** — a proof, not a sample. `j ↦ inst + j·G` is a
+///   bijection (`G` odd), `F` is a bijection (odd multipliers; every `x ^ (x >> k)` with
+///   `k ≥ 1` is invertible, and `F` uses 30, 27, 31), and `^ inst` is a bijection for fixed
+///   `inst`. Composition of bijections. [`TOP_DOMAIN`] rests on exactly this: lose it and the
+///   top layer could land on a subtree.
 /// - **No peel-off inverse in `inst`, for fixed `index`.** `F(inst + j·G) ^ inst = target`
-///   puts the unknown both inside `F` and outside it, so `0.4.0`'s chain of inversions
-///   `the_closed_form_transfer_is_dead` shows that one historical inversion misses. It
-///   does not establish that no other exists, and this line claimed it "pinned" that.
+///   puts the unknown both inside `F` and outside it, so `0.4.0`'s chain of inversions misses.
 ///
-/// ⛔ **What this does NOT buy, having claimed all three at first draft:**
+/// ⛔ **What this does NOT buy. Every line here was claimed as a strength first and refuted
+/// after, so treat the list as the actual contract:**
 ///
-/// 1. **It is not 2⁶⁴ for a chosen victim.** Injectivity in `index` cuts both ways: the map
-///    is still trivially invertible in `j`, so an attacker who may use *any* subtree solves
-///    `j = G⁻¹·(F⁻¹(target ^ inst) − inst)` in closed form for each candidate `inst`, and
-///    needs only that the `j` it returns land below `top_n`. That is ~2⁶⁴/`top_n` trials with
-///    `top_n` chosen inside the attacker's own keygen budget — ~2⁴⁸ at `top_n = 2¹⁶` — if the
-///    returned `j` is uniform, which is a modelling assumption about `F`, not a measurement.
-///    `the_dual_inversion_is_not_closed_by_this_fix` verifies that the inverse EXISTS (1999
-///    of 1999 instances) and that the `j` it returns is specific; it does not measure the
-///    cost, and an earlier version of this sentence said it did, "exactly", for 2000.
-///    **No lower bound is claimed.**
-/// 2. **And that is still not the cheapest chosen-victim collision.** [`instance_seed`] is
-///    [`instance_seed`] is plain `subseed` — no feed-forward — so under the same premise
-///    (the victim's master is known) a second master copies the *whole instance* in one step:
-///    `mₐ = m_v + (pack_v − packₐ)·G` gives `instance_seed(mₐ, tₐ, bₐ) = instance_seed(m_v, …)`,
-///    hence every layer at once, for attacker-chosen feasible parameters. O(1), not 2⁶⁴/`top_n`.
-///    Which is the same point the scope note makes: everything here is downstream of holding
-///    the master, and holding the master already lets you remint.
-/// 3. **It does not make untargeted collisions harmless — but they are not an entry point
-///    *here*, and an earlier draft of this docstring said they were.** Two instances sharing a
-///    layer seed share the whole keychain, so if both sign, one one-time key is used twice.
-///    Finding such a pair is a birthday on ~2³² *seed derivations*, not on live keychains: you
-///    search seeds and instantiate only the pair. What that does **not** buy in this crate is
-///    the "publish many keys, claim one later" move, because there is no verifier-side
-///    doorway — [`HyperPublicKey`]'s only constructor is [`generate_hypertree`], which also
-///    hands back the signing chain, so the API never yields a public key to anyone who cannot
-///    already sign under it. Whoever can instantiate both halves of a collision holds both
-///    masters and could remint either. **This is the one place where the missing
-///    `HyperPublicKey::adopt` is load-bearing for a security property rather than for
-///    ergonomics: build that rung and this collision becomes a live forgery path.**
-/// 4. **It does not touch the inherited widths.** `lamport-types` already forges on a 64-bit
-///    digest collision at ~2³², independently of any of this.
+/// 1. **Not 2⁶⁴ for a chosen victim.** Bijectivity in `index` cuts both ways: the map is
+///    trivially invertible in `j`, so an attacker who may use any subtree solves
+///    `j = G⁻¹·(F⁻¹(target ^ inst) − inst)` per candidate `inst` and needs only that `j` land
+///    below `top_n`. If `j` were uniform that is ~2⁶⁴/`top_n` trials with `top_n` inside the
+///    attacker's own keygen budget — but uniformity is a modelling assumption about `F`, not
+///    something measured. **No lower bound is claimed.**
+/// 2. **Not even that, under the same premise.** [`instance_seed`] is plain `subseed` with no
+///    feed-forward, so a second master copies the *whole instance* in one step —
+///    `mₐ = m_v + (pack_v − packₐ)·G` — hence every layer at once, for attacker-chosen
+///    feasible parameters. O(1).
+/// 3. **Untargeted collisions are not made harmless — but they are not an entry point
+///    *here*.** Two instances sharing a layer seed share the keychain, so if both sign, one
+///    one-time key is used twice; finding such a pair is a birthday on ~2³² seed *derivations*,
+///    not on live keychains. What that does not buy in this crate is "publish many keys, claim
+///    one later", because there is no verifier-side doorway: [`HyperPublicKey`]'s only
+///    constructor is [`generate_hypertree`], which also hands back the signing chain, so the
+///    API never yields a public key to anyone who cannot already sign under it. **The missing
+///    `HyperPublicKey::adopt` is therefore load-bearing for a security property, not only for
+///    ergonomics — build that rung and this collision becomes a live forgery path.**
+/// 4. **Nothing here touches the inherited widths.** `lamport-types` already forges on a
+///    64-bit digest collision at ~2³², independently.
 ///
-/// A cheaper-looking variant is worth naming because it fails for a *different* reason:
-/// feeding forward the mixer's **input** (`F(x) ^ x`, `x = inst + j·G`) makes the result a
-/// function of `x` alone, so `inst + j·G = inst' + j'·G` collides with no inversion at all —
-/// the `0.4.0` equivalence relation, returned intact. Feeding forward `inst` is what avoids
-/// it; feeding forward `index` does not, and that mutant survives
-/// `the_closed_form_transfer_is_dead`.
+/// The near-miss is worth naming because it fails for a *different* reason: feeding forward
+/// the mixer's **input** (`F(x) ^ x`, `x = inst + j·G`) makes the result a function of `x`
+/// alone, so `inst + j·G = inst' + j'·G` collides with no inversion at all — `0.4.0`'s
+/// equivalence relation, returned intact. Feeding forward `inst` avoids it; feeding forward
+/// `index` does not.
 ///
 /// ⚠ **Residue, and it does not reduce.** Seeds are 64 bits because `mss_types::generate`
 /// takes a `u64`, so untargeted collisions stay birthday-bound at ~2³², and no `u64 → u64`
 /// arrangement moves that. Closing it needs a wider seed at the operand — a change to
-/// `mss-types`, not to this crate. Demonstrated, not asserted, by
-/// `the_width_residue_survives_the_fix`, which reruns the search against a 24-bit narrowing of
-/// the *fixed* construction and finds collisions in milliseconds.
+/// `mss-types`, not to this crate. Demonstrated by `the_width_residue_survives_the_fix`
+/// against a 24-bit narrowing of the *fixed* construction.
 ///
-/// **Net, stated plainly:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free
-/// (choose `j`, solve for the parameters). It does not change the birthday bound, and every
-/// break discussed here — including the two that are cheaper than the dual — is downstream of
-/// holding the master seed, which is itself sufficient to remint the victim. What the fix is
-/// really worth is that one seed's parameterisations are no longer steerable onto each other;
-/// what it is NOT worth is any claim about an attacker who lacks the master.
+/// **Three tests pin the negative half, and each shows less than its name suggests:**
+/// `the_closed_form_transfer_is_dead` (one historical inversion now misses — not that no other
+/// exists), `the_dual_inversion_is_not_closed_by_this_fix` (the inverse in the index still
+/// exists, and the `j` it returns is specific — it measures no cost), and
+/// `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides).
+///
+/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free. It does not
+/// change the birthday bound, and every break above is downstream of holding the master seed,
+/// which already suffices to remint. What the fix is worth is that one seed's parameterisations
+/// are no longer steerable onto each other; it is worth nothing against an attacker who lacks
+/// the master.
 fn layer_seed(inst: u64, index: u64) -> u64 {
     subseed(inst, index) ^ inst
 }
