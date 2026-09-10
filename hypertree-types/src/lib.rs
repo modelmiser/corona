@@ -1035,10 +1035,10 @@ mod tests {
     #[test]
     fn the_witness_records_the_top_capacity_not_the_bottom() {
         // `subtrees` has no accessor, so `minted_by` is its only *checked* observable — the
-        // derived `Debug` and `PartialEq` do publish it. `minted_by` is asserted at five
-        // sites, one of them already non-square, so what this parameter choice adds is a top
-        // capacity that is neither 2 nor equal to the bottom — which separates "records the
-        // top capacity" from "records the bottom" and from a literal 2.
+        // derived `Debug` and `PartialEq` do publish it. `minted_by` is asserted at five other
+        // sites, TWO of them non-square — including the (40, 1) one, whose top capacity is
+        // neither 2 nor equal to the bottom, so it already makes all three separations this
+        // test was written for. What survives is a small, cheap case of the same property.
         let (chain, pk) = generate_hypertree(0x5EED, 3, 1).unwrap();
         let (sig, _) = chain.sign_next(b"m");
         assert_eq!(pk.subtrees(), 3);
@@ -1327,8 +1327,9 @@ mod tests {
         // `% 2`, then `% 3`, then `% 4` — each time the next literal. There is no wall
         // available here, since these are runtime values rather than a const, so the honest
         // move is to enumerate past any plausible mutant and record what the test is: a
-        // bound at 39, not a closure of the family. A future round re-reporting `% 41` is
-        // re-reporting this note.
+        // bound at 39, not a closure of the family. The smallest surviving modulus is
+        // therefore `% 40` (the identity on 0..=39), not `% 41`; a future round re-reporting
+        // either is re-reporting this note.
         let (n, m) = (4usize, 4usize);
         let sigs = sign_n(0xC0FFEE, n, m, n * m);
         let (_chain, pk) = generate_hypertree(0xC0FFEE, n, m).unwrap();
@@ -1399,6 +1400,14 @@ mod tests {
         // chain at once: `TOP_DOMAIN`, `instance_seed`, `pack_params`, `subseed`, and the
         // wiring in `generate_hypertree`. Drift in any of them must be a deliberate act.
         assert_eq!(TOP_DOMAIN, 0xFFFF_FFFF_0000_0001);
+        // The wall's own PREDICATE is checked by nothing — weakening `>` to `>=`, or to
+        // `true`, compiles and leaves the suite green, because every value such a wall admits
+        // is caught by the literal above. That containment breaks the day the literal is
+        // deliberately changed, so assert the bound the wall is for, not just the value.
+        assert!(
+            TOP_DOMAIN > u32::MAX as u64,
+            "the top seed must sit above every subtree index"
+        );
         let (_c, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
         assert_eq!(
             pk.root_hash(),

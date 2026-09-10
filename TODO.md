@@ -1070,6 +1070,23 @@ any push, so nothing false was ever public.
               beyond that the argument is unreachability — the same "property without its
               domain" defect `pack_params` records two items down. Qualified.
             Doctests 10 → 15.
+      - [x] **Round 14 — 0 CRITICAL, 1 MODERATE (a stale count in a test comment). THE FLOOR.**
+            Every prior round ran 4–7 MODERATE; this one ran 1, and every LOW either confirms a
+            residue the crate already pre-registers or is explicitly labelled "not a new
+            defect" / "completeness note rather than hidden defect" by the lens that raised it.
+            - The MODERATE: my comment said `minted_by` has five other assertion sites "one of
+              them already non-square" — there are TWO, and the (40, 1) site already makes all
+              three separations the test claims to add uniquely. Corrected.
+            - Off-by-one in my own unboundedness note: the smallest surviving modulus is `% 40`
+              (the identity on 0..=39), not `% 41`. Corrected — the note now covers both.
+            - The wall's own PREDICATE was checked by nothing (`>` → `>=` → `true` all survive)
+              because everything a weakened wall admits is caught by the exact literal. Narrow,
+              but it breaks the day the literal is deliberately changed → the bound is now
+              asserted at runtime too, watched dying against the composite mutant.
+            - The unbounded family was independently CALIBRATED at exactly 39, matching the
+              recorded claim. `pub struct SubtreeCert` is capability-free and its dangerous
+              composite dies. `verify` held under 1.3M adversarial calls: no panics, no false
+              accepts.
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue
