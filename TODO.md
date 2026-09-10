@@ -763,6 +763,31 @@ any push, so nothing false was ever public.
       on a transposition). Pinned by `distinct_parameterisations_share_no_key_material` and
       `transposed_parameters_are_distinct_instances`.
 - [ ] Re-review after the fix (cap 4 runs), then reconsider graduation.
+      - [x] **Run 1 of the re-review — NOT CLEAN: 1 CRITICAL + 5 MODERATE, all real.**
+            CRITICAL: the version bump never landed. The doc said `0.2.0` → `0.3.0` and the
+            manifest still said `0.2.0`, so the crate labelled its own version as the broken
+            one. Cause: the Cargo.toml write was in a patch block that aborted on an earlier
+            assertion, and the commit message asserted the bump anyway —
+            [[feedback_claimed_verification_never_run]] again, this time about a one-line edit.
+            MODERATE ×5, every one a surviving mutant, and the first is the sharpest:
+            - **my regression test for my own fix was too narrow.** It signed ONE message per
+              parameterisation, so it only ever compared subtree 0, and all three sites that
+              carry the instance seed could be corrupted with the suite green — re-introducing
+              the identical catastrophe for every subtree ≥ 1. Same shape as the crate's
+              original vacuous capacity test, which this arc had already caught once.
+            - `TOP_DOMAIN` unpinned: set it to a subtree index and one Lamport key signs both
+              an anchor and a message, 32 of 64 positions exposed from a single signature.
+            - `anchor_bytes` truncation: `root[..1]` and `capacity as u8` both survived, each
+              with a demonstrated forgery (a splice accepted at seeds 168/178/251; a capacity
+              lie 600→856 accepted, congruent mod 256 and the same tree depth).
+            - `minted_by` never asserted FALSE: `-> true`, `&&`→`||` and dropping the root
+              conjunct all survived. (Dropping the *capacity* conjunct is equivalent through
+              the public API — no `adopt` on `HyperPublicKey`, so a same-root-different-
+              capacity key is not constructible; noted in the test, and it stops being
+              equivalent the day such a doorway is added.)
+            - the witness's `subtrees` field: only observable through `minted_by`, whose one
+              assertion used a 2×2 hypertree where the two capacities coincide.
+            Six tests added, all eight mutants watched dying.
 
 ## Now (leaf 15 — crdt-types)
 

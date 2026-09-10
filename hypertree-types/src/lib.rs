@@ -652,6 +652,129 @@ mod tests {
         }
     }
 
+    /// Signs `count` messages and returns each signature, so a test can look PAST subtree 0.
+    fn sign_n(seed: u64, top_n: usize, bottom_n: usize, count: usize) -> Vec<HyperSignature> {
+        let (mut chain, _pk) = generate_hypertree(seed, top_n, bottom_n)
+            .map(|(c, p)| (Some(c), p))
+            .unwrap();
+        let mut out = Vec::new();
+        for _ in 0..count {
+            let (sig, rest) = chain.take().expect("capacity remains").sign_next(b"m");
+            out.push(sig);
+            chain = rest;
+        }
+        out
+    }
+
+    #[test]
+    fn later_subtrees_share_no_key_material_either() {
+        // The instance seed must reach EVERY subtree, not just the first. Signing one
+        // message per instance only ever compares subtree 0 — which is how three mutants of
+        // the seed-carrying sites survived the first version of this suite (review round 2).
+        // Third signature of a 2-per-subtree hypertree is subtree 1, leaf 0.
+        let a = sign_n(0xC0FFEE, 2, 2, 3);
+        let b = sign_n(0xC0FFEE, 3, 2, 3);
+        assert_ne!(
+            a[2].bottom_root, b[2].bottom_root,
+            "subtree 1 differs across top_n"
+        );
+        assert_ne!(a[2].bottom_sig.vk, b[2].bottom_sig.vk);
+        // And across seeds, which pins the keychain carrying its seed at all.
+        let c = sign_n(0x1111, 2, 2, 3);
+        let d = sign_n(0x2222, 2, 2, 3);
+        assert_ne!(
+            c[2].bottom_root, d[2].bottom_root,
+            "subtree 1 differs across seeds"
+        );
+        assert_ne!(c[2].bottom_sig.vk, d[2].bottom_sig.vk);
+        // Rotation twice over, so the third subtree is reached too.
+        let e = sign_n(0x1111, 3, 1, 3);
+        let f = sign_n(0x2222, 3, 1, 3);
+        assert_ne!(
+            e[2].bottom_root, f[2].bottom_root,
+            "subtree 2 differs across seeds"
+        );
+    }
+
+    #[test]
+    fn the_two_layers_never_share_a_one_time_key() {
+        // TOP_DOMAIN is what keeps the top layer off the subtree-index range. Collide them
+        // and ONE Lamport key signs both an anchor and a message — the catastrophe this
+        // crate is about — while every other test passes (review round 2).
+        for (t, b) in [(2usize, 2usize), (3, 1), (2, 3)] {
+            let sigs = sign_n(0xC0FFEE, t, b, t * b);
+            let tops: Vec<_> = sigs.iter().map(|s| s.top_sig.vk.clone()).collect();
+            let bottoms: Vec<_> = sigs.iter().map(|s| s.bottom_sig.vk.clone()).collect();
+            for tv in &tops {
+                assert!(
+                    !bottoms.contains(tv),
+                    "a top one-time key also signs messages at ({t}, {b})"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn the_anchor_binds_both_halves_whole() {
+        // The splice and capacity-lie tests each pin that a field is PRESENT in the signed
+        // bytes; truncating either half survives them (`root[..1]`, `capacity as u8`) while
+        // producing real forgeries. Pin the encoding itself: 32 root bytes then 8 capacity
+        // bytes, little-endian, nothing dropped.
+        let root = [7u8; 32];
+        let bytes = anchor_bytes(root, 0x0102_0304_0506_0708);
+        assert_eq!(bytes.len(), 40, "the whole root and the whole capacity");
+        assert_eq!(&bytes[..32], &root[..]);
+        assert_eq!(&bytes[32..], &0x0102_0304_0506_0708u64.to_le_bytes()[..]);
+        // Distinct in every byte of each half.
+        let mut other_root = root;
+        other_root[31] ^= 1;
+        assert_ne!(anchor_bytes(other_root, 4), anchor_bytes(root, 4));
+        assert_ne!(
+            anchor_bytes(root, 4 + 256),
+            anchor_bytes(root, 4),
+            "not truncated to u8"
+        );
+    }
+
+    #[test]
+    fn minted_by_is_false_for_a_foreign_key() {
+        // `minted_by` was asserted TRUE exactly once and never FALSE, so `-> true`,
+        // `&&`->`||`, and dropping the root conjunct all survived (review round 2).
+        // A different seed at the SAME top capacity gives a different root and an equal
+        // capacity, which separates all three.
+        let (chain, pk_a) = generate_hypertree(1, 2, 2).unwrap();
+        let (_c, pk_b) = generate_hypertree(2, 2, 2).unwrap();
+        assert_eq!(pk_a.subtrees(), pk_b.subtrees(), "same capacity");
+        assert_ne!(pk_a.root_hash(), pk_b.root_hash(), "different root");
+        let (sig, _) = chain.sign_next(b"m");
+        let v = pk_a.verify(b"m", &sig).expect("genuine");
+        assert!(v.minted_by(&pk_a));
+        assert!(!v.minted_by(&pk_b), "a foreign key claims nothing");
+        // NOTE: the capacity conjunct cannot be separated from outside — a
+        // same-root-different-capacity `HyperPublicKey` is not constructible, since this
+        // crate exposes no `adopt` (contrast `mss-types`, where it is). Dropping that
+        // conjunct is therefore an equivalent mutant *through the public API*, and would
+        // stop being one the moment an adopt-style doorway is added.
+    }
+
+    #[test]
+    fn the_witness_records_the_top_capacity_not_the_bottom() {
+        // `subtrees` is private with no accessor, so its ONLY observable is `minted_by` —
+        // and the single assertion of that used a 2x2 hypertree, where the two capacities
+        // coincide, so recording the bottom capacity or a literal 2 was undetectable
+        // (review round 2). A hypertree with top capacity neither 2 nor equal to the bottom
+        // separates all three.
+        let (chain, pk) = generate_hypertree(0x5EED, 3, 1).unwrap();
+        let (sig, _) = chain.sign_next(b"m");
+        assert_eq!(pk.subtrees(), 3);
+        assert_eq!(
+            sig.bottom_capacity, 1,
+            "distinct from the top capacity, and from 2"
+        );
+        let v = pk.verify(b"m", &sig).expect("genuine");
+        assert!(v.minted_by(&pk), "the witness must record the TOP capacity");
+    }
+
     #[test]
     fn transposed_parameters_are_distinct_instances() {
         // `instance_seed` folds the parameters in order, so a transposition is not a
