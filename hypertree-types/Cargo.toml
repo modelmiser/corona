@@ -1,6 +1,6 @@
 [package]
 name = "hypertree-types"
-version = "0.4.0"
+version = "0.5.0"
 edition = "2021"
 description = "Corona leaf 14 — an XMSS^MT-style hypertree signature as a COMPOSITION of mss-types with ITSELF (mss ∘ mss). TOY: a type-discipline demonstration, not production crypto — at the inherited 64-bit Lamport width it is existentially forgeable under chosen message at ~2^32, the demo seeds are 24-bit, and there is no verifier-side doorway to the public key."
 license = "MIT"

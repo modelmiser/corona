@@ -1111,6 +1111,62 @@ any push, so nothing false was ever public.
               `subtrees()` METHOD, so rustdoc filed a field-privacy test under a method and made
               that method's summary a sentence about a different item. Moved to the type.
             Three derive mutants watched dying.
+      - [x] **Round 16 — 4 CRITICAL. Severity ESCALATED at the round I twice predicted would be
+            the floor. The arc's most important round, and the reason "keep going until it
+            converges" was the right instruction.**
+            - ⛔ **UNIVERSAL FORGERY, verified, in every version 0.2.0 through 0.4.0.** Two
+              exhibited pairs: `(0xC0FFEE, 184155, 25)`'s subtree 16431 IS `(0xC0FFEE, 63360,
+              126)`'s genesis subtree, and worse, `(0xC0FFEE, 68173, 130)`'s **top** keychain IS
+              `(0xC0FFEE, 62781, 25)`'s subtree 14062 — a key that certifies anchors also signs
+              caller-chosen messages. Reproduced independently before accepting the report.
+            - ⛔ **And it was not a birthday search — it was a CLOSED FORM.** Every step was a
+              bijection in one group: `F` (splitmix64's finalizer) is invertible, `G` is odd, and
+              the SAME `subseed` made both the instance seed and the layer seed. So
+              `pack = (F⁻¹(F⁻¹(target) − j·G) − master)·G⁻¹`, and `pack_params` splits any word
+              into reachable `(top_n, bottom_n)`. Zero work, any victim, any chosen index.
+              **The reviewer called it a sorted linear form; it is strictly worse than that, and
+              I found that out only by implementing the inversion.** Now executable as
+              `the_closed_form_transfer_is_dead`, which reproduces the forgery at pinned
+              parameters and then shows it dead.
+            - 🔓 Two of the four were MY OWN false claims, written the previous round in the
+              comment that reported the derive findings: `minted_by` described as unchecked when
+              five sites assert it, and "every derive invoked by NO test" when two were. **The
+              round-15 correction prose was itself new unverified content** — the treadmill,
+              exactly as `feedback_correction_prose_treadmill` describes it.
+            - 📐 **Round 15 told me the injectivity argument was invalid and I fixed only the
+              prose.** The sentence was labelled a measurement; the thing the sentence described
+              was broken. This is the arc's central datum: *when a reviewer refutes an argument
+              for a claim, re-derive the claim — do not re-word it.* The premise was re-checked
+              against the fix's stated intent rather than against the fix.
+            - ✅ **Fixed in 0.5.0 by `layer_seed(inst, j) = subseed(inst, j) ^ inst`** — a
+              Davies–Meyer feed-forward, and the fix is an ASYMMETRY, not a bigger mixer. Still
+              bijective in the index (so `TOP_DOMAIN`'s wall survives), no longer invertible in
+              the instance seed (so no index can be steered onto a chosen target: 2⁶⁴, from 0).
+              The near-miss is instructive and is documented: feeding forward the mixer's INPUT
+              makes the result a function of `inst + j·G` alone — the very collapse being fixed.
+            - ⚠ **Residue, and it does NOT reduce:** seeds are 64 bits because
+              `mss_types::generate` takes a `u64`, so *untargeted* collisions among a large
+              enough population stay birthday-bound at ~2³². No `u64 → u64` arrangement moves
+              that; it needs a wider seed at the operand, i.e. a change to `mss-types`. Pinned by
+              `the_width_residue_survives_the_fix`, which reruns the search against a 24-bit
+              narrowing of the FIXED construction and finds collisions in milliseconds —
+              demonstrated, not asserted.
+            - Renamed `distinct_parameterisations_share_no_key_material` →
+              `four_parameterisations_differ_in_public_key_and_slot_zero_keys`: **the test's NAME
+              was the retracted claim**, asserting over all parameterisations what four
+              hand-picked pairs cannot establish, and the crate's docs cited it as if it had.
+            - Six mutants watched dying (drop the feed-forward; feed forward the index; feed
+              forward the mixer input; each of the three call sites reverted). One GAP found and
+              recorded in the test: the index-feed-forward mutant PASSES
+              `the_closed_form_transfer_is_dead` and is caught only by the structural assertion
+              in `layer_seed_is_injective_in_index_and_walls_off_the_top` — a test cannot show
+              that no other closed form exists, only that one historical break is dead.
+            - Corrected in `sol/lean/Sol/Lib/Hypertree.lean` too: its `discharge_fails_at_accepts`
+              note claimed the `0.3.0` fold closed the violation `BindsOneDigest` made legible.
+            - 5 tests added (36 unit + 15 doc, green; clippy clean). Version bump to 0.5.0
+              VERIFIED on disk this time — the 0.4.0 bump never landed while its commit message
+              said it had.
+
 - [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
       the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
       layer, which is the finding — so build it only alongside the disclosure that the residue

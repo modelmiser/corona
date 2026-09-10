@@ -114,12 +114,23 @@
 //!   [`VerifiedHypertreeMessage`]s under an honest long-term key.
 //!
 //!   Fixed by `instance_seed` (private): every parameter is folded into one seed and every
-//!   key hangs off that, so two hypertrees differing in any parameter share nothing. Pinned
-//!   by `distinct_parameterisations_share_no_key_material` and
-//!   `the_instance_seed_separates_every_reachable_parameter_pair`. **The naming of the fix
-//!   is itself the lesson:** binding the parameters into the published *anchor* would only
-//!   have made the identities distinguishable while the same keys kept signing. *Any
-//!   parameter that changes what a one-time key signs must change that key.*
+//!   key hangs off that, so two hypertrees differing in any parameter get distinct instance
+//!   seeds. **The naming of the fix is itself the lesson:** binding the parameters into the
+//!   published *anchor* would only have made the identities distinguishable while the same
+//!   keys kept signing. *Any parameter that changes what a one-time key signs must change
+//!   that key.*
+//!
+//!   ⛔ That fix was **necessary and not sufficient, and this file claimed otherwise through
+//!   `0.4.0`** — "share nothing" was never established for the derived per-subtree keys, only
+//!   for the instance seed. Because every step of the derivation was a bijection in one
+//!   group, a victim's top-layer seed inverted back to attacker parameters in **closed form,
+//!   with no search at all**, and two exhibited pairs turned that into universal forgery under
+//!   an honest key. See [`layer_seed`], which repairs it in `0.5.0` by making the index
+//!   expansion non-invertible in the instance seed while leaving the parameter fold a
+//!   bijection. Pinned by `the_closed_form_transfer_is_dead`,
+//!   `distinct_parameterisations_stay_disjoint`,
+//!   `layer_seed_is_injective_in_index_and_walls_off_the_top`, and — for the part that does
+//!   **not** reduce — `the_width_residue_survives_the_fix`.
 //!
 //!   `0.3.0` carried this fix with a **collidable** fold — a `subseed` chain — under a
 //!   docstring claiming injectivity from an invalid argument. Corrected the same day in
@@ -537,7 +548,7 @@ impl HyperKeychain {
                 None => (sig, None),
                 Some(top) => {
                     let (bottom, bottom_pk) =
-                        generate(subseed(self.seed, self.next_subtree), self.bottom_n)
+                        generate(layer_seed(self.seed, self.next_subtree), self.bottom_n)
                             .expect("bottom_n >= 1 by construction");
                     let (top_sig, top_rest) =
                         top.sign_next(&anchor_bytes(bottom_pk.root_hash(), bottom_pk.capacity()));
@@ -632,9 +643,9 @@ pub fn generate_hypertree(
     // the parameters reach what the one-time keys sign, so they must reach the keys.
     let inst = instance_seed(seed, top_n, bottom_n);
     // Top layer, domain-separated from the subtree seeds.
-    let (top, top_pk) = generate(subseed(inst, TOP_DOMAIN), top_n)?;
+    let (top, top_pk) = generate(layer_seed(inst, TOP_DOMAIN), top_n)?;
     // First subtree (index 0), certified by top key 0.
-    let (bottom, bottom_pk) = generate(subseed(inst, 0), bottom_n)?;
+    let (bottom, bottom_pk) = generate(layer_seed(inst, 0), bottom_n)?;
     let (top_sig, top_rest) =
         top.sign_next(&anchor_bytes(bottom_pk.root_hash(), bottom_pk.capacity()));
     let chain = HyperKeychain {
@@ -681,44 +692,40 @@ const _: () = assert!(
 /// one-time key signs is folded in here, and every key in the hypertree is derived from the
 /// result, so two hypertrees differing in *any* parameter get **distinct instance seeds**.
 ///
-/// ⚠ **That is the whole of what is proved, and it is not the same as "share no key
-/// material".** Two steps separate them, and an earlier version of this docstring asserted the
-/// conclusion while establishing only the premise. (a) [`subseed`] is a bijection in its index
-/// for a *fixed* seed, but `subseed(s, i)` depends only on `s + i·G`, so it is **not** injective
-/// in the pair — distinct instance seeds can share a subtree seed at different indices
-/// (computed: for `x` = this crate's own pinned `instance_seed(0xC0FFEE, 2, 3)` and
-/// `y = x − G`, `subseed(x, 0) == subseed(y, 1)`). (b) per-key material is
-/// `prg(seed, i, 0xFF)`, a SHA-256 truncated to 64 bits, so distinctness of the *outputs*
-/// rests on collision resistance — the qualifier the operand crate states in as many words
-/// and this one dropped. No reachable `(top_n, bottom_n)` pair sharing key material is known
-/// under the shipped fold; that is a measurement, not a proof.
+/// ⛔ **THE STRONGER CLAIM WAS FALSE, AND 0.2.0–0.4.0 ARE ALL FORGEABLE.** An earlier
+/// version of this docstring said two hypertrees differing in any parameter "share no key
+/// material at either layer". Round 15 said the argument did not establish it; round 16
+/// exhibited it broken, twice, against the unmodified crate:
 ///
-/// Before this existed, `generate_hypertree` derived both layers from `seed` alone. Since
-/// `mss_types::generate` derives its per-key seeds independently of the keychain's
-/// capacity, slot *i* of the top layer and of every subtree was **the same Lamport key**
-/// across every parameterisation — while the anchor a top key signs is a function of
-/// `bottom_n`, and the message a bottom key signs is whatever the caller passes. One
-/// one-time key, two messages, at both layers and along both axes: total key recovery from
-/// published signatures alone. See the honest limits for the measured figures.
+/// - `generate_hypertree(0xC0FFEE, 184155, 25)`'s subtree 16431 and
+///   `generate_hypertree(0xC0FFEE, 63360, 126)`'s genesis subtree were **one keychain**, so
+///   one Lamport key signs two chosen messages and the pair splices into a certificate an
+///   honest key mints for a message never signed.
+/// - Worse, the layers crossed: `generate_hypertree(0xC0FFEE, 68173, 130)`'s **top** keychain
+///   was `generate_hypertree(0xC0FFEE, 62781, 25)`'s **subtree 14062** — a key that certifies
+///   anchors is a key that signs caller-chosen messages. Universal forgery under an honest
+///   long-term key. `TOP_DOMAIN` walls the layers apart only *within* one instance, which its
+///   docstring's "for every reachable index at once" did not say.
 ///
-/// The rule the leaf learned: **any parameter that changes what a one-time key signs must
-/// change that key.** Binding the parameters into the published anchor instead would only
-/// have made the identities distinguishable while the same keys kept signing.
+/// **And it was not a birthday search — it was a closed form.** `subseed(s, i) = F(s + i·G)`
+/// with `F` the splitmix64 finalizer, which is a **bijection**, and `G` odd, hence invertible
+/// mod 2⁶⁴. The same function made both the instance seed and the subtree seed, so every step
+/// from a victim's published top-layer seed back to attacker parameters inverts:
+/// `pack = (F⁻¹(F⁻¹(target) − j·G) − master)·G⁻¹`, and `pack_params` splits any word into a
+/// reachable `(top_n, bottom_n)`. **Zero search, any victim, any chosen `j`** — verified here,
+/// not inferred. Two versions of this docstring have now understated this defect; the first
+/// called re-parameterisation "a handful", the second "a sorted linear form".
 ///
-/// **Injective for every reachable parameter, and here is the honest reason.** The two
-/// parameters are packed into disjoint halves of one `u64` before mixing, so the packed
-/// value determines the pair whenever both are below `2^32` — which is every pair for which
-/// keygen can terminate, since each unit of either parameter is a Lamport key. [`subseed`]
-/// is a bijection in its index for a fixed seed, so distinct pairs give distinct instances.
+/// ✅ **Fixed in 0.5.0 by [`layer_seed`], and the fix is an asymmetry, not a bigger mixer.**
+/// The parameter fold stays a bijection (distinct parameters must never merge); the index
+/// expansion becomes non-invertible in the instance seed (no index may be *steered* onto a
+/// chosen target). One feed-forward buys both. See [`layer_seed`] for why each half is needed
+/// and what is left over.
 ///
-/// ⚠ **Why packing rather than chaining.** `subseed(subseed(seed, top_n), bottom_n)` is
-/// *not* injective in the pair — bijectivity in each argument separately does not give it,
-/// and `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`
-/// under that fold. Scope, since the domain is the whole point: over `[1, 1200]²` the chain
-/// has no collision at all, and the smallest usable colliding partner there is `2^42.5` (at
-/// `top_n` 530 against 583) — a statistic about the sweep, not the fold, and NOT a clearance:
-/// the module doc exhibits a collision at ~1.7 GiB of key material. The chain was unjustified
-/// and unscoped, which is reason enough. `TODO.md` carries the correction record.
+/// So what `instance_seed` buys is exactly this and no more: **distinct parameterisations get
+/// distinct instance seeds**, closing the 0.2.0 defect where they got the *same* one. On its
+/// own it never made the derived per-subtree keys disjoint, and this docstring twice said it
+/// did.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
     subseed(seed, pack_params(top_n, bottom_n))
 }
@@ -745,7 +752,41 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
     v
 }
 
-/// Deterministic sub-seed for subtree `index` (or the top domain), splitmix-mixed.
+/// Seed for one layer or subtree of an instance — the **compressing** half of the
+/// derivation, and the reason 0.5.0 is not forgeable the way 0.2.0–0.4.0 were.
+///
+/// `layer_seed(inst, j) = subseed(inst, j) ^ inst`. The trailing XOR is a Davies–Meyer
+/// feed-forward, and the whole fix is that it makes the function **asymmetric in its two
+/// arguments** — each direction load-bearing, for a different attack:
+///
+/// - **Bijective in `index`, for fixed `inst`.** `subseed` is a bijection in `index` and
+///   `^ inst` is a bijection when `inst` is fixed, so distinct indices still give distinct
+///   seeds. This is what [`TOP_DOMAIN`] rests on: lose it and the top layer could land on a
+///   subtree. Pinned by `layer_seed_is_injective_in_index_and_walls_off_the_top`.
+/// - **NOT invertible in `inst`, for fixed `index`.** Solving `layer_seed(inst, j) = target`
+///   for `inst` means solving `F(inst + j·G) ^ inst = target`, where the unknown appears both
+///   inside `F` and outside it. There is no closed form; an attacker must *search* `inst`,
+///   which costs 2⁶⁴, where the 0.4.0 form cost **nothing at all**. Pinned by
+///   `the_closed_form_transfer_is_dead` and `distinct_parameterisations_stay_disjoint`.
+///
+/// A cheaper-looking fix does not work, and the near-miss is the instructive part: feeding
+/// forward the mixer's *input* rather than `inst` — `F(x) ^ x` where `x = inst + j·G` — makes
+/// the result a function of `x` alone, which is exactly the collapse being repaired.
+///
+/// ⚠ **Residue, and it does not reduce.** Seeds are 64 bits because `mss_types::generate`
+/// takes a `u64`, so *untargeted* collisions among a large enough population of instances
+/// remain birthday-bound at ~2³², and no arrangement of a `u64 → u64` derivation can move
+/// that. What the fix buys is that a collision with a **chosen** victim is 2⁶⁴, and only
+/// targeted collisions forge. Closing the residue itself needs a wider seed at the operand —
+/// a change to `mss-types`, not to this crate. Demonstrated, not asserted, by
+/// `the_width_residue_survives_the_fix`, which reruns the birthday search against a narrowed
+/// copy of the fixed construction and finds collisions in seconds.
+fn layer_seed(inst: u64, index: u64) -> u64 {
+    subseed(inst, index) ^ inst
+}
+
+/// Deterministic sub-seed, splitmix-mixed — a **bijection in `index`** for fixed `seed`,
+/// which is what [`instance_seed`] needs and [`layer_seed`] deliberately gives up.
 fn subseed(seed: u64, index: u64) -> u64 {
     let mut z = seed.wrapping_add(index.wrapping_mul(0x9E37_79B9_7F4A_7C15));
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
@@ -895,11 +936,16 @@ mod tests {
     }
 
     #[test]
-    fn distinct_parameterisations_share_no_key_material() {
+    fn four_parameterisations_differ_in_public_key_and_slot_zero_keys() {
         // Regression for the 2026-09-09 break. Before `instance_seed`, hypertrees from one
         // seed shared one-time keys at BOTH layers along BOTH axes, which is total key
         // recovery from published signatures. Every pair below differs in some parameter, so
         // every pair must differ in public key and in both slot-0 one-time keys.
+        //
+        // ⚠ Renamed 2026-09-10. This was called `distinct_parameterisations_share_no_key_material`
+        // — the name asserted, over all parameterisations, a property four hand-picked pairs
+        // cannot establish, and the crate's docs cited it as if it had. The general claim is
+        // FALSE for 0.2.0-0.4.0 (see [`layer_seed`]); what this test covers is four pairs.
         let params = [(2usize, 2usize), (2, 4), (3, 2), (4, 2)];
         let mut seen = Vec::new();
         for (t, b) in params {
@@ -1312,12 +1358,12 @@ mod tests {
         let inst = instance_seed(seed, t, b);
         let sigs = sign_n(seed, t, b, t * b);
         for j in 0..t {
-            let (_, expected) = generate(subseed(inst, j as u64), b).expect("bottom_n >= 1");
+            let (_, expected) = generate(layer_seed(inst, j as u64), b).expect("bottom_n >= 1");
             for k in 0..b {
                 assert_eq!(
                     sigs[j * b + k].bottom_root,
                     expected.root_hash(),
-                    "subtree {j} must come from subseed(inst, {j})"
+                    "subtree {j} must come from layer_seed(inst, {j})"
                 );
             }
         }
@@ -1404,11 +1450,14 @@ mod tests {
 
     #[test]
     fn the_derived_impls_are_observed_by_something() {
-        // Every derive on the three public types was invoked by NO test: a `Clone` that
-        // corrupts the signature, and `PartialEq` returning a constant in either direction,
-        // all survived — including one that makes a sealed witness unequal to itself while
-        // `Eq + Hash` promise reflexivity to any `HashSet`. Derives are API; nothing was
-        // watching them.
+        // Most derives on the three public types were invoked by no test. Two WERE:
+        // `four_parameterisations_differ_in_public_key_and_slot_zero_keys` uses the public
+        // key's `PartialEq`
+        // (so its `-> true` mutant already died) and a lied-capacity test clones a signature.
+        // What survived: a `Clone` that corrupts the signature (both cloning tests overwrite
+        // or rebuild the field, masking it), and `PartialEq -> false` on all three types —
+        // including one that makes a sealed witness unequal to itself while `Eq + Hash`
+        // promise reflexivity to any `HashSet`. Derives are API; little was watching them.
         let (chain, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
         let (sig, rest) = chain.sign_next(b"m");
         // A clone must verify exactly as the original does.
@@ -1433,10 +1482,161 @@ mod tests {
         assert_ne!(pk.verify(b"m2", &sig2).unwrap(), v);
         let (_c, other_pk) = generate_hypertree(0xBEEF, 2, 2).unwrap();
         assert_ne!(other_pk, pk);
-        // `Debug` on the witness is one of only two channels publishing `subtrees`, and the
-        // other is `minted_by`; neither was checked.
+        // `Debug` on the witness is one of only two channels publishing `subtrees`. The
+        // other, `minted_by`, is asserted at five sites; this one was checked nowhere.
         assert!(format!("{v:?}").contains("subtrees: 2"));
         assert!(format!("{sig:?}").contains("bottom_capacity: 2"));
+    }
+
+    /// Inverse of splitmix64's finalizer — **attack code**, used only to prove the 0.4.0
+    /// break was a closed form and that 0.5.0's is not. Its existence is the argument: a
+    /// bijection made from invertible steps has an inverse whether or not anyone wrote it.
+    fn unxorshift(v: u64, sh: u32) -> u64 {
+        let mut r = v;
+        for _ in 0..6 {
+            r = v ^ (r >> sh);
+        }
+        r
+    }
+    fn finv(z: u64) -> u64 {
+        let z = unxorshift(z, 31);
+        let z = z.wrapping_mul(0x3196_42b2_d24d_8ec3);
+        let z = unxorshift(z, 27);
+        let z = z.wrapping_mul(0x96de_1b17_3f11_9089);
+        unxorshift(z, 30)
+    }
+    const G_INV: u64 = 0xf1de_83e1_9937_733d;
+
+    #[test]
+    fn finv_actually_inverts_the_mixer() {
+        // Without this, every "the attack fails now" assertion below could be passing because
+        // `finv` is broken rather than because the derivation is fixed — a check that cannot
+        // fail. Pin the inverse against the forward function it claims to undo.
+        for x in [0u64, 1, 2, 0xC0FFEE, u64::MAX, 0x9E37_79B9_7F4A_7C15] {
+            let fwd = subseed(x, 0);
+            assert_eq!(finv(fwd), x, "finv must undo subseed(_, 0)");
+        }
+        assert_eq!(0x9E37_79B9_7F4A_7C15u64.wrapping_mul(G_INV), 1);
+    }
+
+    #[test]
+    fn the_closed_form_transfer_is_dead() {
+        // THE round-16 defect, as executable history. Under 0.4.0 the whole derivation was
+        // built from bijections in one group, so a victim's top-layer seed inverted straight
+        // back to attacker parameters — no search, no birthday bound, no luck.
+        let (victim_master, vt, vb) = (0xDEAD_BEEFu64, 4usize, 8usize);
+        let j = 7u64;
+        let target_040 = subseed(instance_seed(victim_master, vt, vb), TOP_DOMAIN);
+
+        let att_master = 0x1234u64;
+        let inst_b = finv(target_040).wrapping_sub(j.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+        let pack = finv(inst_b).wrapping_sub(att_master).wrapping_mul(G_INV);
+        let (t, b) = ((pack >> 32) as usize, (pack & 0xFFFF_FFFF) as usize);
+        // Pinned, so a broken `finv` cannot quietly turn this test into a tautology.
+        assert_eq!((t, b), (2_662_978_361, 3_171_815_252));
+        assert!(t >= 1 && b >= 1, "the solved parameters must be reachable");
+        assert_eq!(
+            subseed(instance_seed(att_master, t, b), j),
+            target_040,
+            "0.4.0 was solvable in closed form: this is the forgery, reproduced"
+        );
+
+        // 0.5.0: the same solved parameters miss, because the feed-forward puts the unknown
+        // both inside the mixer and outside it.
+        let target_050 = layer_seed(instance_seed(victim_master, vt, vb), TOP_DOMAIN);
+        assert_ne!(layer_seed(instance_seed(att_master, t, b), j), target_050);
+        // ...and an attacker must now search. A bounded search stands in for the 2^64 one: it
+        // must find nothing.
+        //
+        // ⚠ What this test does NOT show: that no OTHER closed form exists. It reproduces one
+        // historical break and demonstrates it dead. A mutant feeding forward `index` instead
+        // of `inst` restores invertibility and still passes everything here — it is caught by
+        // the structural assertion in
+        // `layer_seed_is_injective_in_index_and_walls_off_the_top`, which is therefore load-
+        // bearing rather than decorative. Watched failing, 2026-09-10.
+        for k in 1..20_000usize {
+            for jj in 0..4u64 {
+                assert_ne!(
+                    layer_seed(instance_seed(att_master, k, b), jj),
+                    target_050,
+                    "a targeted collision must not be reachable by search this cheap"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn distinct_parameterisations_stay_disjoint() {
+        // The two pairs round 16 exhibited against 0.2.0-0.4.0, as regressions. Each was one
+        // shared keychain: the first reuses a one-time key across two hypertrees, the second
+        // crosses the LAYERS, making a key that certifies anchors also sign chosen messages.
+        let a = layer_seed(instance_seed(0xC0FFEE, 184_155, 25), 16_431);
+        let b = layer_seed(instance_seed(0xC0FFEE, 63_360, 126), 0);
+        assert_ne!(
+            a, b,
+            "subtree 16431 of A must not be the genesis subtree of B"
+        );
+        let c = layer_seed(instance_seed(0xC0FFEE, 68_173, 130), TOP_DOMAIN);
+        let d = layer_seed(instance_seed(0xC0FFEE, 62_781, 25), 14_062);
+        assert_ne!(c, d, "A's TOP keychain must not be a subtree keychain of B");
+        // Both collided under the old form. Assert that too, or these are two arbitrary
+        // inequalities that would pass against any derivation at all, including the broken one.
+        assert_eq!(
+            subseed(instance_seed(0xC0FFEE, 184_155, 25), 16_431),
+            subseed(instance_seed(0xC0FFEE, 63_360, 126), 0)
+        );
+        assert_eq!(
+            subseed(instance_seed(0xC0FFEE, 68_173, 130), TOP_DOMAIN),
+            subseed(instance_seed(0xC0FFEE, 62_781, 25), 14_062)
+        );
+    }
+
+    #[test]
+    fn layer_seed_is_injective_in_index_and_walls_off_the_top() {
+        // The half of `layer_seed` that must NOT be given up. `TOP_DOMAIN` keeps the top layer
+        // off the subtree range only if distinct indices give distinct seeds for a fixed
+        // instance; a compressing fix that broke this would trade one forgery for another.
+        let inst = instance_seed(0xC0FFEE, 4, 2);
+        let mut seen = std::collections::HashSet::new();
+        for j in 0..50_000u64 {
+            assert!(seen.insert(layer_seed(inst, j)), "index {j} collides");
+        }
+        assert!(!seen.contains(&layer_seed(inst, TOP_DOMAIN)));
+        // The feed-forward itself, named: without `^ inst` the function is a bijection in BOTH
+        // arguments and the closed form above comes back.
+        assert_eq!(layer_seed(inst, 9), subseed(inst, 9) ^ inst);
+        assert_ne!(layer_seed(inst, 9), subseed(inst, 9));
+    }
+
+    #[test]
+    fn the_width_residue_survives_the_fix() {
+        // ⚠ RESIDUE, demonstrated rather than asserted. The fix makes a collision with a
+        // CHOSEN victim cost 2^64; it cannot make untargeted collisions rarer than the seed
+        // width allows, because `mss_types::generate` takes a `u64`. Narrow that width to 24
+        // bits, leave the fixed construction otherwise intact, and the birthday collisions
+        // come straight back -- in milliseconds. Nothing in this crate can close that; it
+        // needs a wider seed at the operand.
+        const MASK: u64 = 0xFF_FFFF;
+        let narrowed =
+            |t: usize, j: u64| layer_seed(instance_seed(0xC0FFEE, t, 2) & MASK, j) & MASK;
+        let mut seen: std::collections::HashMap<u64, (usize, u64)> =
+            std::collections::HashMap::new();
+        let mut cross_instance = None;
+        'outer: for t in 1..400usize {
+            for j in 0..40u64 {
+                if let Some(&(pt, pj)) = seen.get(&narrowed(t, j)) {
+                    if pt != t {
+                        cross_instance = Some(((pt, pj), (t, j)));
+                        break 'outer;
+                    }
+                } else {
+                    seen.insert(narrowed(t, j), (t, j));
+                }
+            }
+        }
+        let ((t1, j1), (t2, j2)) = cross_instance.expect("a 24-bit seed space must still collide");
+        assert_ne!(t1, t2);
+        assert_eq!(narrowed(t1, j1), narrowed(t2, j2));
     }
 
     #[test]
@@ -1445,8 +1645,9 @@ mod tests {
         // survives the wall and silently re-keys every hypertree, because the one test naming
         // the constant puts it on BOTH sides of its comparison — the same shape as
         // `instance_seed`'s own known-answer pin. A published-key literal pins the whole
-        // chain at once: `TOP_DOMAIN`, `instance_seed`, `pack_params`, `subseed`, and the
-        // wiring in `generate_hypertree`. Drift in any of them must be a deliberate act.
+        // chain at once: `TOP_DOMAIN`, `instance_seed`, `pack_params`, `subseed`,
+        // `layer_seed`, and the wiring in `generate_hypertree`. Drift in any of them must be a
+        // deliberate act.
         assert_eq!(TOP_DOMAIN, 0xFFFF_FFFF_0000_0001);
         // The wall's own PREDICATE is checked by nothing — weakening `>` to `>=`, or to
         // `true`, compiles and leaves the suite green, because every value such a wall admits
@@ -1456,13 +1657,27 @@ mod tests {
             TOP_DOMAIN > u32::MAX as u64,
             "the top seed must sit above every subtree index"
         );
+        // The seed literal is computed OUTSIDE this crate (Python model of `instance_seed`
+        // and `layer_seed`); the byte literal then pins everything downstream of it. Changing
+        // 0.5.0's derivation re-keys every hypertree, and this fires first and says why.
+        assert_eq!(instance_seed(0xC0FFEE, 2, 2), 0xd295_8fbe_d5f3_18c1);
+        assert_eq!(
+            layer_seed(instance_seed(0xC0FFEE, 2, 2), TOP_DOMAIN),
+            0x0646_aae7_b7ad_9ace
+        );
         let (_c, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (_, from_literal) = generate(0x0646_aae7_b7ad_9ace, 2).expect("top_n >= 1");
+        assert_eq!(
+            pk.root_hash(),
+            from_literal.root_hash(),
+            "the published key must be the top layer of the independently-computed seed"
+        );
         assert_eq!(
             pk.root_hash(),
             [
-                0x8b, 0x76, 0xd9, 0x6a, 0xf5, 0x19, 0x15, 0xea, 0x6a, 0x4d, 0x01, 0xf7, 0xc6, 0x98,
-                0xb5, 0xa2, 0x33, 0x76, 0x6b, 0xd5, 0xe6, 0x5a, 0x72, 0x16, 0x00, 0xb4, 0x9d, 0xff,
-                0x4d, 0xde, 0xc4, 0x7b,
+                0xe4, 0xa4, 0x64, 0x0d, 0x60, 0x8e, 0xf5, 0xfa, 0x0f, 0x86, 0x89, 0xdb, 0x3d, 0xdf,
+                0xd6, 0xd3, 0xe0, 0x0b, 0x26, 0x03, 0x76, 0x00, 0x19, 0x99, 0xea, 0x0c, 0x0d, 0x3e,
+                0x87, 0x21, 0x4d, 0xec,
             ],
         );
     }
@@ -1470,15 +1685,18 @@ mod tests {
     #[test]
     fn the_top_seed_is_outside_the_subtree_seed_family() {
         // `TOP_DOMAIN`'s value is walled at compile time, but the *structure* — that the top
-        // seed is derived through `subseed` at all — is not. Deleting that call makes the top
-        // layer use the instance seed raw, which no parameter sweep catches.
+        // seed is derived through `layer_seed` at all — is not. Deleting that call makes the
+        // top layer use the instance seed raw, which no parameter sweep catches.
         let inst = instance_seed(0xC0FFEE, 4, 2);
-        let top = subseed(inst, TOP_DOMAIN);
+        let top = layer_seed(inst, TOP_DOMAIN);
+        // Independently computed (Python, outside this crate) so the wiring below is anchored
+        // to something other than the code it checks.
+        assert_eq!(top, 0x95e8_df57_7540_31af);
         assert_ne!(top, inst, "the top seed is not the instance seed itself");
         for j in 0..128u64 {
             assert_ne!(
                 top,
-                subseed(inst, j),
+                layer_seed(inst, j),
                 "the top seed collides with subtree {j}"
             );
         }
