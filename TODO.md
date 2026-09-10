@@ -1291,6 +1291,40 @@ any push, so nothing false was ever public.
             is structural only: which attacks the fix removes, which it does not, and which test
             pins each. Kept: the `2^32` DOMAIN bounds on `pack_params`/`TOP_DOMAIN` (facts about
             packing, not costs) and `lamport-types`' inherited digest width (pinned upstream).
+      - [x] **Round 20 — confirmation round on the cost-free text. GPT-5.3-Codex: CLEAN on all
+            five questions. Grok-4.6: eight findings. FIFTH consecutive round in which the
+            lenient verdict was the wrong one, and the fourth in which BOTH agree there is no
+            code defect.**
+            - ⛔ **The usage rule I added that same hour was itself an overclaim.** "Derive at
+              most ONE hypertree per master seed … none of them can arise if a seed is used
+              once" is false for the honest-collision case, which involves two *different*
+              seeds. I wrote a new overstatement while trying to make the file safer to act on.
+              Now scoped: it closes the seed-separation class **only**.
+            - 🔓 "only made unsteerable", "a **cheaper** route", "the direction that was
+              **free**" — three cost/comparison words left in a file whose crate-level docs had
+              just been changed to say it states no costs. Deleted, not reworded.
+            - 🔓 "any observer holding both public keys recovers it" — the two *signatures* leak
+              the one-time key, not the two public keys. 🔓 The crate-level line dropped the
+              `< 2³²` qualifier that `instance_seed` and `pack_params` both carry. 🔓 The test
+              list said "three tests pin the negative half" while naming one that shows a
+              positive and omitting the fourth test entirely.
+            - 🔓 `verification_is_keyed_on_the_public_key_value_not_on_a_chain` was cited for
+              the colliding-pair claim but generates the same parameters twice, so it would pass
+              even if collisions were impossible. Citation corrected to what it does show — that
+              verification carries no binding to the signing chain — and its `Copy` block, which
+              was a plain move, now uses the key after the binding. Dropping `Copy` from
+              `HyperPublicKey` stops it compiling (E0382); watched.
+      - [ ] **STOPPING HERE AND PUTTING THE GRADUATION DECISION TO THE OWNER.** Five rounds
+            (16–20). Round 16 found a real code defect and it was fixed; rounds 17–20 found
+            **zero** code defects between them and ~20 prose defects, and every round's
+            corrections contained at least one new overstatement. The convergence criterion (two
+            consecutive clean rounds) is not met and the evidence says more of the same will not
+            reach it: the remaining findings all live in one class — stating security scope
+            precisely in prose — where each rewrite is itself new unverified content. Leaf 5 sat
+            at 19 rounds in exactly this position and was handled by a FREEZE. The code is the
+            part that is quiet: 38 unit + 15 doc tests, clippy and rustdoc clean, four
+            independent rounds finding nothing in it.
+
       - [ ] **TREADMILL CALLED (`feedback_correction_prose_treadmill`).** Rounds 16→18 found
             progressively less about the CODE and more about the prose describing it; the
             docstring is now five layers of nested retraction. The named remedy is a standalone

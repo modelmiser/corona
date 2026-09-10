@@ -115,7 +115,7 @@
 //!
 //!   Fixed by `instance_seed` (private): every parameter is folded into one seed and every
 //!   key hangs off that, so two hypertrees differing in any parameter get distinct instance
-//!   seeds. **The naming of the fix is itself the lesson:** binding the parameters into the
+//!   seeds — while both parameters are below `2³²`, the qualifier `pack_params` carries. **The naming of the fix is itself the lesson:** binding the parameters into the
 //!   published *anchor* would only have made the identities distinguishable while the same
 //!   keys kept signing. *Any parameter that changes what a one-time key signs must change
 //!   that key.*
@@ -134,12 +134,8 @@
 //!   `layer_seed` states which attacks the repair removes and which it does not, and states no
 //!   cost for any of them** — three successive cost figures were each refuted by the next
 //!   review, and none was ever pinnable by a test.
-//!   The private `layer_seed` carries the full accounting. Three tests pin the negative half,
-//!   and each pins less than its name suggests, so they are named by what they actually show:
-//!   `the_closed_form_transfer_is_dead` (one historical inversion now misses),
-//!   `the_dual_inversion_is_not_closed_by_this_fix` (the inverse in the index still exists),
-//!   and `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides). None of the
-//!   three measures a cost, and this paragraph claimed every clause was pinned.
+//!   The private `layer_seed` carries the full accounting and names the four tests that carry
+//!   it, each of which reaches less than its name suggests. None of them measures a cost.
 //!
 //!   `0.3.0` carried this fix with a **collidable** fold — a `subseed` chain — under a
 //!   docstring claiming injectivity from an invalid argument. Corrected the same day in
@@ -220,6 +216,13 @@
 //! protocol. Not for signing anything real. (The width was missing from this list until
 //! 2026-09-09 while the honest limits named it as the surviving weakest link, so a reader of
 //! only this banner — the section written for exactly that reader — was not told.)
+//!
+//! **One usage rule this crate's history produced: derive at most ONE hypertree per master
+//! seed.** Every *seed-separation* defect found here — three versions' worth — is a failure of
+//! separation between parameterisations of one seed, and that whole class is closed by using a
+//! seed once. ⚠ It closes **only** that class: it does nothing about a birthday collision
+//! between two honest users' independent seeds, nothing about the inherited digest width, and
+//! nothing about the persistence and seed-secrecy limits below, which carry their own rules.
 //!
 //! ## Intended use
 //!
@@ -770,28 +773,34 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// calls residue. What follows is therefore structural only: *which* attacks the fix does and
 /// does not remove, never how much they cost.
 ///
-/// 1. **Targeted collisions are not removed, only made unsteerable.** Bijectivity in `index`
+/// 1. **Targeted collisions are not removed.** Bijectivity in `index`
 ///    cuts both ways: the map is trivially invertible in `j`
 ///    (`j = G⁻¹·(F⁻¹(target ^ inst) − inst)`), so for any candidate `inst` an exact index
-///    exists and the only obstacle is whether it lands below `top_n`. Pinned by
+///    exists and the only obstacle is whether it lands below `top_n`. What `0.5.0` removed is
+///    the direction in which the attacker *chose* the index and solved for the parameters; in
+///    the direction that survives, the index is forced. Pinned by
 ///    `the_dual_inversion_is_not_closed_by_this_fix`.
-/// 2. **And a cheaper route survives beside it.** [`instance_seed`] is plain `subseed` with no
+/// 2. **And a second route survives beside it.** [`instance_seed`] is plain `subseed` with no
 ///    feed-forward, so a second master copies the *whole instance* in one step —
 ///    `mₐ = m_v + (pack_v − packₐ)·G` — hence every layer at once. Both routes need the
-///    victim's master, and holding that already suffices to remint them, which is why the fix
-///    is worth little against a chosen victim.
+///    victim's master, and holding that already suffices to remint them. This route is pinned
+///    by no test; it is stated because it is checkable by inspection, not because it was
+///    measured.
 /// 3. **Untargeted collisions are untouched, and the missing `adopt` does not gate them.** Two
 ///    instances sharing a layer seed share the keychain. What that buys depends on who owns
 ///    the two, and collapsing these cases is how the wrong drafts were written:
 ///    - **Both attacker-owned:** nothing. They hold both chains and can sign at will.
 ///    - **Two independent honest users:** each signs under what is one one-time key, and any
-///      observer holding both public keys recovers it and forges under **both** — no master
-///      seed and no new API. This is the residue's actual bite.
+///      observer of **both signatures** recovers it — the two signatures leak it, not the two
+///      public keys — and forges under both. No master seed and no new API. This is the
+///      residue's actual bite, and no usage rule inside one keyholder closes it.
 ///
 ///    A colliding pair with equal `top_n` publishes **equal [`HyperPublicKey`]s** (the derived
 ///    `PartialEq` compares the inner MSS key), and verification is keyed on that value alone,
-///    so it accepts the other chain's signatures — pinned by
-///    `verification_is_keyed_on_the_public_key_value_not_on_a_chain`. `adopt`'s absence blocks
+///    so it accepts the other chain's signatures. The *mechanism* — that verification carries
+///    no binding to the chain that signed — is pinned by
+///    `verification_is_keyed_on_the_public_key_value_not_on_a_chain`; that a colliding pair
+///    exists is the birthday argument above, which no test here reaches. `adopt`'s absence blocks
 ///    only *reconstructing* a key from the two integers this type publishes, which is wire
 ///    ergonomics; handing a verifier the `Copy` key from [`generate_hypertree`]'s tuple is the
 ///    intended use and needs no doorway.
@@ -810,17 +819,21 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// `mss-types`, not to this crate. Demonstrated by `the_width_residue_survives_the_fix`
 /// against a 24-bit narrowing of the *fixed* construction.
 ///
-/// **Three tests pin the negative half, and each shows less than its name suggests:**
+/// **Four tests carry this accounting, and each reaches less than its name suggests:**
 /// `the_closed_form_transfer_is_dead` (one historical inversion now misses — not that no other
-/// exists), `the_dual_inversion_is_not_closed_by_this_fix` (the inverse in the index still
-/// exists, and the `j` it returns is specific — it measures no cost), and
-/// `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides).
+/// does), `the_dual_inversion_is_not_closed_by_this_fix` (an exact index still exists for every
+/// candidate instance — it measures no cost),
+/// `verification_is_keyed_on_the_public_key_value_not_on_a_chain` (verification carries no
+/// binding to the signing chain — it exhibits no collision), and
+/// `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides — not a measurement
+/// at the real width).
 ///
-/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free, and that is all
-/// it removes. Items 1 and 2 need the victim's master, which already suffices to remint them.
-/// Items 3 and 4 need no master and are untouched. What the fix is worth is that one seed's
-/// parameterisations are no longer steerable onto each other — a real property, and a smaller
-/// one than four drafts of this docstring claimed.
+/// **Net:** `0.5.0` removes one direction of `0.4.0`'s inversion — the one where the attacker
+/// chose the index — and that is all it removes. Items 1 and 2 need the victim's master, which
+/// already suffices to remint them. Items 3 and 4 need no master and are untouched. What the
+/// fix is worth is that a parameterisation of one seed can no longer be aimed at another
+/// parameterisation of that seed: a real property, and a smaller one than four drafts of this
+/// docstring claimed.
 fn layer_seed(inst: u64, index: u64) -> u64 {
     subseed(inst, index) ^ inst
 }
@@ -1650,11 +1663,15 @@ mod tests {
         );
         drop(chain_a);
         // And the missing `HyperPublicKey::adopt` gates none of it: the verifier here never
-        // held a keychain, and got its key from `generate_hypertree`'s tuple, which is `Copy`.
+        // held a keychain, and got its key from `generate_hypertree`'s tuple. ⚠ This block
+        // claimed to exercise `Copy` while being a plain move until 2026-09-10 -- using
+        // `pk_a` again AFTER the binding is what makes it a Copy, and a `Clone`-only key
+        // would stop compiling here.
         let handed_over = pk_a;
         assert!(handed_over
             .verify(b"signed by the other chain", &sig_b)
             .is_some());
+        assert!(pk_a.verify(b"signed by the other chain", &sig_b).is_some());
     }
 
     #[test]
