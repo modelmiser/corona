@@ -1259,6 +1259,38 @@ any push, so nothing false was ever public.
               running. Consensus would have closed this file with a wrong-reason test in it.
             - Four mutants watched dying (constant `layer_seed` before AND after the guard, the
               `Debug` value leak, the vacuity of the narrowing).
+      - [x] **Round 19 — cross-vendor on the CONSOLIDATED text. Both reviewers: NO CODE DEFECT
+            (third round running). They split on my item 3, and the strict one was right —
+            fourth round running that the lenient verdict was the wrong one.**
+            - ⛔ **The structural claim I promoted after three cost refutations is also false,
+              and it lasted exactly one round.** I had written that untargeted collisions were
+              not an entry point because `HyperPublicKey`'s only constructor also returns the
+              signing chain — making the unbuilt `adopt` rung load-bearing for a SECURITY
+              property, which I called the sharpest result of the arc. The key is `Copy`, and
+              splitting `generate_hypertree`'s tuple to hand a verifier the key **is** the
+              intended API. Verification is keyed on that value alone, so a colliding pair with
+              equal `top_n` publishes EQUAL public keys and either chain's signatures verify.
+              `adopt` gates only reconstruction from published bytes. I had reached this myself
+              (`Copy` + private field) before reading the reviews, which is the only good part.
+            - 📐 **The datum, and it is the arc's real one:** out of numeric claims to get
+              wrong, I moved to a *structural* register that felt safer and gave it no more
+              testing than the three already refuted. **A new register is not new evidence.**
+            - 🔓 The "Net" paragraph said every break was downstream of the master seed — false
+              for items 3 and 4. 🔓 The crate-level scope block was left out of line by the
+              round-18 cut, i.e. the cut ITSELF introduced a contradiction.
+            - ✅ New test `verification_is_keyed_on_the_public_key_value_not_on_a_chain`; the
+              insight file and DEVLOG entry were corrected IN PLACE, not appended to, since both
+              carried the wrong claim as their headline.
+      - [x] **CONVERGENCE, and it was subtractive twice.** Round 18's cut moved the history out
+            of the code; round 19 showed that was not enough, because the cut itself introduced
+            a claim. So the second cut removes the whole failing CLASS: **every numeric cost
+            figure is deleted from the file.** Three successive targeted-cost statements were
+            each refuted by the next review, always erring in the same direction, and not one
+            was ever pinnable by a test — which makes a cost claim residue by this garden's own
+            definition, and residue does not belong in a docstring as an assertion. What is left
+            is structural only: which attacks the fix removes, which it does not, and which test
+            pins each. Kept: the `2^32` DOMAIN bounds on `pack_params`/`TOP_DOMAIN` (facts about
+            packing, not costs) and `lamport-types`' inherited digest width (pinned upstream).
       - [ ] **TREADMILL CALLED (`feedback_correction_prose_treadmill`).** Rounds 16→18 found
             progressively less about the CODE and more about the prose describing it; the
             docstring is now five layers of nested retraction. The named remedy is a standalone

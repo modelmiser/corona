@@ -129,9 +129,11 @@
 //!   ⚠ **Read the scope.** *That* break needs the master seed, and whoever has it can remint
 //!   the victim anyway, so it is a key-separation failure rather than a remote forgery, and the
 //!   repair is worth correspondingly little against a chosen victim. It does **not** follow
-//!   that everything here needs a master: the ~2³² birthday residue does not, the inherited
-//!   64-bit widths do not, and neither is touched by the repair. No cost figure in this file is
-//!   measured, and none is claimed as a bound.
+//!   that everything here needs a master: the birthday residue in the seed width does not, the
+//!   inherited 64-bit widths do not, and neither is touched by the repair. **The private
+//!   `layer_seed` states which attacks the repair removes and which it does not, and states no
+//!   cost for any of them** — three successive cost figures were each refuted by the next
+//!   review, and none was ever pinnable by a test.
 //!   The private `layer_seed` carries the full accounting. Three tests pin the negative half,
 //!   and each pins less than its name suggests, so they are named by what they actually show:
 //!   `the_closed_form_transfer_is_dead` (one historical inversion now misses),
@@ -758,38 +760,43 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// - **No peel-off inverse in `inst`, for fixed `index`.** `F(inst + j·G) ^ inst = target`
 ///   puts the unknown both inside `F` and outside it, so `0.4.0`'s chain of inversions misses.
 ///
-/// ⛔ **What this does NOT buy. Every line here was claimed as a strength first and refuted
-/// after, so treat the list as the actual contract:**
+/// ⛔ **What this does NOT buy. Each line below was first claimed as a strength and then
+/// refuted, so the list — not the summary above it — is the contract.**
 ///
-/// 1. **Not 2⁶⁴ for a chosen victim.** Bijectivity in `index` cuts both ways: the map is
-///    trivially invertible in `j`, so an attacker who may use any subtree solves
-///    `j = G⁻¹·(F⁻¹(target ^ inst) − inst)` per candidate `inst` and needs only that `j` land
-///    below `top_n`. If `j` were uniform that is ~2⁶⁴/`top_n` trials with `top_n` inside the
-///    attacker's own keygen budget — but uniformity is a modelling assumption about `F`, not
-///    something measured. **No lower bound is claimed.**
-/// 2. **Not even that, under the same premise.** [`instance_seed`] is plain `subseed` with no
+/// **No cost figure appears here, and that is deliberate.** Every numeric estimate this file
+/// has carried has been wrong: three successive statements of the targeted cost were each
+/// refuted by the next review, always in the same direction, and none of them was ever
+/// pinnable by a test — a cost claim is exactly the kind of statement this crate's discipline
+/// calls residue. What follows is therefore structural only: *which* attacks the fix does and
+/// does not remove, never how much they cost.
+///
+/// 1. **Targeted collisions are not removed, only made unsteerable.** Bijectivity in `index`
+///    cuts both ways: the map is trivially invertible in `j`
+///    (`j = G⁻¹·(F⁻¹(target ^ inst) − inst)`), so for any candidate `inst` an exact index
+///    exists and the only obstacle is whether it lands below `top_n`. Pinned by
+///    `the_dual_inversion_is_not_closed_by_this_fix`.
+/// 2. **And a cheaper route survives beside it.** [`instance_seed`] is plain `subseed` with no
 ///    feed-forward, so a second master copies the *whole instance* in one step —
-///    `mₐ = m_v + (pack_v − packₐ)·G` — hence every layer at once, for attacker-chosen
-///    feasible parameters. O(1).
-/// 3. **Untargeted collisions are not made harmless, and the missing `adopt` does not gate
-///    them.** Two instances sharing a layer seed share the keychain; finding such a pair is a
-///    birthday on ~2³² seed *derivations*, not on live keychains. What it buys depends on who
-///    owns the two:
-///    - **Both attacker-owned:** nothing new. They hold both chains and can sign at will.
+///    `mₐ = m_v + (pack_v − packₐ)·G` — hence every layer at once. Both routes need the
+///    victim's master, and holding that already suffices to remint them, which is why the fix
+///    is worth little against a chosen victim.
+/// 3. **Untargeted collisions are untouched, and the missing `adopt` does not gate them.** Two
+///    instances sharing a layer seed share the keychain. What that buys depends on who owns
+///    the two, and collapsing these cases is how the wrong drafts were written:
+///    - **Both attacker-owned:** nothing. They hold both chains and can sign at will.
 ///    - **Two independent honest users:** each signs under what is one one-time key, and any
-///      observer holding both public keys recovers it and forges under **both**. No master
-///      seed, no new API. This is the residue's actual bite.
+///      observer holding both public keys recovers it and forges under **both** — no master
+///      seed and no new API. This is the residue's actual bite.
 ///
-///    A colliding pair with equal `top_n` also publishes **equal [`HyperPublicKey`]s** — the
-///    derived `PartialEq` compares the inner MSS key — and verification is keyed on that value
-///    alone, so it accepts the other chain's signatures. The collision reaches `verify`
-///    directly. ⚠ **This docstring claimed on 2026-09-10 that the missing
-///    `HyperPublicKey::adopt` blocked all of the above.** It does not: `adopt`'s absence blocks
-///    only *reconstructing* a public key from the two integers this type publishes — that is
-///    wire-level verification, and it is an ergonomics rung. Handing a verifier the `Copy`
-///    public key from [`generate_hypertree`]'s tuple is the intended use and needs no doorway.
-/// 4. **Nothing here touches the inherited widths.** `lamport-types` already forges on a
-///    64-bit digest collision at ~2³², independently.
+///    A colliding pair with equal `top_n` publishes **equal [`HyperPublicKey`]s** (the derived
+///    `PartialEq` compares the inner MSS key), and verification is keyed on that value alone,
+///    so it accepts the other chain's signatures — pinned by
+///    `verification_is_keyed_on_the_public_key_value_not_on_a_chain`. `adopt`'s absence blocks
+///    only *reconstructing* a key from the two integers this type publishes, which is wire
+///    ergonomics; handing a verifier the `Copy` key from [`generate_hypertree`]'s tuple is the
+///    intended use and needs no doorway.
+/// 4. **Nothing here touches the inherited widths.** `lamport-types` forges on a 64-bit digest
+///    collision independently of any of this.
 ///
 /// The near-miss is worth naming because it fails for a *different* reason: feeding forward
 /// the mixer's **input** (`F(x) ^ x`, `x = inst + j·G`) makes the result a function of `x`
@@ -798,8 +805,8 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// `index` does not.
 ///
 /// ⚠ **Residue, and it does not reduce.** Seeds are 64 bits because `mss_types::generate`
-/// takes a `u64`, so untargeted collisions stay birthday-bound at ~2³², and no `u64 → u64`
-/// arrangement moves that. Closing it needs a wider seed at the operand — a change to
+/// takes a `u64`, so untargeted collisions stay birthday-bound in that width, and no
+/// `u64 → u64` arrangement moves that. Closing it needs a wider seed at the operand — a change to
 /// `mss-types`, not to this crate. Demonstrated by `the_width_residue_survives_the_fix`
 /// against a 24-bit narrowing of the *fixed* construction.
 ///
@@ -809,13 +816,11 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 /// exists, and the `j` it returns is specific — it measures no cost), and
 /// `the_width_residue_survives_the_fix` (a 24-bit narrowing still collides).
 ///
-/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free, and what it is
-/// worth is that one seed's parameterisations are no longer steerable onto each other. The
-/// **targeted** breaks — items 1 and 2 — are downstream of holding the master seed, which
-/// already suffices to remint, so against a chosen victim the fix buys little. Items 3 and 4
-/// need no master and the fix does not touch them: it does not move the birthday bound, and it
-/// never reached the inherited widths. An earlier "every break above is downstream of the
-/// master" covered all four and was false for half of them.
+/// **Net:** `0.5.0` removes the direction of `0.4.0`'s inversion that was free, and that is all
+/// it removes. Items 1 and 2 need the victim's master, which already suffices to remint them.
+/// Items 3 and 4 need no master and are untouched. What the fix is worth is that one seed's
+/// parameterisations are no longer steerable onto each other — a real property, and a smaller
+/// one than four drafts of this docstring claimed.
 fn layer_seed(inst: u64, index: u64) -> u64 {
     subseed(inst, index) ^ inst
 }
@@ -1599,8 +1604,8 @@ mod tests {
         // both inside the mixer and outside it.
         let target_050 = layer_seed(instance_seed(victim_master, vt, vb), TOP_DOMAIN);
         assert_ne!(layer_seed(instance_seed(att_master, t, b), j), target_050);
-        // ...and an attacker must now search. A bounded search stands in for the 2^64 one: it
-        // must find nothing. It stands in for a search whose size this file does not claim.
+        // ...and an attacker must now search. This bounded search stands in for one whose size
+        // this file deliberately does not state; it must find nothing.
         //
         // ⚠ What this test does NOT show: that no OTHER closed form exists. It reproduces one
         // historical break and demonstrates it dead. A mutant feeding forward `index` instead
@@ -1626,10 +1631,10 @@ mod tests {
         // that made it. So two chains that produce the same public key are interchangeable to
         // a verifier, which is exactly what a colliding pair would be.
         //
-        // Demonstrated with the strongest available witness: a genuine 64-bit layer-seed
-        // collision costs ~2^32 to find, so this uses two INDEPENDENTLY GENERATED chains that
-        // land on the same seed by construction rather than by search. The property under test
-        // -- no chain binding -- is the same one.
+        // Demonstrated with the strongest available witness: searching out a genuine layer-seed
+        // collision is out of reach for a unit test, so this uses two INDEPENDENTLY GENERATED
+        // chains that land on the same seed by construction rather than by search. The property
+        // under test -- no chain binding -- is the same one.
         let (chain_a, pk_a) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
         let (chain_b, pk_b) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
         assert_eq!(pk_a, pk_b, "same derivation must publish the same key");
@@ -1655,16 +1660,16 @@ mod tests {
     #[test]
     fn the_dual_inversion_is_not_closed_by_this_fix() {
         // The load-bearing NEGATIVE result, and the one a cross-vendor reviewer supplied after
-        // this crate had already claimed 2^64 in a pushed commit. `layer_seed` is injective in
-        // the index BY CONSTRUCTION, and that cuts both ways: it is therefore trivially
+        // this crate had already claimed a cost in a pushed commit. `layer_seed` is injective
+        // in the index BY CONSTRUCTION, and that cuts both ways: it is therefore trivially
         // invertible in the index. `0.5.0` killed "choose j, solve for the parameters". It did
         // not kill "choose the parameters, solve for j":
         //
         //     target = F(inst + j*G) ^ inst   =>   j = G^-1 * (F^-1(target ^ inst) - inst)
         //
-        // So a targeted collision is NOT 2^64. If the returned j were uniform it would be
-        // ~2^64/top_n, since the only obstacle is that j must land below the attacker's
-        // `top_n` — theirs to choose, inside their own keygen budget.
+        // So an exact index exists for every candidate `inst`, and the only obstacle is whether
+        // it lands below the attacker's `top_n` -- theirs to choose, inside their own keygen
+        // budget.
         //
         // ⚠ What this test establishes is that THE INVERSE IN j EXISTS, which Q1's bijectivity
         // already implies. It does NOT measure the cost: it never counts how often j < t, and
@@ -1744,10 +1749,10 @@ mod tests {
 
     #[test]
     fn the_width_residue_survives_the_fix() {
-        // ⚠ RESIDUE, demonstrated rather than asserted. Whatever the targeted cost is (see
-        // `layer_seed`; it is NOT 2^64, and this comment said so until 2026-09-10), no
-        // arrangement makes untargeted collisions rarer than the seed width allows, because
-        // `mss_types::generate` takes a `u64`. Narrow that width to 24
+        // ⚠ RESIDUE, demonstrated rather than asserted. Whatever a targeted collision costs
+        // -- see `layer_seed`, which deliberately states no figure -- no arrangement makes
+        // untargeted collisions rarer than the seed width allows, because `mss_types::generate`
+        // takes a `u64`. Narrow that width to 24
         // bits, leave the fixed construction otherwise intact, and the birthday collisions
         // come straight back -- in milliseconds. Nothing in this crate can close that; it
         // needs a wider seed at the operand.
