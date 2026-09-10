@@ -790,14 +790,14 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 ///    of 1999 instances) and that the `j` it returns is specific; it does not measure the
 ///    cost, and an earlier version of this sentence said it did, "exactly", for 2000.
 ///    **No lower bound is claimed.**
-/// 1b. **And that is still not the cheapest chosen-victim collision.** [`instance_seed`] is
-///    plain `subseed` — no feed-forward — so under the same premise (the victim's master is
-///    known) a second master copies the *whole instance* in one step:
+/// 2. **And that is still not the cheapest chosen-victim collision.** [`instance_seed`] is
+///    [`instance_seed`] is plain `subseed` — no feed-forward — so under the same premise
+///    (the victim's master is known) a second master copies the *whole instance* in one step:
 ///    `mₐ = m_v + (pack_v − packₐ)·G` gives `instance_seed(mₐ, tₐ, bₐ) = instance_seed(m_v, …)`,
 ///    hence every layer at once, for attacker-chosen feasible parameters. O(1), not 2⁶⁴/`top_n`.
 ///    Which is the same point the scope note makes: everything here is downstream of holding
 ///    the master, and holding the master already lets you remint.
-/// 2. **It does not make untargeted collisions harmless — but they are not an entry point
+/// 3. **It does not make untargeted collisions harmless — but they are not an entry point
 ///    *here*, and an earlier draft of this docstring said they were.** Two instances sharing a
 ///    layer seed share the whole keychain, so if both sign, one one-time key is used twice.
 ///    Finding such a pair is a birthday on ~2³² *seed derivations*, not on live keychains: you
@@ -809,7 +809,7 @@ fn anchor_bytes(root: merkle_types::hash::Digest, capacity: usize) -> Vec<u8> {
 ///    masters and could remint either. **This is the one place where the missing
 ///    `HyperPublicKey::adopt` is load-bearing for a security property rather than for
 ///    ergonomics: build that rung and this collision becomes a live forgery path.**
-/// 3. **It does not touch the inherited widths.** `lamport-types` already forges on a 64-bit
+/// 4. **It does not touch the inherited widths.** `lamport-types` already forges on a 64-bit
 ///    digest collision at ~2³², independently of any of this.
 ///
 /// A cheaper-looking variant is worth naming because it fails for a *different* reason:
