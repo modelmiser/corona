@@ -1000,6 +1000,27 @@ any push, so nothing false was ever public.
             Six mutants watched dying. **Lesson for the convergence read: a flat finding count
             with changing character is not evidence of convergence, and my prediction that the
             next round would be trivial was itself the error-sign tell.**
+      - [x] **Round 11 — NOT CLEAN: 1 CRITICAL + 4 MODERATE, and TWO are real SEAL BREAKS.**
+            Stopped predicting; the reviewers keep finding substance.
+            - ⛔ CRITICAL: I deleted the false clearance from the module doc and left the
+              IDENTICAL inference on `instance_seed`. **Third occurrence of the half-applied
+              retraction**, the shape round 7 was itself about. A retraction applied at one
+              site is not applied — apparently a lesson I have to re-learn by grepping.
+            - 🔓 SEAL: the E0451 doctest names all five fields in ONE struct literal, and rustc
+              emits ONE E0451 for the literal — so it keeps failing while ANY single field is
+              private. Publishing four of five left the suite green, and the review compiled an
+              external exploit that mutates a genuine witness in place until `minted_by` vouches
+              for a key that signed nothing. Fixed with a per-field ASSIGNMENT check (E0616),
+              which no other field's privacy can satisfy. Watched: one field pub → 1 failure;
+              four of five pub → 4 failures.
+            - 🔓 SEAL: `HyperKeychain`'s field privacy had NO check at all (its only
+              `compile_fail` tests the move, not privacy). Publishing `seed` survived, and from
+              the keychain VALUE an external crate re-derived the exact one-time key its holder
+              was about to spend — without the master seed. Now checked per field.
+            - Two false claims about the suite's own contents: the wall's docstring said the
+              suite "reaches subtree 7 for real" when round 10 took it to 39, and a comment
+              claimed `minted_by` had a single 2×2 assertion when there are five sites, one
+              already non-square. Doctests 3 → 10.
 
 ## Now (leaf 15 — crdt-types)
 

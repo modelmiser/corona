@@ -272,12 +272,57 @@ pub struct HyperSignature {
 /// };
 /// ```
 ///
-/// ⚠ Until 2026-09-09 that snippet wrote `top_root: 2`, whose type is `[u8; 32]`, so it
-/// failed with **E0308 and never E0451** — a check that could not fail for the reason it
-/// claimed, and one that passed unchanged with every field made `pub`. Every field is now
-/// named with its real type (rustc emits ONE `E0451` listing them all). Caveat inherited
-/// from `mss-types`: on stable, rustdoc parses a `compile_fail` fence's error code and
-/// ignores it, so only `cargo +nightly test --doc` enforces the code.
+/// ⚠ **That snippet alone is not enough, and this is the second time this check was weaker
+/// than it looked.** rustc emits ONE `E0451` for a whole struct literal, so it keeps failing
+/// while *any single* field stays private: publishing four of five leaves it green, and a
+/// witness that can be written in place is not sealed — mutate a genuine one and
+/// `minted_by` will vouch for a key that signed nothing. (Earlier still, the snippet wrote
+/// `top_root: 2` against a `[u8; 32]` field, so it failed with **E0308 and never E0451** — a
+/// check that could not fail for the reason it claimed.) So each field also gets an
+/// **assignment** check, which no other field's privacy can satisfy:
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let (sig, _) = chain.sign_next(b"m");
+/// let mut v = pk.verify(b"m", &sig).unwrap();
+/// v.digest = 0; // ERROR[E0616]: field `digest` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let (sig, _) = chain.sign_next(b"m");
+/// let mut v = pk.verify(b"m", &sig).unwrap();
+/// v.top_root = [0u8; 32]; // ERROR[E0616]: field `top_root` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let (sig, _) = chain.sign_next(b"m");
+/// let mut v = pk.verify(b"m", &sig).unwrap();
+/// v.subtrees = 9; // ERROR[E0616]: field `subtrees` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let (sig, _) = chain.sign_next(b"m");
+/// let mut v = pk.verify(b"m", &sig).unwrap();
+/// v.subtree_index = 7; // ERROR[E0616]: field `subtree_index` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let (sig, _) = chain.sign_next(b"m");
+/// let mut v = pk.verify(b"m", &sig).unwrap();
+/// v.leaf_index = 7; // ERROR[E0616]: field `leaf_index` is private
+/// ```
+///
+/// Caveat inherited from `mss-types`: on stable, rustdoc parses a `compile_fail` fence's
+/// error code and ignores it, so only `cargo +nightly test --doc` enforces the code.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct VerifiedHypertreeMessage {
     digest: u64,
@@ -325,6 +370,23 @@ impl VerifiedHypertreeMessage {
 /// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
 /// let (_s1, _rest) = chain.sign_next(b"first");
 /// let (_s2, _r2) = chain.sign_next(b"second"); // error[E0382]: use of moved value
+/// ```
+///
+/// Its fields are private too, and that had no check until 2026-09-10. `seed` holds the
+/// **instance** seed, from which every one-time key at both layers is derived, so a reader of
+/// the keychain VALUE could re-derive the key its holder is about to spend without ever
+/// seeing the master seed:
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = chain.seed; // ERROR[E0616]: field `seed` is private
+/// ```
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (chain, _pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = chain.bottom_n; // ERROR[E0616]: field `bottom_n` is private
 /// ```
 pub struct HyperKeychain {
     /// The **instance** seed (`instance_seed(master, top_n, bottom_n)`), never the caller's
@@ -519,7 +581,7 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 /// The separation above, as a **const-eval wall** (E0080) rather than a test.
 ///
 /// Tests pin `TOP_DOMAIN` only over the indices they enumerate — the suite checks 128
-/// arithmetically and reaches subtree 7 for real — so values above that range survived (the
+/// arithmetically and reaches subtree 39 for real — so values above that range survived (the
 /// honest surviving witness is 200; 100 dies to the arithmetic loop). Chasing the rest with
 /// more parameters is unbounded, and the wall is the garden's own vocabulary: leaf 6's
 /// primitive, turned on this leaf's own constant. A colliding value now fails to *compile*,
@@ -559,7 +621,8 @@ const _: () = assert!(
 /// and `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`
 /// under that fold. Scope, since the domain is the whole point: over `[1, 1200]²` the chain
 /// has no collision at all, and the smallest usable colliding partner there is `2^42.5` (at
-/// `top_n` 530 against 583), so the chain was not cheaply exploitable — it was unjustified
+/// `top_n` 530 against 583) — a statistic about the sweep, not the fold, and NOT a clearance:
+/// the module doc exhibits a collision at ~1.7 GiB of key material. The chain was unjustified
 /// and unscoped, which is reason enough. `TODO.md` carries the correction record.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
     subseed(seed, pack_params(top_n, bottom_n))
@@ -888,10 +951,10 @@ mod tests {
     #[test]
     fn the_witness_records_the_top_capacity_not_the_bottom() {
         // `subtrees` has no accessor, so `minted_by` is its only *checked* observable — the
-        // derived `Debug` and `PartialEq` do publish it. The single assertion of `minted_by` used a 2x2 hypertree
-        // where the two capacities coincide, so recording the bottom capacity or a literal 2
-        // was undetectable. A top capacity neither 2 nor equal to the bottom
-        // separates all three.
+        // derived `Debug` and `PartialEq` do publish it. `minted_by` is asserted at five
+        // sites, one of them already non-square, so what this parameter choice adds is a top
+        // capacity that is neither 2 nor equal to the bottom — which separates "records the
+        // top capacity" from "records the bottom" and from a literal 2.
         let (chain, pk) = generate_hypertree(0x5EED, 3, 1).unwrap();
         let (sig, _) = chain.sign_next(b"m");
         assert_eq!(pk.subtrees(), 3);
