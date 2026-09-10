@@ -834,6 +834,26 @@ any push, so nothing false was ever public.
             new top-seed test asserted the arithmetic rather than the wiring, so deleting the
             `subseed` call in `generate_hypertree` passed it — now pinned by rebuilding the
             top layer independently and comparing published keys.
+      - [x] **Run 4 — NOT CLEAN: 0 CRITICAL, 6 MODERATE, and every one a TEST-STRENGTH gap
+            rather than a live defect** (the lenses say so themselves: "shipped is correct",
+            "practical impact is nil"). The curve is bending. Fixes: the pack SHIFT was
+            unpinned — `<< 8` and `<< 16` both survived and each collides on reachable
+            parameters ((2,258) vs (3,2); (2,65538) vs (3,2)) because every assertion compared
+            a variant to ONE baseline and never variant-to-variant → the packing is now a
+            named function and the test asserts the property itself, that the packed word
+            round-trips to the pair, which is shift-exact. `digest()` was never compared to
+            ground truth (its only use was an `assert_ne` between two witnesses, invariant
+            under any injective perturbation) → re-verify the bottom link through `mss-types`
+            and compare. The genesis subtree's `subseed(inst, 0)` wrapper could be deleted
+            while the IDENTICAL deletion at the top site was killed by a round-3 test — an
+            asymmetry in my own coverage → every subtree root is now rebuilt independently and
+            matched exactly, which also kills the rotation's injective re-indexings (`+1`,
+            `*2`) that decoupled the seed index from the reported `subtree_index`. And
+            `subseed`'s bijectivity, the load-bearing lemma of the injectivity argument, had
+            zero coverage → injectivity over a wide sample plus KNOWN-ANSWER vectors, since a
+            key-derivation function's constants must not drift silently.
+            ⚠ My first known-answer vectors were INVENTED rather than computed and the test
+            failed on them; computed and re-landed. Six mutants watched dying.
 
 ## Now (leaf 15 — crdt-types)
 

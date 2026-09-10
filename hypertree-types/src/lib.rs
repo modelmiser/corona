@@ -516,7 +516,18 @@ const _: () = assert!(
 /// *constructible* by solving one linear relation, so a signer could have picked two
 /// colliding parameterisations deliberately. Found by the graduation review, 2026-09-09.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
-    subseed(seed, ((top_n as u64) << 32) | (bottom_n as u64))
+    subseed(seed, pack_params(top_n, bottom_n))
+}
+
+/// The injective half of [`instance_seed`], named so a test can assert the property itself
+/// rather than sample around it. The two parameters occupy disjoint halves of the word, so
+/// the packed value **round-trips** to the pair — which is injectivity, stated so that the
+/// shift width is part of the claim. A narrower shift collides on reachable parameters:
+/// under `<< 8`, `(2, 258)` and `(3, 2)` both pack to 770; under `<< 16`, `(2, 65538)` and
+/// `(3, 2)` both pack to 196610. Both survived a suite that only ever compared variants
+/// against one baseline (review round 4).
+fn pack_params(top_n: usize, bottom_n: usize) -> u64 {
+    ((top_n as u64) << 32) | (bottom_n as u64)
 }
 
 /// Canonical bytes of a subtree public key's `(root, capacity)` anchor — what the top
@@ -970,6 +981,99 @@ mod tests {
             pk.verify(b"three", &spliced).is_none(),
             "the signed root rejects the splice"
         );
+    }
+
+    #[test]
+    fn the_parameter_packing_round_trips() {
+        // Injectivity, asserted as the property rather than sampled: the packed word must
+        // recover both parameters. This is shift-exact — under a narrower shift the top half
+        // does not recover — where the dense sweep and the baseline comparisons were not
+        // (review round 4).
+        for (t, b) in [
+            (1usize, 1usize),
+            (2, 258),
+            (3, 2),
+            (65538, 2),
+            (2, 65538),
+            (u32::MAX as usize, u32::MAX as usize),
+        ] {
+            let p = pack_params(t, b);
+            assert_eq!((p >> 32) as usize, t, "top half recovers from ({t}, {b})");
+            assert_eq!(
+                (p & 0xFFFF_FFFF) as usize,
+                b,
+                "bottom half recovers from ({t}, {b})"
+            );
+        }
+        // The two collisions a narrower shift would introduce, at reachable parameters.
+        assert_ne!(pack_params(2, 258), pack_params(3, 2));
+        assert_ne!(pack_params(2, 65538), pack_params(3, 2));
+    }
+
+    #[test]
+    fn subseed_is_injective_and_pinned_to_known_answers() {
+        // `instance_seed`'s injectivity rests on `subseed` being a bijection in its index,
+        // and that lemma had no executable coverage: mutants that provably destroy it (`^`
+        // folds turned into `|`, an even multiplier) survived (review round 4). Injectivity
+        // over a wide sample, plus known answers — this is a key-derivation function, so any
+        // drift in its constants must be a deliberate, visible act.
+        let mut seen = std::collections::HashSet::new();
+        for i in 0..4096u64 {
+            assert!(
+                seen.insert(subseed(0xC0FFEE, i)),
+                "subseed collides at index {i}"
+            );
+            assert!(
+                seen.insert(subseed(0xC0FFEE, u64::MAX - i)),
+                "collides near u64::MAX"
+            );
+        }
+        assert_eq!(subseed(0, 0), 0);
+        assert_eq!(subseed(0xC0FFEE, 0), 0xe658_8447_cc47_8205);
+        assert_eq!(subseed(0xC0FFEE, 1), 0xca82_16fa_9058_d0fa);
+        assert_eq!(subseed(0xC0FFEE, 2), 0xece4_5bab_ce87_0479);
+    }
+
+    #[test]
+    fn the_witness_digest_is_the_message_digest() {
+        // `digest()` was never compared to ground truth — its only use was an `assert_ne`
+        // against another witness, invariant under any injective perturbation, so `+ 1`
+        // survived (review round 4). The parent pins this at its own level; pin it here by
+        // re-verifying the bottom signature through `mss-types` and comparing.
+        let (chain, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (sig, _) = chain.sign_next(b"payload");
+        let v = pk.verify(b"payload", &sig).expect("genuine");
+        let bottom = mss_types::MssPublicKey::adopt(sig.bottom_root, sig.bottom_capacity)
+            .expect("capacity >= 1")
+            .verify(b"payload", &sig.bottom_sig)
+            .expect("the bottom link verifies on its own");
+        assert_eq!(
+            v.digest(),
+            bottom.digest(),
+            "the witness carries the message digest"
+        );
+    }
+
+    #[test]
+    fn every_subtree_root_matches_its_independently_derived_seed() {
+        // The genesis subtree's `subseed(inst, 0)` wrapper could be deleted, and the
+        // rotation's index could be remapped injectively (`+1`, `*2`), with the suite green
+        // — the seed index actually used decoupling from the `subtree_index` the witness
+        // reports (review round 4). Rebuild every subtree independently and require an exact
+        // match, which pins the whole family rather than its pairwise distinctness.
+        let (seed, t, b) = (0xC0FFEE, 3usize, 2usize);
+        let inst = instance_seed(seed, t, b);
+        let sigs = sign_n(seed, t, b, t * b);
+        for j in 0..t {
+            let (_, expected) = generate(subseed(inst, j as u64), b).expect("bottom_n >= 1");
+            for k in 0..b {
+                assert_eq!(
+                    sigs[j * b + k].bottom_root,
+                    expected.root_hash(),
+                    "subtree {j} must come from subseed(inst, {j})"
+                );
+            }
+        }
     }
 
     #[test]
