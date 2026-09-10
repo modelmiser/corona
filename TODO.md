@@ -948,6 +948,31 @@ any push, so nothing false was ever public.
             one quantity, neither derivable from the `[1,1200]²` domain both sentences cited —
             measured, it is 2^42.5 over that domain, and my figures came from a wider sweep I
             never stated. Fourth number stated without measuring. Four mutants watched dying.
+      - [x] **Round 9 — NOT CLEAN: 0 CRITICAL, 6 MODERATE — and FOUR of them are one UNBOUNDED
+            family.** `% 2` (round 7), `% 3` (round 8), `% 4`/`% 5` (round 9): for any test
+            observing indices `0..N`, the mutant `% (N+1)` agrees with the truth everywhere the
+            test looks. Chasing it one literal at a time is what rounds 7–9 did. No wall is
+            available (runtime values, not a const — unlike `TOP_DOMAIN`), so the family is now
+            closed the only honest way: enumerate to index 39 on BOTH axes, covering the four
+            quantities that share the defect (`subtree_index`, `leaf_index`, the witness's
+            `subtrees`, `subtree_remaining`, and `Debug`'s subtree), and **record in the test
+            that this is a bound at 39, not a closure** — so a future round reporting `% 41` is
+            re-reporting the note. Six mutants watched dying, one (`% 5`) a step beyond what
+            was reported.
+            Two prose: my "at t = 3 the reachable indices are a FIXED POINT of both `+1` and
+            `*2`" is false — {1,2} is no fixed point of ×2 (2×2=4), the two sequences merely
+            COINCIDE on the reachable prefix, and `+1` is the shipped code rather than a
+            mutant; and `pack_params` stated round-tripping with no domain while
+            `instance_seed` three lines above carries it — `pack_params(2³²+1, 1) ==
+            pack_params(1, 1)`, the same "property stated without its domain" the crate's own
+            0.3.0 record names.
+      - **CONVERGENCE READ (mine, for the owner).** Nine rounds; counts flat at 5–7 MODERATE,
+        so the workflow's gate (two consecutive clean) has not fired and may not. But the
+        CHARACTER has changed decisively: **no finding since round 2 has been about the crate's
+        behaviour.** The code has been unchanged since the `instance_seed` fix (plus the round-3
+        wall); everything since is test strength or documentation, and this round it was one
+        unbounded family plus my own prose. That is the garden's own converge-then-stop
+        condition in substance if not in the gate's letter.
 
 ## Now (leaf 15 — crdt-types)
 
