@@ -927,6 +927,27 @@ any push, so nothing false was ever public.
             threshold was neither boundary: measured, the element is 2048 bytes, so the
             uncatchable abort begins near 2^25 on a 64 GiB box and `capacity overflow` needs
             n above 2^52. Third time this arc I stated a number without measuring it.
+      - [x] **Round 8 — NOT CLEAN: 0 CRITICAL, 5 MODERATE — and THREE of the five were about my
+            own correction NARRATION, not the crate.** That is the treadmill shape
+            ([[feedback_correction_prose_treadmill]]), so the remedy was applied along with the
+            fixes: the arc's history is now the referent's job (this file), and `lib.rs` states
+            what is TRUE. Four self-referential passages compressed out of the public rustdoc
+            and every "(review round N)" stripped from test comments — those are checkable,
+            valueless, and go stale, which is exactly how they generated findings.
+            The two real findings: `TOP_DOMAIN`'s own VALUE was pinned by nothing (any value
+            above `u32::MAX` survives the wall and silently re-keys every hypertree, because
+            the only test naming it puts it on BOTH sides of its comparison — the shape already
+            fixed for `instance_seed` and not applied here) → a **published-key literal** now
+            pins the whole chain end to end (`TOP_DOMAIN`, `instance_seed`, `pack_params`,
+            `subseed`, and the wiring), plus the constant itself. And my round-7 fix was
+            INSUFFICIENT IN THE WAY ITS OWN COMMENT NAMED: "enumerate the whole 3×3" cannot
+            kill `% 3`, since on {0,1,2} that mutant is the identity → 4×4.
+            Prose: the wall's justification cited "100 surviving" when 100 dies to the
+            arithmetic loop added in the same commit (honest witness: 200); the derive list
+            still missed `MssSignature: Eq`; and I had TWO different figures (~2³⁷, ~2³⁸) for
+            one quantity, neither derivable from the `[1,1200]²` domain both sentences cited —
+            measured, it is 2^42.5 over that domain, and my figures came from a wider sweep I
+            never stated. Fourth number stated without measuring. Four mutants watched dying.
 
 ## Now (leaf 15 — crdt-types)
 

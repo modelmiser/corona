@@ -33,7 +33,7 @@
 //! it builds entirely on `mss-types`' public API (`generate`, `MssKeychain::sign_next`,
 //! `MssPublicKey::{adopt, verify, root_hash, capacity}`, `MssKeychain::remaining`,
 //! `VerifiedMssMessage::{key_index, digest}`, the public field `MssSignature::vk`, and the
-//! derives `MssPublicKey: Copy + Hash + Eq + Debug` / `MssSignature: Clone + PartialEq +
+//! derives `MssPublicKey: Copy + Hash + Eq + Debug` / `MssSignature: Clone + PartialEq + Eq +
 //! Debug`, which this crate's own derives require), reused verbatim. `merkle-types` is a second
 //! direct dependency, but only to *name* its digest type in public signatures — not a
 //! composed operand, so `mss ∘ mss` remains one composition. (Two 2026-09-09 audits of this
@@ -105,10 +105,10 @@
 //!   seed, no persistence and no `unsafe`. Measured before the fix at `seed = 0xC0FFEE`:
 //!   `bottom_n` 2 vs 4 published an **identical** public key and exposed both preimages at
 //!   30 of 64 top positions — and, *when the two instances signed different messages*, at 28
-//!   of 64 bottom positions. (That clause is load-bearing and an earlier draft of this bullet
-//!   dropped it: changing `bottom_n` changes what the TOP key signs, since the anchor embeds
-//!   the capacity, but the bottom key signs whatever the caller passes, so the parameter
-//!   change alone exposes none of the bottom.) `top_n` 2 vs 3 published
+//!   of 64 bottom positions. That clause is load-bearing: changing `bottom_n` changes what the
+//!   TOP key signs, since the anchor embeds the capacity, but a bottom key signs whatever the
+//!   caller passes, so the parameter change alone exposes none of the bottom. `top_n` 2 vs 3
+//!   published
 //!   *different* public keys that nonetheless shared their slot-0 keys at both layers. A
 //!   handful of re-parameterisations completes a key and mints arbitrary
 //!   [`VerifiedHypertreeMessage`]s under an honest long-term key.
@@ -129,7 +129,8 @@
 //!   fold's collisions "by solving one linear relation"; that overstated it, and the
 //!   retraction lived only on `instance_seed` while the module page — the public-facing
 //!   surface — kept the withdrawn version. At *reachable* parameters the old fold has no
-//!   known collision (exhaustive over `[1, 1200]²`; the smallest usable partner is ~2³⁷).
+//!   known collision: exhaustive over `[1, 1200]²`, where the smallest usable colliding
+//!   partner is ~2⁴².
 //!   The honest reasons to replace it are that the argument was invalid and the property was
 //!   stated without its domain.
 //!
@@ -470,11 +471,10 @@ impl HyperPublicKey {
 ///
 /// ⚠ **Large parameters do not return `None`; they die.** Each unit of either parameter is a
 /// Lamport keychain, so allocation is linear in `top_n + bottom_n`. Measured on this
-/// toolchain, a `(SigningKey, VerifyingKey)` is **2048 bytes**, which puts the two failure
-/// modes far apart and neither of them where an earlier version of this note guessed
-/// ("around `2^40`", which is neither): allocation *failure* — an uncatchable **abort** —
-/// begins once `n · 2048` exceeds available memory, near `2^25` on a 64 GiB machine, while
-/// the `capacity overflow` **panic** needs `n · 2048 > isize::MAX`, i.e. `n` above `2^52`. There is no upper guard and this is a resource limit, not
+/// toolchain a `(SigningKey, VerifyingKey)` is **2048 bytes**, which puts the two failure
+/// modes far apart: allocation *failure* — an uncatchable **abort** — begins once `n · 2048`
+/// exceeds available memory, near `2^25` on a 64 GiB machine, while the `capacity overflow`
+/// **panic** needs `n · 2048 > isize::MAX`, i.e. `n` above `2^52`. There is no upper guard and this is a resource limit, not
 /// a checked bound — noted because the module doc invites large parameters ("an enormous
 /// *virtual* keyspace") and because one test depends on the `usize::MAX` panic.
 /// [`HyperPublicKey::verify`], the attacker-facing entry point, is by contrast total: every
@@ -516,11 +516,13 @@ const TOP_DOMAIN: u64 = 0xFFFF_FFFF_0000_0001;
 
 /// The separation above, as a **const-eval wall** (E0080) rather than a test.
 ///
-/// A test can only pin `TOP_DOMAIN` against the subtree indices it happens to reach: the
-/// review found values 3, 5, 6, 7 and 100 each surviving a suite whose largest index was
-/// one less. Chasing that with more parameters is unbounded, and the wall is the garden's
-/// own vocabulary — leaf 6's primitive, turned on this leaf's own constant. A colliding
-/// value now fails to *compile*, for every subtree index at once.
+/// Tests pin `TOP_DOMAIN` only over the indices they enumerate — the suite checks 128
+/// arithmetically and reaches subtree 7 for real — so values above that range survived (the
+/// honest surviving witness is 200; 100 dies to the arithmetic loop). Chasing the rest with
+/// more parameters is unbounded, and the wall is the garden's own vocabulary: leaf 6's
+/// primitive, turned on this leaf's own constant. A colliding value now fails to *compile*,
+/// for every subtree index at once. It bounds the value from BELOW only — drift among the
+/// admissible values is caught instead by the published-key literal in the test module.
 const _: () = assert!(
     TOP_DOMAIN > u32::MAX as u64,
     "TOP_DOMAIN must sit above every subtree index, or one Lamport key signs both a \
@@ -550,21 +552,13 @@ const _: () = assert!(
 /// keygen can terminate, since each unit of either parameter is a Lamport key. [`subseed`]
 /// is a bijection in its index for a fixed seed, so distinct pairs give distinct instances.
 ///
-/// ⚠ An earlier version of this function chained `subseed(subseed(seed, top_n), bottom_n)`
-/// and this docstring argued it was injective because `subseed` is "a bijection in each
-/// argument". **That derivation is invalid** — bijectivity in each argument separately says
-/// nothing about the pair — and the property, as stated (unrestricted), was false:
-/// `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`.
-///
-/// ⚠ **What that did NOT amount to** — corrected 2026-09-09, after this text overstated it.
-/// An earlier version said a signer could have picked two colliding parameterisations
-/// deliberately "by solving one linear relation". At *reachable* parameters — the same domain
-/// this function's own claim is scoped to — the old fold has no known collision: an
-/// exhaustive sweep of `[1, 1200]²` finds none, and the smallest usable colliding partner is
-/// around `2^38`. Deliberate collision would have needed an offline search, not one equation.
-/// The reasons to replace it stand and are enough: the argument was invalid and the property
-/// was stated without its domain. Judging the old fold by a stricter reachability standard
-/// than the new one is the error-sign tell — the overstatement ran toward my own fix.
+/// ⚠ **Why packing rather than chaining.** `subseed(subseed(seed, top_n), bottom_n)` is
+/// *not* injective in the pair — bijectivity in each argument separately does not give it,
+/// and `instance_seed(0xC0FFEE, 2, 5655273746248255840) == instance_seed(0xC0FFEE, 4, 1)`
+/// under that fold. Scope, since the domain is the whole point: over `[1, 1200]²` the chain
+/// has no collision at all, and the smallest usable colliding partner there is `2^42.5` (at
+/// `top_n` 530 against 583), so the chain was not cheaply exploitable — it was unjustified
+/// and unscoped, which is reason enough. `TODO.md` carries the correction record.
 fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
     subseed(seed, pack_params(top_n, bottom_n))
 }
@@ -575,7 +569,7 @@ fn instance_seed(seed: u64, top_n: usize, bottom_n: usize) -> u64 {
 /// shift width is part of the claim. A narrower shift collides on reachable parameters:
 /// under `<< 8`, `(2, 258)` and `(3, 2)` both pack to 770; under `<< 16`, `(2, 65538)` and
 /// `(3, 2)` both pack to 196610. Both survived a suite that only ever compared variants
-/// against one baseline (review round 4).
+/// against one baseline.
 fn pack_params(top_n: usize, bottom_n: usize) -> u64 {
     ((top_n as u64) << 32) | (bottom_n as u64)
 }
@@ -648,7 +642,7 @@ mod tests {
     #[test]
     fn the_long_term_key_is_stable() {
         // ⚠ `HyperPublicKey` is `Copy` and `sign_next` never receives it, so comparing a copy
-        // of the binding against itself CANNOT fail under any implementation (round 5). The
+        // of the binding against itself CANNOT fail under any implementation. The
         // real content is below: signatures from before and after a rotation must both verify
         // under the one key. `every_signature_verifies_across_the_rotation` also covers it.
         // One key, many signatures — including across a subtree rotation.
@@ -787,7 +781,7 @@ mod tests {
     fn later_subtrees_share_no_key_material_either() {
         // The instance seed must reach EVERY subtree, not just the first. Signing one
         // message per instance only ever compares subtree 0 — which is how three mutants of
-        // the seed-carrying sites survived the first version of this suite (review round 2).
+        // the seed-carrying sites survived the first version of this suite.
         // Third signature of a 2-per-subtree hypertree is subtree 1, leaf 0.
         let a = sign_n(0xC0FFEE, 2, 2, 3);
         let b = sign_n(0xC0FFEE, 3, 2, 3);
@@ -817,9 +811,9 @@ mod tests {
     fn the_two_layers_never_share_a_one_time_key() {
         // TOP_DOMAIN is what keeps the top layer off the subtree-index range. Collide them
         // and ONE Lamport key signs both an anchor and a message — the catastrophe this
-        // crate is about — while every other test passes (review round 2).
+        // crate is about — while every other test passes.
         // The parameter list must reach a subtree index above every small TOP_DOMAIN a
-        // mutant might choose: with a maximum index of 2, values >= 3 all survived (round 2).
+        // mutant might choose: with a maximum index of 2, values >= 3 all survived.
         for (t, b) in [(2usize, 2usize), (3, 1), (2, 3), (4, 1), (6, 1)] {
             let sigs = sign_n(0xC0FFEE, t, b, t * b);
             let tops: Vec<_> = sigs.iter().map(|s| s.top_sig.vk.clone()).collect();
@@ -841,7 +835,7 @@ mod tests {
         // bytes, little-endian, nothing dropped.
         // NON-UNIFORM on purpose: with `[7u8; 32]` the assertion below is invariant under
         // every permutation of the root's bytes, so `v.reverse()` and `v.rotate_left(1)`
-        // both survived it (review round 3) — in the one test that claims to pin the
+        // both survived it — in the one test that claims to pin the
         // encoding, and for the crate's only `Vec`-returning function.
         let root: [u8; 32] = core::array::from_fn(|i| (i as u8).wrapping_mul(7).wrapping_add(3));
         let bytes = anchor_bytes(root, 0x0102_0304_0506_0708);
@@ -862,7 +856,7 @@ mod tests {
     #[test]
     fn minted_by_is_false_for_a_foreign_key() {
         // `minted_by` was asserted TRUE exactly once and never FALSE, so `-> true`,
-        // `&&`->`||`, and dropping the root conjunct all survived (review round 2).
+        // `&&`->`||`, and dropping the root conjunct all survived.
         // A different seed at the SAME top capacity gives a different root and an equal
         // capacity, which separates all three.
         let (chain, pk_a) = generate_hypertree(1, 2, 2).unwrap();
@@ -883,10 +877,9 @@ mod tests {
     #[test]
     fn the_witness_records_the_top_capacity_not_the_bottom() {
         // `subtrees` has no accessor, so `minted_by` is its only *checked* observable — the
-        // derived `Debug` and `PartialEq` do publish it, which an earlier version of this
-        // comment denied (round 5). The single assertion of `minted_by` used a 2x2 hypertree
+        // derived `Debug` and `PartialEq` do publish it. The single assertion of `minted_by` used a 2x2 hypertree
         // where the two capacities coincide, so recording the bottom capacity or a literal 2
-        // was undetectable (round 2). A top capacity neither 2 nor equal to the bottom
+        // was undetectable. A top capacity neither 2 nor equal to the bottom
         // separates all three.
         let (chain, pk) = generate_hypertree(0x5EED, 3, 1).unwrap();
         let (sig, _) = chain.sign_next(b"m");
@@ -902,7 +895,7 @@ mod tests {
     #[test]
     fn subtree_remaining_counts_down_and_resets_across_the_rotation() {
         // This accessor had zero coverage — its identifier appeared once, at its definition
-        // (review round 2), so every mutant of it survived.
+        //, so every mutant of it survived.
         let (mut chain, _pk) = generate_hypertree(0xC0FFEE, 2, 3)
             .map(|(c, p)| (Some(c), p))
             .unwrap();
@@ -922,7 +915,7 @@ mod tests {
 
     #[test]
     fn keychain_debug_is_redacted_and_tracks_the_rotation() {
-        // No test formatted a `HyperKeychain` at all (review round 2). The security half —
+        // No test formatted a `HyperKeychain` at all. The security half —
         // that the seed is never printed — is structural (field omission plus
         // `finish_non_exhaustive`), but the reported values were unpinned.
         let (mut chain, _pk) = generate_hypertree(0xC0FFEE, 2, 3)
@@ -955,7 +948,7 @@ mod tests {
     fn the_zero_guard_refuses_before_allocating() {
         // `empty_layers_are_refused` looks like it pins the `top_n == 0 || bottom_n == 0`
         // guard, but the downstream `generate(.., 0)?` refuses anyway, so removal mutants
-        // survived it (review round 2). This input separates them: without the `bottom_n`
+        // survived it. This input separates them: without the `bottom_n`
         // clause the top layer is fully allocated BEFORE the empty bottom is discovered, and
         // `usize::MAX` top keys panics in raw_vec instead of returning None.
         assert!(generate_hypertree(0, usize::MAX, 0).is_none());
@@ -967,10 +960,8 @@ mod tests {
 
     #[test]
     fn the_instance_seed_separates_every_reachable_parameter_pair() {
-        // Assert on `instance_seed` DIRECTLY. An earlier version of this test compared two
-        // public keys, which differ because `top_n` changes the top tree's size whatever the
-        // seed fold does — so it observed nothing about the fold and passed unchanged under a
-        // commutative one (review round 2).
+        // Assert on `instance_seed` DIRECTLY: comparing two public keys observes nothing
+        // about the fold, since `top_n` changes the top tree's size whatever the fold does.
         assert_ne!(
             instance_seed(7, 2, 4),
             instance_seed(7, 4, 2),
@@ -1056,7 +1047,7 @@ mod tests {
         // Injectivity, asserted as the property rather than sampled: the packed word must
         // recover both parameters. This is shift-exact — under a narrower shift the top half
         // does not recover — where the dense sweep and the baseline comparisons were not
-        // (review round 4).
+        //.
         for (t, b) in [
             (1usize, 1usize),
             (2, 258),
@@ -1075,7 +1066,7 @@ mod tests {
         }
         // Nothing is DROPPED either: the round-3 literal has no adjacent equal bytes and no
         // zero byte, so `dedup`, `retain(|b| *b != 0)` and trailing-zero `pop` were all
-        // no-ops on it and the whole length-reducing family survived (round 6). An all-zero
+        // no-ops on it and the whole length-reducing family survived. An all-zero
         // anchor is the one input on which every such filter is visible.
         assert_eq!(anchor_bytes([0u8; 32], 0), vec![0u8; 40], "nothing dropped");
         // The two collisions a narrower shift would introduce, at reachable parameters.
@@ -1087,7 +1078,7 @@ mod tests {
     fn subseed_is_injective_and_pinned_to_known_answers() {
         // `instance_seed`'s injectivity rests on `subseed` being a bijection in its index,
         // and that lemma had no executable coverage: mutants that provably destroy it (`^`
-        // folds turned into `|`, an even multiplier) survived (review round 4). Injectivity
+        // folds turned into `|`, an even multiplier) survived. Injectivity
         // over a wide sample, plus known answers — this is a key-derivation function, so any
         // drift in its constants must be a deliberate, visible act.
         let mut seen = std::collections::HashSet::new();
@@ -1106,7 +1097,7 @@ mod tests {
         // adding one, xoring a constant, and dropping the splitmix fold outright all
         // survived, because every assertion about it is an `assert_ne!` or a collision
         // sweep — invariant under ANY injective map — and the two wiring tests call it on
-        // both sides of their comparison (round 5). Same shape as `digest()` in round 4.
+        // both sides of their comparison — the same shape as `digest()` below.
         // Computed, not copied.
         assert_eq!(instance_seed(0xC0FFEE, 2, 3), 0xea87_9970_249b_1ad8);
         assert_eq!(instance_seed(7, 2, 4), 0xb9eb_7380_fc94_929b);
@@ -1120,7 +1111,7 @@ mod tests {
     fn the_witness_digest_is_the_message_digest() {
         // `digest()` was never compared to ground truth — its only use was an `assert_ne`
         // against another witness, invariant under any injective perturbation, so `+ 1`
-        // survived (review round 4). The parent pins this at its own level; pin it here by
+        // survived. The parent pins this at its own level; pin it here by
         // re-verifying the bottom signature through `mss-types` and comparing.
         let (chain, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
         let (sig, _) = chain.sign_next(b"payload");
@@ -1141,10 +1132,10 @@ mod tests {
         // The genesis subtree's `subseed(inst, 0)` wrapper could be deleted, and the
         // rotation's index could be remapped injectively (`+1`, `*2`), with the suite green
         // — the seed index actually used decoupling from the `subtree_index` the witness
-        // reports (review round 4). Rebuild every subtree independently and require an exact
+        // reports. Rebuild every subtree independently and require an exact
         // match, which pins the whole family rather than its pairwise distinctness.
         // t must exceed 3: at t = 3 the reachable indices are 1, 2, which is a FIXED POINT
-        // of both `+1` and `*2`, so the counter mutant `next_subtree * 2` survived (round 5)
+        // of both `+1` and `*2`, so the counter mutant `next_subtree * 2` survived
         // — and at 66 subtrees that mutant wraps `u64` and re-derives subtree 0's whole
         // keychain, which is the one-time-key reuse this crate is about.
         let (seed, t, b) = (0xC0FFEE, 5usize, 2usize);
@@ -1165,12 +1156,15 @@ mod tests {
     #[test]
     fn the_witness_pair_enumerates_every_one_time_key() {
         // `(subtree_index, leaf_index)` is the crate's IDENTITY for a one-time key, and no
-        // test observed either above 1 — so `% 2`, `% 3` and `.min(1)` all survived (round 7)
+        // test observed either above 1 — so `% 2`, `% 3` and `.min(1)` all survived
         // while agreeing with the truth on {0, 1}. That is not cosmetic: the persistence
         // finding proves key reuse by asserting two witnesses carry the SAME pair, and under
         // any of those mutants two genuinely distinct keys report the same pair, which makes
         // the crate's own reuse evidence unsound. Enumerate the whole 3x3.
-        let (n, m) = (3usize, 3usize);
+        // 4x4, not 3x3: on {0,1,2} the mutant `% 3` is the IDENTITY, so the 3x3 enumeration
+        // my own round-7 comment prescribed could not kill the very mutant it named. The
+        // enumeration must reach an index past every small modulus it claims to exclude.
+        let (n, m) = (4usize, 4usize);
         let sigs = sign_n(0xC0FFEE, n, m, n * m);
         let (_chain, pk) = generate_hypertree(0xC0FFEE, n, m).unwrap();
         let got: Vec<(usize, usize)> = sigs
@@ -1185,10 +1179,30 @@ mod tests {
     }
 
     #[test]
+    fn the_published_key_is_pinned_end_to_end() {
+        // `TOP_DOMAIN`'s VALUE was pinned by nothing: any replacement above `u32::MAX`
+        // survives the wall and silently re-keys every hypertree, because the one test naming
+        // the constant puts it on BOTH sides of its comparison — the same shape as
+        // `instance_seed`'s own known-answer pin. A published-key literal pins the whole
+        // chain at once: `TOP_DOMAIN`, `instance_seed`, `pack_params`, `subseed`, and the
+        // wiring in `generate_hypertree`. Drift in any of them must be a deliberate act.
+        assert_eq!(TOP_DOMAIN, 0xFFFF_FFFF_0000_0001);
+        let (_c, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        assert_eq!(
+            pk.root_hash(),
+            [
+                0x8b, 0x76, 0xd9, 0x6a, 0xf5, 0x19, 0x15, 0xea, 0x6a, 0x4d, 0x01, 0xf7, 0xc6, 0x98,
+                0xb5, 0xa2, 0x33, 0x76, 0x6b, 0xd5, 0xe6, 0x5a, 0x72, 0x16, 0x00, 0xb4, 0x9d, 0xff,
+                0x4d, 0xde, 0xc4, 0x7b,
+            ],
+        );
+    }
+
+    #[test]
     fn the_top_seed_is_outside_the_subtree_seed_family() {
         // `TOP_DOMAIN`'s value is walled at compile time, but the *structure* — that the top
         // seed is derived through `subseed` at all — is not. Deleting that call makes the top
-        // layer use the instance seed raw, which no parameter sweep catches (review round 3).
+        // layer use the instance seed raw, which no parameter sweep catches.
         let inst = instance_seed(0xC0FFEE, 4, 2);
         let top = subseed(inst, TOP_DOMAIN);
         assert_ne!(top, inst, "the top seed is not the instance seed itself");
@@ -1231,7 +1245,7 @@ mod tests {
         assert_ne!(roots[1], roots[2]);
         assert_ne!(roots[0], roots[2]);
         // Three subtrees pin the first subtree's seed index only against 1 and 2; constants
-        // >= 3 survived (review round 3). Check all pairs over a longer chain.
+        // >= 3 survived. Check all pairs over a longer chain.
         let deep: Vec<_> = sign_n(0xC0FFEE, 8, 1, 8)
             .into_iter()
             .map(|s| s.bottom_root)
