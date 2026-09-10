@@ -1021,6 +1021,34 @@ any push, so nothing false was ever public.
               suite "reaches subtree 7 for real" when round 10 took it to 39, and a comment
               claimed `minted_by` had a single 2×2 assertion when there are five sites, one
               already non-square. Doctests 3 → 10.
+      - [x] **Round 12 — NOT CLEAN: 1 CRITICAL + 3 MODERATE. One finding is genuinely new and
+            structural; the rest is my prose. The LOW re-reports my own unboundedness note,
+            exactly as that note predicted, and confirms the stated bound of 39 is exact.**
+            - ⛔ CRITICAL: the wall's docstring named 200 as "the honest surviving witness". It
+              does not survive — **the same round-8 commit that wrote that sentence also added
+              `assert_eq!(TOP_DOMAIN, …)`**, so one commit asserted and denied the same fact,
+              and 200 now dies twice. Watched: with the wall neutralised, 200 still FAILS.
+            - 🔑 **NEW AND STRUCTURAL (adversarial): there is no verifier-side doorway.**
+              `HyperPublicKey`'s only constructor is `generate_hypertree`, which also returns
+              the signing keychain, so across a process boundary verify-capability is
+              inseparable from sign-capability — the type publishes `root_hash()` and
+              `subtrees()` and then refuses to accept them back. That is VERBATIM the gap leaf 7
+              names as a headline and closes with `MssPublicKey::adopt`, re-created one level
+              up, which is what leaf 7's own converged thesis predicts: *a composition inherits
+              its components' obligations.* The honest completion of the bonus finding: this
+              leaf DISCHARGES the caller-trusted anchor at the bottom and the same residue
+              REAPPEARS AT THE TOP, since closing it needs an `adopt` whose own anchor would be
+              caller-trusted. **The residue does not vanish under composition; it moves up a
+              layer.** Disclosed as a sixth honest limit and recorded as an unbuilt rung — the
+              disposition leaf 7 takes toward the `from_bytes` rung it names on leaf 5.
+            - `pk.subtrees()` "was pinned only to 4" — it was never 4; the max literal was 3.
+            - Cargo.toml's description named no residue while lib.rs treats that omission as
+              fix-worthy and both parents name theirs; now carries the width, the demo seed and
+              the missing doorway.
+- [ ] **Unbuilt rung named by leaf 14 (2026-09-10):** `HyperPublicKey::adopt(root_hash, subtrees)`,
+      the verifier-side doorway. Building it re-opens the caller-trusted-anchor residue at the TOP
+      layer, which is the finding — so build it only alongside the disclosure that the residue
+      moved rather than vanished.
 
 ## Now (leaf 15 — crdt-types)
 
