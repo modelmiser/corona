@@ -231,6 +231,20 @@ use mss_types::{generate, MssKeychain, MssPublicKey, MssSignature};
 /// It commits to the top layer; each bottom subtree's `(root, capacity)` anchor is
 /// authenticated *dynamically*, by the top keychain's signature over it (see the
 /// crate's "discharge" finding), rather than being fixed here.
+/// Its one field is private, and that had no check at all until 2026-09-10 — which mattered
+/// more than a missing fence usually does: publishing it silently BUILDS the verifier-side
+/// doorway the honest limits describe as "recorded here, not built", since
+/// `HyperPublicKey { top: MssPublicKey::adopt(root, subtrees)? }` is then writable from
+/// outside. It also un-equivalences the mutant that
+/// `minted_by_is_false_for_a_foreign_key` records as equivalent *through the public API*,
+/// exactly as that note says it would.
+///
+/// ```compile_fail,E0616
+/// # use hypertree_types::generate_hypertree;
+/// let (_chain, pk) = generate_hypertree(1, 2, 2).unwrap();
+/// let _leak = pk.top; // ERROR[E0616]: field `top` is private
+/// ```
+///
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct HyperPublicKey {
     top: MssPublicKey,
@@ -242,20 +256,6 @@ impl HyperPublicKey {
         self.top.root_hash()
     }
 
-    /// Its one field is private, and that had no check at all until 2026-09-10 — which mattered
-    /// more than a missing fence usually does: publishing it silently BUILDS the verifier-side
-    /// doorway the honest limits describe as "recorded here, not built", since
-    /// `HyperPublicKey { top: MssPublicKey::adopt(root, subtrees)? }` is then writable from
-    /// outside. It also un-equivalences the mutant that
-    /// `minted_by_is_false_for_a_foreign_key` records as equivalent *through the public API*,
-    /// exactly as that note says it would.
-    ///
-    /// ```compile_fail,E0616
-    /// # use hypertree_types::generate_hypertree;
-    /// let (_chain, pk) = generate_hypertree(1, 2, 2).unwrap();
-    /// let _leak = pk.top; // ERROR[E0616]: field `top` is private
-    /// ```
-    ///
     /// The number of subtrees this hypertree certifies (the top capacity).
     pub fn subtrees(&self) -> usize {
         self.top.capacity()
@@ -679,8 +679,19 @@ const _: () = assert!(
 
 /// **The instance seed — the 2026-09-09 fix.** Every parameter that can change what a
 /// one-time key signs is folded in here, and every key in the hypertree is derived from the
-/// result, so two hypertrees differing in *any* parameter share no key material at either
-/// layer.
+/// result, so two hypertrees differing in *any* parameter get **distinct instance seeds**.
+///
+/// ⚠ **That is the whole of what is proved, and it is not the same as "share no key
+/// material".** Two steps separate them, and an earlier version of this docstring asserted the
+/// conclusion while establishing only the premise. (a) [`subseed`] is a bijection in its index
+/// for a *fixed* seed, but `subseed(s, i)` depends only on `s + i·G`, so it is **not** injective
+/// in the pair — distinct instance seeds can share a subtree seed at different indices
+/// (computed: for `x` = this crate's own pinned `instance_seed(0xC0FFEE, 2, 3)` and
+/// `y = x − G`, `subseed(x, 0) == subseed(y, 1)`). (b) per-key material is
+/// `prg(seed, i, 0xFF)`, a SHA-256 truncated to 64 bits, so distinctness of the *outputs*
+/// rests on collision resistance — the qualifier the operand crate states in as many words
+/// and this one dropped. No reachable `(top_n, bottom_n)` pair sharing key material is known
+/// under the shipped fold; that is a measurement, not a proof.
 ///
 /// Before this existed, `generate_hypertree` derived both layers from `seed` alone. Since
 /// `mss_types::generate` derives its per-key seeds independently of the keychain's
@@ -1389,6 +1400,43 @@ mod tests {
             let v = pk.verify(b"m", &sig).expect("genuine");
             assert_eq!((v.subtree_index(), v.leaf_index()), (0, j));
         }
+    }
+
+    #[test]
+    fn the_derived_impls_are_observed_by_something() {
+        // Every derive on the three public types was invoked by NO test: a `Clone` that
+        // corrupts the signature, and `PartialEq` returning a constant in either direction,
+        // all survived — including one that makes a sealed witness unequal to itself while
+        // `Eq + Hash` promise reflexivity to any `HashSet`. Derives are API; nothing was
+        // watching them.
+        let (chain, pk) = generate_hypertree(0xC0FFEE, 2, 2).unwrap();
+        let (sig, rest) = chain.sign_next(b"m");
+        // A clone must verify exactly as the original does.
+        let cloned = sig.clone();
+        assert_eq!(cloned, sig, "signature equality is reflexive under Clone");
+        let v = pk
+            .verify(b"m", &cloned)
+            .expect("a cloned signature still verifies");
+        assert_eq!(
+            v,
+            pk.verify(b"m", &sig).unwrap(),
+            "and mints an equal witness"
+        );
+        assert_eq!(v, v.clone(), "witness equality is reflexive");
+        assert_eq!(
+            pk, pk,
+            "public-key equality is reflexive — Eq + Hash promise it"
+        );
+        // And equality must actually discriminate, in all three types.
+        let (sig2, _) = rest.unwrap().sign_next(b"m2");
+        assert_ne!(sig2, sig);
+        assert_ne!(pk.verify(b"m2", &sig2).unwrap(), v);
+        let (_c, other_pk) = generate_hypertree(0xBEEF, 2, 2).unwrap();
+        assert_ne!(other_pk, pk);
+        // `Debug` on the witness is one of only two channels publishing `subtrees`, and the
+        // other is `minted_by`; neither was checked.
+        assert!(format!("{v:?}").contains("subtrees: 2"));
+        assert!(format!("{sig:?}").contains("bottom_capacity: 2"));
     }
 
     #[test]
