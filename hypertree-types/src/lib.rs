@@ -17,12 +17,24 @@
 //!
 //! ## What recursive composition discovered
 //!
+//! **(0) Primitives, accounted.** E0382 (both keychains, the coordinated linear state) and
+//! E0451 (the composed witness). The brand is **honestly unused** — provenance here is
+//! value-level, checked by [`VerifiedHypertreeMessage::minted_by`] at runtime, exactly as in
+//! leaf 7. And since 2026-09-09 this leaf also carries **E0080**, a const-eval wall on its own
+//! `TOP_DOMAIN`, which its sole operand declares "honestly absent" — added by the graduation
+//! review to close a mutant family no parameter sweep could reach. Note what that does and
+//! does not mean: the wall protects this crate's *own* domain separation, not the composition's
+//! interface, so finding (1) below stays true of the COMPOSITION while ceasing to be true of
+//! the LEAF. A recursive composition reached a fourth primitive its operand did not need.
+//!
 //! **(1) Composition *nests*, through the same public surface — zero new rungs.**
 //! Leaf 7 needed two small additive rungs on its components; leaf 8 needed none
 //! because the surface was already complete. This leaf, like leaf 8, needs **none**:
 //! it builds entirely on `mss-types`' public API (`generate`, `MssKeychain::sign_next`,
 //! `MssPublicKey::{adopt, verify, root_hash, capacity}`, `MssKeychain::remaining`,
-//! `VerifiedMssMessage::{key_index, digest}`), reused verbatim. `merkle-types` is a second
+//! `VerifiedMssMessage::{key_index, digest}`, the public field `MssSignature::vk`, and the
+//! derives `MssPublicKey: Copy + Hash + Eq + Debug` / `MssSignature: Clone + PartialEq +
+//! Debug`, which this crate's own derives require), reused verbatim. `merkle-types` is a second
 //! direct dependency, but only to *name* its digest type in public signatures — not a
 //! composed operand, so `mss ∘ mss` remains one composition. (Two 2026-09-09 audits of this
 //! list: `minted_by` was listed and never called — this crate re-implements that check one
@@ -109,11 +121,17 @@
 //!   have made the identities distinguishable while the same keys kept signing. *Any
 //!   parameter that changes what a one-time key signs must change that key.*
 //!
-//!   `0.3.0` carried this fix with a **collidable** fold — a `subseed` chain, whose
-//!   collisions a signer can construct by solving one linear relation — under a docstring
-//!   claiming injectivity from an invalid argument. Corrected the same day in `0.4.0`, which
-//!   packs the two parameters into disjoint halves of one word before mixing, so the packing
-//!   determines the pair for every parameter small enough for keygen to terminate.
+//!   `0.3.0` carried this fix with a **collidable** fold — a `subseed` chain — under a
+//!   docstring claiming injectivity from an invalid argument. Corrected the same day in
+//!   `0.4.0`, which packs the two parameters into disjoint halves of one word before mixing,
+//!   so the packing determines the pair for every parameter small enough for keygen to
+//!   terminate. ⚠ This sentence said until 2026-09-09 that a signer could construct the old
+//!   fold's collisions "by solving one linear relation"; that overstated it, and the
+//!   retraction lived only on `instance_seed` while the module page — the public-facing
+//!   surface — kept the withdrawn version. At *reachable* parameters the old fold has no
+//!   known collision (exhaustive over `[1, 1200]²`; the smallest usable partner is ~2³⁷).
+//!   The honest reasons to replace it are that the argument was invalid and the property was
+//!   stated without its domain.
 //!
 //!   This was a **defect, not a residue** — fixable inside the vocabulary, and covered by no
 //!   disclosure here: the seed limit below is about a retained seed re-minting an
@@ -451,9 +469,12 @@ impl HyperPublicKey {
 /// Total capacity is `top_n × bottom_n`. `None` if either layer would be empty.
 ///
 /// ⚠ **Large parameters do not return `None`; they die.** Each unit of either parameter is a
-/// Lamport keychain, so allocation is linear in `top_n + bottom_n`: `usize::MAX` panics with
-/// `capacity overflow`, and around `2^40` the process **aborts** on allocation failure, which
-/// `catch_unwind` cannot intercept. There is no upper guard and this is a resource limit, not
+/// Lamport keychain, so allocation is linear in `top_n + bottom_n`. Measured on this
+/// toolchain, a `(SigningKey, VerifyingKey)` is **2048 bytes**, which puts the two failure
+/// modes far apart and neither of them where an earlier version of this note guessed
+/// ("around `2^40`", which is neither): allocation *failure* — an uncatchable **abort** —
+/// begins once `n · 2048` exceeds available memory, near `2^25` on a 64 GiB machine, while
+/// the `capacity overflow` **panic** needs `n · 2048 > isize::MAX`, i.e. `n` above `2^52`. There is no upper guard and this is a resource limit, not
 /// a checked bound — noted because the module doc invites large parameters ("an enormous
 /// *virtual* keyspace") and because one test depends on the `usize::MAX` panic.
 /// [`HyperPublicKey::verify`], the attacker-facing entry point, is by contrast total: every
@@ -1139,6 +1160,28 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn the_witness_pair_enumerates_every_one_time_key() {
+        // `(subtree_index, leaf_index)` is the crate's IDENTITY for a one-time key, and no
+        // test observed either above 1 — so `% 2`, `% 3` and `.min(1)` all survived (round 7)
+        // while agreeing with the truth on {0, 1}. That is not cosmetic: the persistence
+        // finding proves key reuse by asserting two witnesses carry the SAME pair, and under
+        // any of those mutants two genuinely distinct keys report the same pair, which makes
+        // the crate's own reuse evidence unsound. Enumerate the whole 3x3.
+        let (n, m) = (3usize, 3usize);
+        let sigs = sign_n(0xC0FFEE, n, m, n * m);
+        let (_chain, pk) = generate_hypertree(0xC0FFEE, n, m).unwrap();
+        let got: Vec<(usize, usize)> = sigs
+            .iter()
+            .map(|s| {
+                let v = pk.verify(b"m", s).expect("genuine");
+                (v.subtree_index(), v.leaf_index())
+            })
+            .collect();
+        let want: Vec<(usize, usize)> = (0..n).flat_map(|i| (0..m).map(move |j| (i, j))).collect();
+        assert_eq!(got, want, "every one-time key gets its own pair");
     }
 
     #[test]

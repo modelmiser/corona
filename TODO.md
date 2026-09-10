@@ -902,6 +902,31 @@ any push, so nothing false was ever public.
             in ONE direction on 2026-09-09: an unused entry removed, three used ones
             (`root_hash`, `capacity`, `remaining`) never added, and lib.rs lacked the
             second-dependency qualifier Cargo.toml already carried.
+      - [x] **Round 7 — NOT CLEAN: 1 CRITICAL + 4 MODERATE. The CRITICAL is round 6's fix,
+            half-applied.** I corrected the "one linear relation" overstatement on
+            `instance_seed` and left the identical sentence verbatim in the module-level honest
+            limits — so the crate simultaneously made and retracted the claim, and the RUSTDOC
+            MODULE PAGE, the public-facing surface, carried the withdrawn version.
+            [[feedback_fix_is_new_content]]: a retraction applied at one site is not applied.
+            MODERATE: the witness's `(subtree_index, leaf_index)` pair — the crate's IDENTITY
+            for a one-time key — was never observed above 1, so `% 2`, `% 3` and `.min(1)` all
+            survived while agreeing with the truth on {0,1}. Not cosmetic: the persistence
+            finding proves reuse by asserting two witnesses carry the SAME pair, and under
+            those mutants two DISTINCT keys report the same pair, which makes the crate's own
+            reuse evidence unsound → enumerate the full 3×3 (three watched dying).
+            PRIMITIVE ACCOUNTING: the module doc never recorded that this leaf now recruits
+            **E0080** — the const wall I added in round 3 — a primitive its sole operand
+            declares "honestly absent", while finding (2) still said "no new primitive". Now a
+            §(0) accounting block, with the distinction that matters: the wall protects this
+            crate's OWN domain separation, not the composition's interface, so "zero new
+            rungs" stays true of the COMPOSITION and stops being true of the LEAF. A recursive
+            composition reached a fourth primitive its operand did not need — a real datum the
+            review produced and I had not recorded.
+            The API list was STILL not exact in the called-not-listed direction (trait derives
+            on `MssPublicKey`/`MssSignature`, the public field `vk`). And my `2^40` abort
+            threshold was neither boundary: measured, the element is 2048 bytes, so the
+            uncatchable abort begins near 2^25 on a 64 GiB box and `capacity overflow` needs
+            n above 2^52. Third time this arc I stated a number without measuring it.
 
 ## Now (leaf 15 — crdt-types)
 
