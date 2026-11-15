@@ -1332,4 +1332,4 @@ cargo clippy --workspace --all-targets -- -D warnings
 
 ## License
 
-MIT.
+MIT. Copyright (c) ModelMiser. The full text is in [LICENSE](LICENSE).
